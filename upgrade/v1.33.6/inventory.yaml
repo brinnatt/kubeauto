@@ -1,0 +1,842 @@
+schema_version: 1
+kind: source-observation
+recorded_on: '2026-11-14'
+observed_on: '2026-11-14'
+kubernetes_default: v1.33.6
+claim: 源码声明清单；不是客户实装清单、目标兼容矩阵或发布/验收证据
+repos:
+- repo: kubeauto
+  branch: dev
+  head: 940c9020144a88b370cba36793a4d7fad6a347ab
+  observation: 上轮六仓干净只读审计；当前仅主仓方案/入口变更，非客户交付身份
+- repo: kubeauto-dockerfile
+  branch: dev
+  head: 39b75668c901a93fa9fa10d35402999f20ff503f
+  observation: 上轮六仓干净只读审计；当前仅主仓方案/入口变更，非客户交付身份
+- repo: kubeauto-k8s-bin-dockerfile
+  branch: dev
+  head: b9c52d89684a05d6072eab0bc4f6c84ff135ebdd
+  observation: 上轮六仓干净只读审计；当前仅主仓方案/入口变更，非客户交付身份
+- repo: kubeauto-ext-bin-dockerfile
+  branch: dev
+  head: 8d102d25d5acac6768ffad8341d8dd8abb422e36
+  observation: 上轮六仓干净只读审计；当前仅主仓方案/入口变更，非客户交付身份
+- repo: kubeauto-ext-bin-sp1-dockerfile
+  branch: dev
+  head: b154b48f041811425626d6ed8d709446b7b500bf
+  observation: 上轮六仓干净只读审计；当前仅主仓方案/入口变更，非客户交付身份
+- repo: kubeauto-ext-images-dockerfile
+  branch: dev
+  head: 33a209565a37c5b476c4730b692fdc51ffd04275
+  observation: 上轮六仓干净只读审计；当前仅主仓方案/入口变更，非客户交付身份
+source_inputs_sha256:
+  common/constants.py: 2ae296593a5f7ee7ccfee49e605b684a71dcb8a7c3783f67e96b86b922eef91e
+  conf/config.yml: cb417b4ff0fdaea868c6b166f0eeaceb24ccb28321a9458b3aa4c78ba6a1884e
+  requirements: ab15632ce44e90da5aefb28c39497568cfe5ccb23e7da59a89ab9b8bd0c82905
+  requirements-control.txt: 925bc33ae3c7ba750cc70344ac0d6575beeeb1cae2bd585ce1e05866f614515b
+  build.py: 29dd1553d6b3b4c46f63abc6f94b4cf94e22118a3320645b65c686512c2e9560
+  kubecli-onefile.spec: 9ffb04e602c9e999a82dd234dd8d607a444fed31b18e22fa94dbb7aa3b443d6c
+  tools-onefile.spec: 7bb77b6db73a9c015aff2156120d94f7dc67a7a30e037f105d452bcbded45956
+  .github/workflows/release.yml: df8768cb1959ff0fb7fa3c66d7bf4c91c98789245e5e1aa9977b686221cfbd7b
+  controller/cluster/cli.py: e5f0f081ea123d4b802c1b2b526e55f23dad3a010db0eddab3f9b7e09c42f3c1
+  service/cluster/manager.py: 6411d4a3fba0de58372960db92f61c1727009a30a26b3d3bbffa0f89b80805f2
+  service/cluster/downloader.py: a15efb6d27984f5a37559309f4603e88b70a86ab03e7b13a69079ef4d8a4785d
+  playbooks/93.upgrade.yml: 101fe54750ad8380d23af7dcf9871c62e1359dd36b96038bca437d0058b5f84c
+  roles/kube-master/tasks/main.yml: 39929c6dc555dcf8a4b83a69f9fb17582f6ea43d9230afd9e0219004b1b8b627
+  roles/kube-node/tasks/main.yml: 75ed2cfddd038f5e387cef9610609ade75d58dfc8eecd76a0e6b10314ab4d2aa
+  roles/kube-node/vars/main.yml: 2868d911b2efc4245d8f2c9a197b16d1d30dd4458e5a135e6b6523501c909030
+  roles/kube-node/templates/kubelet-config.yaml.j2: 7f3bc2f5bf9b9d229d4429881d2c80517a99ee69a513a19a4dc7c2fa5f3ed458
+  roles/kube-node/templates/kube-proxy-config.yaml.j2: 7c0897206669e4aee251292c825d8c9a7aa50d639216ab9b275842872eac7b09
+  tests/README.md: f50f2c56f5510a1eec70ae85bcb44ead8f30bea38b62c03ea122e32b6d11711e
+  tests/enterprise-test-matrix.yaml: fbb30c1a0c57c5e34d0c38b24661f4e74ad2f4e67a160709f68e433cffd47ed1
+  tests/helpers/delivery-upgrade-smoke.sh: fcf3ebd7215c5a7187766a555de856c11564becc823728324cd215505fa1b08b
+  tests/unit/test_upgrade_gate.py: 6d9bbcb6f906fa1122bb21f8364e7d073a4973f2a6ca0566fd4830904d1fcb46
+  tests/unit/test_six_repo_version_sync.py: 432cd127a220e7fed734c46ae2ee2b9bf2c639dd897e465421865e71fbcc215e
+  docs/whitepaper/A-version-matrix.md: 7e14c4696653f4d36f73729e1a0d4619b2fd04cda9f07fa8c45157da5a96c13a
+  ../kubeauto-dockerfile/Dockerfile: d24660c44f0186bca57307891c771910722ea697db19a289a068d273192c71f5
+  ../kubeauto-dockerfile/.github/workflows/build_and_push.yml: 628809a78d0271f3641cd57732e7ec686cd509c51f24690d70ff8e5105836aff
+  ../kubeauto-k8s-bin-dockerfile/Dockerfile: 0ac8dc2c0d1d0773a599881d22520701f78990cc731f946235e7a2ead66e13e5
+  ../kubeauto-k8s-bin-dockerfile/multi-platform-download.sh: 940c3a609806a48f174f33f5356971cbc8076455263600abe41af5ab8ae030cf
+  ../kubeauto-k8s-bin-dockerfile/.github/workflows/build.yml: 441de0e72656e9b0f165d19577c2bddac3ad7784e771d4ee385139d573148abe
+  ../kubeauto-ext-bin-dockerfile/Dockerfile: 7c22df60ec6925e132ff75831622f4f9b19196e50a34303ed94fb17a815342ad
+  ../kubeauto-ext-bin-dockerfile/multi-platform-download.sh: 4021ddc0965470c81e2b70581ae64a875717e65e7e82e3ea19ec5458713bd7e8
+  ../kubeauto-ext-bin-dockerfile/.github/workflows/build.yml: ee9aad0b2f838d6659f70997f6cdf93462596f90753b2de048627c08f680c005
+  ../kubeauto-ext-bin-sp1-dockerfile/Dockerfile: 633bb30f6093e8b243595ccdd09a5f5e16893a91b71447c2d36c29d034570396
+  ../kubeauto-ext-bin-sp1-dockerfile/.github/workflows/build.yml: 2d1c88fbeeef066f6c9172eed1ad8081fdcce28e531655d1126570fd1cc8253f
+  ../kubeauto-ext-images-dockerfile/catalog.json: 6d71977ea99dfc79898af9c001c765bf92c7d94c1089bbaa70c186a1789dcabb
+  ../kubeauto-ext-images-dockerfile/.github/workflows/build.yml: 800effffa6c48d5e9682ab290606af83e7f4351d39f59001e970073540d08e82
+  ../kubeauto-ext-images-dockerfile/scripts/validate_catalog.py: acafa78b54280d517bc7022c69e877b77d628728b63de8dd8badc5db9cf712b9
+  ../kubeauto-ext-images-dockerfile/scripts/image_release.py: 54ea553d25e40fad9689088606c4727dc610328fafa1c3208d8120ffbfbeccce
+constant_fields:
+  v_docker: 28.5.2
+  v_docker_compose: 2.40.3
+  v_docker_buildx: 0.29.1
+  v_docker_registry: '2'
+  v_cri_dockerd: 0.3.26
+  v_kubeauto: v0.1.8
+  v_talkedu_registry: hub.talkedu.cn/kubeauto
+  v_ansible_core: 2.18.6
+  v_ansible_core_py314: 2.20.9
+  v_k8s_bin: v1.33.6
+  v_extra_bin: 1.16.0
+  v_extra_bin_sp1: 1.3.1
+  v_nerdctl: 2.3.4
+  v_harbor: v2.13.0
+  v_kube_state_metrics: v2.18.0
+  v_webhook_certgen: v1.6.0
+  v_prometheus_operator: v0.93.0
+  v_prometheus_config_reloader: v0.93.0
+  v_prometheus: v3.13.1-distroless
+  v_alertmanager: v0.33.1
+  v_node_exporter: v1.12.1
+  v_grafana: 13.1.1
+  v_busybox: '1.37'
+  v_k8s_sidecar: 1.30.5
+  v_prometheus_admission_webhook: v0.93.0
+  v_prometheus_webhook_certgen: 1.8.5
+  v_thanos: v0.41.0
+  v_prometheus_adapter: v0.12.0
+  v_blackbox_exporter: v0.27.0
+  v_eck_operator: 3.5.0
+  v_elasticsearch: 9.5.1
+  v_kibana: 9.5.1
+  v_business_elasticsearch: 9.5.6
+  v_elasticsearch_upgrade_source: 9.5.5
+  v_elasticsearch_exporter: v1.11.0
+  v_elasticsearch_client: 9.5.1-kubeauto.1
+  v_elasticsearch_rally: 2.13.0-kubeauto.1
+  v_fluent_bit: 5.1.1
+  v_logstash: 9.5.1
+  v_loki_chart: 18.9.0
+  v_loki: 3.7.6
+  v_alloy_chart: 1.11.1
+  v_alloy: 1.18.1
+  v_ingress_nginx_controller: v1.13.0
+  v_json_mock: v1.3.1
+  v_alpine_curl: v7.85.0
+  v_snapshot_controller: v8.3.0
+  v_csi_node_driver_registrar: v2.13.0
+  v_csi_provisioner: v5.2.0
+  v_csi_resizer: v1.11.2
+  v_csi_snapshotter: v7.0.0
+  v_ceph: 20.2.4
+  v_ceph_upgrade_source: 20.2.3
+  v_cephadm_sha256: 5b78c8d5772ef7c5c8619dac6ee0b36716b829338ea7a11c9f2b896626ab354f
+  v_ceph_csi: v3.17.1
+  v_ceph_csi_registrar: v2.16.0
+  v_ceph_csi_provisioner: v6.2.0
+  v_ceph_csi_attacher: v4.11.0
+  v_ceph_csi_resizer: v2.1.0
+  v_ceph_csi_snapshotter: v8.5.0
+  v_longhorn: 1.12.1
+  v_longhorn_upgrade_source: 1.12.0
+  v_longhorn_snapshot_controller: v8.6.0
+  v_calico: v3.28.4
+  v_coredns: 1.12.4
+  v_dnsnodecache: 1.26.4
+  v_dashboard: 7.14.0
+  v_dashboardmetricsscraper: 1.2.2
+  v_metricsserver: v0.8.0
+  v_pause: '3.10'
+  v_flannel: v0.28.4
+  v_flannel_cni: v1.8.0-flannel1
+  v_cilium: v1.19.5
+  v_cilium_hubble_ui: v0.13.5
+  v_kuberouter: v1.5.4
+  v_kubeovn: v1.11.5
+  v_localpathprovisioner: v0.0.31
+  v_nfsprovisioner: v4.0.2
+  v_promchart: 88.0.0
+  v_miniooperator: 7.1.1
+  v_openebs: 4.3.2
+  v_ingressnginx: 4.13.0
+  v_pxc_operator: 1.20.0
+  v_pxc: 8.4.8-8.1
+  v_pxc_xtrabackup: 8.4.0-5.1
+  v_pxc_haproxy: 2.8.18-1
+  v_pxc_fluentbit: 5.0.6-1
+  v_pxc_operator_chart_sha256: b8bff81d0f9691b1e495f958fba1bb268e48838cf548adf6ae6570ea0e0059cf
+  v_strimzi_operator: 1.2.0
+  v_kafka: 4.3.1
+  v_kafka_metadata: 4.3-IV0
+  v_strimzi_drain_cleaner: 1.6.1
+  v_strimzi_operator_chart_sha256: 0f8a50b2f19bd99482f9fd6e17cf42902f72f9e594a136813ac3f0b7af422efd
+  v_strimzi_drain_cleaner_chart_sha256: ce84b8ddcd105f1b10d085fe69ed0d9185f798d009de3fba967386af2b8f6fdd
+  v_mongodb_operator: 1.23.1
+  v_mongodb_operator_chart: 1.23.2
+  v_mongodb_operator_chart_sha256: 80e629dc31f8cfe2615a5efb8b0d1d2ed418f25e8c0b168f981412c8594a07e9
+  v_mongodb: 8.0.32-14
+  v_mongodb_backup: 2.15.0
+  v_mongodb_fluentbit: 5.1.2-1
+  v_mongodb_exporter: 0.53.0
+  v_redis_operator: 0.27.0
+  v_redis_operator_image: 0.27.0-kubeauto.2
+  v_redis: 8.10.2
+  v_redis_cluster_image: 8.10.2-kubeauto.1
+  v_redis_exporter: v1.93.0
+  v_redis_operator_chart_sha256: 4eabe2cde88657f8b7b21c2ec5ddafa3a305d35c9877021f9be89ac3beeb0f7f
+component_images:
+  cilium:
+  - brinnatt/cilium:v1.19.5
+  - brinnatt/cilium-operator-generic:v1.19.5
+  cilium-hubble:
+  - brinnatt/hubble-relay:v1.19.5
+  - brinnatt/hubble-ui-backend:v0.13.5
+  - brinnatt/hubble-ui:v0.13.5
+  flannel:
+  - brinnatt/flannel:v0.28.4
+  - brinnatt/flannel-cni-plugin:v1.8.0-flannel1
+  dashboard:
+  - brinnatt/dashboard-api:1.14.0
+  - brinnatt/dashboard-auth:1.4.0
+  - brinnatt/dashboard-metrics-scraper:1.2.2
+  - brinnatt/dashboard-web:1.7.0
+  - brinnatt/kong:3.9
+  minio:
+  - brinnatt/minio-operator:v7.1.1
+  - brinnatt/minio-operator-sidecar:v7.0.1
+  - brinnatt/minio:RELEASE.2025-04-08T15-41-24Z
+  nacos:
+  - brinnatt/nacos-server:v2.4.3
+  - brinnatt/nacos-peer-finder-plugin:1.1
+  openebs:
+  - brinnatt/openebs-kubectl:1.33.6
+  - brinnatt/provisioner-localpv:4.3.0
+  - brinnatt/linux-utils:4.2.0
+  - brinnatt/lvm-driver:1.7.0
+  - brinnatt/csi-node-driver-registrar:v2.13.0
+  - brinnatt/csi-resizer:v1.11.2
+  - brinnatt/csi-snapshotter:v7.0.0
+  - brinnatt/csi-provisioner:v5.2.0
+  - brinnatt/snapshot-controller:v8.3.0
+  longhorn:
+  - brinnatt/longhorn-backing-image-manager:v1.12.0
+  - brinnatt/longhorn-backing-image-manager:v1.12.1
+  - brinnatt/longhorn-csi-attacher:v4.12.0
+  - brinnatt/longhorn-csi-node-driver-registrar:v2.17.0
+  - brinnatt/longhorn-csi-provisioner:v5.3.0
+  - brinnatt/longhorn-csi-provisioner:v5.3.0-20260514
+  - brinnatt/longhorn-csi-resizer:v2.1.0-20260514
+  - brinnatt/longhorn-csi-resizer:v2.2.1
+  - brinnatt/longhorn-csi-snapshotter:v8.5.0-20260514
+  - brinnatt/longhorn-csi-snapshotter:v8.6.0
+  - brinnatt/longhorn-engine:v1.12.0
+  - brinnatt/longhorn-engine:v1.12.1
+  - brinnatt/longhorn-instance-manager:v1.12.0
+  - brinnatt/longhorn-instance-manager:v1.12.1-kubeauto.3
+  - brinnatt/longhorn-livenessprobe:v2.19.0
+  - brinnatt/longhorn-manager:v1.12.0
+  - brinnatt/longhorn-manager:v1.12.1-kubeauto.2
+  - brinnatt/longhorn-share-manager:v1.12.0
+  - brinnatt/longhorn-share-manager:v1.12.1
+  - brinnatt/longhorn-support-bundle-kit:v0.0.86
+  - brinnatt/longhorn-support-bundle-kit:v0.0.92
+  - brinnatt/longhorn-ui:v1.12.0
+  - brinnatt/longhorn-ui:v1.12.1
+  - brinnatt/snapshot-controller:v8.6.0
+  ceph:
+  - brinnatt/ansible:2.20.9
+  - brinnatt/ceph:v20.2.4
+  - brinnatt/ceph:v20.2.3
+  - brinnatt/cephcsi:v3.17.1
+  - brinnatt/csi-node-driver-registrar:v2.16.0
+  - brinnatt/csi-provisioner:v6.2.0
+  - brinnatt/csi-attacher:v4.11.0
+  - brinnatt/csi-resizer:v2.1.0
+  - brinnatt/csi-snapshotter:v8.5.0
+  - brinnatt/ceph-prometheus:v3.6.0
+  - brinnatt/ceph-alertmanager:v0.28.1
+  - brinnatt/ceph-node-exporter:v1.9.1
+  - brinnatt/ceph-grafana:12.3.1
+  - brinnatt/minio-mc:RELEASE.2025-04-08T15-39-49Z
+  - brinnatt/busybox:1.37
+  - brinnatt/json-mock:v1.3.1
+  rocketmq:
+  - brinnatt/rocketmq-operator:latest
+  - brinnatt/rocketmq-broker:4.5.0-alpine-operator-0.3.0
+  - brinnatt/rocketmq-nameserver:4.5.0-alpine-operator-0.3.0
+  - brinnatt/rocketmq-console:2.0.0
+  ingress-nginx:
+  - brinnatt/ingress-nginx-controller:v1.13.0
+  - brinnatt/kube-webhook-certgen:v1.6.0
+  kube-ovn:
+  - brinnatt/kube-ovn:v1.11.5
+  kube-router:
+  - brinnatt/kube-router:v1.5.4
+  local-path-provisioner:
+  - brinnatt/local-path-provisioner:v0.0.31
+  network-check:
+  - brinnatt/json-mock:v1.3.1
+  - brinnatt/alpine-curl:v7.85.0
+  nfs-provisioner:
+  - brinnatt/nfs-subdir-external-provisioner:v4.0.2
+  prometheus:
+  - brinnatt/kube-state-metrics:v2.18.0
+  - brinnatt/kube-webhook-certgen:v1.6.0
+  - brinnatt/prometheus-webhook-certgen:1.8.5
+  - brinnatt/prometheus-admission-webhook:v0.93.0
+  - brinnatt/grafana:13.1.1
+  - brinnatt/busybox:1.37
+  - brinnatt/k8s-sidecar:1.30.5
+  - brinnatt/prometheus-config-reloader:v0.93.0
+  - brinnatt/prometheus-operator:v0.93.0
+  - brinnatt/alertmanager:v0.33.1
+  - brinnatt/node-exporter:v1.12.1
+  - brinnatt/prometheus:v3.13.1-distroless
+  prometheus-dingtalk:
+  - brinnatt/prometheus-webhook-dingtalk:v2.1.0
+  prometheus-optional:
+  - brinnatt/thanos:v0.41.0
+  - brinnatt/prometheus-adapter:v0.12.0
+  - brinnatt/blackbox-exporter:v0.27.0
+  elasticsearch:
+  - brinnatt/eck-operator:3.5.0
+  - brinnatt/elasticsearch:9.5.6
+  - brinnatt/kibana:9.5.6
+  - brinnatt/elasticsearch-exporter:v1.11.0
+  - brinnatt/elasticsearch-client:9.5.1-kubeauto.1
+  elasticsearch-smartcn:
+  - brinnatt/elasticsearch-smartcn:9.5.6-kubeauto.1
+  elasticsearch-qualification:
+  - brinnatt/eck-operator:3.4.1
+  - brinnatt/elasticsearch:9.5.5
+  - brinnatt/kibana:9.5.5
+  - brinnatt/elasticsearch-rally:2.13.0-kubeauto.1
+  logging-efk:
+  - brinnatt/eck-operator:3.5.0
+  - brinnatt/elasticsearch:9.5.1
+  - brinnatt/kibana:9.5.1
+  - brinnatt/fluent-bit:5.1.1
+  - brinnatt/logstash:9.5.1
+  logging-loki:
+  - brinnatt/loki:3.7.6
+  - brinnatt/alloy:1.18.1
+  - brinnatt/loki-gateway:1.31-alpine
+  - brinnatt/access-log-exporter:0.4.11
+  - brinnatt/loki-canary:3.7.6
+  - brinnatt/memcached:1.6.45-alpine
+  - brinnatt/memcached-exporter:v0.17.0
+  - brinnatt/k8s-sidecar:2.10.1
+  - brinnatt/prometheus-config-reloader:v0.91.0
+  - brinnatt/minio-mc:RELEASE.2025-04-08T15-39-49Z
+  mysql:
+  - brinnatt/percona-xtradb-cluster-operator:1.20.0
+  - brinnatt/percona-xtradb-cluster:8.4.8-8.1
+  - brinnatt/percona-xtrabackup:8.4.0-5.1
+  - brinnatt/percona-haproxy:2.8.18-1
+  - brinnatt/percona-fluentbit:5.0.6-1
+  kafka:
+  - brinnatt/strimzi-operator:1.2.0
+  - brinnatt/strimzi-kafka:1.2.0-kafka-4.3.1
+  - brinnatt/strimzi-drain-cleaner:1.6.1
+  mongodb:
+  - brinnatt/percona-server-mongodb-operator:1.23.1
+  - brinnatt/percona-server-mongodb:8.0.32-14
+  - brinnatt/percona-backup-mongodb:2.15.0
+  - brinnatt/percona-fluentbit:5.1.2-1
+  - brinnatt/mongodb-exporter:0.53.0
+  redis:
+  - brinnatt/redis-operator:0.27.0-kubeauto.2
+  - brinnatt/redis:8.10.2
+  - brinnatt/redis:8.10.2-kubeauto.1
+  - brinnatt/redis-exporter:v1.93.0
+binary_pack_definitions:
+  kubeauto-ext-bin-dockerfile:
+    path: ../kubeauto-ext-bin-dockerfile/Dockerfile
+    env:
+      CFSSL_VER: v1.6.5
+      CNI_VER: v1.8.0
+      HELM_VER: v3.19.0
+      CRICTL_VER: v1.34.0
+      RUNC_VER: v1.3.1
+      CONTAINERD_VER: 2.1.4
+      NERDCTL_VER: 2.3.4
+      DOCKER_COMPOSE_VER: v2.40.3
+      DOCKER_BUILDX_VER: v0.29.1
+      CRI_DOCKERD_VER: 0.3.26
+      CALICOCTL_VER: v3.28.4
+      CEPHADM_VER: 20.2.4
+      CEPHADM_SHA256: 5b78c8d5772ef7c5c8619dac6ee0b36716b829338ea7a11c9f2b896626ab354f
+      EXT_BIN_VER: 1.16.0
+    from_and_copy_sources:
+    - FROM golang:1.22 as builder
+    - FROM golang:1.22 as downloader
+    - FROM alpine:3.16
+    - COPY --from=quay.io/coreos/etcd:v3.6.4 /usr/local/bin/etcdctl /usr/local/bin/etcdutl /usr/local/bin/etcd /extra/
+    - COPY --from=brinnatt/kubeauto-ext-bin-sp1:1.3.1 /ext-bin/* /extra/
+    - COPY --from=builder /ext-bin/* /extra/
+    - COPY --from=downloader /ext-bin/* /extra/
+    - COPY --from=downloader /extra/containerd-bin/* /extra/containerd-bin/
+    - COPY --from=downloader /extra/cni-bin/* /extra/cni-bin/
+  kubeauto-ext-bin-sp1-dockerfile:
+    path: ../kubeauto-ext-bin-sp1-dockerfile/Dockerfile
+    env:
+      NGINX_VERSION: 1.28.0
+      CHRONY_VERSION: '4.7'
+      CHRONY_DOWNLOAD_URL: '"https://chrony-project.org/releases/chrony-${CHRONY_VERSION}.tar.gz"'
+      KEEPALIVED_VERSION: 2.3.4
+      KEEPALIVED_DOWNLOAD_URL: '"http://keepalived.org/software/keepalived-${KEEPALIVED_VERSION}.tar.gz"'
+      EXT_BIN_SP1_VER: 1.3.1
+    from_and_copy_sources:
+    - FROM rockylinux/rockylinux:8.10 as rpm_rockylinux810
+    - FROM alpine:3.16
+    - COPY --from=rpm_rockylinux810 /usr/local/nginx/sbin/nginx /ext-bin/
+    - COPY --from=rpm_rockylinux810 /usr/local/sbin/chronyd /ext-bin/
+    - COPY --from=rpm_rockylinux810 /usr/local/sbin/keepalived /ext-bin/
+explicit_config_pins:
+  ceph_prometheus_image: hub.talkedu.cn/kubeauto/ceph-prometheus:v3.6.0
+  ceph_alertmanager_image: hub.talkedu.cn/kubeauto/ceph-alertmanager:v0.28.1
+  ceph_node_exporter_image: hub.talkedu.cn/kubeauto/ceph-node-exporter:v1.9.1
+  ceph_grafana_image: hub.talkedu.cn/kubeauto/ceph-grafana:12.3.1
+  elasticsearch_eck_ver: 3.5.0
+  logging_eck_ver: 3.5.0
+  logging_elasticsearch_ver: 9.5.1
+  logging_kibana_ver: 9.5.1
+  logging_fluent_bit_ver: 5.1.1
+  logging_loki_ver: 3.7.6
+  logging_loki_chart_ver: 18.9.0
+  logging_alloy_ver: 1.18.1
+  logging_alloy_chart_ver: 1.11.1
+python_frozen_requirements:
+  ansible-runner: 2.4.2
+  attrs: 25.4.0
+  automaton: 3.2.0
+  bcrypt: 4.3.0
+  cachetools: 6.2.2
+  certifi: 2025.4.26
+  cffi: 1.17.1
+  charset-normalizer: 3.4.2
+  cryptography: 45.0.5
+  debtcollector: 3.0.0
+  distro: 1.9.0
+  docker: 7.1.0
+  fasteners: '0.20'
+  futurist: 3.2.1
+  idna: '3.10'
+  iso8601: 2.1.0
+  jsonschema: 4.25.1
+  jsonschema-specifications: 2025.9.1
+  lockfile: 0.12.2
+  msgpack: 1.1.2
+  netaddr: 1.3.0
+  networkx: '3.6'
+  oslo.i18n: 6.7.1
+  oslo.serialization: 5.8.0
+  oslo.utils: 9.2.0
+  packaging: '25.0'
+  paramiko: 3.5.1
+  pbr: 7.0.3
+  pexpect: 4.9.0
+  prettytable: 3.17.0
+  psutil: 7.0.0
+  ptyprocess: 0.7.0
+  pycparser: '2.22'
+  pydot: 4.0.1
+  PyNaCl: 1.5.0
+  pyparsing: 3.2.5
+  python-daemon: 3.1.2
+  PyYAML: 6.0.3
+  referencing: 0.37.0
+  requests: 2.32.3
+  rpds-py: 0.29.0
+  setuptools: 68.2.2
+  stevedore: 5.6.0
+  taskflow: 6.0.2
+  tenacity: 9.1.2
+  typing_extensions: 4.15.0
+  tzdata: '2025.2'
+  urllib3: 2.4.0
+  wcwidth: 0.2.14
+  wrapt: 2.0.1
+  PyMySQL: 1.1.2
+  kubernetes: 35.0.0
+build_dependency:
+  pyinstaller: 6.16.0
+  source: build.py
+  control_requirements: requirements-control.txt（范围声明，不是固定锁文件）
+external_catalog:
+  repo: kubeauto-ext-images-dockerfile
+  head: 33a209565a37c5b476c4730b692fdc51ffd04275
+  path: ../kubeauto-ext-images-dockerfile/catalog.json
+  sha256: 6d71977ea99dfc79898af9c001c765bf92c7d94c1089bbaa70c186a1789dcabb
+  entries: 178
+  talkedu_mapping: 由 catalog 每行 talkedu_image 字段提供；快照 SHA 绑定原清单
+  dockerfile_path_base: ../kubeauto-ext-images-dockerfile
+  publication_verified: false
+  rows:
+  - {image: 'brinnatt/ansible:2.20.9', dockerfile: ./tooling/ansible/python314/Dockerfile, context: ./tooling/ansible/python314/,
+    dockerfile_sha256: 1dbf53d021360efb70c413d492658613dfc365303cd8230bde22d9b095251fe0}
+  - {image: 'brinnatt/ceph:v20.2.4', dockerfile: ./middleware/ceph/ceph/Dockerfile, context: ./middleware/ceph/ceph/,
+    dockerfile_sha256: b71bc4433319e1270a272a2e9f4dd044e84719b64f9cc9cc00878bc6b6880ecd}
+  - {image: 'brinnatt/ceph:v20.2.3', dockerfile: ./middleware/ceph/ceph-20.2.3/Dockerfile, context: ./middleware/ceph/ceph-20.2.3/,
+    dockerfile_sha256: b39bbcbfede01cb5de61cecd1b42beaee41416162325e536ba31a89ec2102404}
+  - {image: 'brinnatt/cephcsi:v3.17.1', dockerfile: ./middleware/ceph/ceph-csi/Dockerfile, context: ./middleware/ceph/ceph-csi/,
+    dockerfile_sha256: f18206d81883c5fcf114969b404c95b4f58842330150e33374e8c034cb1e096d}
+  - {image: 'brinnatt/csi-node-driver-registrar:v2.16.0', dockerfile: ./middleware/ceph/ceph-csi-node-driver-registrar/Dockerfile,
+    context: ./middleware/ceph/ceph-csi-node-driver-registrar/, dockerfile_sha256: eb453e81a8c1baca26c48c71c388d2f7f81c8a5bd9ab0f5fe7924addc84f9e72}
+  - {image: 'brinnatt/csi-provisioner:v6.2.0', dockerfile: ./middleware/ceph/ceph-csi-provisioner/Dockerfile, context: ./middleware/ceph/ceph-csi-provisioner/,
+    dockerfile_sha256: d7c251a7088f3fd295c010a0f453379a93879007053d075112dd2df34d775847}
+  - {image: 'brinnatt/csi-attacher:v4.11.0', dockerfile: ./middleware/ceph/ceph-csi-attacher/Dockerfile, context: ./middleware/ceph/ceph-csi-attacher/,
+    dockerfile_sha256: b09c0b63d86a96c5f9afbccc85486ed6ec51277312cbe5860f6cc8e5c5c3a4b5}
+  - {image: 'brinnatt/csi-resizer:v2.1.0', dockerfile: ./middleware/ceph/ceph-csi-resizer/Dockerfile, context: ./middleware/ceph/ceph-csi-resizer/,
+    dockerfile_sha256: e00329b5a1b95c4b827e8c7a0c749e04a6a07d0ef10bd63259a50e0cbbd8b508}
+  - {image: 'brinnatt/csi-snapshotter:v8.5.0', dockerfile: ./middleware/ceph/ceph-csi-snapshotter/Dockerfile, context: ./middleware/ceph/ceph-csi-snapshotter/,
+    dockerfile_sha256: 9ff185b597fb2433b67ab76e8ab76c1b185ca3360ef8319d88fca7c50effad2a}
+  - {image: 'brinnatt/ceph-prometheus:v3.6.0', dockerfile: ./middleware/ceph/ceph-prometheus/Dockerfile, context: ./middleware/ceph/ceph-prometheus/,
+    dockerfile_sha256: a5ccdaa8b811bd5ba7ea65c6a8f2354c365274070feb306c9120cef62076bf31}
+  - {image: 'brinnatt/ceph-alertmanager:v0.28.1', dockerfile: ./middleware/ceph/ceph-alertmanager/Dockerfile, context: ./middleware/ceph/ceph-alertmanager/,
+    dockerfile_sha256: 257ed79f8a498e034cfe9a2ff14dca5a478fd1becf151fe3063c3daa78aba4c7}
+  - {image: 'brinnatt/ceph-node-exporter:v1.9.1', dockerfile: ./middleware/ceph/ceph-node-exporter/Dockerfile, context: ./middleware/ceph/ceph-node-exporter/,
+    dockerfile_sha256: b34eaa78e3dec51ff07067fd2204482ba9845a646981254b475911f71f18eac4}
+  - {image: 'brinnatt/ceph-grafana:12.3.1', dockerfile: ./middleware/ceph/ceph-grafana/Dockerfile, context: ./middleware/ceph/ceph-grafana/,
+    dockerfile_sha256: 117073c6171c14eb8d4a62e024378b76244e5646c17ac10fd070018cb20f44f0}
+  - {image: 'brinnatt/pause:3.10', dockerfile: ./platform/bootstrap/pause/Dockerfile, context: ./platform/bootstrap/pause/,
+    dockerfile_sha256: 7a21b2611e1b42637a2d21fd3d2dd0b287c2e8a466409ae5f50832064a234eae}
+  - {image: 'brinnatt/metrics-server:v0.8.0', dockerfile: ./platform/observability/metrics-server/Dockerfile, context: ./platform/observability/metrics-server/,
+    dockerfile_sha256: be1f81f22afb485138563381c5207d6fc4ee49f68e260564ab8bc4123e9e5445}
+  - {image: 'brinnatt/k8s-dns-node-cache:1.26.4', dockerfile: ./platform/dns/k8s-dns-node-cache/Dockerfile, context: ./platform/dns/k8s-dns-node-cache/,
+    dockerfile_sha256: 20cafe7eafed3e966d31323af0381fdc989c8981327ac8db5c3824d65e44ea3c}
+  - {image: 'brinnatt/ansible:2.18.6', dockerfile: ./tooling/ansible/alpine-ansible/Dockerfile, context: ./tooling/ansible/alpine-ansible/,
+    dockerfile_sha256: a1b9509e399a6401272c1191c5d45079726728b74fb2a4fe8ee5d49f3f438b7e}
+  - {image: 'brinnatt/ansible-runner:0.9.1', dockerfile: ./tooling/ansible/ansible-runner/Dockerfile, context: ./tooling/ansible/ansible-runner/,
+    dockerfile_sha256: 97f829c990b583bad39191384fc0d4994e8beefb86f6dfa601599cace5923dd7}
+  - {image: 'brinnatt/rockylinux:8.10', dockerfile: ./tooling/build/rockylinux-8.10/Dockerfile, context: ./tooling/build/rockylinux-8.10/,
+    dockerfile_sha256: dca601872c9543499e6f3e8919f568608791453dcd638ed4f3e480ca656c543f}
+  - {image: 'brinnatt/mysql-8.4:8.4.4', dockerfile: ./tooling/test-support/mysql-8.4.4/Dockerfile, context: ./tooling/test-support/mysql-8.4.4/,
+    dockerfile_sha256: 0cae321e0889abfa56347bbf609566aaf66658cd034635560bd463610340aa06}
+  - {image: 'brinnatt/mysql-9.2:9.2.0', dockerfile: ./tooling/test-support/mysql-9.2.0/Dockerfile, context: ./tooling/test-support/mysql-9.2.0/,
+    dockerfile_sha256: 77fb37a55ee10405e731800aa53f33e3bee243c945b13949038f0ec7fdeef882}
+  - {image: 'brinnatt/harbor-offline:v2.13.0', dockerfile: ./platform/registry/harbor-offline/Dockerfile, context: ./platform/registry/harbor-offline/,
+    dockerfile_sha256: ce73c40a8c6cb750a7530a30592f6b28dda184c189a37eb6252f28aaad7fc948}
+  - {image: 'brinnatt/kube-state-metrics:v2.18.0', dockerfile: ./platform/observability/kube-state-metrics/Dockerfile,
+    context: ./platform/observability/kube-state-metrics/, dockerfile_sha256: 93ead63051ca5a9cceeda15f64a76e1fb8efd35accc6b3d9a381c1fdd06fc778}
+  - {image: 'brinnatt/kube-webhook-certgen:v1.6.0', dockerfile: ./platform/ingress/kube-webhook-certgen/Dockerfile,
+    context: ./platform/ingress/kube-webhook-certgen/, dockerfile_sha256: db86cd097820af35c5472af18c69b0204a6cba0c645756a36c84419ba6226c57}
+  - {image: 'brinnatt/ingress-nginx-controller:v1.13.0', dockerfile: ./platform/ingress/ingress-nginx-controller/Dockerfile,
+    context: ./platform/ingress/ingress-nginx-controller/, dockerfile_sha256: 32e8ef6efd6cc66294d492d23657aac4862f8e50baf5facae6c98adf25c58258}
+  - {image: 'brinnatt/nfs-subdir-external-provisioner:v4.0.2', dockerfile: ./platform/storage/provisioners/nfs-subdir-external-provisioner/Dockerfile,
+    context: ./platform/storage/provisioners/nfs-subdir-external-provisioner/, dockerfile_sha256: eb1f0917c6441f647ac24d6c7cd2526e70c4220b177f0ce3db101be5112c74ea}
+  - {image: 'brinnatt/json-mock:v1.3.1', dockerfile: ./tooling/test-support/json-mock/Dockerfile, context: ./tooling/test-support/json-mock/,
+    dockerfile_sha256: 53a629c8b1396fc72cd5e1512f2d31c5d88a124c9c6ffac40d609ec8e253c802}
+  - {image: 'brinnatt/alpine-curl:v7.85.0', dockerfile: ./tooling/download/alpine-curl/Dockerfile, context: ./tooling/download/alpine-curl/,
+    dockerfile_sha256: 24a19fafc324fb2cf2057c166cb90ad34811f2aa520b02dcadebf6c2eae4c733}
+  - {image: 'brinnatt/kube-apiserver:v1.33.6', dockerfile: ./platform/control-plane/kube-apiserver/Dockerfile, context: ./platform/control-plane/kube-apiserver/,
+    dockerfile_sha256: eb4ccf17bac5f386fead3ddb0d77a7bdcb1c1f3e8326733069d4cde80591c7e4}
+  - {image: 'brinnatt/kube-controller-manager:v1.33.6', dockerfile: ./platform/control-plane/kube-controller-manager/Dockerfile,
+    context: ./platform/control-plane/kube-controller-manager/, dockerfile_sha256: f5ff307dc0b33db18e5890503d00c4901ec6cdd6e441b6fa76b654878e54d34c}
+  - {image: 'brinnatt/kube-scheduler:v1.33.6', dockerfile: ./platform/control-plane/kube-scheduler/Dockerfile, context: ./platform/control-plane/kube-scheduler/,
+    dockerfile_sha256: f926b4d96901155e185a44bee0d5ebba2170387a268587d71fb36bbec726d320}
+  - {image: 'brinnatt/kube-proxy:v1.33.6', dockerfile: ./platform/control-plane/kube-proxy/Dockerfile, context: ./platform/control-plane/kube-proxy/,
+    dockerfile_sha256: 03c008531751a8e9d048847e4ac16e003fe249276a6bd6d6b747e608b9a49508}
+  - {image: 'brinnatt/snapshot-controller:v8.3.0', dockerfile: ./platform/storage/csi/snapshot-controller/Dockerfile,
+    context: ./platform/storage/csi/snapshot-controller/, dockerfile_sha256: 3f608bbf70e1fac8621c6cde272eac50ddf83ff47f1339635f9310487d302463}
+  - {image: 'brinnatt/csi-node-driver-registrar:v2.13.0', dockerfile: ./platform/storage/csi/csi-node-driver-registrar/Dockerfile,
+    context: ./platform/storage/csi/csi-node-driver-registrar/, dockerfile_sha256: e5bec2e157f0fd3b9d16176f7f7d7d53696a541379d9dae509d33ddd4b51bbb1}
+  - {image: 'brinnatt/csi-provisioner:v5.2.0', dockerfile: ./platform/storage/csi/csi-provisioner/Dockerfile, context: ./platform/storage/csi/csi-provisioner/,
+    dockerfile_sha256: fcb6cfa9d962fe43d7d9731cce5dc234ffaf5d8b41edef90c847033214c9e252}
+  - {image: 'brinnatt/csi-resizer:v1.11.2', dockerfile: ./platform/storage/csi/csi-resizer/Dockerfile, context: ./platform/storage/csi/csi-resizer/,
+    dockerfile_sha256: 38519a31c65118b95f52e9e18e4f83dbe4b30323a57aea283479a313616d9a8f}
+  - {image: 'brinnatt/csi-snapshotter:v7.0.0', dockerfile: ./platform/storage/csi/csi-snapshotter/Dockerfile, context: ./platform/storage/csi/csi-snapshotter/,
+    dockerfile_sha256: 7dbcda51e8cc6ebd3efe0d810132d987ea934cf52d5285e581e0b309628b5dfd}
+  - {image: 'brinnatt/calico-cni:v3.28.4', dockerfile: ./platform/network/calico/calico-cni/Dockerfile, context: ./platform/network/calico/calico-cni/,
+    dockerfile_sha256: 4dafec4e0a8cb959bb1150b965b0ac79b1a91d3b4d2fa82e7a3b1c38f3a934d3}
+  - {image: 'brinnatt/calico-node:v3.28.4', dockerfile: ./platform/network/calico/calico-node/Dockerfile, context: ./platform/network/calico/calico-node/,
+    dockerfile_sha256: 37396aee02a75a5ff09d68554771cd9a6464965e2fee8f6e7dda415191608421}
+  - {image: 'brinnatt/calico-kube-controllers:v3.28.4', dockerfile: ./platform/network/calico/calico-kube-controllers/Dockerfile,
+    context: ./platform/network/calico/calico-kube-controllers/, dockerfile_sha256: ad606a96799c13fea81c02bd9d27afc1652f0132c718b2889e7521586908a591}
+  - {image: 'brinnatt/coredns:1.12.4', dockerfile: ./platform/dns/coredns/Dockerfile, context: ./platform/dns/coredns/,
+    dockerfile_sha256: 3160c47fd0b2a043c33ead931c447cc6166f96d32f3b32df51491892f6f1b301}
+  - {image: 'brinnatt/registry:2', dockerfile: ./platform/registry/registry/Dockerfile, context: ./platform/registry/registry/,
+    dockerfile_sha256: b1b1319ec69e73a4f5a7b272e5a49df71bf9af0a508efb692f9397e74b3c0b23}
+  - {image: 'brinnatt/registry:2.8.3', dockerfile: ./tooling/test-infrastructure/registry-2.8.3/Dockerfile, context: ./tooling/test-infrastructure/registry-2.8.3/,
+    dockerfile_sha256: d1995b4c249577acbfd86ce07f2c61ba9f67061f420617b2cdb9abf669bba5ba}
+  - {image: 'brinnatt/cilium:v1.19.5', dockerfile: ./platform/network/cilium/cilium/Dockerfile, context: ./platform/network/cilium/cilium/,
+    dockerfile_sha256: a2ef3234327bce3a5d5c9009fb84b6cf4d5b93ca72235c103c8ec491a3598798}
+  - {image: 'brinnatt/cilium-operator-generic:v1.19.5', dockerfile: ./platform/network/cilium/cilium-operator-generic/Dockerfile,
+    context: ./platform/network/cilium/cilium-operator-generic/, dockerfile_sha256: 76d7e4541a51826c99346241c25096bed367f3e30932cb7e67c070da2d073f5c}
+  - {image: 'brinnatt/hubble-relay:v1.19.5', dockerfile: ./platform/network/cilium/hubble-relay/Dockerfile, context: ./platform/network/cilium/hubble-relay/,
+    dockerfile_sha256: b162342d4e2a018e17735110abdd2c64277a1c5194bf842299f90d420d7e5680}
+  - {image: 'brinnatt/hubble-ui:v0.13.5', dockerfile: ./platform/network/cilium/hubble-ui/Dockerfile, context: ./platform/network/cilium/hubble-ui/,
+    dockerfile_sha256: d479846c3cfc1ebaf9c70feed3eb4d6bb043732e482ec97ad16a9a0b6615775d}
+  - {image: 'brinnatt/hubble-ui-backend:v0.13.5', dockerfile: ./platform/network/cilium/hubble-ui-backend/Dockerfile,
+    context: ./platform/network/cilium/hubble-ui-backend/, dockerfile_sha256: e86b97c1eea6c557197c86e098b745bfe9055dd762ae44bc31e0d209e06f5966}
+  - {image: 'brinnatt/flannel:v0.28.4', dockerfile: ./platform/network/flannel/flannel/Dockerfile, context: ./platform/network/flannel/flannel/,
+    dockerfile_sha256: 78ca1f5cbe435064d62a02588454714228c22af63dcbfe0d0298155f47358601}
+  - {image: 'brinnatt/flannel-cni-plugin:v1.8.0-flannel1', dockerfile: ./platform/network/flannel/flannel-cni-plugin/Dockerfile,
+    context: ./platform/network/flannel/flannel-cni-plugin/, dockerfile_sha256: fa2477a71f7e9b0ef0058a1226ae361c6920dd9b1cf07a5f74b1716bc0855851}
+  - {image: 'brinnatt/dashboard-api:1.14.0', dockerfile: ./platform/dashboard/dashboard-api/Dockerfile, context: ./platform/dashboard/dashboard-api/,
+    dockerfile_sha256: 49be259d1361ef4b5b6df461fc98ea4ac4358b6c0fb4c726345d7c69e571d960}
+  - {image: 'brinnatt/dashboard-auth:1.4.0', dockerfile: ./platform/dashboard/dashboard-auth/Dockerfile, context: ./platform/dashboard/dashboard-auth/,
+    dockerfile_sha256: 6cbe357ac2eac3ea30640e3a86294e86d396a882897ff91b0028c7845cb614de}
+  - {image: 'brinnatt/dashboard-metrics-scraper:1.2.2', dockerfile: ./platform/dashboard/dashboard-metrics-scraper/Dockerfile,
+    context: ./platform/dashboard/dashboard-metrics-scraper/, dockerfile_sha256: b622be4f31625473ba7c8ca6c6a9ccc2af21c3c35c7888404c74cf619910b312}
+  - {image: 'brinnatt/dashboard-web:1.7.0', dockerfile: ./platform/dashboard/dashboard-web/Dockerfile, context: ./platform/dashboard/dashboard-web/,
+    dockerfile_sha256: 144199ca3754165dffff55597269b92580c8aa63ed99281b766f6cb9f9f24917}
+  - {image: 'brinnatt/kong:3.9', dockerfile: ./platform/dashboard/kong/Dockerfile, context: ./platform/dashboard/kong/,
+    dockerfile_sha256: 5811d44580154872cecdbd402a5ee2d8855d9136e8836653bdb1d736b8fe7b0b}
+  - {image: 'brinnatt/minio-operator:v7.1.1', dockerfile: ./middleware/minio/minio-operator/Dockerfile, context: ./middleware/minio/minio-operator/,
+    dockerfile_sha256: 1b39074259d1af2d65e4c1d70c6081f6a4f484a53cd7e2a831003e9668e83537}
+  - {image: 'brinnatt/minio-operator-sidecar:v7.0.1', dockerfile: ./middleware/minio/minio-operator-sidecar/Dockerfile,
+    context: ./middleware/minio/minio-operator-sidecar/, dockerfile_sha256: 58fd9067c101ce4b4f686be1747ceec107160c0e7dd650c457d7e5214de5db0d}
+  - {image: 'brinnatt/minio:RELEASE.2025-04-08T15-41-24Z', dockerfile: ./middleware/minio/minio/Dockerfile, context: ./middleware/minio/minio/,
+    dockerfile_sha256: e8468c5c8c12a28ff8c494e6f7022050a9a9dd84e20b4965f5cba84586659997}
+  - {image: 'brinnatt/nacos-server:v2.4.3', dockerfile: ./middleware/nacos/nacos-server/Dockerfile, context: ./middleware/nacos/nacos-server/,
+    dockerfile_sha256: c5013e3ee6420b61478938012bf81024d272cec910009745770ee9f2a390e655}
+  - {image: 'brinnatt/nacos-peer-finder-plugin:1.1', dockerfile: ./middleware/nacos/nacos-peer-finder-plugin/Dockerfile,
+    context: ./middleware/nacos/nacos-peer-finder-plugin/, dockerfile_sha256: cdca41e88da8fb4b59f243ad4e009e30252d65b4ed005d6c1b6b6150fed1a41a}
+  - {image: 'brinnatt/mysql:8.0.46', dockerfile: ./middleware/nacos/test-support/mysql/Dockerfile, context: ./middleware/nacos/test-support/mysql/,
+    dockerfile_sha256: 895c3fa5554d4a1adb58c7a62ca19f584911de5a9bbabbb24bef90bf5d4e9cf8}
+  - {image: 'brinnatt/openebs-kubectl:1.33.6', dockerfile: ./platform/storage/openebs/openebs-kubectl/Dockerfile,
+    context: ./platform/storage/openebs/openebs-kubectl/, dockerfile_sha256: 9fa6308303cef5b4a9cff77dee8ef846e3bb4dd077f3c8bfa66d3fd3859c1101}
+  - {image: 'brinnatt/provisioner-localpv:4.3.0', dockerfile: ./platform/storage/openebs/provisioner-localpv/Dockerfile,
+    context: ./platform/storage/openebs/provisioner-localpv/, dockerfile_sha256: 026846c54434d76c4e3417e9d852a9f5a43a9c8a71f88b6fd8a55972a0ba5707}
+  - {image: 'brinnatt/linux-utils:4.2.0', dockerfile: ./platform/storage/openebs/linux-utils/Dockerfile, context: ./platform/storage/openebs/linux-utils/,
+    dockerfile_sha256: 41253b9d1ac69b5db3229263a665232adea2d6b878c63d4632fb18549013e61b}
+  - {image: 'brinnatt/lvm-driver:1.7.0', dockerfile: ./platform/storage/openebs/lvm-driver/Dockerfile, context: ./platform/storage/openebs/lvm-driver/,
+    dockerfile_sha256: f445743ac7c12f1f65be4c750c74f503cf993e6510d75734baece8b631c70740}
+  - {image: 'brinnatt/rocketmq-operator:latest', dockerfile: ./middleware/rocketmq/rocketmq-operator/Dockerfile, context: ./middleware/rocketmq/rocketmq-operator/,
+    dockerfile_sha256: 1b4e277f8befe8b52dde3913ab13bc393117ec0a12caef95c38d2be834927cb1}
+  - {image: 'brinnatt/rocketmq-broker:4.5.0-alpine-operator-0.3.0', dockerfile: ./middleware/rocketmq/rocketmq-broker/Dockerfile,
+    context: ./middleware/rocketmq/rocketmq-broker/, dockerfile_sha256: 4a5aaee52513d956f17d5a28c2dde7bfa0507598dfaab0fa675b3e82e1efc3e9}
+  - {image: 'brinnatt/rocketmq-nameserver:4.5.0-alpine-operator-0.3.0', dockerfile: ./middleware/rocketmq/rocketmq-nameserver/Dockerfile,
+    context: ./middleware/rocketmq/rocketmq-nameserver/, dockerfile_sha256: b05799f58f3d01f8fffef1a832757a865b5baf01e6611fa9322b66b19f77b12d}
+  - {image: 'brinnatt/rocketmq-console:2.0.0', dockerfile: ./middleware/rocketmq/rocketmq-console/Dockerfile, context: ./middleware/rocketmq/rocketmq-console/,
+    dockerfile_sha256: 6c4bd939c595c3ceb2a7847acd64019f1f1c4b5bde93bff5da354cc8f33c6d03}
+  - {image: 'brinnatt/kube-ovn:v1.11.5', dockerfile: ./platform/network/kube-ovn/kube-ovn/Dockerfile, context: ./platform/network/kube-ovn/kube-ovn/,
+    dockerfile_sha256: 65cf214f5112d44066129356595169882d4f3c45bd1966b13bd4eb3e63d592d2}
+  - {image: 'brinnatt/kube-router:v1.5.4', dockerfile: ./platform/network/kube-router/kube-router/Dockerfile, context: ./platform/network/kube-router/kube-router/,
+    dockerfile_sha256: 750badf5d8a1b018066d063166c4def39d893b80914a1913f1ae65efc9231b37}
+  - {image: 'brinnatt/local-path-provisioner:v0.0.31', dockerfile: ./platform/storage/provisioners/local-path-provisioner/Dockerfile,
+    context: ./platform/storage/provisioners/local-path-provisioner/, dockerfile_sha256: 8cd81ecdb63db7c10352f8e0e0940810c6c243eb6c3ead105804a174e4c36b76}
+  - {image: 'brinnatt/grafana:13.1.1', dockerfile: ./platform/observability/prometheus/grafana/Dockerfile, context: ./platform/observability/prometheus/grafana/,
+    dockerfile_sha256: 7a3f59fbd7d6a67d8db2500e396173c071cb5aa39b3e5f885b2e8cfbdb3b7812}
+  - {image: 'brinnatt/busybox:1.37', dockerfile: ./platform/observability/prometheus/busybox/Dockerfile, context: ./platform/observability/prometheus/busybox/,
+    dockerfile_sha256: 20efab77fa189d3113971a975ee69607f79dd17f799894ea0da8777f2a4f4f86}
+  - {image: 'brinnatt/k8s-sidecar:1.30.5', dockerfile: ./platform/observability/prometheus/k8s-sidecar/Dockerfile,
+    context: ./platform/observability/prometheus/k8s-sidecar/, dockerfile_sha256: 9c108f0eaf1c4cfd8d9012ec32b9e2a91eb6cc0619b521681834102683eddcd2}
+  - {image: 'brinnatt/prometheus-config-reloader:v0.93.0', dockerfile: ./platform/observability/prometheus/prometheus-config-reloader/Dockerfile,
+    context: ./platform/observability/prometheus/prometheus-config-reloader/, dockerfile_sha256: a7d92613988a30c6526ccdaf9e29451694eeaa015c8c7289ff2628a7ea4c5167}
+  - {image: 'brinnatt/prometheus-operator:v0.93.0', dockerfile: ./platform/observability/prometheus/prometheus-operator/Dockerfile,
+    context: ./platform/observability/prometheus/prometheus-operator/, dockerfile_sha256: 045495cc937440f272043b2a8cf2dea6ceea6b55323ff3d5f032b23adb82404d}
+  - {image: 'brinnatt/prometheus-admission-webhook:v0.93.0', dockerfile: ./platform/observability/prometheus/prometheus-admission-webhook/Dockerfile,
+    context: ./platform/observability/prometheus/prometheus-admission-webhook/, dockerfile_sha256: 3f77dc6e72eacd8a751a5a94b3a9a45df251146bab107c95a713238337fa8c6b}
+  - {image: 'brinnatt/prometheus-webhook-certgen:1.8.5', dockerfile: ./platform/observability/prometheus/prometheus-webhook-certgen/Dockerfile,
+    context: ./platform/observability/prometheus/prometheus-webhook-certgen/, dockerfile_sha256: ca23fd1f634ba444b92cb2454f244064730729b89bf171dc0ac8f400dc8b6aed}
+  - {image: 'brinnatt/alertmanager:v0.33.1', dockerfile: ./platform/observability/prometheus/alertmanager/Dockerfile,
+    context: ./platform/observability/prometheus/alertmanager/, dockerfile_sha256: cb61cae5437edaf96fb22bb31defc37bea78db0f50449b20ff8a794d182ef861}
+  - {image: 'brinnatt/node-exporter:v1.12.1', dockerfile: ./platform/observability/prometheus/node-exporter/Dockerfile,
+    context: ./platform/observability/prometheus/node-exporter/, dockerfile_sha256: 3f1b14325189cd137376f56d5433ddc70fb9657b76bd8d0eec8c0b883a575d42}
+  - {image: 'brinnatt/prometheus:v3.13.1-distroless', dockerfile: ./platform/observability/prometheus/prometheus/Dockerfile,
+    context: ./platform/observability/prometheus/prometheus/, dockerfile_sha256: 7e15b9a6fdfe3497978da29d58eb8a645b75894149d12288d1c3f644b5e489de}
+  - {image: 'brinnatt/prometheus-webhook-dingtalk:v2.1.0', dockerfile: ./platform/observability/prometheus/prometheus-webhook-dingtalk/Dockerfile,
+    context: ./platform/observability/prometheus/prometheus-webhook-dingtalk/, dockerfile_sha256: 7600e171920c2dd6bb0ed5ba0a6e42e4f053b1e23f508d511f6edbdd1aaeb241}
+  - {image: 'brinnatt/thanos:v0.41.0', dockerfile: ./platform/observability/prometheus/thanos/Dockerfile, context: ./platform/observability/prometheus/thanos/,
+    dockerfile_sha256: 5898d72ff4f6772229b3b70112d07825b66550989a9e5e5d8dede8bca65ffa3a}
+  - {image: 'brinnatt/prometheus-adapter:v0.12.0', dockerfile: ./platform/observability/prometheus/prometheus-adapter/Dockerfile,
+    context: ./platform/observability/prometheus/prometheus-adapter/, dockerfile_sha256: a2761b3046e862613c19ceb0bdd423564afc612b69bf44c193deb14c0625c1e6}
+  - {image: 'brinnatt/blackbox-exporter:v0.27.0', dockerfile: ./platform/observability/prometheus/blackbox-exporter/Dockerfile,
+    context: ./platform/observability/prometheus/blackbox-exporter/, dockerfile_sha256: eecfb371f6805eea7f122ce2d79b6cc54284678c08a2ca91ed3c3f49d8a039b7}
+  - {image: 'brinnatt/percona-xtradb-cluster-operator:1.20.0', dockerfile: ./middleware/percona-pxc/percona-xtradb-cluster-operator/Dockerfile,
+    context: ./middleware/percona-pxc/percona-xtradb-cluster-operator/, dockerfile_sha256: ae1721717bc13672079bf9d319e0df1ecb004ef5f2374acc40764d822dc1749a}
+  - {image: 'brinnatt/percona-xtradb-cluster:8.4.8-8.1', dockerfile: ./middleware/percona-pxc/percona-xtradb-cluster/Dockerfile,
+    context: ./middleware/percona-pxc/percona-xtradb-cluster/, dockerfile_sha256: c48735d7dd1921804fc04fe1f87975c950fac5f54148eaf85b444c7f7f955a5d}
+  - {image: 'brinnatt/percona-xtrabackup:8.4.0-5.1', dockerfile: ./middleware/percona-pxc/percona-xtrabackup/Dockerfile,
+    context: ./middleware/percona-pxc/percona-xtrabackup/, dockerfile_sha256: 9bce6b662ab8b7864c5b9207ba4364d390bf73f773ec05c3909ac5c9a9bffbb6}
+  - {image: 'brinnatt/percona-haproxy:2.8.18-1', dockerfile: ./middleware/percona-pxc/percona-haproxy/Dockerfile,
+    context: ./middleware/percona-pxc/percona-haproxy/, dockerfile_sha256: f7ac85fa0f49bca23d837f07643254a6c7513ad1624c034b2fd05910bb980401}
+  - {image: 'brinnatt/percona-fluentbit:5.0.6-1', dockerfile: ./middleware/percona-pxc/percona-fluentbit/Dockerfile,
+    context: ./middleware/percona-pxc/percona-fluentbit/, dockerfile_sha256: 75cf1f673a12b960556bb4efdc2869fff96201c8c275c2bbb73472c92938cd3f}
+  - {image: 'brinnatt/minio-mc:RELEASE.2025-04-08T15-39-49Z', dockerfile: ./middleware/percona-pxc/test-support/minio-mc/Dockerfile,
+    context: ./middleware/percona-pxc/test-support/minio-mc/, dockerfile_sha256: 6054edb2bfb5597ede664e8c03e228225e9ddfa99811901e9052ca47ad9e8a0f}
+  - {image: 'brinnatt/percona-sysbench:1.1', dockerfile: ./middleware/percona-pxc/test-support/percona-sysbench/Dockerfile,
+    context: ./middleware/percona-pxc/test-support/percona-sysbench/, dockerfile_sha256: 32221b012a2625b14947e3b035d169a1cedd749d4c60dc2cf5e13ec90b003556}
+  - {image: 'brinnatt/strimzi-operator:1.2.0', dockerfile: ./middleware/kafka/strimzi/strimzi-operator/Dockerfile,
+    context: ./middleware/kafka/strimzi/strimzi-operator/, dockerfile_sha256: fecdffc7070202e559a973765e530a0211318c4f5e595a68c94910f48126530a}
+  - {image: 'brinnatt/strimzi-kafka:1.2.0-kafka-4.3.1', dockerfile: ./middleware/kafka/strimzi/strimzi-kafka/Dockerfile,
+    context: ./middleware/kafka/strimzi/strimzi-kafka/, dockerfile_sha256: 62aa85d145d643cc00d943b4b535ab1d7704c59a30c1ee9888ea4895095281a3}
+  - {image: 'brinnatt/strimzi-drain-cleaner:1.6.1', dockerfile: ./middleware/kafka/strimzi/strimzi-drain-cleaner/Dockerfile,
+    context: ./middleware/kafka/strimzi/strimzi-drain-cleaner/, dockerfile_sha256: f436cb0348a7b96917db68d4905f8855ed35333e253272a2c69f41c8707985f6}
+  - {image: 'brinnatt/strimzi-kafka:1.2.0-kafka-4.3.0', dockerfile: ./middleware/kafka/test-support/strimzi-kafka-4.3.0/Dockerfile,
+    context: ./middleware/kafka/test-support/strimzi-kafka-4.3.0/, dockerfile_sha256: 58aa51024bd9ca3a126a78f3bd209bd937b86e6e189ae224a1f59ab99beb7ce9}
+  - {image: 'brinnatt/longhorn-engine:v1.10.1', dockerfile: ./middleware/kafka/test-storage/longhorn/longhorn-engine/Dockerfile,
+    context: ./middleware/kafka/test-storage/longhorn/longhorn-engine/, dockerfile_sha256: 327ac6e29bb7fea13ee87a1be28f2dc5f77e1cf9ceaa0326c0c05cf08a645e42}
+  - {image: 'brinnatt/longhorn-manager:v1.10.1', dockerfile: ./middleware/kafka/test-storage/longhorn/longhorn-manager/Dockerfile,
+    context: ./middleware/kafka/test-storage/longhorn/longhorn-manager/, dockerfile_sha256: 29672ea1d4d809a22a17a29a13e57a76180cbad0d8b0ce970f9bb8ba22b2e845}
+  - {image: 'brinnatt/longhorn-ui:v1.10.1', dockerfile: ./middleware/kafka/test-storage/longhorn/longhorn-ui/Dockerfile,
+    context: ./middleware/kafka/test-storage/longhorn/longhorn-ui/, dockerfile_sha256: 4ac01ca8dd548c99ca53b78bdab35001711e33f138b30b6c568a29cdc2116844}
+  - {image: 'brinnatt/longhorn-instance-manager:v1.10.1', dockerfile: ./middleware/kafka/test-storage/longhorn/longhorn-instance-manager/Dockerfile,
+    context: ./middleware/kafka/test-storage/longhorn/longhorn-instance-manager/, dockerfile_sha256: 6b93f9a1be8bc2cbd7678b6df44d6204946e9e89ff3329b0e2cadab7126ff7ed}
+  - {image: 'brinnatt/longhorn-share-manager:v1.10.1', dockerfile: ./middleware/kafka/test-storage/longhorn/longhorn-share-manager/Dockerfile,
+    context: ./middleware/kafka/test-storage/longhorn/longhorn-share-manager/, dockerfile_sha256: bb0c156c89cbec6f797240252288b5b071ef2fcfbd91989659dc724e9a12382d}
+  - {image: 'brinnatt/longhorn-backing-image-manager:v1.10.1', dockerfile: ./middleware/kafka/test-storage/longhorn/longhorn-backing-image-manager/Dockerfile,
+    context: ./middleware/kafka/test-storage/longhorn/longhorn-backing-image-manager/, dockerfile_sha256: e3875457085d818e4134aa95475ebd0d067091ead386694746058feaaca7b56c}
+  - {image: 'brinnatt/longhorn-support-bundle-kit:v0.0.71', dockerfile: ./middleware/kafka/test-storage/longhorn/longhorn-support-bundle-kit/Dockerfile,
+    context: ./middleware/kafka/test-storage/longhorn/longhorn-support-bundle-kit/, dockerfile_sha256: 25505e61e2a5ab14b82f71416c6d184fb1a13f45373b78c68a43a58f96632fda}
+  - {image: 'brinnatt/longhorn-csi-attacher:v4.10.0-20251030', dockerfile: ./middleware/kafka/test-storage/longhorn/longhorn-csi-attacher/Dockerfile,
+    context: ./middleware/kafka/test-storage/longhorn/longhorn-csi-attacher/, dockerfile_sha256: a67cb4afcfb333a137bbf9ae93880c16c90bc2da67b67fffccbf7a1f5b366b23}
+  - {image: 'brinnatt/longhorn-csi-provisioner:v5.3.0-20251030', dockerfile: ./middleware/kafka/test-storage/longhorn/longhorn-csi-provisioner/Dockerfile,
+    context: ./middleware/kafka/test-storage/longhorn/longhorn-csi-provisioner/, dockerfile_sha256: 8f2fcaf0aefa55752fa67f9bc122f95040dffb4c6b6402806f575e2d0186e7a4}
+  - {image: 'brinnatt/longhorn-csi-node-driver-registrar:v2.15.0-20251030', dockerfile: ./middleware/kafka/test-storage/longhorn/longhorn-csi-node-driver-registrar/Dockerfile,
+    context: ./middleware/kafka/test-storage/longhorn/longhorn-csi-node-driver-registrar/, dockerfile_sha256: 85017c012aad61446ee6eb28e7670c1630a69a3988dcd41f47376401e0cc3ae4}
+  - {image: 'brinnatt/longhorn-csi-resizer:v1.14.0-20251030', dockerfile: ./middleware/kafka/test-storage/longhorn/longhorn-csi-resizer/Dockerfile,
+    context: ./middleware/kafka/test-storage/longhorn/longhorn-csi-resizer/, dockerfile_sha256: 74f36308bfd49f49a5fd85ee603af4d3c9ea9e8be457bbee627f0915cc4f66e7}
+  - {image: 'brinnatt/longhorn-csi-snapshotter:v8.4.0-20251030', dockerfile: ./middleware/kafka/test-storage/longhorn/longhorn-csi-snapshotter/Dockerfile,
+    context: ./middleware/kafka/test-storage/longhorn/longhorn-csi-snapshotter/, dockerfile_sha256: c790e281cdb4c2100b182388a9806b1645f6e85196bfea2d627a287eb1aa6e01}
+  - {image: 'brinnatt/longhorn-livenessprobe:v2.17.0-20251030', dockerfile: ./middleware/kafka/test-storage/longhorn/longhorn-livenessprobe/Dockerfile,
+    context: ./middleware/kafka/test-storage/longhorn/longhorn-livenessprobe/, dockerfile_sha256: da7269c21c2f4a089476fc8fb952f35508d8216a7a0f56d1fd77a80939fb71d7}
+  - {image: 'brinnatt/eck-operator:3.5.0', dockerfile: ./platform/observability/logging/eck-operator/Dockerfile, context: ./platform/observability/logging/eck-operator/,
+    dockerfile_sha256: ab8919ef43fad534db546b6fc7f201a861ae81412337030634d259ce4fda49a6}
+  - {image: 'brinnatt/elasticsearch:9.5.1', dockerfile: ./platform/observability/logging/elasticsearch/Dockerfile,
+    context: ./platform/observability/logging/elasticsearch/, dockerfile_sha256: 074150eec2abfd233342aadded466549ff21114d6b5a6130576fd6937a97a455}
+  - {image: 'brinnatt/kibana:9.5.1', dockerfile: ./platform/observability/logging/kibana/Dockerfile, context: ./platform/observability/logging/kibana/,
+    dockerfile_sha256: de7d6fea65db2ee879fc1f3cf6f5af9446568d0f503610f7fd643b2d689d7b80}
+  - {image: 'brinnatt/fluent-bit:5.1.1', dockerfile: ./platform/observability/logging/fluent-bit/Dockerfile, context: ./platform/observability/logging/fluent-bit/,
+    dockerfile_sha256: 74d02fd58621e0371123bdc5cb7a883ca96590f2f2ff85ee6e0ceb1b9b60871f}
+  - {image: 'brinnatt/logstash:9.5.1', dockerfile: ./platform/observability/logging/logstash/Dockerfile, context: ./platform/observability/logging/logstash/,
+    dockerfile_sha256: 95cd79a74e0930d43709dfeb4aa3346ad9b0ff3fcb91d8006795112dfb6c34cc}
+  - {image: 'brinnatt/loki:3.7.6', dockerfile: ./platform/observability/logging/loki/Dockerfile, context: ./platform/observability/logging/loki/,
+    dockerfile_sha256: 067fc369454e6b8c57e890645a10b255903340f4378216cdbf9ea31508e80d3f}
+  - {image: 'brinnatt/alloy:1.18.1', dockerfile: ./platform/observability/logging/alloy/Dockerfile, context: ./platform/observability/logging/alloy/,
+    dockerfile_sha256: 8fe30f93e7a45bbd19a1638c7eccb47a740e87ce1eed289f8c2fae68a8315f72}
+  - {image: 'brinnatt/loki-gateway:1.31-alpine', dockerfile: ./platform/observability/logging/loki-gateway/Dockerfile,
+    context: ./platform/observability/logging/loki-gateway/, dockerfile_sha256: 62c8c90af789eba01ebe2c9686bd77dbf59e662e0e3d391f19ea41eb03871086}
+  - {image: 'brinnatt/access-log-exporter:0.4.11', dockerfile: ./platform/observability/logging/access-log-exporter/Dockerfile,
+    context: ./platform/observability/logging/access-log-exporter/, dockerfile_sha256: 9fdca46caccf1b56f50aedc5f14399435907c3ffa9247274fac3236ede0387ef}
+  - {image: 'brinnatt/loki-canary:3.7.6', dockerfile: ./platform/observability/logging/loki-canary/Dockerfile, context: ./platform/observability/logging/loki-canary/,
+    dockerfile_sha256: a29f75c253c2a9b327915553d0425417ade535a9ea0db3d58cf6da38d7def2af}
+  - {image: 'brinnatt/memcached:1.6.45-alpine', dockerfile: ./platform/observability/logging/memcached/Dockerfile,
+    context: ./platform/observability/logging/memcached/, dockerfile_sha256: be8ed33d83eb348bf9024ad7e25bb67e724360d1bf33e008a38c86ba54a3ecf2}
+  - {image: 'brinnatt/memcached-exporter:v0.17.0', dockerfile: ./platform/observability/logging/memcached-exporter/Dockerfile,
+    context: ./platform/observability/logging/memcached-exporter/, dockerfile_sha256: 0fad398a4343841e94c776afae6cdb6f02fefebf980acfd87af3f5bd5d204c81}
+  - {image: 'brinnatt/k8s-sidecar:2.10.1', dockerfile: ./platform/observability/logging/k8s-sidecar/Dockerfile, context: ./platform/observability/logging/k8s-sidecar/,
+    dockerfile_sha256: bb0ce509e78f4ed42e2447373c31fcbbcb395bd0486af40e8af209fdb0f64aef}
+  - {image: 'brinnatt/prometheus-config-reloader:v0.91.0', dockerfile: ./platform/observability/logging/prometheus-config-reloader/Dockerfile,
+    context: ./platform/observability/logging/prometheus-config-reloader/, dockerfile_sha256: 99cd2153372a55ef9fc8240be08b6fa924bf036be472ad5b2650daf5fa99de1d}
+  - {image: 'brinnatt/redis-operator:0.27.0', dockerfile: ./middleware/redis/redis-operator/Dockerfile, context: ./middleware/redis/redis-operator/,
+    dockerfile_sha256: 4450d0c53c1d0a6992ff88dfb17500f49e727a3c5570cb1acee9029c066befdd}
+  - {image: 'brinnatt/redis-operator:0.27.0-kubeauto.2', dockerfile: ./middleware/redis/protected-operator/Dockerfile,
+    context: ./middleware/redis/protected-operator/, dockerfile_sha256: b0c03af1b342124f849b8189589d20e5187943f2512c371e974cd18478b2cd3a}
+  - {image: 'brinnatt/redis:8.10.2', dockerfile: ./middleware/redis/redis/Dockerfile, context: ./middleware/redis/redis/,
+    dockerfile_sha256: d1c8d27a16b859169634eb605c4904adf855813c9dc6e3513c6a83696bec9851}
+  - {image: 'brinnatt/redis-exporter:v1.93.0', dockerfile: ./middleware/redis/redis-exporter/Dockerfile, context: ./middleware/redis/redis-exporter/,
+    dockerfile_sha256: dfa13822db0ff3a8be8c8c5b8e2210f50818e6a025905f20f9f08bd9f8c14044}
+  - {image: 'brinnatt/redis-upgrade-fixture:8.10.1', dockerfile: ./middleware/redis/upgrade-redis/Dockerfile, context: ./middleware/redis/upgrade-redis/,
+    dockerfile_sha256: b69126b9e26a74e4effe78cc4e946d369267bd186bb8da49a50ffac3123d42a3}
+  - {image: 'brinnatt/redis-operator-upgrade-fixture:0.26.0', dockerfile: ./middleware/redis/upgrade-operator/Dockerfile,
+    context: ./middleware/redis/upgrade-operator/, dockerfile_sha256: 443f9c4ec8f91f0c05d7b7b9c805327d12caf2def63971b0ca6a7b6fb088f94d}
+  - {image: 'brinnatt/redis:8.10.2-kubeauto.1', dockerfile: ./middleware/redis/state-refresh-redis/Dockerfile, context: ./middleware/redis/state-refresh-redis/,
+    dockerfile_sha256: 4f54417b13a262e8028425df699879800074e164bc73491bad95db790dd350de}
+  - {image: 'brinnatt/redis-documentation-client:3.11.17-redis6.4.0-cli8.10.2', dockerfile: ./middleware/redis/documentation-client/Dockerfile,
+    context: ./middleware/redis/documentation-client/, dockerfile_sha256: 98bb2801f1a29e4fc01afb0bc375e85a9b1c67194fb93b365a9e4f5e58691392}
+  - {image: 'brinnatt/percona-server-mongodb-operator:1.23.1', dockerfile: ./middleware/mongodb/operator/Dockerfile,
+    context: ./middleware/mongodb/operator/, dockerfile_sha256: cc7b6e7bab79562880eab8e8f2d5d849e9d963243d2e04c4a5a2fef747f3ee8e}
+  - {image: 'brinnatt/percona-server-mongodb:8.0.32-14', dockerfile: ./middleware/mongodb/server/Dockerfile, context: ./middleware/mongodb/server/,
+    dockerfile_sha256: db487b5b73b0a8d46ec790677534d79df47d6cb82a2699e36949fce7ecb94b66}
+  - {image: 'brinnatt/percona-backup-mongodb:2.15.0', dockerfile: ./middleware/mongodb/backup/Dockerfile, context: ./middleware/mongodb/backup/,
+    dockerfile_sha256: 27eacb21111b2cffc19789355955e76ec562bd2cb6346f15b8cce01945f74c36}
+  - {image: 'brinnatt/percona-fluentbit:5.1.2-1', dockerfile: ./middleware/mongodb/fluentbit/Dockerfile, context: ./middleware/mongodb/fluentbit/,
+    dockerfile_sha256: 5939b20773dc4d178f958985054c8ff69965bae0505b82e953752ba2763796eb}
+  - {image: 'brinnatt/mongodb-exporter:0.53.0', dockerfile: ./middleware/mongodb/exporter/Dockerfile, context: ./middleware/mongodb/exporter/,
+    dockerfile_sha256: d8c265e7bfcacafbc4e4948f0abb01fa88fde4e8846a4b53e3dc5c60e4a1e2bc}
+  - {image: 'brinnatt/percona-server-mongodb-operator:1.23.0', dockerfile: ./middleware/mongodb/upgrade/operator/Dockerfile,
+    context: ./middleware/mongodb/upgrade/operator/, dockerfile_sha256: 531a25425207371c0a669fddfdbe97774f3268f8453cc2fc03f7d303a69a9d1f}
+  - {image: 'brinnatt/percona-server-mongodb:8.0.26-11', dockerfile: ./middleware/mongodb/upgrade/server/Dockerfile,
+    context: ./middleware/mongodb/upgrade/server/, dockerfile_sha256: ad8ee74a68e6782544a3e1edc1c5dec9b378b5747813b9c637b1e3344cf1aea7}
+  - {image: 'brinnatt/percona-fluentbit:5.0.9-1', dockerfile: ./middleware/mongodb/upgrade/fluentbit/Dockerfile, context: ./middleware/mongodb/upgrade/fluentbit/,
+    dockerfile_sha256: 99c681e7bde8edac53125206ff328750347fb3c31328b09d05b5627f5322b094}
+  - {image: 'brinnatt/longhorn-engine:v1.12.1', dockerfile: ./platform/storage/longhorn/longhorn-engine/v1.12.1/Dockerfile,
+    context: ./platform/storage/longhorn/longhorn-engine/v1.12.1/, dockerfile_sha256: 16814ca52b134169d05a511275ea4deb55609cf0c181b62e8e4dee814e61297c}
+  - {image: 'brinnatt/longhorn-manager:v1.12.1', dockerfile: ./platform/storage/longhorn/longhorn-manager/v1.12.1/Dockerfile,
+    context: ./platform/storage/longhorn/longhorn-manager/v1.12.1/, dockerfile_sha256: 4aa7c1b2474821a6884c7995131b38e73fb7ded3559e247c99c27b738f540353}
+  - {image: 'brinnatt/longhorn-ui:v1.12.1', dockerfile: ./platform/storage/longhorn/longhorn-ui/v1.12.1/Dockerfile,
+    context: ./platform/storage/longhorn/longhorn-ui/v1.12.1/, dockerfile_sha256: 5ed2834fb2abead9cf72e329f2b787e792558d917a87afbbfa9b238e75f06b64}
+  - {image: 'brinnatt/longhorn-instance-manager:v1.12.1', dockerfile: ./platform/storage/longhorn/longhorn-instance-manager/v1.12.1/Dockerfile,
+    context: ./platform/storage/longhorn/longhorn-instance-manager/v1.12.1/, dockerfile_sha256: e1282eda9013a89af7c892f4efc63705b877cc28bbe9192b1ca8bb66371ba6e5}
+  - {image: 'brinnatt/longhorn-instance-manager:v1.12.1-kubeauto.1', dockerfile: platform/storage/longhorn/longhorn-instance-manager/v1.12.1-kubeauto.1/Dockerfile,
+    context: platform/storage/longhorn/longhorn-instance-manager/v1.12.1-kubeauto.1, dockerfile_sha256: dbfcb2a91abd22eaa980df299c00416530dadb69baf952114176cd57e85a3849}
+  - {image: 'brinnatt/longhorn-instance-manager:v1.12.1-kubeauto.2', dockerfile: platform/storage/longhorn/longhorn-instance-manager/v1.12.1-kubeauto.2/Dockerfile,
+    context: platform/storage/longhorn/longhorn-instance-manager/v1.12.1-kubeauto.2, dockerfile_sha256: 824107a62ba56d1b92b8c4db5c1ae190db630a6b24c7b2939092dda5c36d9d90}
+  - {image: 'brinnatt/longhorn-instance-manager:v1.12.1-kubeauto.3', dockerfile: platform/storage/longhorn/longhorn-instance-manager/v1.12.1-kubeauto.3/Dockerfile,
+    context: platform/storage/longhorn/longhorn-instance-manager/v1.12.1-kubeauto.3, dockerfile_sha256: 15fb2bdaa6be432dc0c777be5723813aefbcb5a5368a65e5296b59a8ae9499ef}
+  - {image: 'brinnatt/longhorn-share-manager:v1.12.1', dockerfile: ./platform/storage/longhorn/longhorn-share-manager/v1.12.1/Dockerfile,
+    context: ./platform/storage/longhorn/longhorn-share-manager/v1.12.1/, dockerfile_sha256: 62a2fca8461c551e13ecedf69bd6e7fa616b2d9a6b7e152b6511019ea79b8eca}
+  - {image: 'brinnatt/longhorn-backing-image-manager:v1.12.1', dockerfile: ./platform/storage/longhorn/longhorn-backing-image-manager/v1.12.1/Dockerfile,
+    context: ./platform/storage/longhorn/longhorn-backing-image-manager/v1.12.1/, dockerfile_sha256: 84f0af3a0aa2c9605b55d34963c8a6bdff17e65330c3bb4701d23e111764b758}
+  - {image: 'brinnatt/longhorn-support-bundle-kit:v0.0.92', dockerfile: ./platform/storage/longhorn/longhorn-support-bundle-kit/v0.0.92/Dockerfile,
+    context: ./platform/storage/longhorn/longhorn-support-bundle-kit/v0.0.92/, dockerfile_sha256: 992cfdaad68442f81d9982b4e29d497402b0e51dde076e9a49e0b57bb3ec79c9}
+  - {image: 'brinnatt/longhorn-csi-attacher:v4.12.0', dockerfile: ./platform/storage/longhorn/longhorn-csi-attacher/v4.12.0/Dockerfile,
+    context: ./platform/storage/longhorn/longhorn-csi-attacher/v4.12.0/, dockerfile_sha256: 9688ad10938ff5b691521376255672b8aac29863e8623b857a9a58c87da1f4e2}
+  - {image: 'brinnatt/longhorn-csi-provisioner:v5.3.0', dockerfile: ./platform/storage/longhorn/longhorn-csi-provisioner/v5.3.0/Dockerfile,
+    context: ./platform/storage/longhorn/longhorn-csi-provisioner/v5.3.0/, dockerfile_sha256: 37838bc624a1ae07d74be6341f1112615a3c379b0af772b767a18a05e6b069d7}
+  - {image: 'brinnatt/longhorn-csi-node-driver-registrar:v2.17.0', dockerfile: ./platform/storage/longhorn/longhorn-csi-node-driver-registrar/v2.17.0/Dockerfile,
+    context: ./platform/storage/longhorn/longhorn-csi-node-driver-registrar/v2.17.0/, dockerfile_sha256: f862fd84c42e8adb15d4d1055cf16ff61a69ad232c1c8762764e889fd5c3821a}
+  - {image: 'brinnatt/longhorn-csi-resizer:v2.2.1', dockerfile: ./platform/storage/longhorn/longhorn-csi-resizer/v2.2.1/Dockerfile,
+    context: ./platform/storage/longhorn/longhorn-csi-resizer/v2.2.1/, dockerfile_sha256: e04f96a8953c5696a5035b9cab209b03495745ccd257d6c2529154bc36265f45}
+  - {image: 'brinnatt/longhorn-csi-snapshotter:v8.6.0', dockerfile: ./platform/storage/longhorn/longhorn-csi-snapshotter/v8.6.0/Dockerfile,
+    context: ./platform/storage/longhorn/longhorn-csi-snapshotter/v8.6.0/, dockerfile_sha256: e34a6c8e2426b5570a840c82f218cc5afd05dbf0ef4adbce2b4d898850dd66d0}
+  - {image: 'brinnatt/longhorn-livenessprobe:v2.19.0', dockerfile: ./platform/storage/longhorn/longhorn-livenessprobe/v2.19.0/Dockerfile,
+    context: ./platform/storage/longhorn/longhorn-livenessprobe/v2.19.0/, dockerfile_sha256: ddfca6ca5e2a9f3a75ccf5ee235e55aaa85c28042457c994d07c47d694137cc6}
+  - {image: 'brinnatt/longhorn-engine:v1.12.0', dockerfile: ./platform/storage/longhorn/longhorn-engine/v1.12.0/Dockerfile,
+    context: ./platform/storage/longhorn/longhorn-engine/v1.12.0/, dockerfile_sha256: 15482c6e3bfcaef06a8d226a7f483db515af480ea7e289c1b72aab45beccc627}
+  - {image: 'brinnatt/longhorn-manager:v1.12.0', dockerfile: ./platform/storage/longhorn/longhorn-manager/v1.12.0/Dockerfile,
+    context: ./platform/storage/longhorn/longhorn-manager/v1.12.0/, dockerfile_sha256: 691cbbf97793a3897186797f1e75bdacd9dfcf5162d8d360d2a8e1b8387f476c}
+  - {image: 'brinnatt/longhorn-ui:v1.12.0', dockerfile: ./platform/storage/longhorn/longhorn-ui/v1.12.0/Dockerfile,
+    context: ./platform/storage/longhorn/longhorn-ui/v1.12.0/, dockerfile_sha256: 0a128966c441dd4ddce98dd7ba749d2a77fa95e0c0c2133c6bd3cfea9a6ea6cd}
+  - {image: 'brinnatt/longhorn-instance-manager:v1.12.0', dockerfile: ./platform/storage/longhorn/longhorn-instance-manager/v1.12.0/Dockerfile,
+    context: ./platform/storage/longhorn/longhorn-instance-manager/v1.12.0/, dockerfile_sha256: e256f3fe0f4689cc5460fe345e44c2dbe91ec1a5cbd6db7c3bb38a53e7a23e2f}
+  - {image: 'brinnatt/longhorn-share-manager:v1.12.0', dockerfile: ./platform/storage/longhorn/longhorn-share-manager/v1.12.0/Dockerfile,
+    context: ./platform/storage/longhorn/longhorn-share-manager/v1.12.0/, dockerfile_sha256: 13e2058ef0b0260ea33b2d78b7e8b86e245ed955b9492f682e067deee29a2af5}
+  - {image: 'brinnatt/longhorn-backing-image-manager:v1.12.0', dockerfile: ./platform/storage/longhorn/longhorn-backing-image-manager/v1.12.0/Dockerfile,
+    context: ./platform/storage/longhorn/longhorn-backing-image-manager/v1.12.0/, dockerfile_sha256: 79ba1a8fab48fc3a78d49b8d7740282bcfaf8a1b49448af33ba2a3c39d33e0d8}
+  - {image: 'brinnatt/longhorn-support-bundle-kit:v0.0.86', dockerfile: ./platform/storage/longhorn/longhorn-support-bundle-kit/v0.0.86/Dockerfile,
+    context: ./platform/storage/longhorn/longhorn-support-bundle-kit/v0.0.86/, dockerfile_sha256: 78fdd8aa5798d5da8c720ca16690305440f97404db981c17688c96c1a67ae9ec}
+  - {image: 'brinnatt/longhorn-csi-provisioner:v5.3.0-20260514', dockerfile: ./platform/storage/longhorn/longhorn-csi-provisioner/v5.3.0-20260514/Dockerfile,
+    context: ./platform/storage/longhorn/longhorn-csi-provisioner/v5.3.0-20260514/, dockerfile_sha256: 8a87d57c8b4e1f861713aaa0ecf5519324f229bbc11675faa0a3a0b050dc7d60}
+  - {image: 'brinnatt/longhorn-csi-resizer:v2.1.0-20260514', dockerfile: ./platform/storage/longhorn/longhorn-csi-resizer/v2.1.0-20260514/Dockerfile,
+    context: ./platform/storage/longhorn/longhorn-csi-resizer/v2.1.0-20260514/, dockerfile_sha256: eda3f34e88ad27ef58294d76f7ea0f69ef5c5bc9a3da16bb3778add1c078089b}
+  - {image: 'brinnatt/longhorn-csi-snapshotter:v8.5.0-20260514', dockerfile: ./platform/storage/longhorn/longhorn-csi-snapshotter/v8.5.0-20260514/Dockerfile,
+    context: ./platform/storage/longhorn/longhorn-csi-snapshotter/v8.5.0-20260514/, dockerfile_sha256: df1b175ee36f4aab40d48f577016d371adf05dda355d40c3b15c8dab62fe8e09}
+  - {image: 'brinnatt/snapshot-controller:v8.6.0', dockerfile: ./platform/storage/csi/snapshot-controller-v8.6.0/Dockerfile,
+    context: ./platform/storage/csi/snapshot-controller-v8.6.0/, dockerfile_sha256: cb576301a81da9a689f478403e33091b997e3e46f9636e5fd764074c66398901}
+  - {image: 'brinnatt/longhorn-manager:v1.12.1-kubeauto.1', dockerfile: platform/storage/longhorn/longhorn-manager/v1.12.1-kubeauto.1/Dockerfile,
+    context: platform/storage/longhorn/longhorn-manager/v1.12.1-kubeauto.1, dockerfile_sha256: d3f9e53911535f2f81b61c9351700cd67f9d4e299affc5d018cda948f747ae67}
+  - {image: 'brinnatt/longhorn-manager:v1.12.1-kubeauto.2', dockerfile: platform/storage/longhorn/longhorn-manager/v1.12.1-kubeauto.2/Dockerfile,
+    context: platform/storage/longhorn/longhorn-manager/v1.12.1-kubeauto.2, dockerfile_sha256: 4e87e59b6552e9a460a51c9ef691fcf35ffd3dd558dab51a9949adba320eeaf0}
+  - {image: 'brinnatt/elasticsearch:9.5.6', dockerfile: ./middleware/elasticsearch/elasticsearch-9.5.6/Dockerfile,
+    context: ./middleware/elasticsearch/elasticsearch-9.5.6/, dockerfile_sha256: 8ae85ced87a3fedb2036b0ca20d950496559c8b8ccda226428b8d4014b7d5d98}
+  - {image: 'brinnatt/elasticsearch:9.5.5', dockerfile: ./middleware/elasticsearch/elasticsearch-9.5.5/Dockerfile,
+    context: ./middleware/elasticsearch/elasticsearch-9.5.5/, dockerfile_sha256: dcf486b2d4eb6d561205ffef323adbac2ab7cede3666f1449250af7cbd4f86e7}
+  - {image: 'brinnatt/kibana:9.5.6', dockerfile: ./middleware/elasticsearch/kibana-9.5.6/Dockerfile, context: ./middleware/elasticsearch/kibana-9.5.6/,
+    dockerfile_sha256: b3d940612c89d23fe3bce8684cd61db5b0dc47a18d2528cead771db5185dfd80}
+  - {image: 'brinnatt/kibana:9.5.5', dockerfile: ./middleware/elasticsearch/kibana-9.5.5/Dockerfile, context: ./middleware/elasticsearch/kibana-9.5.5/,
+    dockerfile_sha256: 223af095f4ddbed4f6f647d345464408e9b7805813bf85298940ccb23e17a6cf}
+  - {image: 'brinnatt/eck-operator:3.4.1', dockerfile: ./middleware/elasticsearch/eck-operator-3.4.1/Dockerfile, context: ./middleware/elasticsearch/eck-operator-3.4.1/,
+    dockerfile_sha256: 085f1fd35fc26696395ffa5eb89017fb1c1b5746ce3526d5d21e3128e192941a}
+  - {image: 'brinnatt/elasticsearch-exporter:v1.11.0', dockerfile: ./middleware/elasticsearch/exporter/Dockerfile,
+    context: ./middleware/elasticsearch/exporter/, dockerfile_sha256: f356fe9e2c70243807bf9d3b773616d59339453d90055eb05b2794221df05598}
+  - {image: 'brinnatt/elasticsearch-client:9.5.1-kubeauto.1', dockerfile: ./middleware/elasticsearch/client/Dockerfile,
+    context: ./middleware/elasticsearch/client/, dockerfile_sha256: 1076a3bef6ebcec7f5d1354e0f2336f83d0eccd4d4686833efc2322c40bcdbd3}
+  - {image: 'brinnatt/elasticsearch-smartcn:9.5.6-kubeauto.1', dockerfile: ./middleware/elasticsearch/smartcn/Dockerfile,
+    context: ./middleware/elasticsearch/smartcn/, dockerfile_sha256: 896ab4484f971e7cef30cd9d102c63f3bc038bf7082cde142cbf86651457541b}
+  - {image: 'brinnatt/elasticsearch-rally:2.13.0-kubeauto.1', dockerfile: ./middleware/elasticsearch/rally/Dockerfile,
+    context: ./middleware/elasticsearch/rally/, dockerfile_sha256: 8208a1ee95c4d06d76e9adf9d3f26ffd0acabf37ba2ea7205223a43859845cd3}
+inventory_gaps:
+- 关联真实客户 release/配置、架构、实际启用组件、制品 digest 与原始验收；dev HEAD 不能代签。
+- 逐一展开 roles/模板、vendored Chart/CRD、下载脚本、升级/恢复/备份/性能 fixture 的隐式依赖和用途；本快照不是完整运行依赖闭包。
+- 对全部 catalog 项确定实际消费者/用途与是否参与本跳；存在于 catalog 不等于需要构建。
+- 核验 registry 双端双架构 manifest、构建策略/context fingerprint 和发布记录；Dockerfile SHA 不是完整构建 fingerprint。
+- 解析各 Chart 的官方 appVersion、子 Chart 与镜像清单，检查共享 CRD/Operator 和 snapshot-controller 的唯一所有权。
+- 检查 requirements-control 的范围依赖、构建环境与 frozen requirements 的实际解析差异；不因盘点自动升级所有 Python 包。
+known_findings:
+- id: INV-01
+  source: common/constants.py:component_images[rocketmq]
+  finding: rocketmq-operator 使用 latest；新增冻结组合需官方固定版本/源码及 digest，不能照抄浮动引用。
+- id: INV-02
+  source: docs/whitepaper/A-version-matrix.md
+  finding: 产品/ext-bin 文档表格与本次源码默认值存在差异；按源码盘点，后续仅按实际影响修复所属文档。
+- id: INV-03
+  source: ../kubeauto-k8s-bin-dockerfile/multi-platform-download.sh
+  finding: 当前下载脚本没有显式 SHA256 校验和原子发布；新制品交付前需证明或补齐校验路径。
+- id: INV-04
+  source: .github/workflows/release.yml + build.py
+  finding: release 的 build.py 默认构建 kubecli 和 tools；升级发布前需明确副作用及允许范围，方案阶段不触发。

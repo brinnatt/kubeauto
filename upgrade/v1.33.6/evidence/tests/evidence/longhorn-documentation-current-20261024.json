@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "date": "2026-10-24",
+  "case": "LONGHORN-42",
+  "status": "pass",
+  "rc": 0,
+  "failure_markers": 0,
+  "durable": {
+    "exit": 0,
+    "finalized": 0
+  },
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-documentation </dev/null",
+  "author_review": {
+    "path": "tests/evidence/longhorn-documentation-current-content-review-20261024.json",
+    "sha256": "8ac989666adf4c39c541cc2c902c96afd9f3327deb87b7a532ba725e6c8a4d57"
+  },
+  "execution": {
+    "log": {
+      "path": "logs/longhorn-cases/documentation-current-content-review-20261024/gate.log",
+      "sha256": "6012e4e74686a84c7a1f7ce7c48e7faa206985f7f89b37a5aa3b130c21df188a"
+    },
+    "exit": {
+      "path": "logs/longhorn-cases/documentation-current-content-review-20261024/gate.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "finalized": {
+      "path": "logs/longhorn-cases/documentation-current-content-review-20261024/gate.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    }
+  },
+  "document_sha256": {
+    "docs/storage/longhorn/development-manual.md": "dff8e85002e979eaf082634302a926faba030aadac6bf04c6017fbbd72955f3e",
+    "docs/storage/longhorn/operations-manual.md": "1d395016c83bebd1c4c8bdc7d549a6178c16920ac451e2187c54a74e28aa58a5",
+    "docs/storage/longhorn/technical-whitepaper.md": "ca20791b6af73fbbd99717f6df73e383a244aa3cbe098d929daedd824cfb53c1"
+  },
+  "boundary": "Current three formal manuals; source/content/static/operation-evidence and author novice/experienced path checks. No independent reviewer, final product GA, or customer signature claimed."
+}

@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "date": "2026-10-24",
+  "case": "LONGHORN-23",
+  "status": "pass",
+  "rc": 0,
+  "failure_markers": 0,
+  "durable": {
+    "exit": 0,
+    "finalized": 0
+  },
+  "complete_matrix_item": true,
+  "version": "1.12.1",
+  "original_acceptance": {
+    "path": "tests/evidence/longhorn-last-replica-20261022.json",
+    "sha256": "6c1496d3ab98c4aadf560a930db94b173fca5dc008e47fcfb2c9fa974e26901f"
+  },
+  "verified_owning_scopes": {
+    "complete_original_module": {
+      "evidence": {
+        "path": "tests/evidence/longhorn-last-replica-20261022.json",
+        "sha256": "6c1496d3ab98c4aadf560a930db94b173fca5dc008e47fcfb2c9fa974e26901f"
+      },
+      "durable": {
+        "local_exit": 0,
+        "local_finalized": 0,
+        "remote_exit": 0,
+        "remote_finalized": 0
+      },
+      "raw_files_verified": 21,
+      "clean_complete_module_logs": [
+        {
+          "path": "logs/longhorn-cases/last-replica-balance-retry-20261022/owning-gate.log",
+          "sha256": "0c1243d4a38536bfa69f3eedeae92a5deb516f23e956f0301ea413d88802994d"
+        }
+      ],
+      "success_marker": "LONGHORN_LAST_REPLICA_GATE_PASS",
+      "scoped_clean_marker": "LONGHORN_LAST_REPLICA_GATE_SCOPED_CLEAN_PASS"
+    }
+  },
+  "evidence_kind": "read-only-schema-normalization-of-existing-complete-focused-acceptance",
+  "boundary": "No live replay or new module success. Original records and all declared scopes retain version, data, resource, cleanup and extrapolation boundaries; final current full regression remains mandatory."
+}

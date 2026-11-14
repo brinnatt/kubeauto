@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "case": "LONGHORN-13",
+  "date": "2026-10-19",
+  "status": "pass",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-clone </dev/null",
+  "product_entry": "config.yml + kubecli setup longhorn-gate 09",
+  "rc": 0,
+  "durable_pid": 2300227,
+  "failure_markers": 0,
+  "success_marker": "LONGHORN_CLONE_PASS",
+  "scoped_clean_marker": "LONGHORN_CLONE_SCOPED_CLEAN_PASS",
+  "checks": {
+    "markers": [
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_CLONE_ISOLATION_VERIFIED source_sha256=1e7b1b785af645da5a6aad141c6eb8f7f238080431a85e08b0663e3f6f8a743a clone_sha256=c51e46c4f9e4aa9219c0b1e242275367317b41ed4ba2048425116e247766d32f",
+      "LONGHORN_FSYNC_REMOUNT_VERIFIED bytes=9437184 sha256=1e7b1b785af645da5a6aad141c6eb8f7f238080431a85e08b0663e3f6f8a743a replica_nodes=longhorn-node-165,longhorn-node-212,longhorn-node-238",
+      "LONGHORN_BUSINESS_FIXTURES_CLEAN_PASS",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_CLONE_BUSINESS_PASS",
+      "LONGHORN_REGISTRY_TRANSPORT_CLEAN_PASS",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_CLONE_SCOPED_CLEAN_PASS",
+      "LONGHORN_CLONE_PASS"
+    ],
+    "healthy_core_and_storage_retained": true,
+    "source_bytes": 9437184,
+    "source_sha256": "1e7b1b785af645da5a6aad141c6eb8f7f238080431a85e08b0663e3f6f8a743a",
+    "clone_written_sha256": "c51e46c4f9e4aa9219c0b1e242275367317b41ed4ba2048425116e247766d32f",
+    "different_capacity_refused_by_original_claim_event": true,
+    "distinct_pv_and_native_volume": true,
+    "three_independent_clone_replicas": true,
+    "cross_worker_source_remount": true,
+    "clone_retired_before_source": true
+  },
+  "boundary": "Focused clone acceptance only; no other pending module or full delivery acceptance inferred. Frozen source records actual synchronized inputs.",
+  "files": {
+    "logs/longhorn-cases/clone-20261019-111748/durable-status.txt": "1c86798ad7bda78c1e6db73832fc73c54afec32868dc9128fa8b087c8a0d31c1",
+    "logs/longhorn-cases/clone-20261019-111748/frozen-source.txt": "cefe618f230a215a20dd091f652cabbfc868415692ceaab32523a3fb3aeb1c5c",
+    "logs/longhorn-cases/clone-20261019-111748/gate.log": "33b0028e3144abf5caf34cde7de2f7696fd51ca4feb523e2eb41b577501a70fb"
+  }
+}

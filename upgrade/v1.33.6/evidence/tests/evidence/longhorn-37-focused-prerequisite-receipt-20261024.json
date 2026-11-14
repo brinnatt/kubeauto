@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "date": "2026-10-24",
+  "case": "LONGHORN-37",
+  "status": "pass",
+  "rc": 0,
+  "failure_markers": 0,
+  "durable": {
+    "exit": 0,
+    "finalized": 0
+  },
+  "complete_matrix_item": true,
+  "version": "1.12.1",
+  "original_acceptance": {
+    "path": "tests/evidence/longhorn-middleware-hex-blob-business-20261022.json",
+    "sha256": "5d3dacdb41f54937a7dcb051a2efa497bc8ee906d29f48452bdd9f48b7a10be6"
+  },
+  "verified_owning_scopes": {
+    "complete_original_module": {
+      "evidence": {
+        "path": "tests/evidence/longhorn-middleware-hex-blob-business-20261022.json",
+        "sha256": "5d3dacdb41f54937a7dcb051a2efa497bc8ee906d29f48452bdd9f48b7a10be6"
+      },
+      "durable": {
+        "local_exit": 0,
+        "local_finalized": 0,
+        "remote_exit": 0,
+        "remote_finalized": 0,
+        "module_exit": 0,
+        "module_finalized": 0
+      },
+      "raw_files_verified": 17,
+      "clean_complete_module_logs": [
+        {
+          "path": "logs/longhorn-cases/middleware-hex-blob-business-20261022/owning-gate.log",
+          "sha256": "15bf4273c0f77d85e5d52059098ca4083aefdd09609644e9fdfd2a889faf6f8a"
+        }
+      ],
+      "success_marker": "LONGHORN_MIDDLEWARE_PASS",
+      "scoped_clean_marker": "LONGHORN_MIDDLEWARE_SCOPED_CLEAN_PASS"
+    }
+  },
+  "evidence_kind": "read-only-schema-normalization-of-existing-complete-focused-acceptance",
+  "boundary": "No live replay or new module success. Original records and all declared scopes retain version, data, resource, cleanup and extrapolation boundaries; final current full regression remains mandatory."
+}

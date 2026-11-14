@@ -1,0 +1,21 @@
+{
+  "cleanup": "LAB_CLEAN_VERIFY_PASS",
+  "dependencies": {
+    "common/constants.py": "a0ff42f51e7191bfb7773bd0c2195319938685c44ab51f78758cbee93124b0ae",
+    "conf/config.yml": "83730ac9542b832178b680ab0edd140100408e0bf576163668300deff0e8df21",
+    "tests/helpers/ceph-regression.sh#fail": "bfc4826f5d60dfa33782ef41559c4316b067cb740db45d2a10930d3ead726e59",
+    "tests/helpers/ceph-regression.sh#globals": "01af8e341db65a072301960494e74f686e7f6e83243b5bd8abaa4cbeb8ffa6d2",
+    "tests/helpers/ceph-regression.sh#manifest_digest": "4f4d473bbf83f4caadf45ae903f31b4f2787b76503a584abea0d449fb5ec8ccf",
+    "tests/helpers/ceph-regression.sh#pass": "0dc3a561ab3093dab8ae3b7ef9224eefed5e40285a80b78af7d371e1343e1329",
+    "tests/helpers/ceph-regression.sh#stage": "d23dbe4f8a310afa6e6d1d4bc8bef0e345959897b0abb84bb386b95b391fbc24",
+    "tests/helpers/ceph-regression.sh#verify_supply_chain": "61d9e299780e85d8c4f003040fc8320ed5838b59712b951ab0e2d80602c274a3"
+  },
+  "durable_rc": 0,
+  "expected_marker": "CEPH_SUPPLY_CHAIN_PASS",
+  "failure_markers": 0,
+  "id": "CEPH-02",
+  "log": "logs/ceph-cases/ceph-module-20261010T110759Z-775905/live.log",
+  "log_sha256": "dcd77a4a37153e23257595dfddc83d25253c4b336a93edd5020fa123ac432d84",
+  "run_id": "ceph-module-20261010T110759Z-775905",
+  "terminal_marker": "CEPH_GATE_EXIT rc=0"
+}

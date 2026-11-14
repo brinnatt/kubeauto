@@ -1,0 +1,278 @@
+schema_version: 1
+recorded_on: '2026-11-14'
+scope: 已取得的官方事实与待查入口；不代表全部组件四类资料已完整阅读或目标组合已通过验收
+observation_boundary: 2026-11-13来源复用当日缓存并核对原摘要；2026-11-14只新取Longhorn三个专题。分别保留日期，不冒称所有来源重新核验。
+sources:
+- id: K8S-STABLE
+  evidence_type: release-pointer
+  observed_on: '2026-11-13'
+  urls:
+  - https://dl.k8s.io/release/stable.txt
+  - https://dl.k8s.io/release/stable-1.33.txt
+  - https://dl.k8s.io/release/stable-1.34.txt
+  - https://dl.k8s.io/release/stable-1.35.txt
+  - https://dl.k8s.io/release/stable-1.36.txt
+  - https://dl.k8s.io/release/stable-1.37.txt
+  observed_values:
+    stable: v1.37.2
+    stable-1.33: v1.33.13
+    stable-1.34: v1.34.13
+    stable-1.35: v1.35.10
+    stable-1.36: v1.36.6
+    stable-1.37: v1.37.2
+  conclusion: 用于选择当时的稳定发布候选，执行必须锁定确切版本。
+  limitations: 不是组件兼容矩阵或维护承诺；未在本轮核验每个版本/架构的下载制品和校验值。
+  use: upgrade/policy.md
+- id: K8S-SKEW
+  evidence_type: supported
+  observed_on: '2026-11-13'
+  url: https://kubernetes.io/releases/version-skew-policy/
+  applicability: Kubernetes 组件版本偏差与升级顺序；具体目标版本政策变化仍须核验
+  obtained_content:
+    representation: HTML 提取后的页面文本
+    sha256: 8ee564a5901b657136782286db03bdf39a918e2fc8c09a3cbec751135a2d3da0
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-13/skew-html.txt
+      sha256: 8ee564a5901b657136782286db03bdf39a918e2fc8c09a3cbec751135a2d3da0
+      bytes: 10364
+  facts:
+  - API Server 升级不得跳 minor，包括单实例。
+  - HA API Server 最大相差一个 minor；kubelet/kube-proxy 不得新于它们可访问的 API Server。
+  - scheduler/controller-manager 不得新于其通信的 API Server；通过 LB 通信时核对全部可达实例。
+  - 官方顺序先 API Server，再控制组件，之后 kubelet/kube-proxy；minor kubelet 更新前 drain。
+  - 源/目标采用各自最新 patch 是官方推荐；不能一概表述为强制源 patch 桥接。
+  limitations: 支持偏差不证明项目编排、数据安全或业务连续性已验证；当前旧补丁门禁不覆盖跨 minor。
+  use: upgrade/workflow.md
+- id: K8S-LIFECYCLE
+  evidence_type: lifecycle
+  observed_on: '2026-11-13'
+  url: https://kubernetes.io/releases/
+  obtained_content:
+    representation: HTML 提取后的页面文本
+    sha256: 4394986deea8e86d035089e22eaa0ae6aba081dfc1c831e113856e1855957943
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-13/releases-html.txt
+      sha256: 4394986deea8e86d035089e22eaa0ae6aba081dfc1c831e113856e1855957943
+      bytes: 4605
+  facts:
+  - 当前维护分支为 1.35、1.36、1.37。
+  - 页面列出 1.33 的 EOL 为 2026-06-28，1.34 的 EOL 为 2026-10-27。
+  limitations: 页面部分最新 patch 列表落后于 stable 入口；只用本条证明观察到的支持期，不从缓存列表覆盖 stable 返回。
+  use: upgrade/policy.md
+- id: K8S-DEPENDENCIES-13413
+  evidence_type: source-pin
+  observed_on: '2026-11-13'
+  url: https://github.com/kubernetes/kubernetes/blob/v1.34.13/build/dependencies.yaml
+  version: v1.34.13
+  obtained_content:
+    representation: GitHub HTML 原始响应
+    sha256: 1aa6fa45e70046e553dd39d045a5459abffffb1be440a1db3bb27f2e5913e319
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-13/k8s-deps-github.txt
+      sha256: 1aa6fa45e70046e553dd39d045a5459abffffb1be440a1db3bb27f2e5913e319
+      bytes: 279925
+  facts:
+  - dependencies 文件有 etcd 3.6.5、etcd-image 3.6.4 与 pause 多个引用项。
+  limitations: 源码构建 pin 不能等同为外部 etcd/pause 的唯一支持范围；需结合实际消费位置和官方升级限制。
+  use: upgrade/v1.34.13/research.yaml
+- id: METRICS-080
+  evidence_type: supported
+  observed_on: '2026-11-13'
+  url: https://github.com/kubernetes-sigs/metrics-server/blob/v0.8.0/README.md
+  version: v0.8.0
+  obtained_content:
+    representation: 官方 raw README 原文
+    sha256: 1e19082eb802865272286bf8b21016a5649ae14006ff54dc53835ad8099c53b1
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-13/metrics.txt
+      sha256: 1e19082eb802865272286bf8b21016a5649ae14006ff54dc53835ad8099c53b1
+      bytes: 11029
+  facts:
+  - 0.8.x 兼容表为 Kubernetes 1.31+，使用 metrics.k8s.io/v1beta1。
+  - 有 aggregation、kubelet authn/authz、证书、运行时指标与网络前置。
+  limitations: 1.31+ 是支持声明，不等于每个未来 minor 均已有逐版官方端到端测试证据。
+  use: upgrade/v1.34.13/release.yaml
+- id: CALICO-328
+  evidence_type: tested
+  observed_on: '2026-11-13'
+  url: https://docs.tigera.io/calico/3.28/getting-started/kubernetes/requirements
+  version: '3.28'
+  obtained_content:
+    representation: HTML 原始响应
+    sha256: 31f1ad6864204af60d7595596d3c10bcfcf3d779edf4a7a3035610504a118ac5
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-13/calico.txt
+      sha256: 31f1ad6864204af60d7595596d3c10bcfcf3d779edf4a7a3035610504a118ac5
+      bytes: 63563
+  facts:
+  - 页面列出的 Kubernetes 测试版本为 1.27、1.28、1.29、1.30。
+  - 页面说明其它版本可能工作，但未主动测试，建议使用对新版 K8s 已测试的 Calico。
+  limitations: 缺少 1.34 官方测试覆盖不等于证明当前 1.33.6 项目有产品故障；新目标需选型与源端桥接依据。
+  use: upgrade/v1.34.13/release.yaml
+- id: CILIUM-1195
+  evidence_type: tested
+  observed_on: '2026-11-13'
+  url: https://github.com/cilium/cilium/blob/v1.19.5/Documentation/network/kubernetes/compatibility.rst
+  version: v1.19.5
+  obtained_content:
+    representation: GitHub HTML 原始响应
+    sha256: b8615afa08bf1566bd876f8a179db8908066305a8bd9d8b5f92c10baeda69d88
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-13/cilium-github.txt
+      sha256: b8615afa08bf1566bd876f8a179db8908066305a8bd9d8b5f92c10baeda69d88
+      bytes: 196431
+  facts:
+  - 列出的端到端测试版本为 1.32、1.33、1.34、1.35。
+  - 未列版本依赖 Kubernetes 的前后兼容；不能冒称已在相同范围被测试。
+  limitations: 核心兼容表不覆盖项目全部内核、Hubble、kube-proxy replacement 和策略模式；维护期仍需独立核验。
+  use: upgrade/v1.34.13/release.yaml
+- id: CONTAINERD
+  evidence_type: minimum-and-lifecycle
+  observed_on: '2026-11-13'
+  url: https://containerd.io/releases/
+  obtained_content:
+    representation: HTML 提取后的页面文本
+    sha256: a3282897a24b6340f5740f39be84b16e0d6a343b2c3222bdb8e6a95893c96442
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-13/containerd-html.txt
+      sha256: a3282897a24b6340f5740f39be84b16e0d6a343b2c3222bdb8e6a95893c96442
+      bytes: 33623
+  facts:
+  - 1.34 列出 containerd 2.1.3+；1.35 的 2.1 分支下限为 2.1.5+。
+  - 1.36 列出 2.3.0+/2.2.0+；1.37 列出 2.4.0+/2.3.0+。
+  - 页面将 containerd 2.1 标为 EOL，日期 2026-07-03；2.3 为 LTS。
+  - 升级支持相邻 minor，另有相邻 LTS 直升规则，须按实际源/目标核对。
+  limitations: 当前 2.1.4 满足某版本最低要求不表示仍受维护；尚未核验新运行时对源 K8s、runc、配置和 OS 的完整过渡组合。
+  use: upgrade/v1.34.13/release.yaml
+- id: CEPHCSI-3171
+  evidence_type: tested
+  observed_on: '2026-11-13'
+  url: https://github.com/ceph/ceph-csi/blob/v3.17.1/README.md
+  version: v3.17.1
+  obtained_content:
+    representation: GitHub HTML 提取后的页面文本
+    sha256: 77fc32fcda125c45bfc9708cb05d568fe4b7f77bf453a42d7b9efcc4b13ac267
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-13/ceph-csi-html.txt
+      sha256: 77fc32fcda125c45bfc9708cb05d568fe4b7f77bf453a42d7b9efcc4b13ac267
+      bytes: 15941
+  facts:
+  - v3.17.1 测试表列出 Kubernetes 1.34、1.35、1.36。
+  - 文档另列 Ceph CSI 的支持窗口与 ARM64 experimental 边界。
+  limitations: 不是源 K8s 1.33 的官方测试证明；上游架构边界、sidecar、Ceph 数据面与项目实测必须分别说明。
+  use: upgrade/v1.34.13/release.yaml
+- id: STRIMZI-120
+  evidence_type: supported
+  observed_on: '2026-11-13'
+  url: https://strimzi.io/downloads/
+  version: 1.2.0 行
+  obtained_content:
+    representation: HTML 原始响应
+    sha256: 907ec975bb5deef510d4dd9ac1c8b7c6f507c60278e2263dbce1ed873ae02f3f
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-13/strimzi.txt
+      sha256: 907ec975bb5deef510d4dd9ac1c8b7c6f507c60278e2263dbce1ed873ae02f3f
+      bytes: 68138
+  facts:
+  - 1.2.0 行列出 Kubernetes 1.30–1.36；Kafka 配套包含 4.3.1。
+  limitations: 不外推到 1.37；Drain Cleaner、Chart、CRD、Kafka metadata 和项目存储/客户端仍需核验。
+  use: upgrade/v1.34.13/release.yaml
+- id: INGRESS-LIFECYCLE
+  evidence_type: lifecycle-with-open-conflict
+  observed_on: '2026-11-13'
+  url: https://kubernetes.io/blog/2025/11/11/ingress-nginx-retirement/
+  obtained_content:
+    representation: HTML 原始响应
+    sha256: a7868168dc1ac00499f4adb05444e0151584cb4e26232565f6bb5aaecdcaffaf
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-13/ingress-retire.txt
+      sha256: a7868168dc1ac00499f4adb05444e0151584cb4e26232565f6bb5aaecdcaffaf
+      bytes: 491912
+  facts:
+  - 公告说明计划在 2026-03 结束维护，之后不再发布漏洞修复，建议迁移。
+  conflicting_observation:
+    url: https://kubernetes.github.io/ingress-nginx/deploy/
+    observation: 同次获取的部署页含 controller-v1.15.1 示例；不能凭此推导维护政策已恢复或该版本覆盖目标。
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-13/ingress-support.txt
+      sha256: 82ce41263079f4b628974dd08ce2e05110d7446c1c968a3339e8d401be10e0e1
+      bytes: 67169
+  required_resolution: 核验项目仓库归档/维护声明、发布者与安全公告；确定受支持替代路线或明确受限边界后才冻结。
+  limitations: 只证明公告原文和来源冲突待解；未实施控制器替换，也未验证 Ingress/Gateway API 行为等价。
+  use: upgrade/v1.34.13/release.yaml
+- id: LONGHORN-1121
+  evidence_type: tested-with-minimum-conflict
+  observed_on: '2026-11-14'
+  version: v1.12.1
+  obtained_contents:
+  - url: https://longhorn.io/docs/1.12.1/deploy/install/
+    representation: 官方HTML原始响应
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-14/longhorn-requirements.html
+      sha256: 081b701e1a6b35b2813416a65656f8aaf34a9da7519033a207526a6779bc78cd
+      bytes: 97914
+  - url: https://longhorn.io/docs/1.12.1/important-notes/
+    representation: 官方HTML原始响应
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-14/longhorn-notes.html
+      sha256: d0ebd29f7cce62fffa0cf424d3966bb237905ce20624d8674eed103836ccd985
+      bytes: 87062
+  - url: https://longhorn.io/docs/1.12.1/best-practices/
+    representation: 官方HTML原始响应
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-14/longhorn-best-practices.html
+      sha256: 1b893866cdfe2b4bf3b5dd837e65031d7a5d393cd5820458c496172c1079bff6
+      bytes: 83488
+  facts:
+  - best-practices页明确列出Kubernetes 1.33、1.34、1.35、1.36为Longhorn 1.12.1已测试版本；不是项目编排验收。
+  - 安装页及important-notes要求Kubernetes >=1.25；best-practices同页残留>=1.21表述。1.33/1.34满足两者，低版本边界存在不一致，不外推。
+  - restrictInternalTraffic=true的CNI测试表只列K3s+Flannel/Calico/Cilium以及RKE2+Canal/Calico/Cilium，不能直接扩成任意二进制K8s部署均已被上游测过。
+  - important-notes说明V2不支持1.12 patch之间的在线升级，需分离卷；升级Longhorn本身与仅升级K8s不是同一动作。
+  - important-notes对V2 backing image/旧linked clone、ARM64 NVMe及UBLK等有专门限制，相关功能变化才展开对应影响。
+  project_mapping:
+    source: roles/longhorn/files/longhorn.py:415
+    observation: 项目显式restrictInternalTraffic=true；原矩阵LONGHORN-33及完整GA记录已有网络策略证据，先复用核验，不默认重测。
+    copied_record: upgrade/v1.33.6/evidence/tests/evidence/longhorn-network-policy-20261019.json
+  limitations: 只核对上述三个专题与源码设置，未完成官方四类目录全量研究；不据此冻结最新Longhorn选型、相邻版本升级路径或所有CNI/架构支持。
+  use: upgrade/v1.34.13/release.yaml
+lookup_only:
+- id: K8S-API-CHANGES
+  status: pending
+  urls:
+  - https://kubernetes.io/docs/reference/using-api/deprecation-guide/
+  - https://github.com/kubernetes/kubernetes/blob/master/CHANGELOG/CHANGELOG-1.34.md
+  purpose: 固定目标发布说明、弃用/移除 API、feature gate、flags/默认值和已知问题；须按目标 tag 核验。
+- id: ETCD-RECOVERY
+  status: pending
+  url: https://etcd.io/docs/v3.6/op-guide/recovery/
+  purpose: 核验实际 etcd 源/目标的升级、快照恢复、身份和 Kubernetes 恢复条件；不是现成已验证 runbook。
+- id: LONGHORN-NEXT-PIN
+  status: pending
+  urls:
+  - https://longhorn.io/docs/1.12.1/deploy/upgrade/
+  - https://github.com/longhorn/longhorn/releases
+  purpose: 已核对1.12.1测试窗口与部分限制；仍需选型截止日的兼容最新稳定patch、维护期、自有补丁、精确迁移边；不将后续版本页面套回旧版。
+reading_completeness:
+  all_component_directories_inventoried: false
+  target_compatibility_matrix_frozen: false
+  project_live_validation: false
+  note: 已取得表示形式按SHA256存入upgrade/official-snapshots；只是官方资料快照，不是项目现场验收归档。
+access_gaps:
+- component_ids:
+  - mysql
+  - mongodb
+  observed_on: '2026-11-14'
+  attempts:
+  - key: pxc-requirements
+    url: https://docs.percona.com/percona-operator-for-mysql/pxc/System-Requirements.html
+    error: 'HTTPError: HTTP Error 403: Forbidden'
+  - key: mongodb-requirements
+    url: https://docs.percona.com/percona-operator-for-mongodb/system-requirements.html
+    error: 'HTTPError: HTTP Error 403: Forbidden'
+  - key: pxc-fixed-doc
+    url: https://raw.githubusercontent.com/percona/k8spxc-docs/1.20.0/docs/System-Requirements.md
+    error: 'HTTPError: HTTP Error 404: Not Found'
+  - key: mongodb-fixed-doc
+    url: https://raw.githubusercontent.com/percona/k8spsmdb-docs/1.23.1/docs/system-requirements.md
+    error: 'HTTPError: HTTP Error 404: Not Found'
+  consequence: 文档站403、尝试的固定版本源码路径404；先查正确官方tag/目录与既有记录，不能宣称这些路径已读，不转为现场回归。

@@ -1,0 +1,64 @@
+{
+  "schema": 1,
+  "result": "PASS",
+  "source_thread": "01a0d266-284c-7b11-ac7f-0bc762ad22a7",
+  "source_title": "kubeauto-ext-images-dockerfile 这个项目遇到了一个问题，就是我的github actio…",
+  "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/37753406582",
+  "head": "b8db20b3c1e1561136755a58abc15dd32770deb4",
+  "images": 124,
+  "architectures": [
+    "linux/amd64",
+    "linux/arm64"
+  ],
+  "registries": [
+    "hub.talkedu.cn/kubeauto",
+    "docker.io/brinnatt"
+  ],
+  "publication_shards": 7,
+  "jobs_success": 9,
+  "durable_release_rc": 0,
+  "failure_markers": 0,
+  "terminal_marker": "FULL_IMAGE_REBUILD_PASS count=124",
+  "archive_directory": "logs/ext-images-delivery/2026-10-08",
+  "artifact_sha256": {
+    "delivery-acceptance.json": "07e6842ddb484f6464397e447d368cf75edb599ad28145aebbcef783a7a6b2ca",
+    "37753406582-run.json": "f878eb5dc1a35cce015beb6d91d92c52c2540b9f10693f85b5821db5b1e273a9",
+    "37753406582-jobs-latest.json": "f5a32d117c7ad3af56095f35e998f2c22ed405b312402d57d308cbf9292740cf",
+    "37753406582-artifacts.json": "15f6b57a2d0c44fb951e18ef89346a3b25b710cd81e361270e479a2398c1a9d2",
+    "37753406582-verified-records.json": "2b803834c794a74b03a5b1dea0c503301c937d12f877fe18f1d7b1b02860f782",
+    "37753406582-image-plan.zip": "53c55e00a3427fc0267efa02075121e98bceb9ca4a93df87cd59b0a9dc036437",
+    "37753406582-logs.zip": "25f8c1800372341189afeaed01c967d5cde58dc49e602bad04cc1731d628f1bd",
+    "37753406582-plan-evidence-1.zip": "cdf0953925338d2ee8bafe84fd1667a638bdf73b95a417e46093e56a5a41f151",
+    "37753406582-release-evidence-0-1.zip": "120df983da05a809685e9d2f2675b578c05132c9526132eb7d2659430d2fb6c0",
+    "37753406582-release-evidence-1-1.zip": "61395b53086e39dccd667f68edd61c5c7ca036c94743c1d585ca1f016889e079",
+    "37753406582-release-evidence-2-1.zip": "a5266c8e3390e6eebecdcc81db936491a07b44c49eb4d74ca28fcdae48bac450",
+    "37753406582-release-evidence-3-1.zip": "9c6d7484c4de8cf2d251e76fa5f07ec8c735a938bcc8db4ef9d11b8007b83735",
+    "37753406582-release-evidence-4-1.zip": "581ad2858215cf805fb3ef7aa7210421069b654349b1505a4cfdda925a89a01d",
+    "37753406582-release-evidence-5-1.zip": "9684e24fd6e5f485fd0d2f61ef25643f7b4cc26f9be30a05532474301599bca7",
+    "37753406582-release-evidence-6-1.zip": "a352029c820e4df104fa868f6ea0420a7a4c4a5e43b3a485d87c0dc0e8401275"
+  },
+  "input_review": {
+    "current_catalog_matches_plan": true,
+    "current_contexts_match_accepted_git_blobs": true,
+    "current_build_policy_matches": true,
+    "fingerprint_modes": "Git committed modes, matching hosted checkout",
+    "post_acceptance_commit": "cde59f9: customer README only; build inputs unchanged"
+  },
+  "enterprise_items": [
+    "T2-CX-02",
+    "T2-CX-03",
+    "T2-CX-04",
+    "T2-CX-05",
+    "T2-CX-06"
+  ],
+  "mapping_contract_evidence": {
+    "path": "logs/enterprise-regression-20261011-0005.log",
+    "sha256": "4fbcec64c012754ec37e06c1a35745cc709dc656cee496fa9f1193f97d9ea84c",
+    "tests": [
+      "test_ecosystem_ci_tags_match_kubeauto_constants",
+      "test_component_images_tags_exist_in_ext_images_ci"
+    ],
+    "result": "689/689 local and Rocky 8 jumper PASS"
+  },
+  "scope": "Imported completed ext-images full acceptance and verified existing source bindings only. No new publication or live regression was executed. This archive does not claim a new kubeauto --all-delivery run."
+}

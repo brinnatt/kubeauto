@@ -1,0 +1,828 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "MONGODB-43"
+  ],
+  "scope": "One clean complete MongoDB regression; all 41 runtime steps passed, including both clean boundaries, replica-set and sharding business/fault/restore workloads, upgrade, stability, ownership, and success/failure/interruption cleanup; 42 prerequisite acceptance items remain current",
+  "runner": "bash tests/run_enterprise_regression.sh --mongodb-only",
+  "current_run": "logs/mongodb-cases/full-20261018-042852",
+  "durable_status": "state=exited pid=1596985 rc=0 bytes=1089665 pass_markers=1033 failure_markers=0 latest=MONGODB_GATE_EXIT rc=0",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "markers": [
+    "MONGODB_ARTIFACTS_PASS",
+    "MONGODB_UPGRADE_PASS",
+    "MONGODB_CLEAN_VERIFY_PASS",
+    "MONGODB_INSTALL_PASS",
+    "MONGODB_PLATFORM_PASS",
+    "MONGODB_PREFLIGHT_PASS",
+    "MONGODB_STORAGE_PASS",
+    "MONGODB_DATA_PASS",
+    "MONGODB_TRANSACTIONS_PASS",
+    "MONGODB_SECURITY_PASS",
+    "MONGODB_FAILOVER_PASS",
+    "MONGODB_QUORUM_PASS",
+    "MONGODB_REBUILD_PASS",
+    "MONGODB_MAINTENANCE_PASS",
+    "MONGODB_ROTATION_PASS",
+    "MONGODB_LOGICAL_BACKUP_PASS",
+    "MONGODB_LOGICAL_RESTORE_PASS",
+    "MONGODB_PHYSICAL_BACKUP_PASS",
+    "MONGODB_PHYSICAL_RESTORE_PASS",
+    "MONGODB_PITR_PASS",
+    "MONGODB_ENCRYPTION_PASS",
+    "MONGODB_BACKUP_REFUSAL_PASS",
+    "MONGODB_RETENTION_PASS",
+    "MONGODB_DISASTER_RECOVERY_PASS",
+    "MONGODB_NETWORK_PASS",
+    "MONGODB_SHARDING_INSTALL_PASS",
+    "MONGODB_SHARDING_DATA_PASS",
+    "MONGODB_SHARDING_FAILURE_PASS",
+    "MONGODB_SHARDING_SCALE_PASS",
+    "MONGODB_SHARDING_CLEAN_PASS",
+    "MONGODB_SHARDING_RESTORE_PASS",
+    "MONGODB_REPLICA_SCALE_PASS",
+    "MONGODB_CAPACITY_PASS",
+    "MONGODB_OBSERVABILITY_PASS",
+    "MONGODB_PERFORMANCE_PASS",
+    "MONGODB_STABILITY_PASS",
+    "MONGODB_ROLLBACK_PASS",
+    "MONGODB_IDEMPOTENCE_PASS",
+    "MONGODB_OWNERSHIP_PASS",
+    "MONGODB_CLEANUP_PASS",
+    "LAB_CLEAN_VERIFY_PASS",
+    "MONGODB_FULL_PASS"
+  ],
+  "log_sha256": "c63440ccd007ed53d8b1722a01d8fca3c8d2f907e4e6100ee1b4e375a84ffe8b",
+  "dependencies": {
+    "common/constants.py": "fbbda37a48043dfae5bffbadccef46715001eef46b827e5091a7584b9bbaaa68",
+    "conf/config.yml": "49c70286a132a7cfbe595df79503ca6f576ccc8db1ff7bacc47ff473c2509560",
+    "docs/middleware/mongodb/development-manual.md": "8821c532c546ccd689f2f0fc8f997e6cccfcfe3124f29853d17a0f6f21030a0b",
+    "docs/middleware/mongodb/operations-manual.md": "4ae7c866ac4ed1c57dff9d45f60b6534d7bbad426690bbf151007eb8e232dfaa",
+    "docs/middleware/mongodb/technical-whitepaper.md": "3b7680025532865be26214204c5ba5990ac58785dcc08226ea39f963cc1757fa",
+    "roles/cluster-addon/files/mongodb.py": "630515d49c36990037c7fe0e564a2844f3e5589c3a1d7e9112f0748d1544d1aa",
+    "roles/cluster-addon/files/psmdb-operator-1.23.1.tgz": "08ce50b0cbd582694790d201c9573d61a0e0b89d460961d8590cd1ee82039ccd",
+    "roles/cluster-addon/files/psmdb-operator-1.23.1.tgz.sha256": "cb65bc2750af64b3003896430677687cf6f03def72175af4d386643315191f7d",
+    "roles/cluster-addon/files/psmdb-operator-1.23.2.tgz": "80e629dc31f8cfe2615a5efb8b0d1d2ed418f25e8c0b168f981412c8594a07e9",
+    "roles/cluster-addon/files/psmdb-operator-1.23.2.tgz.sha256": "86742d0a9301cff0dbeb3563255a543ca7382c16444e519513f07ec71f9511a6",
+    "roles/cluster-addon/tasks/main.yml": "8b1baa5582bf571c78bdd15a9eaf5870c460bd15158ec57937a080b5bfbb5787",
+    "roles/cluster-addon/tasks/mongodb.yml": "d64a6340af4ffa41d2e93045feec47860134c6f40110f426c0ba04d13d8f520f",
+    "roles/cluster-addon/templates/mongodb/cluster.yaml.j2": "7997da0a3f0573fbbf8eb40e6cd564efa14bb919c4c2ea48fc87b830828e8c45",
+    "roles/cluster-addon/templates/mongodb/monitoring.yaml.j2": "f162b9c6f9895336fb8edc286c2aa18a5664f81f841d3ec68b4466ff948597ec",
+    "roles/cluster-addon/templates/mongodb/network-policy.yaml.j2": "f87a24e157764c8e11158811c98fcb11feb1bec1ab486a9d9592e2aa355d5a0e",
+    "roles/cluster-addon/templates/mongodb/operator-values.yaml.j2": "9d640240dd40489cfedee0ce21d04850c60d123f44621f5b81a5b8f054f97d9a",
+    "service/cluster/manager.py": "ae88657bfa393f042d371210af7b941feda2e0894486fd27313c2048fb1f100a",
+    "tests/README.md": "3f1112b58118ec9054b764a749585381db5aa4838c2ed4a49cead84dc5d843e0",
+    "tests/evidence/mongodb-images-20261015.json": "779a8401cc0242c6ab0dd21df87148295acbe4447c44a4f4888b48a89ad73b92",
+    "tests/evidence/mongodb-registry-diagnostics-20261018.json": "ef231b91bd850cd010e7d69880cbce33a8a7baf447555b3f2dae3de99f77620a",
+    "tests/evidence/mongodb-static-20261015.json": "4f95175ad8812bf0952a85c830a68093a1dbe21ae9fb6736936a835c9c9200ec",
+    "tests/evidence/mongodb-support-images-20261015.json": "219782d16c9507929e9ab902545ad6638c4c843aded2bebef52c8df97231ad2d",
+    "tests/helpers/mongodb-backups.py": "c61911ca07b2217b0f6161fc0a83cd8d0cb460d536dab06e5a7c90a969607030",
+    "tests/helpers/mongodb-install-gate.sh": "8502cfd1fe95467fd6430dfe9f2c4b9beefc42b12934dff476a8d62263809000",
+    "tests/helpers/mongodb-lab-storage.py": "3d9af7287f0f8b36e81f7cdb1e1455cc93437aca73e1d3b7968c7f5760aa8c07",
+    "tests/helpers/mongodb-lab.py": "8154d5821e9fe2ffd3194cc0d3398a7dfebe70974087ef3edc230f4257125362",
+    "tests/helpers/mongodb-platform.py": "69f215ab8980901021944b2a2b60b9ae684e10028093e69525cd98d915ad9004",
+    "tests/helpers/mongodb-registry-relay.py": "a22c9c217d2ef6d28c47f9b4edfe130440a811e96387d8f5cf392705495b8a23",
+    "tests/helpers/mongodb-runner.sh": "fef1bbe5d6ef13d16d1578153fc2aab1e773c4f3f124cc483b9acc2366f9d5c4",
+    "tests/helpers/mongodb-scenarios.py": "661d490892912dd803d0f951ffe41df0faca83a89bff37ad13b4f9c623def901",
+    "tests/helpers/mongodb-sharding.py": "c121e0c509cd35bef92b90e2d2460e7b94da2e0fc674117db9e4c5acaa350668",
+    "tests/helpers/mongodb-static.sh": "ff851762d8385c75673738fc8612325f65bceaba752fa1e65a833b5ce37e368a",
+    "tests/helpers/validate_mongodb_matrix.py": "4c288e96a66801f0cd3574837cec5c55f2e7852c01234d2f1009efe658d9fc12",
+    "tests/mongodb-test-matrix.yaml": "a0a5c06228b1236b42e9b7f21b9997fbe8d859e0fb658ff204f713a7ea37a78f",
+    "tests/run_enterprise_regression.sh": "dae5dba3092121035932fc44c59a45dcc652c19a57e0e56a6496b7fb69bb918b",
+    "tests/unit/test_mongodb_backups.py": "4ff6825073adbdc71eb313a88ba78bb2bb713f89ece9bcf7ec9826bd44bb5df4",
+    "tests/unit/test_mongodb_delivery.py": "ea12c7637b47fb7a16176abefa5803148c9c4a343a857cc9da5b9d5692f76796",
+    "tests/unit/test_mongodb_lab.py": "761b39ca0460e663028e3848f8e678eaefd2a867d93a7efbd52e42a3da54bacf",
+    "tests/unit/test_mongodb_matrix.py": "29e57d59784b88229df1ce89c21146d76673f6203234c18a9a149847d87aea76",
+    "tests/unit/test_mongodb_platform.py": "93895d7f0e16b8ac6a725292f787516bb56bc1689674d7af7bd421b84a96869d",
+    "tests/unit/test_mongodb_scenarios.py": "224afcc0fbd15c3d0c20645245e3701e5451d130bbc63a711dc3b5e44ddb8831",
+    "tests/unit/test_mongodb_sharding.py": "28cadcc7419dfc662973142da0888ed53d2bba9f52c3129d61b80e4b839131fc",
+    "tests/unit/test_mongodb_storage.py": "bc85317dd8cd61d03d32e19b6c09769dc7c844bd21ea25191c4e9a6a928777e8"
+  },
+  "frozen_input_manifest": {
+    "path": "logs/mongodb-cases/full-20261018-042852/executed-hashes.txt",
+    "sha256": "226616ff2ef1e9a5267a221fc90a6068b69b4449c1b84bd7217ac28a3a871276"
+  },
+  "executed_matrix": "logs/mongodb-cases/full-20261018-042852/executed-matrix.yaml",
+  "acceptance_metadata_update": "After terminal success only: mark M43 and matrix PASS and publish delivered navigation; executed product and gate inputs remain unchanged",
+  "modules": [
+    {
+      "step": 1,
+      "log": "logs/mongodb-cases/full-20261018-042852/modules/full-1-artifacts.log",
+      "combined_output_sha256": "79954a751fd98eb11d9e1a3829c3dcba849a89be8a26422b6885e123a963300f",
+      "failure_markers": 0,
+      "log_sha256": "79954a751fd98eb11d9e1a3829c3dcba849a89be8a26422b6885e123a963300f",
+      "marker": "MONGODB_ARTIFACTS_PASS",
+      "marker_present": true,
+      "module": "artifacts",
+      "rc": 0
+    },
+    {
+      "step": 2,
+      "log": "logs/mongodb-cases/full-20261018-042852/modules/full-2-upgrade.log",
+      "combined_output_sha256": "66c07754441e7a288c10d7ea871b8629db48660f01a2627c0db11ca23e8c30d9",
+      "failure_markers": 0,
+      "log_sha256": "0ec6210b854e63cf6b483198267de967a7376e059c7ffa48d70d0324379f2031",
+      "marker": "MONGODB_UPGRADE_PASS",
+      "marker_present": true,
+      "module": "upgrade",
+      "rc": 0
+    },
+    {
+      "step": 3,
+      "log": "logs/mongodb-cases/full-20261018-042852/modules/full-3-clean.log",
+      "combined_output_sha256": "5191b699c988fefdc95cdb2b7399d3c8d45882fbe807f488a18d1a9a1cd718a5",
+      "failure_markers": 0,
+      "log_sha256": "dc07450143eba3f6d67900f301181468e0ae7c3ec2ac7ce18f7465e0f07a55f3",
+      "marker": "MONGODB_CLEAN_VERIFY_PASS",
+      "marker_present": true,
+      "module": "clean",
+      "rc": 0
+    },
+    {
+      "step": 4,
+      "log": "logs/mongodb-cases/full-20261018-042852/modules/full-4-install.log",
+      "combined_output_sha256": "a5e05fa7fc5dc19808ba138c57fc15d99cffb9c13dd57448123d4d4b8c7374c5",
+      "failure_markers": 0,
+      "log_sha256": "7c09488f21c4bea2b2164e7df7828b9d18f3323c0547667642a7feebff1b669f",
+      "marker": "MONGODB_INSTALL_PASS",
+      "marker_present": true,
+      "module": "install",
+      "rc": 0
+    },
+    {
+      "step": 5,
+      "log": "logs/mongodb-cases/full-20261018-042852/modules/full-5-platform.log",
+      "combined_output_sha256": "8772bcda9f187432b689df2e020fb1d7d1bedf6d393ccdc9b915bd5d82dc4a1b",
+      "failure_markers": 0,
+      "log_sha256": "8772bcda9f187432b689df2e020fb1d7d1bedf6d393ccdc9b915bd5d82dc4a1b",
+      "marker": "MONGODB_PLATFORM_PASS",
+      "marker_present": true,
+      "module": "platform",
+      "rc": 0
+    },
+    {
+      "step": 6,
+      "log": "logs/mongodb-cases/full-20261018-042852/modules/full-6-preflight.log",
+      "combined_output_sha256": "15770a794716a65219f5b3385c9f52a9e51a033516106bccfffb0aa8e0369b2a",
+      "failure_markers": 0,
+      "log_sha256": "15770a794716a65219f5b3385c9f52a9e51a033516106bccfffb0aa8e0369b2a",
+      "marker": "MONGODB_PREFLIGHT_PASS",
+      "marker_present": true,
+      "module": "preflight",
+      "rc": 0
+    },
+    {
+      "step": 7,
+      "log": "logs/mongodb-cases/full-20261018-042852/modules/full-7-storage.log",
+      "combined_output_sha256": "0d5de28cab08b2eb0b802a12b154f7446bc619d545f39261401b952aab99ae50",
+      "failure_markers": 0,
+      "log_sha256": "0d5de28cab08b2eb0b802a12b154f7446bc619d545f39261401b952aab99ae50",
+      "marker": "MONGODB_STORAGE_PASS",
+      "marker_present": true,
+      "module": "storage",
+      "rc": 0
+    },
+    {
+      "step": 8,
+      "log": "logs/mongodb-cases/full-20261018-042852/modules/full-8-data.log",
+      "combined_output_sha256": "1f0c976ea96a5329484e30a7f656cb71e9d66199173c83d29c2908f2433b9501",
+      "failure_markers": 0,
+      "log_sha256": "1f0c976ea96a5329484e30a7f656cb71e9d66199173c83d29c2908f2433b9501",
+      "marker": "MONGODB_DATA_PASS",
+      "marker_present": true,
+      "module": "data",
+      "rc": 0
+    },
+    {
+      "step": 9,
+      "log": "logs/mongodb-cases/full-20261018-042852/modules/full-9-transactions.log",
+      "combined_output_sha256": "1b1fec2d695297936a0a0c7a673de8748b8a48661f31967f67cc8eeafe2b0367",
+      "failure_markers": 0,
+      "log_sha256": "1b1fec2d695297936a0a0c7a673de8748b8a48661f31967f67cc8eeafe2b0367",
+      "marker": "MONGODB_TRANSACTIONS_PASS",
+      "marker_present": true,
+      "module": "transactions",
+      "rc": 0
+    },
+    {
+      "step": 10,
+      "log": "logs/mongodb-cases/full-20261018-042852/modules/full-10-security.log",
+      "combined_output_sha256": "546dd3f25eac15d9cd5dfea8473c83c4db747d0b7967324f5dbb16e76bbe8d10",
+      "failure_markers": 0,
+      "log_sha256": "546dd3f25eac15d9cd5dfea8473c83c4db747d0b7967324f5dbb16e76bbe8d10",
+      "marker": "MONGODB_SECURITY_PASS",
+      "marker_present": true,
+      "module": "security",
+      "rc": 0
+    },
+    {
+      "step": 11,
+      "log": "logs/mongodb-cases/full-20261018-042852/modules/full-11-failover.log",
+      "combined_output_sha256": "74986b1b55148d9ab8ba71878aed81e04ceae818642c5b48acfe7782f5314a8b",
+      "failure_markers": 0,
+      "log_sha256": "74986b1b55148d9ab8ba71878aed81e04ceae818642c5b48acfe7782f5314a8b",
+      "marker": "MONGODB_FAILOVER_PASS",
+      "marker_present": true,
+      "module": "failover",
+      "rc": 0
+    },
+    {
+      "step": 12,
+      "log": "logs/mongodb-cases/full-20261018-042852/modules/full-12-quorum.log",
+      "combined_output_sha256": "d30f08c28f3a502c67d17f567fba8a2a01971cfcdc2ee695f4b76da763de1927",
+      "failure_markers": 0,
+      "log_sha256": "d30f08c28f3a502c67d17f567fba8a2a01971cfcdc2ee695f4b76da763de1927",
+      "marker": "MONGODB_QUORUM_PASS",
+      "marker_present": true,
+      "module": "quorum",
+      "rc": 0
+    },
+    {
+      "step": 13,
+      "log": "logs/mongodb-cases/full-20261018-042852/modules/full-13-rebuild.log",
+      "combined_output_sha256": "30bee49d002e61ac059ed014c5f0d1f9120b1acf47f7b5320372b120ff9ed956",
+      "failure_markers": 0,
+      "log_sha256": "30bee49d002e61ac059ed014c5f0d1f9120b1acf47f7b5320372b120ff9ed956",
+      "marker": "MONGODB_REBUILD_PASS",
+      "marker_present": true,
+      "module": "rebuild",
+      "rc": 0
+    },
+    {
+      "step": 14,
+      "log": "logs/mongodb-cases/full-20261018-042852/modules/full-14-maintenance.log",
+      "combined_output_sha256": "d352ad94513be828344bc7aec445a7cbc8b09260231805c5a309afd9fb9ec07d",
+      "failure_markers": 0,
+      "log_sha256": "d352ad94513be828344bc7aec445a7cbc8b09260231805c5a309afd9fb9ec07d",
+      "marker": "MONGODB_MAINTENANCE_PASS",
+      "marker_present": true,
+      "module": "maintenance",
+      "rc": 0
+    },
+    {
+      "step": 15,
+      "log": "logs/mongodb-cases/full-20261018-042852/modules/full-15-rotation.log",
+      "combined_output_sha256": "fe94142c1415f27bbb14a28b58967b9e6b15dbfe6f836ee99a7f144e7ab33d9b",
+      "failure_markers": 0,
+      "log_sha256": "fe94142c1415f27bbb14a28b58967b9e6b15dbfe6f836ee99a7f144e7ab33d9b",
+      "marker": "MONGODB_ROTATION_PASS",
+      "marker_present": true,
+      "module": "rotation",
+      "rc": 0
+    },
+    {
+      "step": 16,
+      "log": "logs/mongodb-cases/full-20261018-042852/modules/full-16-logical-backup.log",
+      "combined_output_sha256": "a2581c45be832b8968af812b78fc8f6ed3b46a87775dd7f5db5355d687e249dc",
+      "failure_markers": 0,
+      "log_sha256": "a2581c45be832b8968af812b78fc8f6ed3b46a87775dd7f5db5355d687e249dc",
+      "marker": "MONGODB_LOGICAL_BACKUP_PASS",
+      "marker_present": true,
+      "module": "logical-backup",
+      "rc": 0
+    },
+    {
+      "step": 17,
+      "log": "logs/mongodb-cases/full-20261018-042852/modules/full-17-logical-restore.log",
+      "combined_output_sha256": "dca6524d9d80f2c74dff2e7407fe1607fc515f239eb7c40fa4468f9263842ab6",
+      "failure_markers": 0,
+      "log_sha256": "dca6524d9d80f2c74dff2e7407fe1607fc515f239eb7c40fa4468f9263842ab6",
+      "marker": "MONGODB_LOGICAL_RESTORE_PASS",
+      "marker_present": true,
+      "module": "logical-restore",
+      "rc": 0
+    },
+    {
+      "step": 18,
+      "log": "logs/mongodb-cases/full-20261018-042852/modules/full-18-physical-backup.log",
+      "combined_output_sha256": "62cd02616858ab08403b1ae471e1b1e0550791426e5928b84b39d07d00f92626",
+      "failure_markers": 0,
+      "log_sha256": "62cd02616858ab08403b1ae471e1b1e0550791426e5928b84b39d07d00f92626",
+      "marker": "MONGODB_PHYSICAL_BACKUP_PASS",
+      "marker_present": true,
+      "module": "physical-backup",
+      "rc": 0
+    },
+    {
+      "step": 19,
+      "log": "logs/mongodb-cases/full-20261018-042852/modules/full-19-physical-restore.log",
+      "combined_output_sha256": "2e7b23841f4f2dace3c6bb27201aa5493383bdf593b9fc0612693246d65bfd44",
+      "failure_markers": 0,
+      "log_sha256": "2e7b23841f4f2dace3c6bb27201aa5493383bdf593b9fc0612693246d65bfd44",
+      "marker": "MONGODB_PHYSICAL_RESTORE_PASS",
+      "marker_present": true,
+      "module": "physical-restore",
+      "rc": 0
+    },
+    {
+      "step": 20,
+      "log": "logs/mongodb-cases/full-20261018-042852/modules/full-20-pitr.log",
+      "combined_output_sha256": "0caa9814f5c4df72656402bf144ec45aa700c2d816772e38fb7987911bfac86d",
+      "failure_markers": 0,
+      "log_sha256": "0caa9814f5c4df72656402bf144ec45aa700c2d816772e38fb7987911bfac86d",
+      "marker": "MONGODB_PITR_PASS",
+      "marker_present": true,
+      "module": "pitr",
+      "rc": 0
+    },
+    {
+      "step": 21,
+      "log": "logs/mongodb-cases/full-20261018-042852/modules/full-21-encryption.log",
+      "combined_output_sha256": "7438b259b1e5e30fd2318d3cc29b6862aa50547b0c4a7e23d9ce440059ed39ca",
+      "failure_markers": 0,
+      "log_sha256": "7438b259b1e5e30fd2318d3cc29b6862aa50547b0c4a7e23d9ce440059ed39ca",
+      "marker": "MONGODB_ENCRYPTION_PASS",
+      "marker_present": true,
+      "module": "encryption",
+      "rc": 0
+    },
+    {
+      "step": 22,
+      "log": "logs/mongodb-cases/full-20261018-042852/modules/full-22-backup-refusal.log",
+      "combined_output_sha256": "36d3bc198b76ec48befcc9b72513c455efe9bff0a39d182a94e9c06cd95cbb87",
+      "failure_markers": 0,
+      "log_sha256": "36d3bc198b76ec48befcc9b72513c455efe9bff0a39d182a94e9c06cd95cbb87",
+      "marker": "MONGODB_BACKUP_REFUSAL_PASS",
+      "marker_present": true,
+      "module": "backup-refusal",
+      "rc": 0
+    },
+    {
+      "step": 23,
+      "log": "logs/mongodb-cases/full-20261018-042852/modules/full-23-retention.log",
+      "combined_output_sha256": "57caf50ddadf2110d235bd1ebd958fece207d358b48d83e6452d2d4b958048cd",
+      "failure_markers": 0,
+      "log_sha256": "57caf50ddadf2110d235bd1ebd958fece207d358b48d83e6452d2d4b958048cd",
+      "marker": "MONGODB_RETENTION_PASS",
+      "marker_present": true,
+      "module": "retention",
+      "rc": 0
+    },
+    {
+      "step": 24,
+      "log": "logs/mongodb-cases/full-20261018-042852/modules/full-24-disaster-recovery.log",
+      "combined_output_sha256": "950f6a90b0c9c329bbd4618a784a96ab435fb5d34e53018d0811f0a2234a2b46",
+      "failure_markers": 0,
+      "log_sha256": "950f6a90b0c9c329bbd4618a784a96ab435fb5d34e53018d0811f0a2234a2b46",
+      "marker": "MONGODB_DISASTER_RECOVERY_PASS",
+      "marker_present": true,
+      "module": "disaster-recovery",
+      "rc": 0
+    },
+    {
+      "step": 25,
+      "log": "logs/mongodb-cases/full-20261018-042852/modules/full-25-network.log",
+      "combined_output_sha256": "0114d335dd4a2dd222aad207061c33b4aeb56298ca3e069bca5638835a1c60af",
+      "failure_markers": 0,
+      "log_sha256": "0114d335dd4a2dd222aad207061c33b4aeb56298ca3e069bca5638835a1c60af",
+      "marker": "MONGODB_NETWORK_PASS",
+      "marker_present": true,
+      "module": "network",
+      "rc": 0
+    },
+    {
+      "step": 26,
+      "log": "logs/mongodb-cases/full-20261018-042852/modules/full-26-sharding-install.log",
+      "combined_output_sha256": "5fad1eea4ca2badff0c81c7a8de81d6b7ed0655e05ccff9fc91116a2f8dc08c6",
+      "failure_markers": 0,
+      "log_sha256": "5fad1eea4ca2badff0c81c7a8de81d6b7ed0655e05ccff9fc91116a2f8dc08c6",
+      "marker": "MONGODB_SHARDING_INSTALL_PASS",
+      "marker_present": true,
+      "module": "sharding-install",
+      "rc": 0
+    },
+    {
+      "step": 27,
+      "log": "logs/mongodb-cases/full-20261018-042852/modules/full-27-sharding-data.log",
+      "combined_output_sha256": "fe4c08a180e85df751be96a5ac8fc97060bdc9e4c59975cd9ffbbb9e57ea4692",
+      "failure_markers": 0,
+      "log_sha256": "fe4c08a180e85df751be96a5ac8fc97060bdc9e4c59975cd9ffbbb9e57ea4692",
+      "marker": "MONGODB_SHARDING_DATA_PASS",
+      "marker_present": true,
+      "module": "sharding-data",
+      "rc": 0
+    },
+    {
+      "step": 28,
+      "log": "logs/mongodb-cases/full-20261018-042852/modules/full-28-sharding-failure.log",
+      "combined_output_sha256": "d666738b4ad00b52fabd73f2666276d9c03aee8008948bc396a7b226f8b53d67",
+      "failure_markers": 0,
+      "log_sha256": "d666738b4ad00b52fabd73f2666276d9c03aee8008948bc396a7b226f8b53d67",
+      "marker": "MONGODB_SHARDING_FAILURE_PASS",
+      "marker_present": true,
+      "module": "sharding-failure",
+      "rc": 0
+    },
+    {
+      "step": 29,
+      "log": "logs/mongodb-cases/full-20261018-042852/modules/full-29-sharding-scale.log",
+      "combined_output_sha256": "21ec0f6ae6088ac7062dd932f92985184c61e1541c9bbd7cd628293bb9af2592",
+      "failure_markers": 0,
+      "log_sha256": "21ec0f6ae6088ac7062dd932f92985184c61e1541c9bbd7cd628293bb9af2592",
+      "marker": "MONGODB_SHARDING_SCALE_PASS",
+      "marker_present": true,
+      "module": "sharding-scale",
+      "rc": 0
+    },
+    {
+      "step": 30,
+      "log": "logs/mongodb-cases/full-20261018-042852/modules/full-30-sharding-clean.log",
+      "combined_output_sha256": "bbc739df5e064c155fa03b4132d994298034743db2e4c9d08db6d4ef1b743c94",
+      "failure_markers": 0,
+      "log_sha256": "bbc739df5e064c155fa03b4132d994298034743db2e4c9d08db6d4ef1b743c94",
+      "marker": "MONGODB_SHARDING_CLEAN_PASS",
+      "marker_present": true,
+      "module": "sharding-clean",
+      "rc": 0
+    },
+    {
+      "step": 31,
+      "log": "logs/mongodb-cases/full-20261018-042852/modules/full-31-sharding-restore.log",
+      "combined_output_sha256": "260b01161e4ee992fb6b629d81309c2294edfb74a82614f889c0e1acb858f61a",
+      "failure_markers": 0,
+      "log_sha256": "260b01161e4ee992fb6b629d81309c2294edfb74a82614f889c0e1acb858f61a",
+      "marker": "MONGODB_SHARDING_RESTORE_PASS",
+      "marker_present": true,
+      "module": "sharding-restore",
+      "rc": 0
+    },
+    {
+      "step": 32,
+      "log": "logs/mongodb-cases/full-20261018-042852/modules/full-32-replica-scale.log",
+      "combined_output_sha256": "2353d54a08bc9d94a49b0a0bb1c38c127d0abc8983d63789862981ec9cc17fa7",
+      "failure_markers": 0,
+      "log_sha256": "2353d54a08bc9d94a49b0a0bb1c38c127d0abc8983d63789862981ec9cc17fa7",
+      "marker": "MONGODB_REPLICA_SCALE_PASS",
+      "marker_present": true,
+      "module": "replica-scale",
+      "rc": 0
+    },
+    {
+      "step": 33,
+      "log": "logs/mongodb-cases/full-20261018-042852/modules/full-33-capacity.log",
+      "combined_output_sha256": "fe5c2c0b9d2d55e029adfa07059cd9bcb34602351243119021cd84f539148d43",
+      "failure_markers": 0,
+      "log_sha256": "fe5c2c0b9d2d55e029adfa07059cd9bcb34602351243119021cd84f539148d43",
+      "marker": "MONGODB_CAPACITY_PASS",
+      "marker_present": true,
+      "module": "capacity",
+      "rc": 0
+    },
+    {
+      "step": 34,
+      "log": "logs/mongodb-cases/full-20261018-042852/modules/full-34-observability.log",
+      "combined_output_sha256": "bd4df1fab322a95faf9514bf44665e0d4f232342edfda766c4204ebd1d96bad4",
+      "failure_markers": 0,
+      "log_sha256": "bd4df1fab322a95faf9514bf44665e0d4f232342edfda766c4204ebd1d96bad4",
+      "marker": "MONGODB_OBSERVABILITY_PASS",
+      "marker_present": true,
+      "module": "observability",
+      "rc": 0
+    },
+    {
+      "step": 35,
+      "log": "logs/mongodb-cases/full-20261018-042852/modules/full-35-performance.log",
+      "combined_output_sha256": "5f5565807355719daf96e095e4bb184200a5a2a0f8f9b9b1f671c50ed109a3da",
+      "failure_markers": 0,
+      "log_sha256": "5f5565807355719daf96e095e4bb184200a5a2a0f8f9b9b1f671c50ed109a3da",
+      "marker": "MONGODB_PERFORMANCE_PASS",
+      "marker_present": true,
+      "module": "performance",
+      "rc": 0
+    },
+    {
+      "step": 36,
+      "log": "logs/mongodb-cases/full-20261018-042852/modules/full-36-stability.log",
+      "combined_output_sha256": "d149e2c6b3888b47be344097de2cdebdf8ba12fc38ffa52c11066f6f22219a17",
+      "failure_markers": 0,
+      "log_sha256": "d149e2c6b3888b47be344097de2cdebdf8ba12fc38ffa52c11066f6f22219a17",
+      "marker": "MONGODB_STABILITY_PASS",
+      "marker_present": true,
+      "module": "stability",
+      "rc": 0
+    },
+    {
+      "step": 37,
+      "log": "logs/mongodb-cases/full-20261018-042852/modules/full-37-rollback.log",
+      "combined_output_sha256": "9e879515390bd5aa0bf43c438a63df12afbf0b12d83074d816e47083460323d3",
+      "failure_markers": 0,
+      "log_sha256": "9e879515390bd5aa0bf43c438a63df12afbf0b12d83074d816e47083460323d3",
+      "marker": "MONGODB_ROLLBACK_PASS",
+      "marker_present": true,
+      "module": "rollback",
+      "rc": 0
+    },
+    {
+      "step": 38,
+      "log": "logs/mongodb-cases/full-20261018-042852/modules/full-38-idempotence.log",
+      "combined_output_sha256": "bc9fefd46c05c76e535f5427d135c43411cf38615c7d27a84438115975e98543",
+      "failure_markers": 0,
+      "log_sha256": "bc9fefd46c05c76e535f5427d135c43411cf38615c7d27a84438115975e98543",
+      "marker": "MONGODB_IDEMPOTENCE_PASS",
+      "marker_present": true,
+      "module": "idempotence",
+      "rc": 0
+    },
+    {
+      "step": 39,
+      "log": "logs/mongodb-cases/full-20261018-042852/modules/full-39-ownership.log",
+      "combined_output_sha256": "6aa987afa41629893d7b95b66148ce6bf53805a4d943fca0d5af380fbca2d971",
+      "failure_markers": 0,
+      "log_sha256": "6aa987afa41629893d7b95b66148ce6bf53805a4d943fca0d5af380fbca2d971",
+      "marker": "MONGODB_OWNERSHIP_PASS",
+      "marker_present": true,
+      "module": "ownership",
+      "rc": 0
+    },
+    {
+      "step": 40,
+      "log": "logs/mongodb-cases/full-20261018-042852/modules/full-40-cleanup.log",
+      "combined_output_sha256": "c7a094d1e278e7e39965a55c27a200a20cf9152cc4e3d758a1b6e00acd57aa0e",
+      "failure_markers": 0,
+      "log_sha256": "c7a094d1e278e7e39965a55c27a200a20cf9152cc4e3d758a1b6e00acd57aa0e",
+      "marker": "MONGODB_CLEANUP_PASS",
+      "marker_present": true,
+      "module": "cleanup",
+      "rc": 0
+    },
+    {
+      "step": 41,
+      "log": "logs/mongodb-cases/full-20261018-042852/modules/full-41-clean.log",
+      "combined_output_sha256": "09020b926d54ace30c3c6ac5b4c6fcb8c979adbd19c8430740fa6534cb057a31",
+      "failure_markers": 0,
+      "log_sha256": "f85ae8ba9b652c61bddc65786df6d0962c24b272406bed8a31ea0912bc886770",
+      "marker": "MONGODB_CLEAN_VERIFY_PASS",
+      "marker_present": true,
+      "module": "clean",
+      "rc": 0,
+      "stdout_recovery": "Reconstructed stdout from immutable combined log by separating 12 crictl missing-config stderr warnings; exact original runner SHA256 matched; stderr remains in first-run.log"
+    }
+  ],
+  "prerequisites": [
+    {
+      "case_id": "MONGODB-01",
+      "path": "logs/mongodb-cases/full-20261018-042852/executed-static-evidence.json",
+      "canonical_path": "tests/evidence/mongodb-static-20261015.json",
+      "sha256": "4f95175ad8812bf0952a85c830a68093a1dbe21ae9fb6736936a835c9c9200ec"
+    },
+    {
+      "case_id": "MONGODB-02",
+      "path": "logs/mongodb-cases/full-20261018-042852/executed-static-evidence.json",
+      "canonical_path": "tests/evidence/mongodb-static-20261015.json",
+      "sha256": "4f95175ad8812bf0952a85c830a68093a1dbe21ae9fb6736936a835c9c9200ec"
+    },
+    {
+      "case_id": "MONGODB-03",
+      "path": "logs/mongodb-cases/full-20261018-042852/executed-static-evidence.json",
+      "canonical_path": "tests/evidence/mongodb-static-20261015.json",
+      "sha256": "4f95175ad8812bf0952a85c830a68093a1dbe21ae9fb6736936a835c9c9200ec"
+    },
+    {
+      "case_id": "MONGODB-04",
+      "path": "tests/evidence/mongodb-artifacts-20261015.json",
+      "canonical_path": "tests/evidence/mongodb-artifacts-20261015.json",
+      "sha256": "e1d71eed53ee85f50da053064e85fd82d2caa2e2b0a92e88eb33c212a96d6874"
+    },
+    {
+      "case_id": "MONGODB-05",
+      "path": "tests/evidence/mongodb-platform-20261015.json",
+      "canonical_path": "tests/evidence/mongodb-platform-20261015.json",
+      "sha256": "a02a1f17bfb01f316fa49775845ea824bc0fdb15d3dde61069c38176a3d05aa3"
+    },
+    {
+      "case_id": "MONGODB-06",
+      "path": "tests/evidence/mongodb-preflight-20261015.json",
+      "canonical_path": "tests/evidence/mongodb-preflight-20261015.json",
+      "sha256": "e1f3a7de7ffce7412a4897fb1cf098e1735de89b47d33e545a9267e947eae13c"
+    },
+    {
+      "case_id": "MONGODB-07",
+      "path": "tests/evidence/mongodb-storage-20261015.json",
+      "canonical_path": "tests/evidence/mongodb-storage-20261015.json",
+      "sha256": "6518857b8571ce731bd1291ae271471d0a59731b0ba595f0b6517335d2e5cf22"
+    },
+    {
+      "case_id": "MONGODB-08",
+      "path": "tests/evidence/mongodb-install-20261015.json",
+      "canonical_path": "tests/evidence/mongodb-install-20261015.json",
+      "sha256": "b89f5bf2a5e384265a9ceea936a1cb607436046aa285db53de22a5b8ec794a4e"
+    },
+    {
+      "case_id": "MONGODB-09",
+      "path": "tests/evidence/mongodb-data-20261015.json",
+      "canonical_path": "tests/evidence/mongodb-data-20261015.json",
+      "sha256": "ccec69a64ed5f306ecbd6b0b2c345f7afbc19eda366550db98c52916f44dd4a7"
+    },
+    {
+      "case_id": "MONGODB-10",
+      "path": "tests/evidence/mongodb-transactions-20261015.json",
+      "canonical_path": "tests/evidence/mongodb-transactions-20261015.json",
+      "sha256": "fed34e12954b16c608f9005ad814e584079b2edd28d7a0b4bb82413336628cb8"
+    },
+    {
+      "case_id": "MONGODB-11",
+      "path": "tests/evidence/mongodb-failover-20261015.json",
+      "canonical_path": "tests/evidence/mongodb-failover-20261015.json",
+      "sha256": "e0bd1a86f68449cd55623eb6e619b385823b18981e9b936bddeacf0f2a2bfe61"
+    },
+    {
+      "case_id": "MONGODB-12",
+      "path": "tests/evidence/mongodb-quorum-20261015.json",
+      "canonical_path": "tests/evidence/mongodb-quorum-20261015.json",
+      "sha256": "ca7988b957ae32a4f5de9ec98c2b7ff1a33b8a7a48daf95cd35b8f0661dbbd34"
+    },
+    {
+      "case_id": "MONGODB-13",
+      "path": "tests/evidence/mongodb-rebuild-20261015.json",
+      "canonical_path": "tests/evidence/mongodb-rebuild-20261015.json",
+      "sha256": "216a625e3d2ef5e53dd5a9fc55467fd77f8b7a6829bba3c979ec33417c444ddb"
+    },
+    {
+      "case_id": "MONGODB-14",
+      "path": "tests/evidence/mongodb-maintenance-20261015.json",
+      "canonical_path": "tests/evidence/mongodb-maintenance-20261015.json",
+      "sha256": "dc13fe76f2a2e3d8151276e88b498db79c92cb32859b27964ecc4c907bed73fe"
+    },
+    {
+      "case_id": "MONGODB-15",
+      "path": "tests/evidence/mongodb-security-20261015.json",
+      "canonical_path": "tests/evidence/mongodb-security-20261015.json",
+      "sha256": "6b7a1ad11e712bca0077ad635022d81e546b0009e012336ebbc81a1e738e956c"
+    },
+    {
+      "case_id": "MONGODB-16",
+      "path": "tests/evidence/mongodb-rotation-20261016.json",
+      "canonical_path": "tests/evidence/mongodb-rotation-20261016.json",
+      "sha256": "3fbe4f622f476288fa098b9f802d4a406d4e1aa5449aa22f616613ec49abc7f0"
+    },
+    {
+      "case_id": "MONGODB-17",
+      "path": "tests/evidence/mongodb-encryption-20261016.json",
+      "canonical_path": "tests/evidence/mongodb-encryption-20261016.json",
+      "sha256": "7aacd37f789ba23bd93f6f9021c041415ece6229282417413d6febac4cbb0e8a"
+    },
+    {
+      "case_id": "MONGODB-18",
+      "path": "tests/evidence/mongodb-network-20261015.json",
+      "canonical_path": "tests/evidence/mongodb-network-20261015.json",
+      "sha256": "71dcba327eb27158f9e0b165d302dd436d27c196a29f8afd79fab68ae19d7ff3"
+    },
+    {
+      "case_id": "MONGODB-19",
+      "path": "tests/evidence/mongodb-logical-backup-20261015.json",
+      "canonical_path": "tests/evidence/mongodb-logical-backup-20261015.json",
+      "sha256": "3c50ae06d45718429e77f0b20c644b117694bc949f0e758d8f66948115b261b2"
+    },
+    {
+      "case_id": "MONGODB-20",
+      "path": "tests/evidence/mongodb-logical-restore-20261015.json",
+      "canonical_path": "tests/evidence/mongodb-logical-restore-20261015.json",
+      "sha256": "9e73f662cd4ab685b9915ca3d2eb41f9b8e24912d5a92fa8e44c5d3410e40ea4"
+    },
+    {
+      "case_id": "MONGODB-21",
+      "path": "tests/evidence/mongodb-physical-backup-20261015.json",
+      "canonical_path": "tests/evidence/mongodb-physical-backup-20261015.json",
+      "sha256": "4ce5ef78a540dceb51c669f5e11b24b066251638e84b505b8afe4d30aef51f3f"
+    },
+    {
+      "case_id": "MONGODB-22",
+      "path": "tests/evidence/mongodb-physical-restore-20261016.json",
+      "canonical_path": "tests/evidence/mongodb-physical-restore-20261016.json",
+      "sha256": "ab98a2cec00cd7afc8abc3e58db824d62a4557f7d3136083f860a5f8770cffb0"
+    },
+    {
+      "case_id": "MONGODB-23",
+      "path": "tests/evidence/mongodb-pitr-20261016.json",
+      "canonical_path": "tests/evidence/mongodb-pitr-20261016.json",
+      "sha256": "9ae3f213cec6618d8e6be33e7b1f8aa4cb8a1be74b594947114a7675f0349258"
+    },
+    {
+      "case_id": "MONGODB-24",
+      "path": "tests/evidence/mongodb-backup-refusal-20261016.json",
+      "canonical_path": "tests/evidence/mongodb-backup-refusal-20261016.json",
+      "sha256": "0e8b2e98b82b98d57b7941f817bc1ea9cf96d9e46cfa10617a1dfbb6516b1e0c"
+    },
+    {
+      "case_id": "MONGODB-25",
+      "path": "tests/evidence/mongodb-retention-20261016.json",
+      "canonical_path": "tests/evidence/mongodb-retention-20261016.json",
+      "sha256": "d4570e56474b1d08c09e512d1fa80addde800de7741fedbae677294a42a579f6"
+    },
+    {
+      "case_id": "MONGODB-26",
+      "path": "tests/evidence/mongodb-disaster-recovery-20261016.json",
+      "canonical_path": "tests/evidence/mongodb-disaster-recovery-20261016.json",
+      "sha256": "0e74cdc07403ba58d9c40203de68aa5ed550d51f4d6d41283e353043564e93c6"
+    },
+    {
+      "case_id": "MONGODB-27",
+      "path": "tests/evidence/mongodb-sharding-install-20261016.json",
+      "canonical_path": "tests/evidence/mongodb-sharding-install-20261016.json",
+      "sha256": "89f8de7e5c53d80deb2b8cb4cd26638825b1a87818641c6a4e3c4ec40b3afa99"
+    },
+    {
+      "case_id": "MONGODB-28",
+      "path": "tests/evidence/mongodb-sharding-data-20261016.json",
+      "canonical_path": "tests/evidence/mongodb-sharding-data-20261016.json",
+      "sha256": "d68e20625b166ddca2f81c1169768f71db2ff182a468935c4cb52b8d98ddc6eb"
+    },
+    {
+      "case_id": "MONGODB-29",
+      "path": "tests/evidence/mongodb-sharding-faults-20261016.json",
+      "canonical_path": "tests/evidence/mongodb-sharding-faults-20261016.json",
+      "sha256": "f101284d7c3bd36641f67a13777385500f72926c4f9fb93410858f968ceca7b3"
+    },
+    {
+      "case_id": "MONGODB-30",
+      "path": "tests/evidence/mongodb-sharding-scale-20261016.json",
+      "canonical_path": "tests/evidence/mongodb-sharding-scale-20261016.json",
+      "sha256": "6135e65eacd8a1c9049958549588e2b196b711be0743b76eea552a5e49249d5e"
+    },
+    {
+      "case_id": "MONGODB-31",
+      "path": "tests/evidence/mongodb-sharding-restore-20261016.json",
+      "canonical_path": "tests/evidence/mongodb-sharding-restore-20261016.json",
+      "sha256": "311fb54c4796c8118f1d039ce8842fc39cd7c00d960e7e3e08a62c84725984c4"
+    },
+    {
+      "case_id": "MONGODB-32",
+      "path": "tests/evidence/mongodb-replica-scale-20261016.json",
+      "canonical_path": "tests/evidence/mongodb-replica-scale-20261016.json",
+      "sha256": "bc17a2fc2eb3eeb39c1293f5230dcdb0602930693e242088417d806df2408378"
+    },
+    {
+      "case_id": "MONGODB-33",
+      "path": "tests/evidence/mongodb-capacity-20261016.json",
+      "canonical_path": "tests/evidence/mongodb-capacity-20261016.json",
+      "sha256": "f4809310c68fbf1d63c401c51cbd80ae2fc810cf9ef35df5ef5a67bf83b74d77"
+    },
+    {
+      "case_id": "MONGODB-34",
+      "path": "tests/evidence/mongodb-observability-20261016.json",
+      "canonical_path": "tests/evidence/mongodb-observability-20261016.json",
+      "sha256": "c6e8fedc47b52fa0108c327c1e5d2f0f2eb93d4bb53da5ffc1c9dd14a716fcee"
+    },
+    {
+      "case_id": "MONGODB-35",
+      "path": "tests/evidence/mongodb-performance-20261016.json",
+      "canonical_path": "tests/evidence/mongodb-performance-20261016.json",
+      "sha256": "0d56669a103ad08e107215c659bb2e9af35f99c36d7151f19dac58ebb1a0704d"
+    },
+    {
+      "case_id": "MONGODB-36",
+      "path": "tests/evidence/mongodb-stability-20261018.json",
+      "canonical_path": "tests/evidence/mongodb-stability-20261018.json",
+      "sha256": "452c0687cc65474a5fee7a448d49f81362d0c1713d0f441fca0238a8894389c4"
+    },
+    {
+      "case_id": "MONGODB-37",
+      "path": "tests/evidence/mongodb-upgrade-20261017.json",
+      "canonical_path": "tests/evidence/mongodb-upgrade-20261017.json",
+      "sha256": "f20d35a05832f85b04e2900c8beb688ea43dbbe7f8b7f0542b21924e9d53ea82"
+    },
+    {
+      "case_id": "MONGODB-38",
+      "path": "tests/evidence/mongodb-rollback-20261016.json",
+      "canonical_path": "tests/evidence/mongodb-rollback-20261016.json",
+      "sha256": "ba3f33fc730986ceed66da48fe3a3cd1b43efbd1f2bf58cad1146555658a5228"
+    },
+    {
+      "case_id": "MONGODB-39",
+      "path": "tests/evidence/mongodb-idempotence-20261015.json",
+      "canonical_path": "tests/evidence/mongodb-idempotence-20261015.json",
+      "sha256": "d3686528a6e76d32cd8c090027c9eb75b2450ff2bef48b25d1ee43af42627ab9"
+    },
+    {
+      "case_id": "MONGODB-40",
+      "path": "tests/evidence/mongodb-ownership-20261016.json",
+      "canonical_path": "tests/evidence/mongodb-ownership-20261016.json",
+      "sha256": "abd4ff46fc0250341f9cd3fb7973a90b1f636a0512cc86941d23707819441d76"
+    },
+    {
+      "case_id": "MONGODB-41",
+      "path": "tests/evidence/mongodb-cleanup-complete-20261017.json",
+      "canonical_path": "tests/evidence/mongodb-cleanup-complete-20261017.json",
+      "sha256": "22070e787f6c2372b97105600e89a39407236cc6a2918834f847551585cdef3e"
+    },
+    {
+      "case_id": "MONGODB-42",
+      "path": "tests/evidence/mongodb-documentation.json",
+      "canonical_path": "tests/evidence/mongodb-documentation.json",
+      "sha256": "56084774efa39511bb7ea475cb54b6a548ae8b85c8eb6db576b0b022e5310ef5"
+    }
+  ],
+  "result": "PASS: 41/41 runtime steps, 43/43 acceptance items, durable rc=0, zero failure markers, final LAB_CLEAN_VERIFY_PASS",
+  "post_acceptance_validation": {
+    "scope": "Acceptance accounting only; original executed matrix/static evidence remain archived and digest-bound; product, runtime plan and gates unchanged",
+    "log": "logs/mongodb-cases/full-20261018-042852/acceptance-validation.log",
+    "log_sha256": "2ec44bb800f704d49b5115a7b51510cbf923cb43422d75805cd1a14890efd9b3",
+    "rc": 0,
+    "tests": 29,
+    "current_matrix_sha256": "45b601f6bc4c5e89752f881a96198e206a48f0904690960a6dd86a388e722ebf",
+    "current_static_evidence_sha256": "0e38bae4eb7a174340f9f41df10dd5e9882370ce45fe7a7f889ea06213b4f9cb",
+    "boundary_log": "logs/mongodb-cases/full-20261018-042852/post-run-boundary.txt",
+    "boundary_log_sha256": "3f0ad7248d47b440ce0916e284b77162a27d8d22dacce8bb3aa9a6953429063d"
+  }
+}

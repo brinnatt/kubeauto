@@ -1,0 +1,44 @@
+{
+  "schema": 1,
+  "case": "LONGHORN-10",
+  "date": "2026-10-19",
+  "status": "pass",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-reclaim </dev/null",
+  "product_entry": "config.yml + kubecli setup longhorn-gate 09",
+  "rc": 0,
+  "durable_pid": 2335693,
+  "failure_markers": 0,
+  "success_marker": "LONGHORN_RECLAIM_PASS",
+  "scoped_clean_marker": "LONGHORN_RECLAIM_SCOPED_CLEAN_PASS",
+  "checks": {
+    "markers": [
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_RETAIN_REBIND_VERIFIED pv=pvc-0969edd3-7475-430f-b26d-0fc7f2d204f8 sha256=1e7b1b785af645da5a6aad141c6eb8f7f238080431a85e08b0663e3f6f8a743a",
+      "LONGHORN_BUSINESS_FIXTURES_CLEAN_PASS",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_RECLAIM_BUSINESS_PASS",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_FSYNC_REMOUNT_VERIFIED bytes=9437184 sha256=1e7b1b785af645da5a6aad141c6eb8f7f238080431a85e08b0663e3f6f8a743a replica_nodes=longhorn-node-165,longhorn-node-212,longhorn-node-238",
+      "LONGHORN_DELETE_POLICY_RECLAIM_VERIFIED volume=pvc-61d2379d-1468-4b53-9b55-d96fe111a286",
+      "LONGHORN_BUSINESS_FIXTURES_CLEAN_PASS",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_INSTALL_BUSINESS_PASS",
+      "LONGHORN_EXPECTED_PRODUCT_REFUSAL_VERIFIED",
+      "LONGHORN_EXPECTED_PRODUCT_REFUSAL_VERIFIED",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_RECLAIM_BUSINESS_PASS",
+      "LONGHORN_REGISTRY_TRANSPORT_CLEAN_PASS",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_RECLAIM_SCOPED_CLEAN_PASS",
+      "LONGHORN_RECLAIM_PASS"
+    ],
+    "healthy_core_and_storage_retained": true
+  },
+  "boundary": "Focused reclaim acceptance only; no other pending module or full delivery acceptance inferred. Frozen source records actual synchronized inputs.",
+  "files": {
+    "logs/longhorn-cases/reclaim-20261019-121613/durable-status.txt": "7546dacb8d70a63c69c9b9af1dbdbf436b2e851d2d50b2c34e0da775fbdad979",
+    "logs/longhorn-cases/reclaim-20261019-121613/frozen-source.txt": "e83f2a5d9f2c8b34982644a638ec642f5192aa5fbc55dee11f2546031dd0718e",
+    "logs/longhorn-cases/reclaim-20261019-121613/gate.log": "e7f823c7666636b06f0bdae1a454db00c50f081eebec66446ad43774efbcc027"
+  }
+}

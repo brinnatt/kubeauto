@@ -1,0 +1,1527 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Downloads</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width">
+  <meta name="description" content="Strimzi provides a way to run an Apache Kafka cluster on Kubernetes in various deployment configurations.">
+  <link rel="shortcut icon" type="image/png" href="/favicon.ico" >
+  <link rel="stylesheet" href="/assets/css/main.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.11.0/styles/default.min.css">
+  <!--load nunito font-->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700&display=swap">
+  <!-- Global site tag (gtag.js) - Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=UA-125249459-1"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+ 
+    gtag('config', 'UA-125249459-1');
+  </script>
+  <!-- kapa.ai AI search widget -->
+  <script
+    async
+    src="https://widget.kapa.ai/kapa-widget.bundle.js"
+    data-website-id="054efed9-adcb-49cd-bde9-3c5dfa2971c4"
+    data-project-name="Strimzi"
+    data-project-color="#182C46"
+    data-project-logo="https://strimzi.io/assets/images/strimzi-icon.svg"
+    data-launcher-button-height="6rem"
+    data-launcher-button-width="5.5rem"
+  ></script>
+</head>
+
+
+<body class="downloads">
+  <div class="nav-wrapper">
+  <div class="grid-wrapper">
+    <div class="width-12-12">
+      <input type="checkbox" id="checkbox" />
+      <nav id="main-nav" class="main-nav">
+  <div class="container">
+    <div class="logo-wrapper">
+      <a href="/"><img src="/assets/images/strimzi_logo.png" class="project-logo" title="Strimzi"></a>
+    </div>
+    <label class="nav-toggle" for="checkbox">
+      <i class="fa fa-bars"></i>
+    </label>
+    <div id="menu" class="menu">
+      <span>
+        <a href="/downloads/" class="active">Downloads</a>
+      </span>
+      <span>
+        <a href="/documentation/" class="">Documentation</a>
+      </span>
+      <span>
+        <a href="/#strimzi-users">Adopters</a>
+      </span>
+      <span>
+        <a href="/join-us/" class="">Join Us</a>
+      </span>
+      <span>
+        <a href="/resources/" class="">Resources</a>
+      </span>           
+      <span>
+        <a href="/blog/" class="">Blog</a>
+      </span>
+      <span>
+        <a href="https://github.com/strimzi" target="_blank"><i class="fab fa-github-alt"></i></a>
+      </span>
+      <span>
+        <a href="https://twitter.com/strimziio" target="_blank"><i class="fab fa-twitter"></i></a>
+      </span>
+      <span>
+        <a href="https://www.linkedin.com/company/strimzi" target="_blank"><i class="fab fa-linkedin"></i></a>
+      </span>
+      <span>
+        <a href="https://youtube.com/@strimzi" target="_blank"><i class="fab fa-youtube"></i></a>
+      </span>
+    </div>
+  </div>
+      </nav>
+    </div>
+  </div>
+</div>
+
+  <div class="site-content">
+    <div class="secondary-page-title-band">
+  <div class="pattern-wrapper-light">
+    <div class="component-slim grid-wrapper">
+      <div class="width-12-12">
+        <h1>Downloads</h1>
+        <h3>Strimzi releases are available for download on our GitHub. The release artifacts contain documentation and example YAML files for deployment on Kubernetes.</h3>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="component-slim download-release-band">
+  <div class="grid-wrapper">
+    <div class="width-12-12">
+      <h3>Latest Stable Releases</h3>
+    </div>
+
+      
+      <div class="width-6-12 width-12-12-m version-table">
+        <table class="tg">
+          <tr>
+            <th colspan="3">
+              <div class="version-name">
+                Strimzi Kafka Operator 1.3.1<span class="release-date"></span>
+              </div>
+            </th>
+          </tr>
+          <tr>
+            <td class="description">strimzi-1.3.1</td>
+            <td class="licence">AL 2.0</td>
+            <td class="links">
+              <a href="https://github.com/strimzi/strimzi-kafka-operator/releases/download/1.3.1/strimzi-1.3.1.tar.gz">tar.gz</a>&nbsp;&#124;&nbsp;
+              <a href="https://github.com/strimzi/strimzi-kafka-operator/releases/download/1.3.1/strimzi-1.3.1.zip">zip</a>
+            </td>
+          </tr>
+          <tr>
+            <td class="description">strimzi-cluster-operator-1.3.1</td>
+            <td class="licence">AL 2.0</td>
+            <td class="links">
+              <a href="https://github.com/strimzi/strimzi-kafka-operator/releases/download/1.3.1/strimzi-cluster-operator-1.3.1.yaml">yaml</a>
+            </td>
+          </tr>
+          <tr>
+            <td class="description">strimzi-kafka-operator-helm-3-chart-1.3.1</td>
+            <td class="licence">AL 2.0</td>
+            <td class="links">
+              <a href="https://github.com/strimzi/strimzi-kafka-operator/releases/download/1.3.1/strimzi-kafka-operator-helm-3-chart-1.3.1.tgz">tgz</a>
+            </td>
+          </tr>
+          <tr>
+            <td class="description">strimzi-topic-operator-1.3.1</td>
+            <td class="licence">AL 2.0</td>
+            <td class="links">
+              <a href="https://github.com/strimzi/strimzi-kafka-operator/releases/download/1.3.1/strimzi-topic-operator-1.3.1.yaml">yaml</a>
+            </td>
+          </tr>
+          <tr>
+            <td class="description">strimzi-user-operator-1.3.1</td>
+            <td class="licence">AL 2.0</td>
+            <td class="links">
+              <a href="https://github.com/strimzi/strimzi-kafka-operator/releases/download/1.3.1/strimzi-user-operator-1.3.1.yaml">yaml</a>
+            </td>
+          </tr>
+          <tr>
+            <td class="description">strimzi-crds-1.3.1</td>
+            <td class="licence">AL 2.0</td>
+            <td class="links">
+              <a href="https://github.com/strimzi/strimzi-kafka-operator/releases/download/1.3.1/strimzi-crds-1.3.1.yaml">yaml</a>
+            </td>
+          </tr>
+          <tr>
+            <td class="description">Source Code</td>
+            <td class="licence">AL 2.0</td>
+            <td class="links">
+              <a href="https://github.com/strimzi/strimzi-kafka-operator/archive/1.3.1.tar.gz">tar.gz</a>&nbsp;&#124;&nbsp;
+              <a href="https://github.com/strimzi/strimzi-kafka-operator/archive/1.3.1.zip">zip</a>
+            </td>
+          </tr>
+        </table>
+      </div>
+
+      
+      <div class="width-6-12 width-12-12-m version-table">
+        <table class="tg">
+          <tr>
+            <th colspan="3">
+              <div class="version-name">
+                Strimzi HTTP Bridge 1.2.1<span class="release-date"></span>
+              </div>
+            </th>
+          </tr>
+          <tr>
+            <td class="description">kafka-bridge-1.2.1</td>
+            <td class="licence">AL 2.0</td>
+            <td class="links">
+              <a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/download/1.2.1/kafka-bridge-1.2.1.tar.gz">tar.gz</a>&nbsp;&#124;&nbsp;
+              <a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/download/1.2.1/kafka-bridge-1.2.1.zip">zip</a>
+            </td>
+          </tr>
+          <tr>
+            <td class="description">Source Code</td>
+            <td class="licence">AL 2.0</td>
+            <td class="links">
+              <a href="https://github.com/strimzi/strimzi-kafka-bridge/archive/1.2.1.tar.gz">tar.gz</a>&nbsp;&#124;&nbsp;
+              <a href="https://github.com/strimzi/strimzi-kafka-bridge/archive/1.2.1.zip">zip</a>
+            </td>
+          </tr>
+        </table>
+      </div>
+
+    <div class="width-12-12">
+      <p>Full list of changes can be found under the <a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/1.3.1">1.3.1 release</a>.</p>
+      <p><strong>Upgrading from Strimzi 1.3.0? See the <a href="/documentation/">documentation</a> for upgrade instructions.</strong></p>
+      <p>The container images are available under the <a href="https://quay.io/organization/strimzi">Strimzi organization</a> in the Quay.io container registry.</p>
+      <p>For known security vulnerabilities and CVEs, see the <a href="/security/">security advisories</a> page.</p>
+    </div>
+  </div>
+</div>
+
+<div class="component-slim supported-versions-band" style="padding-top: 0">
+  <div class="grid-wrapper">
+    <div class="width-12-12">
+        <h3 id="supported-versions" style="margin-top: 0">Supported versions</h3>
+    </div>
+
+    <div class="width-12-12 width-12-12-m version-table">
+      <table class="tg">
+        <tr>
+          <th>
+            <div class="supported-component">
+              Operators<span class="release-date"></span>
+            </div>
+          </th>
+          <th>
+            <div class="supported-component">
+              Strimzi HTTP Bridge<span class="release-date"></span>
+            </div>
+          </th>
+          <th>
+            <div class="supported-component">
+              Strimzi OAuth<span class="release-date"></span>
+            </div>
+          </th>
+          <th>
+            <div class="supported-component">
+              Kafka versions<span class="release-date"></span>
+            </div>
+          </th>
+          <th>
+            <div class="supported-component">
+              Tested Kubernetes versions <sup><a href="#support-footnotes">1</a></sup><span class="release-date"></span>
+            </div>
+          </th>
+        </tr>
+
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/1.3.1">1.3.1</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/1.2.1">1.2.1</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.18.1">0.18.1</a></td>
+          <td class="version">4.2.0, 4.2.1, 4.2.2, 4.3.0, 4.3.1, 4.3.2</td>
+          <td class="version">1.32 - 1.37</td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/1.3.0">1.3.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/1.2.0">1.2.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.18.0">0.18.0</a></td>
+          <td class="version">4.2.0, 4.2.1, 4.2.2, 4.3.0, 4.3.1</td>
+          <td class="version">1.32 - 1.37</td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/1.2.0">1.2.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/1.1.0">1.1.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.18.0">0.18.0</a></td>
+          <td class="version">4.2.0, 4.2.1, 4.3.0, 4.3.1</td>
+          <td class="version">1.30 - 1.36</td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/1.1.0">1.1.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/1.0.0">1.0.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.17.1">0.17.1</a></td>
+          <td class="version">4.2.0, 4.2.1, 4.3.0</td>
+          <td class="version">1.30 - 1.36</td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/1.0.1">1.0.1</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/1.0.0">1.0.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.17.1">0.17.1</a></td>
+          <td class="version">4.1.0, 4.1.1, 4.1.2, 4.2.0</td>
+          <td class="version">1.30 - 1.36</td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/1.0.0">1.0.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/1.0.0">1.0.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.17.1">0.17.1</a></td>
+          <td class="version">4.1.0, 4.1.1, 4.1.2, 4.2.0</td>
+          <td class="version">1.30 - 1.36</td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.51.0">0.51.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.33.1">0.33.1</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.17.1">0.17.1</a></td>
+          <td class="version">4.1.0, 4.1.1, 4.2.0</td>
+          <td class="version">1.30 - 1.35</td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.50.1">0.50.1</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.33.1">0.33.1</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.17.1">0.17.1</a></td>
+          <td class="version">4.0.0, 4.0.1, 4.1.0, 4.1.1</td>
+          <td class="version">1.27 - 1.35</td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.50.0">0.50.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.33.1">0.33.1</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.17.1">0.17.1</a></td>
+          <td class="version">4.0.0, 4.0.1, 4.1.0, 4.1.1</td>
+          <td class="version">1.27 - 1.35</td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.49.1">0.49.1</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.33.1">0.33.1</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.17.1">0.17.1</a></td>
+          <td class="version">4.0.0, 4.0.1, 4.1.0, 4.1.1</td>
+          <td class="version">1.27 - 1.34</td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.49.0">0.49.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.33.1">0.33.1</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.17.1">0.17.1</a></td>
+          <td class="version">4.0.0, 4.0.1, 4.1.0, 4.1.1</td>
+          <td class="version">1.27 - 1.34</td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.48.0">0.48.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.33.1">0.33.1</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.17.0">0.17.0</a></td>
+          <td class="version">4.0.0, 4.1.0</td>
+          <td class="version">1.27 - 1.34</td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.47.0">0.47.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.32.0">0.32.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.16.2">0.16.2</a></td>
+          <td class="version">3.9.0, 3.9.1, 4.0.0</td>
+          <td class="version">1.25 - 1.33</td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.46.1">0.46.1</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.32.0">0.32.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.16.2">0.16.2</a></td>
+          <td class="version">3.9.0, 4.0.0</td>
+          <td class="version">1.25 - 1.33</td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.46.0">0.46.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.32.0">0.32.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.16.2">0.16.2</a></td>
+          <td class="version">3.9.0, 4.0.0</td>
+          <td class="version">1.25 - 1.33</td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.45.2">0.45.2</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.31.2">0.31.2</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.15.1">0.15.1</a></td>
+          <td class="version">3.8.0, 3.8.1, 3.9.0, 3.9.1, 3.9.2</td>
+          <td class="version">1.25 - 1.35</td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.45.1">0.45.1</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.31.2">0.31.2</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.15.1">0.15.1</a></td>
+          <td class="version">3.8.0, 3.8.1, 3.9.0, 3.9.1</td>
+          <td class="version">1.25 - 1.33</td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.45.0">0.45.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.31.1">0.31.1</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.15.0">0.15.0</a></td>
+          <td class="version">3.8.0, 3.8.1, 3.9.0</td>
+          <td class="version">1.25 - 1.31</td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.44.0">0.44.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.30.0">0.30.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.15.0">0.15.0</a></td>
+          <td class="version">3.7.0, 3.7.1, 3.8.0</td>
+          <td class="version">1.25 - 1.31</td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.43.0">0.43.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.30.0">0.30.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.15.0">0.15.0</a></td>
+          <td class="version">3.7.0, 3.7.1, 3.8.0</td>
+          <td class="version">1.23 - 1.31</td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.42.0">0.42.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.29.0">0.29.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.15.0">0.15.0</a></td>
+          <td class="version">3.6.0, 3.6.1, 3.6.2, 3.7.0, 3.7.1</td>
+          <td class="version">1.23 - 1.30</td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.41.0">0.41.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.28.0">0.28.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.15.0">0.15.0</a></td>
+          <td class="version">3.6.0, 3.6.1, 3.6.2, 3.7.0</td>
+          <td class="version">1.23 - 1.30</td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.40.0">0.40.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.28.0">0.28.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.15.0">0.15.0</a></td>
+          <td class="version">3.6.0, 3.6.1, 3.7.0</td>
+          <td class="version">1.23 - 1.29</td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.39.0">0.39.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.27.0">0.27.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.14.0">0.14.0</a></td>
+          <td class="version">3.5.0, 3.5.1, 3.5.2, 3.6.0, 3.6.1</td>
+          <td class="version">1.21 - 1.29</td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.38.0">0.38.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.27.0">0.27.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.14.0">0.14.0</a></td>
+          <td class="version">3.5.0, 3.5.1, 3.6.0</td>
+          <td class="version">1.21 - 1.28</td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.37.0">0.37.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.26.1">0.26.1</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.13.0">0.13.0</a></td>
+          <td class="version">3.4.0, 3.4.1, 3.5.0, 3.5.1</td>
+          <td class="version">1.21 - 1.28</td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.36.1">0.36.1</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.26.1">0.26.1</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.13.0">0.13.0</a></td>
+          <td class="version">3.4.0, 3.4.1, 3.5.0, 3.5.1</td>
+          <td class="version">1.21 - 1.27</td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.36.0">0.36.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.26.0">0.26.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.13.0">0.13.0</a></td>
+          <td class="version">3.4.0, 3.4.1, 3.5.0</td>
+          <td class="version">1.21 - 1.27</td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.35.1">0.35.1</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.25.0">0.25.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.12.0">0.12.0</a></td>
+          <td class="version">3.3.1, 3.3.2, 3.4.0</td>
+          <td class="version">1.19 - 1.27</td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.35.0">0.35.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.25.0">0.25.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.12.0">0.12.0</a></td>
+          <td class="version">3.3.1, 3.3.2, 3.4.0</td>
+          <td class="version">1.19 - 1.27</td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.34.0">0.34.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.25.0">0.25.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.12.0">0.12.0</a></td>
+          <td class="version">3.3.1, 3.3.2, 3.4.0</td>
+          <td class="version">1.19 - 1.26</td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.33.2">0.33.2</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.24.0">0.24.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.11.0">0.11.0</a></td>
+          <td class="version">3.2.0, 3.2.1, 3.2.3, 3.3.1, 3.3.2, 3.4.0</td>
+          <td class="version">1.19 - 1.26</td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.33.1">0.33.1</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.24.0">0.24.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.11.0">0.11.0</a></td>
+          <td class="version">3.2.0, 3.2.1, 3.2.3, 3.3.1, 3.3.2</td>
+          <td class="version">1.19 - 1.26</td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.33.0">0.33.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.24.0">0.24.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.11.0">0.11.0</a></td>
+          <td class="version">3.2.0, 3.2.1, 3.2.3, 3.3.1, 3.3.2</td>
+          <td class="version">1.19 - 1.26</td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.32.0">0.32.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.22.3">0.22.3</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.11.0">0.11.0</a></td>
+          <td class="version">3.2.0, 3.2.1, 3.2.3, 3.3.1</td>
+          <td class="version">1.19 - 1.25</td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.31.1">0.31.1</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.22.1">0.22.1</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.10.0">0.10.0</a></td>
+          <td class="version">3.1.0, 3.1.1, 3.1.2, 3.2.0, 3.2.1, 3.2.3</td>
+          <td class="version">1.16 - 1.25</td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.31.0">0.31.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.22.0">0.22.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.10.0">0.10.0</a></td>
+          <td class="version">3.1.0, 3.1.1, 3.2.0, 3.2.1</td>
+          <td class="version">1.16 - 1.25</td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.30.0">0.30.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.21.6">0.21.6</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.10.0">0.10.0</a></td>
+          <td class="version">3.1.0, 3.1.1, 3.2.0</td>
+          <td class="version">1.16 - 1.24</td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.29.0">0.29.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.21.5">0.21.5</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.10.0">0.10.0</a></td>
+          <td class="version">3.0.0, 3.0.1, 3.1.0, 3.1.1, 3.2.0</td>
+          <td class="version">1.16 - 1.24</td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.28.0">0.28.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.21.4">0.21.4</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.10.0">0.10.0</a></td>
+          <td class="version">3.0.0, 3.1.0</td>
+          <td class="version">1.16+ <sup><a href="#support-footnotes">3</a></sup></td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.27.1">0.27.1</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.21.3">0.21.3</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.9.0">0.9.0</a></td>
+          <td class="version">2.8.0, 2.8.1, 3.0.0</td>
+          <td class="version">1.16+ <sup><a href="#support-footnotes">3</a></sup></td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.27.0">0.27.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.21.2">0.21.2</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.9.0">0.9.0</a></td>
+          <td class="version">2.8.0, 2.8.1, 3.0.0</td>
+          <td class="version">1.16+ <sup><a href="#support-footnotes">3</a></sup></td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.26.1">0.26.1</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.21.0">0.21.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.9.0">0.9.0</a></td>
+          <td class="version">2.8.0, 2.8.1, 3.0.0</td>
+          <td class="version">1.16+ <sup><a href="#support-footnotes">3</a></sup></td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.26.0">0.26.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.20.3">0.20.3</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.9.0">0.9.0</a></td>
+          <td class="version">2.8.0, 2.8.1, 3.0.0</td>
+          <td class="version">1.16+ <sup><a href="#support-footnotes">3</a></sup></td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.25.0">0.25.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.20.2">0.20.2</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.8.1">0.8.1</a></td>
+          <td class="version">2.7.0, 2.7.1, 2.8.0</td>
+          <td class="version">1.16+ <sup><a href="#support-footnotes">3</a></sup></td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.24.0">0.24.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.20.1">0.20.1</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.8.1">0.8.1</a></td>
+          <td class="version">2.7.0, 2.7.1, 2.8.0</td>
+          <td class="version">1.16+ <sup><a href="#support-footnotes">3</a></sup></td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.23.0">0.23.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.19.0">0.19.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.7.2">0.7.2</a></td>
+          <td class="version">2.6.0, 2.6.1, 2.6.2, 2.7.0, 2.8.0</td>
+          <td class="version">1.16+ <sup><a href="#support-footnotes">3</a></sup></td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.22.1">0.22.1</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.19.0">0.19.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.7.1">0.7.1</a></td>
+          <td class="version">2.5.0, 2.5.1, 2.6.0, 2.6.1, 2.7.0</td>
+          <td class="version">1.16+ <sup><a href="#support-footnotes">2</a></sup></td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.22.0">0.22.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.19.0">0.19.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.7.1">0.7.1</a></td>
+          <td class="version">2.5.0, 2.5.1, 2.6.0, 2.6.1, 2.7.0</td>
+          <td class="version">1.16+ <sup><a href="#support-footnotes">2</a></sup></td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.21.1">0.21.1</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.19.0">0.19.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.6.1">0.6.1</a></td>
+          <td class="version">2.5.0, 2.5.1, 2.6.0, 2.7.0</td>
+          <td class="version">1.16+ <sup><a href="#support-footnotes">2</a></sup></td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.21.0">0.21.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.19.0">0.19.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.6.1">0.6.1</a></td>
+          <td class="version">2.5.0, 2.5.1, 2.6.0, 2.7.0</td>
+          <td class="version">1.16+ <sup><a href="#support-footnotes">2</a></sup></td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.20.1">0.20.1</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.19.0">0.19.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.6.1">0.6.1</a></td>
+          <td class="version">2.5.0, 2.5.1, 2.6.0</td>
+          <td class="version">1.11+ <sup><a href="#support-footnotes">2</a></sup></td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.20.0">0.20.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.19.0">0.19.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.6.1">0.6.1</a></td>
+          <td class="version">2.5.0, 2.5.1, 2.6.0</td>
+          <td class="version">1.11+ <sup><a href="#support-footnotes">2</a></sup></td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.19.0">0.19.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.18.0">0.18.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.5.0">0.5.0</a></td>
+          <td class="version">2.4.0, 2.4.1, 2.5.0</td>
+          <td class="version">1.11+ <sup><a href="#support-footnotes">2</a></sup></td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.18.0">0.18.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.16.0">0.16.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.5.0">0.5.0</a></td>
+          <td class="version">2.4.0, 2.4.1, 2.5.0</td>
+          <td class="version">1.11+ <sup><a href="#support-footnotes">2</a></sup></td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.17.0">0.17.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.15.2">0.15.2</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.3.0">0.3.0</a></td>
+          <td class="version">2.3.1, 2.4.0</td>
+          <td class="version">1.11+ <sup><a href="#support-footnotes">2</a></sup></td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.16.2">0.16.2</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.15.0">0.15.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.2.0">0.2.0</a></td>
+          <td class="version">2.3.1, 2.4.0</td>
+          <td class="version">1.11+ <sup><a href="#support-footnotes">2</a></sup></td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.16.1">0.16.1</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.15.0">0.15.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.2.0">0.2.0</a></td>
+          <td class="version">2.3.1, 2.4.0</td>
+          <td class="version">1.11+ <sup><a href="#support-footnotes">2</a></sup></td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.16.0">0.16.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.15.0">0.15.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.2.0">0.2.0</a></td>
+          <td class="version">2.3.1, 2.4.0</td>
+          <td class="version">1.11+ <sup><a href="#support-footnotes">2</a></sup></td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.15.0">0.15.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.15.0">0.15.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.1.0">0.1.0</a></td>
+          <td class="version">2.2.1, 2.3.0, 2.3.1</td>
+          <td class="version">1.11+ <sup><a href="#support-footnotes">2</a></sup></td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.14.0">0.14.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.14.0">0.14.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-oauth/releases/tag/0.1.0">0.1.0</a></td>
+          <td class="version">2.1.0, 2.1.1, 2.2.0, 2.2.1, 2.3.0</td>
+          <td class="version">1.11+ <sup><a href="#support-footnotes">2</a></sup></td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.13.0">0.13.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.13.0">0.13.0</a></td>
+          <td class="version">n/a</td>
+          <td class="version">2.1.0, 2.1.1, 2.2.0, 2.2.1, 2.3.0</td>
+          <td class="version">1.11+ <sup><a href="#support-footnotes">2</a></sup></td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.12.2">0.12.2</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.12.2">0.12.2</a></td>
+          <td class="version">n/a</td>
+          <td class="version">2.1.0, 2.1.1, 2.2.0, 2.2.1</td>
+          <td class="version">1.11+ <sup><a href="#support-footnotes">2</a></sup></td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.12.1">0.12.1</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.12.1">0.12.1</a></td>
+          <td class="version">n/a</td>
+          <td class="version">2.1.0, 2.1.1, 2.2.0, 2.2.1</td>
+          <td class="version">1.11+ <sup><a href="#support-footnotes">2</a></sup></td>
+        </tr>
+          
+        
+          
+        <tr>
+          <td class="description"><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.12.0">0.12.0</a></td>
+          <td class="version"><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.12.0">0.12.0</a></td>
+          <td class="version">n/a</td>
+          <td class="version">2.1.0, 2.1.1, 2.2.0, 2.2.1</td>
+          <td class="version">1.11+ <sup><a href="#support-footnotes">2</a></sup></td>
+        </tr>
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+          
+        
+      </table>
+
+    </div>
+
+    <div id="support-footnotes" class="width-12-12">
+      <p><sup>1</sup> The Strimzi release might work with newer and/or older Kubernetes versions. But it has not been officially tested with them when released.</p>
+      <p><sup>2</sup> Uses <code>v1beta1</code> version of the <code>apiextensions.k8s.io</code> API which is not supported on Kubernetes 1.22 and newer.</p>
+      <p><sup>3</sup> Uses <code>v1beta1</code> version of the <code>PodDisruptionBudget</code> API which is not supported on Kubernetes 1.25 and newer.</p>
+    </div>
+  </div>
+</div>
+
+<div class="component-slim download-archives-band">
+  <div class="grid-wrapper">
+    <div class="width-12-12">
+      
+        <h3>Downloads Archive</h3>
+      
+    </div>
+    <div class="width-6-12 width-12-12-m">
+      <h4>Strimzi Kafka Operators</h4>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/1.3.1">1.3.1</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/1.3.0">1.3.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/1.2.0">1.2.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/1.1.0">1.1.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/1.0.1">1.0.1</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/1.0.0">1.0.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.51.0">0.51.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.50.1">0.50.1</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.50.0">0.50.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.49.1">0.49.1</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.49.0">0.49.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.48.0">0.48.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.47.0">0.47.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.46.1">0.46.1</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.46.0">0.46.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.45.2">0.45.2</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.45.1">0.45.1</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.45.0">0.45.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.44.0">0.44.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.43.0">0.43.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.42.0">0.42.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.41.0">0.41.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.40.0">0.40.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.39.0">0.39.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.38.0">0.38.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.37.0">0.37.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.36.1">0.36.1</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.36.0">0.36.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.35.1">0.35.1</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.35.0">0.35.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.34.0">0.34.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.33.2">0.33.2</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.33.1">0.33.1</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.33.0">0.33.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.32.0">0.32.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.31.1">0.31.1</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.31.0">0.31.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.30.0">0.30.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.29.0">0.29.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.28.0">0.28.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.27.1">0.27.1</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.27.0">0.27.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.26.1">0.26.1</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.26.0">0.26.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.25.0">0.25.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.24.0">0.24.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.23.0">0.23.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.22.1">0.22.1</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.22.0">0.22.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.21.1">0.21.1</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.21.0">0.21.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.20.1">0.20.1</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.20.0">0.20.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.19.0">0.19.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.18.0">0.18.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.17.0">0.17.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.16.2">0.16.2</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.16.1">0.16.1</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.16.0">0.16.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.15.0">0.15.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.14.0">0.14.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.13.0">0.13.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.12.2">0.12.2</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.12.1">0.12.1</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.12.0">0.12.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.11.4">0.11.4</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.11.3">0.11.3</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.11.2">0.11.2</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.11.1">0.11.1</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.11.0">0.11.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.10.0">0.10.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.9.0">0.9.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.8.2">0.8.2</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.8.1">0.8.1</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.8.0">0.8.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.7.0">0.7.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.6.0">0.6.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.5.0">0.5.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.4.0">0.4.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.3.1">0.3.1</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.3.0">0.3.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.2.0">0.2.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-operator/releases/tag/0.1.0">0.1.0</a></li>
+          </ul>
+      
+    </div>
+    <div class="width-6-12 width-12-12-m">
+      <h4>Strimzi HTTP Bridge</h4>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/1.2.1">1.2.1</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/1.2.0">1.2.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/1.1.0">1.1.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/1.0.0">1.0.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.33.1">0.33.1</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.33.0">0.33.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.32.0">0.32.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.31.2">0.31.2</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.31.1">0.31.1</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.31.0">0.31.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.30.0">0.30.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.29.0">0.29.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.28.0">0.28.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.27.0">0.27.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.26.1">0.26.1</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.26.0">0.26.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.25.0">0.25.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.24.0">0.24.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.23.1">0.23.1</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.23.0">0.23.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.22.3">0.22.3</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.22.2">0.22.2</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.22.1">0.22.1</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.22.0">0.22.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.21.6">0.21.6</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.21.5">0.21.5</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.21.4">0.21.4</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.21.3">0.21.3</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.21.2">0.21.2</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.21.1">0.21.1</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.21.0">0.21.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.20.3">0.20.3</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.20.2">0.20.2</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.20.1">0.20.1</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.20.0">0.20.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.19.0">0.19.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.18.0">0.18.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.17.0">0.17.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.16.0">0.16.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.15.2">0.15.2</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.15.1">0.15.1</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.15.0">0.15.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.14.0">0.14.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.13.0">0.13.0</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.12.2">0.12.2</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.12.1">0.12.1</a></li>
+          </ul>
+      
+          <ul>
+            <li><a href="https://github.com/strimzi/strimzi-kafka-bridge/releases/tag/0.12.0">0.12.0</a></li>
+          </ul>
+      
+    </div>
+  </div>
+</div>
+
+
+  </div>
+
+  <div class="site-content project-footer">
+  <div class="grid-wrapper">
+    <div class="width-1-12"></div>
+    <div class="width-3-12 width-12-12-m justify-self-center align-self-center">
+      <div class="logo-wrapper">
+        <a href="/"><img src="/assets/images/strimzi_logo_alt.png" class="project-logo" title="Project Name"></a>
+      </div>
+    </div>
+    <div class="width-5-12 width-12-12-m justify-self-center align-self-center">
+      <p>Strimzi provides a way to run an Apache Kafka cluster on Kubernetes in various deployment configurations.</p>
+    </div>
+    <div class="width-2-12 width-12-12-m justify-self-center align-self-center">
+      <p>
+        <a href="https://github.com/strimzi"><i class="fab fa-github-alt"></i> Strimzi</a><br/>
+        <a href="https://twitter.com/strimziio"><i class="fab fa-twitter"></i> strimziio</a><br/>
+        <a href="https://www.linkedin.com/company/strimzi"><i class="fab fa-linkedin"></i> Strimzi</a><br/>
+        <a href="https://youtube.com/@strimzi"><i class="fab fa-youtube"></i> Strimzi</a>
+      </p>
+    </div>
+    <div class="width-1-12"></div>
+  </div>
+  <div class="grid-wrapper">
+    <div class="width-12-12 width-12-12-m justify-self-center align-self-center">
+      <br />
+      <p class="text-centered copyright-cncf">
+        Copyright &copy; Strimzi a Series of LF Projects, LLC<br />
+        For website terms of use, trademark policy and other project policies please see <a href="https://lfprojects.org/policies/">lfprojects.org/policies/</a>.
+      </p>
+    </div>
+  </div>
+</div>
+
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+<script type="text/javascript" src="/assets/javascript/mobile-nav.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.11.0/highlight.min.js"></script>
+<script>hljs.initHighlightingOnLoad();</script>
+
+
+  
+</body>
+
+</html>

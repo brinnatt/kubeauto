@@ -1,0 +1,189 @@
+Releases | Kubernetes
+Kubernetes
+Documentation
+Kubernetes Blog
+Training
+Careers
+Partners
+Community
+Versions
+Release Information
+v1.37
+v1.36
+v1.35
+v1.34
+v1.33
+English
+বাংলা (Bengali)
+中文 (Chinese)
+Français (French)
+Deutsch (German)
+हिन्दी (Hindi)
+Bahasa Indonesia (Indonesian)
+Italiano (Italian)
+日本語 (Japanese)
+한국어 (Korean)
+فارسی (Persian)
+Polski (Polish)
+Português (Portuguese)
+Русский (Russian)
+Español (Spanish)
+Українська (Ukrainian)
+Tiếng Việt (Vietnamese)
+
+
+
+
+Light
+
+
+Dark
+
+
+Auto
+ReleasesEnglish
+বাংলা (Bengali)
+中文 (Chinese)
+Français (French)
+Deutsch (German)
+हिन्दी (Hindi)
+Bahasa Indonesia (Indonesian)
+Italiano (Italian)
+日本語 (Japanese)
+한국어 (Korean)
+فارسی (Persian)
+Polski (Polish)
+Português (Portuguese)
+Русский (Russian)
+Español (Spanish)
+Українська (Ukrainian)
+Tiếng Việt (Vietnamese)
+Release History
+
+Download Kubernetes
+
+Kubernetes Release Cycle
+
+Patch Releases
+
+Release Managers
+
+Release Notes
+
+Version Skew Policy Edit this page
+ Create child page
+ Create an issue
+ Print entire section
+Release History
+The Kubernetes project maintains release branches for the most recent three minor releases
+(1.37, 1.36, 1.35).
+Kubernetes 1.19 and newer receive
+approximately 1 year of patch support.
+Kubernetes 1.18 and older received approximately 9 months of patch support.
+Kubernetes versions are expressed as x.y.z,
+where x is the major version, y is the minor version, and z is the patch version,
+following Semantic Versioning terminology.
+More information in the version skew policy document.
+Release History
+1.37Latest Release:1.37.1 (released: 2026-09-15)End of Life:2027-10-28Patch Releases:
+1.37.1
+Complete 1.37
+Schedule and
+Changelog
+View release details
+1.36Latest Release:1.36.5 (released: 2026-09-15)End of Life:2027-06-28Patch Releases:
+1.36.1,
+1.36.2,
+1.36.3,
+1.36.4,
+1.36.5
+Complete 1.36
+Schedule and
+Changelog
+View release details
+1.35Latest Release:1.35.9 (released: 2026-09-15)End of Life:2027-02-28Patch Releases:
+1.35.1,
+1.35.2,
+1.35.3,
+1.35.4,
+1.35.5,
+1.35.6,
+1.35.7,
+1.35.8,
+1.35.9
+Complete 1.35
+Schedule and
+Changelog
+View release details
+1.34Latest Release:1.34.12 (released: 2026-09-15)End of Life:2026-10-27Patch Releases:
+1.34.1,
+1.34.2,
+1.34.3,
+1.34.4,
+1.34.5,
+1.34.6,
+1.34.7,
+1.34.8,
+1.34.9,
+1.34.10,
+1.34.11,
+1.34.12
+Complete 1.34
+Schedule and
+Changelog
+View release details
+End-of-Life Releases
+Older Kubernetes releases that are no longer maintained are listed below.End-of-life releasesNote:These releases are no longer supported and do not receive security updates or bug fixes.
+If you are running one of these releases, the Kubernetes project strongly recommends upgrading to a supported version.
+Minor VersionFinal Patch ReleaseEnd Of Life DateNote
+1.331.33.132026-06-28
+1.321.32.132026-02-28
+1.311.31.142025-11-11
+1.301.30.142025-07-15
+1.291.29.142025-02-28
+1.281.28.152024-10-22
+1.271.27.162024-07-16
+1.261.26.152024-02-281.26.15 was released in March 2024 (after the EOL date) to pick up a new version of Go to address several Go CVEs
+1.251.25.162023-10-281.25.16 was released in November 2023 (after the EOL date) to fix CVE-2023-5528
+1.241.24.172023-07-281.24.17 was released in August 2023 (after the EOL date) to fix CVE-2023-3676 and CVE-2023-3955
+1.231.23.172023-02-28
+1.221.22.172022-12-081.22.17 was released in December 2022 (after the EOL date) to backport registry changes and fix two critical issues.
+1.211.21.142022-06-28
+1.201.20.152022-02-28
+1.191.19.162021-10-28
+1.181.18.202021-06-18Created to solve regression introduced in 1.18.19
+1.171.17.172021-01-13
+1.161.16.152020-09-02
+1.151.15.122020-05-06
+1.141.14.102019-12-11
+1.131.13.122019-10-15
+1.121.12.102019-07-08
+1.111.11.102019-05-01
+1.101.10.132019-02-13
+1.91.9.112018-09-29
+1.81.8.152018-07-12
+1.71.7.162018-04-04
+1.61.6.132017-11-23
+1.51.5.82017-10-01
+1.41.4.122017-04-21
+1.31.3.102016-11-01
+1.21.2.72016-10-23
+Upcoming Release
+Check out the schedule
+for the upcoming 1.38 Kubernetes release!Note:This schedule link may be temporarily unavailable during early release planning phases.
+Check the SIG Release repository for the latest updates.
+Helpful Resources
+Refer to the Kubernetes Release Team resources
+for key information on roles and the release process.
+
+
+
+
+
+
+© 2026 The Kubernetes Authors | Documentation Distributed under CC BY 4.0
+© 2026 Copyright © Kubernetes a Series of LF Projects, LLC. For website terms of use, trademark policy and other project policies please see https://lfprojects.org/policies/
+ICP license: 京ICP备17074266号-3
+
+
+

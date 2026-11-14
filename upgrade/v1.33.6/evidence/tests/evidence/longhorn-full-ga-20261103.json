@@ -1,0 +1,1262 @@
+{
+  "acceptance_method": "Original full run with verified continuation and unchanged completed stage evidence; historical failed attempts retained.",
+  "acceptance_summary": {
+    "full_stages": {
+      "passed": 56,
+      "planned": 56
+    },
+    "matrix": {
+      "applicable": 54,
+      "passed": 54
+    }
+  },
+  "accepted_full": {
+    "path": "logs/longhorn-full/run.rxqX1wMm/accepted-full.json",
+    "sha256": "42229768aafd3509a59c04f73cceb3cc6bf89ec3c3b14c6cfa493e028c2094f5"
+  },
+  "cases": {
+    "LONGHORN-01": {
+      "marker": "LONGHORN_STATIC_PASS",
+      "scope": "static",
+      "stages": {
+        "static": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/static.json",
+          "sha256": "66357ae94cd29e3cea166ca9d34e9e94c8ee7eea3c5b8c0d57187ac2e90a0405"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-02": {
+      "marker": "LONGHORN_DISABLED_PASS",
+      "scope": "disabled",
+      "stages": {
+        "disabled": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/disabled.json",
+          "sha256": "eb00874ced5840095272ad3b3e1567b57026f85333653d2282274d6112c64d74"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-03": {
+      "marker": "LONGHORN_OWNERSHIP_PASS",
+      "scope": "ownership",
+      "stages": {
+        "v1-ownership-v2-linked-acceptance": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v1-ownership-v2-linked-acceptance.json",
+          "sha256": "748df4e4ccfbe836b6eefdb8ae7e0b675edcd0d6bd1029768577a8e9916fc9ca"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-04": {
+      "marker": "LONGHORN_ARTIFACTS_PASS",
+      "scope": "artifacts",
+      "stages": {
+        "artifacts": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/artifacts.json",
+          "sha256": "33106f39370bac84cbd5d3f9aa8f9a00696af072f0b87360b61eeeb9d29d4e67"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-05": {
+      "marker": "LONGHORN_PLATFORM_PASS",
+      "scope": "platform",
+      "stages": {
+        "platform": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/platform.json",
+          "sha256": "15170506ef54686b6b15ca0c7a824906b26d9c6611c9e6efb051e044ecf3f95e"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-06": {
+      "marker": "LONGHORN_INSTALL_PASS",
+      "scope": "install",
+      "stages": {
+        "v1-ownership-v2-linked-acceptance": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v1-ownership-v2-linked-acceptance.json",
+          "sha256": "748df4e4ccfbe836b6eefdb8ae7e0b675edcd0d6bd1029768577a8e9916fc9ca"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-07": {
+      "marker": "LONGHORN_IDEMPOTENCE_PASS",
+      "scope": "idempotence",
+      "stages": {
+        "idempotence": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/idempotence.json",
+          "sha256": "2857829fdcc36a78334a8f9eba24560ebc90c302409ff616a2d1608d13b38ace"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-08": {
+      "marker": "LONGHORN_RWO_PASS",
+      "scope": "rwo",
+      "stages": {
+        "rwo": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/rwo.json",
+          "sha256": "c2e4bfad64ae26d5bf4dbc05013e0cbc951544b3db229d5594bc05ed3f7f732a"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-09": {
+      "marker": "LONGHORN_RWX_PASS",
+      "scope": "rwx",
+      "stages": {
+        "rwx": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/rwx.json",
+          "sha256": "4b919132342325352d985e9ef7c9c490a169540a3cf54012ed4be89130b596fd"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-10": {
+      "marker": "LONGHORN_RECLAIM_PASS",
+      "scope": "reclaim",
+      "stages": {
+        "reclaim": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/reclaim.json",
+          "sha256": "991c50a6f78f28e7cfd0290334c5a481487d57516273f4c04868e7b4d9f59cdd"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-11": {
+      "marker": "LONGHORN_EXPANSION_PASS",
+      "scope": "expansion",
+      "stages": {
+        "expansion": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/expansion.json",
+          "sha256": "d2020b0e0b07d0c3b0bf3a718c817cbd919d92056be04e3972cd036b1e93dd19"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-12": {
+      "marker": "LONGHORN_SNAPSHOT_PASS",
+      "scope": "snapshot",
+      "stages": {
+        "snapshot": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/snapshot.json",
+          "sha256": "096242b5df19467fe6c768391688d8e41bebe6870136ed668184596a3a29dcb8"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-13": {
+      "marker": "LONGHORN_CLONE_PASS",
+      "scope": "clone",
+      "stages": {
+        "clone": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/clone.json",
+          "sha256": "f85bc81d9e8afd4be60fcadc3fd548a5f3fce869884f95e67f26ed9a170b071c"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-14": {
+      "marker": "LONGHORN_BACKUP_PASS",
+      "scope": "backup",
+      "stages": {
+        "v1-backup-v2-data-protection": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v1-backup-v2-data-protection.json",
+          "sha256": "43eee056e6ef5405ce627c49287c8d1041e26cbf96a2600db3a72f4c4ab7c218"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-15": {
+      "marker": "LONGHORN_BACKUP_REFUSAL_PASS",
+      "scope": "backup-refusal",
+      "stages": {
+        "v1-backup-v2-data-protection": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v1-backup-v2-data-protection.json",
+          "sha256": "43eee056e6ef5405ce627c49287c8d1041e26cbf96a2600db3a72f4c4ab7c218"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-16": {
+      "marker": "LONGHORN_RECURRING_PASS",
+      "scope": "recurring",
+      "stages": {
+        "v1-backup-v2-data-protection": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v1-backup-v2-data-protection.json",
+          "sha256": "43eee056e6ef5405ce627c49287c8d1041e26cbf96a2600db3a72f4c4ab7c218"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-17": {
+      "marker": "LONGHORN_SYSTEM_RESTORE_PASS",
+      "scope": "system-restore",
+      "stages": {
+        "system-restore": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/system-restore.json",
+          "sha256": "3cb14743ae0737f8c92df09e620e64b7c2bff186d01394926bf84a528a1bcaf6"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-18": {
+      "marker": "LONGHORN_DISASTER_RECOVERY_PASS",
+      "scope": "disaster-recovery",
+      "stages": {
+        "disaster-recovery": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/disaster-recovery.json",
+          "sha256": "cd69351841c654d8749393c85670e26ebd70dedfa705cec4da7acffb3f57cdee"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-19": {
+      "marker": "LONGHORN_REPLICA_FAILURE_PASS",
+      "scope": "replica-failure",
+      "stages": {
+        "replica-failure": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/replica-failure.json",
+          "sha256": "85df0723cb28a437cfefd8e30992ab5001b319f4ad1b89f59c8fec8d700c2328"
+        },
+        "v1-operations-v2-platform-install": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v1-operations-v2-platform-install.json",
+          "sha256": "19e22b25552dc7dd559e5be69656a1adc99a099d0c6ca489d82328cf3a6e69ed"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-20": {
+      "marker": "LONGHORN_NODE_FAILURE_PASS",
+      "scope": "node-failure",
+      "stages": {
+        "v1-operations-v2-platform-install": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v1-operations-v2-platform-install.json",
+          "sha256": "19e22b25552dc7dd559e5be69656a1adc99a099d0c6ca489d82328cf3a6e69ed"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-21": {
+      "marker": "LONGHORN_ENGINE_FAILURE_PASS",
+      "scope": "engine-failure",
+      "stages": {
+        "engine-failure": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/engine-failure.json",
+          "sha256": "3eb1dc08181a5b94bad6d6466dbc688801f123262093eed6b04b2f6ef4a114af"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-22": {
+      "marker": "LONGHORN_NETWORK_FAILURE_PASS",
+      "scope": "network-failure",
+      "stages": {
+        "v1-operations-v2-platform-install": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v1-operations-v2-platform-install.json",
+          "sha256": "19e22b25552dc7dd559e5be69656a1adc99a099d0c6ca489d82328cf3a6e69ed"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-23": {
+      "marker": "LONGHORN_LAST_REPLICA_PASS",
+      "scope": "last-replica",
+      "stages": {
+        "v1-operations-v2-platform-install": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v1-operations-v2-platform-install.json",
+          "sha256": "19e22b25552dc7dd559e5be69656a1adc99a099d0c6ca489d82328cf3a6e69ed"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-24": {
+      "marker": "LONGHORN_MAINTENANCE_PASS",
+      "scope": "maintenance",
+      "stages": {
+        "v1-operations-v2-platform-install": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v1-operations-v2-platform-install.json",
+          "sha256": "19e22b25552dc7dd559e5be69656a1adc99a099d0c6ca489d82328cf3a6e69ed"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-25": {
+      "marker": "LONGHORN_NODE_LIFECYCLE_PASS",
+      "scope": "node-lifecycle",
+      "stages": {
+        "node-lifecycle": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/node-lifecycle.json",
+          "sha256": "d920cd3f9e933087015e725525db337f4a5be42f388438affc5cd179a01ddb7b"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-26": {
+      "marker": "LONGHORN_DISK_LIFECYCLE_GATE_PASS",
+      "scope": "disk-lifecycle",
+      "stages": {
+        "v1-operations-v2-platform-install": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v1-operations-v2-platform-install.json",
+          "sha256": "19e22b25552dc7dd559e5be69656a1adc99a099d0c6ca489d82328cf3a6e69ed"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-27": {
+      "marker": "LONGHORN_REPLICA_SCALE_PASS",
+      "scope": "replica-scale",
+      "stages": {
+        "replica-scale": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/replica-scale.json",
+          "sha256": "5d2abd32f8d456d6e30e63702104ef523b3033ccb54e3a396fec6d5e023a779a"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-28": {
+      "marker": "LONGHORN_CAPACITY_PASS",
+      "scope": "capacity",
+      "stages": {
+        "v1-operations-v2-platform-install": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v1-operations-v2-platform-install.json",
+          "sha256": "19e22b25552dc7dd559e5be69656a1adc99a099d0c6ca489d82328cf3a6e69ed"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-29": {
+      "marker": "LONGHORN_TRIM_PASS",
+      "scope": "trim",
+      "stages": {
+        "trim": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/trim.json",
+          "sha256": "e583e1592877c0350aed0049319268cdf836dea279b9d025ffa5355ae0a14c76"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-30": {
+      "marker": "LONGHORN_INTEGRITY_PASS",
+      "scope": "integrity",
+      "stages": {
+        "v1-operations-v2-platform-install": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v1-operations-v2-platform-install.json",
+          "sha256": "19e22b25552dc7dd559e5be69656a1adc99a099d0c6ca489d82328cf3a6e69ed"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-31": {
+      "marker": "LONGHORN_ENCRYPTION_PASS",
+      "scope": "encryption",
+      "stages": {
+        "encryption": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/encryption.json",
+          "sha256": "fbde37fd13e128e6e1241b6e1766d713851073139584a958e311e7c2b846a831"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-32": {
+      "marker": "LONGHORN_SECURITY_PASS",
+      "scope": "security",
+      "stages": {
+        "security": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/security.json",
+          "sha256": "0237b11c00aa0f097fc1d1699cedf2bf0a73aa2aa2af3880a232480936d010c7"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-33": {
+      "marker": "LONGHORN_NETWORK_POLICY_PASS",
+      "scope": "network-policy",
+      "stages": {
+        "network-policy": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/network-policy.json",
+          "sha256": "70b328f953a1caba563ee169ab75ae25ad7ba48924d4a8efcc3f645ccfb4412b"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-34": {
+      "marker": "LONGHORN_OBSERVABILITY_PASS",
+      "scope": "observability",
+      "stages": {
+        "observability": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/observability.json",
+          "sha256": "dff75726d82286d4ae515b7c932a163ceec9737effd95dc3a06baa82878d43d5"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-35": {
+      "marker": "LONGHORN_UPGRADE_PASS",
+      "scope": "upgrade",
+      "stages": {
+        "v1-upgrade-lifecycle": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v1-upgrade-lifecycle.json",
+          "sha256": "a5ee3d5a953023482cc6d869cc46734e53008daff44bcef40ea5ece8f04d4666"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-36": {
+      "marker": "LONGHORN_UPGRADE_RECOVERY_PASS",
+      "scope": "upgrade-recovery",
+      "stages": {
+        "v1-upgrade-lifecycle": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v1-upgrade-lifecycle.json",
+          "sha256": "a5ee3d5a953023482cc6d869cc46734e53008daff44bcef40ea5ece8f04d4666"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-37": {
+      "marker": "LONGHORN_MIDDLEWARE_PASS",
+      "scope": "middleware",
+      "stages": {
+        "v1-operations-v2-platform-install": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v1-operations-v2-platform-install.json",
+          "sha256": "19e22b25552dc7dd559e5be69656a1adc99a099d0c6ca489d82328cf3a6e69ed"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-38": {
+      "marker": "LONGHORN_PERFORMANCE_PASS",
+      "scope": "performance",
+      "stages": {
+        "performance": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/performance.json",
+          "sha256": "0aead1c528c7e4f10ec6bdbe447de1dbb0f821e0e6e467487410bc5ab1baf2af"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-39": {
+      "marker": "LONGHORN_STABILITY_PASS",
+      "scope": "stability",
+      "stages": {
+        "v1-stability-v2-observability": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v1-stability-v2-observability.json",
+          "sha256": "4eb6155826894e6bece96cc76d66771effe7e4633f2389875c9fd3a2d2e1a64a"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-40": {
+      "marker": "LONGHORN_UNINSTALL_PASS",
+      "scope": "uninstall",
+      "stages": {
+        "uninstall": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/uninstall.json",
+          "sha256": "d80d001f24453ae670f4678da2fa5d5974a06f2b9be343a35ddf11ac936d24b2"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-41": {
+      "marker": "LONGHORN_CLEANUP_PASS",
+      "scope": "cleanup",
+      "stages": {
+        "cleanup": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/cleanup.json",
+          "sha256": "c1c7b1af0b1cb82eb48db1d22827b47fc9fa67d35ebb3564ef3634b4f80baf20"
+        },
+        "cleanup-qualification": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/cleanup-qualification.json",
+          "sha256": "dafdcc7c2ba9e2f9f4cb05b198d5101f16705fc2a2cb07cef83c35a8d7732101"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-42": {
+      "marker": "LONGHORN_DOCUMENTATION_PASS",
+      "scope": "documentation",
+      "stages": {
+        "documentation": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/documentation.json",
+          "sha256": "d59d75ce412f865e1623b546d8a5177383ba9cbfa0bfbd842eacf6d71780cc16"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-43": {
+      "marker": "LONGHORN_DELIVERY_BRANCH_PASS",
+      "scope": "delivery",
+      "stages": {
+        "artifacts": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/artifacts.json",
+          "sha256": "33106f39370bac84cbd5d3f9aa8f9a00696af072f0b87360b61eeeb9d29d4e67"
+        },
+        "cleanup": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/cleanup.json",
+          "sha256": "c1c7b1af0b1cb82eb48db1d22827b47fc9fa67d35ebb3564ef3634b4f80baf20"
+        },
+        "cleanup-qualification": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/cleanup-qualification.json",
+          "sha256": "dafdcc7c2ba9e2f9f4cb05b198d5101f16705fc2a2cb07cef83c35a8d7732101"
+        },
+        "clone": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/clone.json",
+          "sha256": "f85bc81d9e8afd4be60fcadc3fd548a5f3fce869884f95e67f26ed9a170b071c"
+        },
+        "core": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/core.json",
+          "sha256": "2e90a501c76a562e78e449b1281a1fa294c4faa74b6acacd650339177cd2c623"
+        },
+        "core-smoke": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/core-smoke.json",
+          "sha256": "3a22c2fc197375f46e292afa1cb5741c801ace384bfb745a054f39f1adfdefbc"
+        },
+        "disabled": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/disabled.json",
+          "sha256": "eb00874ced5840095272ad3b3e1567b57026f85333653d2282274d6112c64d74"
+        },
+        "disaster-recovery": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/disaster-recovery.json",
+          "sha256": "cd69351841c654d8749393c85670e26ebd70dedfa705cec4da7acffb3f57cdee"
+        },
+        "disk-qualification": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/disk-qualification.json",
+          "sha256": "e02026c3ea9f139fcb3b09f044ea19a7bc15b41806e953c9fcbf95914c345c28"
+        },
+        "documentation": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/documentation.json",
+          "sha256": "d59d75ce412f865e1623b546d8a5177383ba9cbfa0bfbd842eacf6d71780cc16"
+        },
+        "encryption": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/encryption.json",
+          "sha256": "fbde37fd13e128e6e1241b6e1766d713851073139584a958e311e7c2b846a831"
+        },
+        "engine-failure": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/engine-failure.json",
+          "sha256": "3eb1dc08181a5b94bad6d6466dbc688801f123262093eed6b04b2f6ef4a114af"
+        },
+        "expansion": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/expansion.json",
+          "sha256": "d2020b0e0b07d0c3b0bf3a718c817cbd919d92056be04e3972cd036b1e93dd19"
+        },
+        "final-clean": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/final-clean.json",
+          "sha256": "acf5151cdd13fe3f495c717cc35d0a8cad44b34dfe64829d60698d9dc3fe122d"
+        },
+        "idempotence": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/idempotence.json",
+          "sha256": "2857829fdcc36a78334a8f9eba24560ebc90c302409ff616a2d1608d13b38ace"
+        },
+        "network-policy": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/network-policy.json",
+          "sha256": "70b328f953a1caba563ee169ab75ae25ad7ba48924d4a8efcc3f645ccfb4412b"
+        },
+        "node-lifecycle": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/node-lifecycle.json",
+          "sha256": "d920cd3f9e933087015e725525db337f4a5be42f388438affc5cd179a01ddb7b"
+        },
+        "observability": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/observability.json",
+          "sha256": "dff75726d82286d4ae515b7c932a163ceec9737effd95dc3a06baa82878d43d5"
+        },
+        "performance": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/performance.json",
+          "sha256": "0aead1c528c7e4f10ec6bdbe447de1dbb0f821e0e6e467487410bc5ab1baf2af"
+        },
+        "platform": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/platform.json",
+          "sha256": "15170506ef54686b6b15ca0c7a824906b26d9c6611c9e6efb051e044ecf3f95e"
+        },
+        "reclaim": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/reclaim.json",
+          "sha256": "991c50a6f78f28e7cfd0290334c5a481487d57516273f4c04868e7b4d9f59cdd"
+        },
+        "replica-failure": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/replica-failure.json",
+          "sha256": "85df0723cb28a437cfefd8e30992ab5001b319f4ad1b89f59c8fec8d700c2328"
+        },
+        "replica-scale": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/replica-scale.json",
+          "sha256": "5d2abd32f8d456d6e30e63702104ef523b3033ccb54e3a396fec6d5e023a779a"
+        },
+        "rwo": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/rwo.json",
+          "sha256": "c2e4bfad64ae26d5bf4dbc05013e0cbc951544b3db229d5594bc05ed3f7f732a"
+        },
+        "rwx": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/rwx.json",
+          "sha256": "4b919132342325352d985e9ef7c9c490a169540a3cf54012ed4be89130b596fd"
+        },
+        "security": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/security.json",
+          "sha256": "0237b11c00aa0f097fc1d1699cedf2bf0a73aa2aa2af3880a232480936d010c7"
+        },
+        "snapshot": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/snapshot.json",
+          "sha256": "096242b5df19467fe6c768391688d8e41bebe6870136ed668184596a3a29dcb8"
+        },
+        "static": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/static.json",
+          "sha256": "66357ae94cd29e3cea166ca9d34e9e94c8ee7eea3c5b8c0d57187ac2e90a0405"
+        },
+        "system-restore": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/system-restore.json",
+          "sha256": "3cb14743ae0737f8c92df09e620e64b7c2bff186d01394926bf84a528a1bcaf6"
+        },
+        "trim": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/trim.json",
+          "sha256": "e583e1592877c0350aed0049319268cdf836dea279b9d025ffa5355ae0a14c76"
+        },
+        "uninstall": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/uninstall.json",
+          "sha256": "d80d001f24453ae670f4678da2fa5d5974a06f2b9be343a35ddf11ac936d24b2"
+        },
+        "v1-backup-v2-data-protection": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v1-backup-v2-data-protection.json",
+          "sha256": "43eee056e6ef5405ce627c49287c8d1041e26cbf96a2600db3a72f4c4ab7c218"
+        },
+        "v1-operations-v2-platform-install": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v1-operations-v2-platform-install.json",
+          "sha256": "19e22b25552dc7dd559e5be69656a1adc99a099d0c6ca489d82328cf3a6e69ed"
+        },
+        "v1-ownership-v2-linked-acceptance": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v1-ownership-v2-linked-acceptance.json",
+          "sha256": "748df4e4ccfbe836b6eefdb8ae7e0b675edcd0d6bd1029768577a8e9916fc9ca"
+        },
+        "v1-stability-v2-observability": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v1-stability-v2-observability.json",
+          "sha256": "4eb6155826894e6bece96cc76d66771effe7e4633f2389875c9fd3a2d2e1a64a"
+        },
+        "v1-upgrade-lifecycle": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v1-upgrade-lifecycle.json",
+          "sha256": "a5ee3d5a953023482cc6d869cc46734e53008daff44bcef40ea5ece8f04d4666"
+        },
+        "v2-aio-install-qualification": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v2-aio-install-qualification.json",
+          "sha256": "f1e6088e6e531c8930a6e6f34efe4a835967e5e82ed62123df6f83b8261e5a2f"
+        },
+        "v2-backup-store-qualification": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v2-backup-store-qualification.json",
+          "sha256": "24ddd85baba5f994a4434772dc9b30310952307f4536ecf92024504d92288107"
+        },
+        "v2-cleanup": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v2-cleanup.json",
+          "sha256": "8d74a2e61ae35fe6597079459029d86589eaf4609bd97d1b7f44cd33e148f808"
+        },
+        "v2-cleanup-target": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v2-cleanup-target.json",
+          "sha256": "7a2745ac5afe2dd9a4c0f8e6b9190f20227e9dba6bb9d4c079c84031d72d49af"
+        },
+        "v2-clone": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v2-clone.json",
+          "sha256": "a81725695558118ea665ca6581fcfb3dcef18739ad452ff6b622452d4d38e14a"
+        },
+        "v2-core": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v2-core.json",
+          "sha256": "ec0546230eecf959e3db43b84e16d1846de2356b0fef867d64166b3d0576d0f8"
+        },
+        "v2-disk-lifecycle": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v2-disk-lifecycle.json",
+          "sha256": "8763d76f14571fae2982e9d4dab9517558b47fb1b93e4b434d59e73ad364f529"
+        },
+        "v2-dr-activation-qualification": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v2-dr-activation-qualification.json",
+          "sha256": "9e696a46af3ef95158afcdf83c3eb4b9879c32e8735c2fdc90b3c5d22332b937"
+        },
+        "v2-dr-standby-qualification": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v2-dr-standby-qualification.json",
+          "sha256": "7943e76a8418d79f49ff7c5d39a5c8fa7fa5ff3e46811c2176e44d819e8e4cea"
+        },
+        "v2-dr-store-qualification": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v2-dr-store-qualification.json",
+          "sha256": "40e1992f2549ee51f3f626716d9819256ac8da0bae7661a107773c40ae324eb5"
+        },
+        "v2-dr-target-core": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v2-dr-target-core.json",
+          "sha256": "b9d6c50e480713204c1e5786c92a6986cc68e852e6d4d1b67d5e5ee85368bb6a"
+        },
+        "v2-dr-target-install-qualification": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v2-dr-target-install-qualification.json",
+          "sha256": "c9d1280b25666052c9aa5588e333cd464f8b1650fbb0e2b16285e38c5376cd3c"
+        },
+        "v2-failure": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v2-failure.json",
+          "sha256": "779f9f56201755d99fa122629db2a4b3d505ad124396a3784c7c81ab1f279ed2"
+        },
+        "v2-host-qualification": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v2-host-qualification.json",
+          "sha256": "c3df2d86551baa66c23cab4f26e52e9859e0dc967f13662869f116cb394f0d3a"
+        },
+        "v2-interrupt-qualification": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v2-interrupt-qualification.json",
+          "sha256": "b1a0ec05d6162d9c4e569cc05f4a612b309df9e7cab14ef14b15de63ad37e1b5"
+        },
+        "v2-middleware": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v2-middleware.json",
+          "sha256": "6eed41f9b1334027f2c78be1087408a142e12a0204b06fbfea7c71723c340b9c"
+        },
+        "v2-recurring-selector-qualification": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v2-recurring-selector-qualification.json",
+          "sha256": "31a74878552b84ce3ce41e9599ce9c448914ac849836b265c829252484b90999"
+        },
+        "v2-resources-qualification": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v2-resources-qualification.json",
+          "sha256": "e577fa73d939bae2e30c9bccc9ae9eefc41e1d5c0bf76f6171335ab13af91ee8"
+        },
+        "v2-upgrade-lifecycle": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v2-upgrade-lifecycle.json",
+          "sha256": "dbb7ecd4e857f81f135efd31c36b497bd487897b5cb3b1b23c81f8e4a7710af2"
+        },
+        "v2-volumes": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v2-volumes.json",
+          "sha256": "9b8e90d93cbf16df9fa9144801c24df8a4978b9444e0e49e4f0322bdb7f24289"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-44": {
+      "marker": "LONGHORN_V2_PLATFORM_PASS",
+      "scope": "v2-platform",
+      "stages": {
+        "v1-operations-v2-platform-install": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v1-operations-v2-platform-install.json",
+          "sha256": "19e22b25552dc7dd559e5be69656a1adc99a099d0c6ca489d82328cf3a6e69ed"
+        },
+        "v2-host-qualification": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v2-host-qualification.json",
+          "sha256": "c3df2d86551baa66c23cab4f26e52e9859e0dc967f13662869f116cb394f0d3a"
+        },
+        "v2-resources-qualification": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v2-resources-qualification.json",
+          "sha256": "e577fa73d939bae2e30c9bccc9ae9eefc41e1d5c0bf76f6171335ab13af91ee8"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-45": {
+      "marker": "LONGHORN_V2_DISK_LIFECYCLE_PASS",
+      "scope": "v2-disk-lifecycle",
+      "stages": {
+        "v2-disk-lifecycle": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v2-disk-lifecycle.json",
+          "sha256": "8763d76f14571fae2982e9d4dab9517558b47fb1b93e4b434d59e73ad364f529"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-46": {
+      "marker": "LONGHORN_V2_INSTALL_PASS",
+      "scope": "v2-install",
+      "stages": {
+        "v1-operations-v2-platform-install": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v1-operations-v2-platform-install.json",
+          "sha256": "19e22b25552dc7dd559e5be69656a1adc99a099d0c6ca489d82328cf3a6e69ed"
+        },
+        "v2-aio-install-qualification": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v2-aio-install-qualification.json",
+          "sha256": "f1e6088e6e531c8930a6e6f34efe4a835967e5e82ed62123df6f83b8261e5a2f"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-47": {
+      "marker": "LONGHORN_V2_VOLUMES_PASS",
+      "scope": "v2-volumes",
+      "stages": {
+        "v2-volumes": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v2-volumes.json",
+          "sha256": "9b8e90d93cbf16df9fa9144801c24df8a4978b9444e0e49e4f0322bdb7f24289"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-48": {
+      "marker": "LONGHORN_V2_DATA_PROTECTION_PASS",
+      "scope": "v2-data-protection",
+      "stages": {
+        "v1-backup-v2-data-protection": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v1-backup-v2-data-protection.json",
+          "sha256": "43eee056e6ef5405ce627c49287c8d1041e26cbf96a2600db3a72f4c4ab7c218"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-49": {
+      "marker": "LONGHORN_V2_CLONE_PASS",
+      "scope": "v2-clone",
+      "stages": {
+        "v1-ownership-v2-linked-acceptance": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v1-ownership-v2-linked-acceptance.json",
+          "sha256": "748df4e4ccfbe836b6eefdb8ae7e0b675edcd0d6bd1029768577a8e9916fc9ca"
+        },
+        "v2-clone": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v2-clone.json",
+          "sha256": "a81725695558118ea665ca6581fcfb3dcef18739ad452ff6b622452d4d38e14a"
+        },
+        "v2-upgrade-lifecycle": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v2-upgrade-lifecycle.json",
+          "sha256": "dbb7ecd4e857f81f135efd31c36b497bd487897b5cb3b1b23c81f8e4a7710af2"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-50": {
+      "marker": "LONGHORN_V2_FAILURE_PASS",
+      "scope": "v2-failure",
+      "stages": {
+        "v2-failure": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v2-failure.json",
+          "sha256": "779f9f56201755d99fa122629db2a4b3d505ad124396a3784c7c81ab1f279ed2"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-51": {
+      "marker": "LONGHORN_V2_MAINTENANCE_PASS",
+      "scope": "v2-maintenance",
+      "stages": {
+        "v1-operations-v2-platform-install": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v1-operations-v2-platform-install.json",
+          "sha256": "19e22b25552dc7dd559e5be69656a1adc99a099d0c6ca489d82328cf3a6e69ed"
+        },
+        "v2-disk-lifecycle": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v2-disk-lifecycle.json",
+          "sha256": "8763d76f14571fae2982e9d4dab9517558b47fb1b93e4b434d59e73ad364f529"
+        },
+        "v2-failure": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v2-failure.json",
+          "sha256": "779f9f56201755d99fa122629db2a4b3d505ad124396a3784c7c81ab1f279ed2"
+        },
+        "v2-interrupt-qualification": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v2-interrupt-qualification.json",
+          "sha256": "b1a0ec05d6162d9c4e569cc05f4a612b309df9e7cab14ef14b15de63ad37e1b5"
+        },
+        "v2-middleware": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v2-middleware.json",
+          "sha256": "6eed41f9b1334027f2c78be1087408a142e12a0204b06fbfea7c71723c340b9c"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-52": {
+      "marker": "LONGHORN_V2_UPGRADE_PASS",
+      "scope": "v2-upgrade",
+      "stages": {
+        "v2-upgrade-lifecycle": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v2-upgrade-lifecycle.json",
+          "sha256": "dbb7ecd4e857f81f135efd31c36b497bd487897b5cb3b1b23c81f8e4a7710af2"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-53": {
+      "marker": "LONGHORN_V2_OBSERVABILITY_PERFORMANCE_PASS",
+      "scope": "v2-observability-performance",
+      "stages": {
+        "v1-stability-v2-observability": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v1-stability-v2-observability.json",
+          "sha256": "4eb6155826894e6bece96cc76d66771effe7e4633f2389875c9fd3a2d2e1a64a"
+        }
+      },
+      "status": "pass"
+    },
+    "LONGHORN-54": {
+      "marker": "LONGHORN_V2_CLEANUP_PASS",
+      "scope": "v2-cleanup",
+      "stages": {
+        "v2-cleanup": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v2-cleanup.json",
+          "sha256": "8d74a2e61ae35fe6597079459029d86589eaf4609bd97d1b7f44cd33e148f808"
+        },
+        "v2-cleanup-target": {
+          "path": "logs/longhorn-full/run.rxqX1wMm/accepted/v2-cleanup-target.json",
+          "sha256": "7a2745ac5afe2dd9a4c0f8e6b9190f20227e9dba6bb9d4c079c84031d72d49af"
+        }
+      },
+      "status": "pass"
+    }
+  },
+  "customer_signoff": "Not performed; this record establishes project GA technical readiness.",
+  "date": "2026-11-03",
+  "durable": {
+    "exit": 0,
+    "finalized": 0
+  },
+  "failure_markers": 0,
+  "frozen_inputs": {
+    "common/constants.py": "fd9ae3d998b72fc981570829531faaaee1a5c1a02420f3479ee6744e63246bd5",
+    "conf/config.yml": "be4e0410b159b2d701acb2f491c12685bee1da69a683a4cc79483161f741b4a6",
+    "controller/cluster/cli.py": "e5f0f081ea123d4b802c1b2b526e55f23dad3a010db0eddab3f9b7e09c42f3c1",
+    "docs/storage/longhorn/development-manual.md": "b1a0a23d4e7d2f9b61a1b214eb486f9a4def99ea726d6dfbd1a8d58817820073",
+    "docs/storage/longhorn/operations-manual.md": "9f41c1d6fa06ed3dffa82309d2fbd88c5d98e7142eeeeef32b89e86f4b390eaf",
+    "docs/storage/longhorn/technical-whitepaper.md": "ca20791b6af73fbbd99717f6df73e383a244aa3cbe098d929daedd824cfb53c1",
+    "roles/clean/tasks/clean_node.yml": "c78ebe8355d5b960544be1006b8f73c2efc9cf0b0ef797006b97a09c63d21c7c",
+    "roles/longhorn/defaults/main.yml": "3b8ba55f8d7cb4a9feb526560867d5e7fdc1e5eb0d4dc7df9c80a7b8a2b65b61",
+    "roles/longhorn/files/block-check.py": "c4f314c0a9af6b6744f798b5b060facf3caa1923290afedefea4814ee1014259",
+    "roles/longhorn/files/block-retire.py": "f76d9a2f6fc03569d79bf9b693ccf0a71234f3c0c0b6a3d847656687426cbca1",
+    "roles/longhorn/files/host-check.py": "7ca7645ecab510a2e56dce0252f32b680abab893cab778c4f53296633fafe573",
+    "roles/longhorn/files/images.json": "9879b430f8caab2d0ccb6ab72741b36dad073252de674c76d98ea8aad4107305",
+    "roles/longhorn/files/longhorn-1.12.0.tgz": "869bb20701b154473606f1e8967b27f34f2448a2dfe6eb8970f1cae6957384f5",
+    "roles/longhorn/files/longhorn-1.12.0.tgz.sha256": "d3eeb28bffc3069c7901eaf31142246af58b7ee13ea13a8380b70e24f39eb2ee",
+    "roles/longhorn/files/longhorn-1.12.1.tgz": "c8cf4b35a9d872cd5f7e44fd26d8e6ac7c2abaee42f4e2f2a0b0ebbc6e3a6116",
+    "roles/longhorn/files/longhorn-1.12.1.tgz.sha256": "e70e6e765c440b68328e0229852b73495ca3aed722a2b8e34826fe2280d16742",
+    "roles/longhorn/files/longhorn.py": "246651e1773dcf6bdcf5972f81a4b0aaee2dab9999997bfb11d5549fd166b578",
+    "roles/longhorn/files/snapshot-controller-8.6.0/SHA256SUMS": "34d0cfc4a2fa1558efac4f33aa538cdd2f8f5da3122f7cf817405c9da02c2fca",
+    "roles/longhorn/files/snapshot-controller-8.6.0/rbac-snapshot-controller.yaml": "99c4ac480b6c9563be0d85599e29cc7b68b25a82d250b0e789726727551e8d38",
+    "roles/longhorn/files/snapshot-controller-8.6.0/setup-snapshot-controller.yaml": "920166ff9001203e9def2504903eb196cd1da55d520f022807cc6ac82ef8eeba",
+    "roles/longhorn/files/snapshot-controller-8.6.0/snapshot.storage.k8s.io_volumesnapshotclasses.yaml": "75e6565aac2c0f2949ed13ea884bbaa388cb7be576b558b709cf1168e011828d",
+    "roles/longhorn/files/snapshot-controller-8.6.0/snapshot.storage.k8s.io_volumesnapshotcontents.yaml": "895a3c1e73b60f06a0deb566dd123d01bdf1b2efc5d5ff5231ff8bbcf42dafc7",
+    "roles/longhorn/files/snapshot-controller-8.6.0/snapshot.storage.k8s.io_volumesnapshots.yaml": "b032116e987fb1d7d93cec7d942833adeb9d95c9bdc7e00c10b280c2fe4a6c33",
+    "roles/longhorn/tasks/control.yml": "3fbe1c8ed8d879ba3b68a94c5df97a572f9557db4eecd5710d9635a438568d19",
+    "roles/longhorn/tasks/host.yml": "924651f94629f8fcf27415efad09a802ded959286af59ece659279840da8d7e2",
+    "roles/longhorn/tasks/main.yml": "f65fa78bf19800d1d5f388dfceeb7381504067baa8e2a3342e7e77a506911563",
+    "roles/longhorn/tasks/removal-guard.yml": "b02ba63652879c3dfa9ea68de3d762328c219ed3c55f18c1fd6deb6d309bf3c7",
+    "service/cluster/downloader.py": "b66cf3deea9bd07f64c734dfd54fe879c99cce6a10197dddd7287d983fc6d3e9",
+    "service/cluster/manager.py": "ee46940e2df424a0506491bf40c7e84df1dcb9aa2d58b67aca7bddf0d0efe1e8",
+    "tests/fixtures/longhorn-1.10.1.tgz": "a871d397e19cf3243949abd41fd294869f5c2c490014f29e71866a2433ec7fb9",
+    "tests/fixtures/longhorn-1.10.1.tgz.sha256": "aae5ba792d10cf6515bfbff4888f40037fd454dda1af22b9dfcd43ccb556d7e8",
+    "tests/fixtures/longhorn-full-cli.py": "766c7083c67a04d32e86295ed230556ffe000d20370fba91e1d8388960a8f59e",
+    "tests/fixtures/longhorn-im-revision-2-plan.json": "f953daa0490a77e2559f9f228421c03b60b92fe348b11848d06a1d6339876a89",
+    "tests/fixtures/longhorn-im-revision-3-plan.json": "fab919651093cccdbfd343614ca3ce2fe3536a0cb8f6fce06f9840bbe29f4afd",
+    "tests/fixtures/longhorn-lab-reviewed-ed237430.py.txt": "ed237430bac9b2c0286fc2005081cba200fb7e51da64bf89e5955d05568e632b",
+    "tests/fixtures/longhorn-manager-pending-pin-transition.json": "13679d65a1edf54bc80c30ae31054c43ff48d2a5ca05c3e1a7d13756b7a6367d",
+    "tests/fixtures/longhorn-manager-pin-transition.json": "8ce1667eba23df9ed6aa091e72f6a6e3ca0cc6279346669379ab14ce60ffe881",
+    "tests/fixtures/longhorn-systemrestore-reassert.patch": "dad3538aca5e8dfed94ae4e35d79f41c1bc8a1f42c5f690a6a5952d8791ca505",
+    "tests/fixtures/longhorn-v1-qualified-disks.txt": "fd50cf8ccb3b1f1e0b1efa0a1b7fc576cf84f897af6d5f59460cb87f412ee7c9",
+    "tests/fixtures/longhorn-v2-clone-reviewed-focussed-origin.py.txt": "2e4538be4b278d4a046431d5874529d94e8a2a12dd51c5139647fc2162c2aa70",
+    "tests/fixtures/longhorn-v2-dr-target-install-reviewed-af065aa3.py.txt": "af065aa3959afe9158f9ef3f766e383dc59a58753ff4b069c1dc082b635c10e3",
+    "tests/fixtures/longhorn-v2-install-reviewed-7afb928f.py.txt": "7afb928fe787e6df4e18ccf41b7e1107febb1e2f4c8df4acc0ebe153bd75b84d",
+    "tests/fixtures/longhorn-v2-linked-lifecycle-reviewed-65a880c6.py.txt": "65a880c6acadc60f1daa809fea57ff020765913d361cf4ea9b242488f92a1f0c",
+    "tests/fixtures/longhorn-v2-upgrade-baseline-reviewed-59b57a74.py.txt": "59b57a74d64624576feba26d155e336da8288b0c8ef4237852c7d06a18bd6d87",
+    "tests/fixtures/longhorn-v2-upgrade-baseline-reviewed-dcaef1fb.py.txt": "dcaef1fbd558cb9de9aedf8e0635ccf6a439a7151ca4f3541b9c9469023cfcdd",
+    "tests/helpers/kubernetes-production-smoke.sh": "c4014cdafd47af4b9128c012a291d6009dc0a3876e7fe340ab4ba63e2c9f93c0",
+    "tests/helpers/lab-wipe-nodes.sh": "d556681edb6c25baacc93047d6b90552c43c5a6a1c8c7d8f7557146f56465c81",
+    "tests/helpers/longhorn-accounts.py": "3647198a2e473b353045d59288a4d15f858b1ff70d5317eff83e6420c0d5e83b",
+    "tests/helpers/longhorn-artifacts.py": "2ad914b2436f5ebdb5b7ffa475749d39b49463c4386a91e96712c58948783306",
+    "tests/helpers/longhorn-backups.py": "725cad825ec4428e56c58e749f91fd6555f4bce0d39717868cd9aa7ded75157a",
+    "tests/helpers/longhorn-capacity.py": "167dab97d635842c11bb0580bc579fa2bff4556069acf8c8e3b8a124c2ba5fc8",
+    "tests/helpers/longhorn-capacity.sh": "d82423967d48afd2a10a09bc068c23e715d46181da763fcba5fb04137b7f80a7",
+    "tests/helpers/longhorn-cleanup.py": "fe547e6421b15b9ee708f218ed5347eaff6ee80f356f21006db362b798dc15ae",
+    "tests/helpers/longhorn-cleanup.sh": "e200d087a4289e22da2f85c8c30c283ba93adb8bd84e340318f1e2460069e94b",
+    "tests/helpers/longhorn-control-faults.py": "eb814351e39d10e847733c3594d5f31aa97235dc4fff744c84cd4de402fd1ce7",
+    "tests/helpers/longhorn-disk-lifecycle.py": "1c0eebc7dd6a146201b72c56c50df0998b48eff2cf2475ebfe2f5b31c6891476",
+    "tests/helpers/longhorn-disk-lifecycle.sh": "b562722e820ac04a921872900f52a3d3db04984c833de7947e3bbbeb99a44f7d",
+    "tests/helpers/longhorn-documentation.py": "eff4bfa2dc19e26c08f6330aa84846a100fb88f4b5bd8435ed9e604443edf37b",
+    "tests/helpers/longhorn-encryption.py": "1fd388b7a16ac85a8b47a410bdc228a76a7c91fb0734fb28104cf9d5155b1ec3",
+    "tests/helpers/longhorn-faults.py": "bf7298d8c0186dfe8fabf51838b8e09290122f3ff8c074dc4bfc4a4dc52ca38c",
+    "tests/helpers/longhorn-full-evidence.py": "57649ac00d782a6ed535af90803ef327ac0f23465c8eff777ef1a039cb8ac1c8",
+    "tests/helpers/longhorn-full-material.py": "f0ff846f46e8570a31fffa3b0dc21ffcdfcdb16682ea9b8a9db9efc1f4b297a0",
+    "tests/helpers/longhorn-full-stage-verify.py": "68ba2b95e2177923b22f591d59ce93e5dd6ba18869b9b9fa085b6643cfa5ecc1",
+    "tests/helpers/longhorn-full.sh": "c701d8e73a6acae38050542d3056448305cfa403246868e3d5a8b2e05060300b",
+    "tests/helpers/longhorn-im-revision-3-adopt.py": "a04b689d58b6eb3f61b56e341a85637faeebdd61369e2582bea55a031b754db7",
+    "tests/helpers/longhorn-im-revision-3-adopt.sh": "5b4276d5bb7d90369851dde4411e0c901306d7dee4a4e317854436d50bed6a12",
+    "tests/helpers/longhorn-im-revision-adopt.py": "722881e91b5d00f4394e1d7d8a664eccedb1cf5033c9ac02d023119e23a1a724",
+    "tests/helpers/longhorn-install-input-compatibility.py": "25afd6b2069abf2eae801f57377adddd6d80da132dd5f65cf6d035b98cf862f8",
+    "tests/helpers/longhorn-integrity.py": "cfc9b9870816a1cd21e5142d53db192e37d078f18e60b36f45c39e2f14d1854a",
+    "tests/helpers/longhorn-integrity.sh": "20b346bf3feaf73a8b96de985e246d389c8e10a4005338f293c2fb75f18a73c7",
+    "tests/helpers/longhorn-lab.py": "57caf5f4ae6873490b277ec615839776a39c5d1ece2069a2d97de12c05080615",
+    "tests/helpers/longhorn-last-replica.py": "18cc17b170335d46c8b83c701fe87dcfeea1803f3c4acd60bbe61faf0ab95365",
+    "tests/helpers/longhorn-last-replica.sh": "f80453b4a557b9d36869d92d4efc71d44f0eed62bf7fd2a39d3684634402a956",
+    "tests/helpers/longhorn-live.sh": "cd42696eac978607d8e09a8d8c7b63bc8e6d0a04e49c1f9e2993d5208862a775",
+    "tests/helpers/longhorn-maintenance.py": "ec75787424f189c33c3a3caf4fc0b180fc03f844696614b8ac09d64c223ec2b9",
+    "tests/helpers/longhorn-maintenance.sh": "fc16b918a0de7220df44b265ca4b5e0643072343b62868cc19e7b51f76babfa7",
+    "tests/helpers/longhorn-manager-adopt.py": "a3ba86eb29c52d950f60712b8f0e929ffbea24e5153ec8309c5a62ed7ebb3fde",
+    "tests/helpers/longhorn-network.py": "00a09ab173e54a430523bede4e7b42fd6427f4e43af43d52fb03d7232548c97a",
+    "tests/helpers/longhorn-node-failure.py": "eeecf18c07f37c7f99d6508ee9f2a5e7563508eb6c2463f4b468a1389351e6c7",
+    "tests/helpers/longhorn-node-failure.sh": "a9561590be40a296489916447c7d2d6abfca4a8d5a8ce6756ee30f96f40db739",
+    "tests/helpers/longhorn-node-lifecycle.py": "22ad555f13bb8979edcd1969b3a6e0623a11ccc6a23b51f44cec1a7dad769c68",
+    "tests/helpers/longhorn-node-lifecycle.sh": "75b75472a68895a74a4fb37db6796640dc84008525de5bd62f51968fbb5d1dca",
+    "tests/helpers/longhorn-node-local.py": "a5098cfe5f40a44e8e56e4461c72c4769631b10004eb8b494c63d530f0a92435",
+    "tests/helpers/longhorn-node-local.sh": "8b7df9cc3114a96bcf3e8f3fb3b1fa1270000d61604b0177478ea47a0fdc760b",
+    "tests/helpers/longhorn-ownership-aggregate.sh": "d0c475ea69aa9b7f15fdc60765dcdab3bfa9658b238cabfca8e0bf1538eedbc3",
+    "tests/helpers/longhorn-ownership-evidence.py": "eeb3a22fd56444a9e6890d7e24cc881423321062b911e717d7140a4705a89b69",
+    "tests/helpers/longhorn-ownership.py": "90e93f56d247034882f6b768089071708b46f6197c1168a328adba2e3b480799",
+    "tests/helpers/longhorn-parallel.py": "bb1c860b614c3b790583ce8d526e6a0ed85bfd703c50a20c0d2de768b6c01a28",
+    "tests/helpers/longhorn-parallel.sh": "9a1def2868ea9d1ed75e27f083b0fdfadedc460a208543203579fc97dec7ecb5",
+    "tests/helpers/longhorn-performance.py": "352989226e1a2909b6eea43741bc6bba74bcbfe4f3cf09e4b414d2e24322e564",
+    "tests/helpers/longhorn-platform.py": "bb6c58a7bfc3d9bf64b9c09c7f4119e566c2bf12cf000d31d3fc5d687624b3c8",
+    "tests/helpers/longhorn-platform.sh": "a4830d4b7895bf2147948698a448929c471902a35eae9f01d12ed91f9316b821",
+    "tests/helpers/longhorn-recurring-backup.py": "d5156c8c7d7ad4deba279d11024b52c8fb2d72df4e5c9581ad5e523e2b45be27",
+    "tests/helpers/longhorn-recurring-rotation.py": "ca58fe2fa2bacaedc899ae8178fde6fc4f0facdbb778b6137657b86786f46022",
+    "tests/helpers/longhorn-recurring.py": "ed866f4925896c272dc7e4154ea6b417495efdfbb3d030fd1630f58d900c79c1",
+    "tests/helpers/longhorn-runner.sh": "81ef546074a1bda5780109d7304945d1aaff41fe3dd34bac6d578a3870430351",
+    "tests/helpers/longhorn-security.py": "8e385d7d5f1798c854ebeab7ab05232912806777ca534e30e4a96dd8776afb1a",
+    "tests/helpers/longhorn-static-reuse.py": "cdc8d52c0091e3baaab5778472fdd429a45117b087cf86551b25bb2dc002a24d",
+    "tests/helpers/longhorn-static.sh": "f642a58fd4bd26551ed3996a6e520568624e115a12cc16fca227659c0ca48953",
+    "tests/helpers/longhorn-system-recovery.py": "5e77db8d7e0f2f94ca6374515745cc4a801fd6e745e29968c57749f72b530898",
+    "tests/helpers/longhorn-system-recovery.sh": "3970de7b01956a1fe9ff69725897989a5108fc438c370dc4ae0642d99e45ec73",
+    "tests/helpers/longhorn-trim.py": "6544f860c0529a1e4606a09c7bd4542defef03d23f22af4303d4e0420d7bfe36",
+    "tests/helpers/longhorn-uninstall.py": "9b4ee5abcd49ad96af644a90ac1c8943abae8d8ee3632f0b90a27c781dda6688",
+    "tests/helpers/longhorn-upgrade-lifecycle.py": "f52472c3b5abc77afdba2d0c7520a262d99ff843c2bb11f46e78dd028a2220ea",
+    "tests/helpers/longhorn-v1-disaster.py": "0c044290cbd0dd963a0033bd976d0edd34fdf31a20de9fb8de39b0ca2f61e30f",
+    "tests/helpers/longhorn-v1-disaster.sh": "d9950ccd04325d15f4bcd3ad34d86d1183b84dcdc7971f549bd716b4ab992d4d",
+    "tests/helpers/longhorn-v1-middleware.py": "41ac2e9379fb0ff2f7349d220622f2afae952d9a07f9de8ed7144000c9a2d94b",
+    "tests/helpers/longhorn-v1-middleware.sh": "98d019465fd64d01650253784f30aee9556c23a5a03d49ad69cd0f478ebaf562",
+    "tests/helpers/longhorn-v1-monitoring-cache.py": "2be55e1e12e709017bf359f504e627ed60223e5ca007d61b8edd4d7e9b1d3b1a",
+    "tests/helpers/longhorn-v1-observability.py": "0425c74c63a772c2981bd8abfeb30ec42195fe4f5f471bf5ee1a96684787a1ae",
+    "tests/helpers/longhorn-v1-observability.sh": "d351dbd27e83baadd4677408ebf94d32ca5053000361f40a35d42b1918fdfefb",
+    "tests/helpers/longhorn-v1-reboot-relay.py": "63abb83daefeb27207a75f9033b1375c4d21afefd47f796d4c41448915993cf5",
+    "tests/helpers/longhorn-v1-recovery-target.py": "8ae3cb4747e10246c9d1aeac7ad5352b52f1755b4b1c94ddf82c36583ea2cdbc",
+    "tests/helpers/longhorn-v1-stability.py": "8ec5501f9da8df0dc68d73de3e058f94d079dbd0121513981f72c701e2abae8f",
+    "tests/helpers/longhorn-v1-stability.sh": "e7536b1b056f5a8ef88eb2546158009f55274b2c506413efabe9f62a36bfa461",
+    "tests/helpers/longhorn-v1-storage-faults.py": "99434294b5bc4904d7f49e7d68e906455a6799aab9bc409a1aca8fb9dcce941f",
+    "tests/helpers/longhorn-v1-storage-faults.sh": "251fdbaab45c7b7fb1e570709a9d5fcf0631155ba71603bfa47a2ea0e1b7430e",
+    "tests/helpers/longhorn-v1-upgrade-lifecycle.py": "0343bfcd11143c935b7ee2cf4254d028b6c2ae1cc8c65efbce50f02185c5afb8",
+    "tests/helpers/longhorn-v1-upgrade-lifecycle.sh": "9563134cccc607500ef73515d9e7d5151ba3e56b0737c90118a08e9f28de3dd8",
+    "tests/helpers/longhorn-v1-upgrade-prepare.py": "4191680b65a817c9e2e0f8074bc1b57fe59faf2c8e9e665726a61a4c6c18831c",
+    "tests/helpers/longhorn-v2-all-replicas.py": "9626172705f683e962594ecf25f01234191e47e3049fa67a7f7a9609ee0a1174",
+    "tests/helpers/longhorn-v2-backups.py": "ed7ef743ac19f44c5c72662b6a77800c24a11386871005ef65b20a01a3134150",
+    "tests/helpers/longhorn-v2-backups.sh": "d17a13ee33d03d0f6efa66757c1841799ad511da4ad0453610d9dfb87a87eecf",
+    "tests/helpers/longhorn-v2-boot-fixture.py": "fba89b21c2ed2d39db1f7a8a21dfcc42bfba5c58779d90ddb0f45f58790bd583",
+    "tests/helpers/longhorn-v2-broken-restore.py": "be0b6c48abe7101c55cd82c45e09c5988a6f03a4fa51b55198b79943976f6fb2",
+    "tests/helpers/longhorn-v2-broken-restore.sh": "701a468ebfa4407baada353ec9407e438f0dc03228566d2d0111f108083899c2",
+    "tests/helpers/longhorn-v2-cleanup.py": "ffd11431f6a29fc656fcd55301eff6a1712bdf3293363ffb997dcb083d5c63c5",
+    "tests/helpers/longhorn-v2-cleanup.sh": "ec68d407adea03881a79719f515c9c13766a21c0ff5615b112cea41e5f959066",
+    "tests/helpers/longhorn-v2-clone-lifecycle.py": "3986abb3d42168279856bef9996d2b6b106d70690a51976bacf012c38dd55a05",
+    "tests/helpers/longhorn-v2-clone.py": "1399cc9d65cd74b67a5e1fc281f4bbaa42c2d5d1a8be156b1fdd36f7776a2026",
+    "tests/helpers/longhorn-v2-clones.py": "c988ad605ea26c9760f228e1eb7256942992e156d40fcb35c38377fb12226969",
+    "tests/helpers/longhorn-v2-coexist.py": "dea1469c504d64c8cf867e013030fb3933ff73d459d167ff5bc3dad581e998f8",
+    "tests/helpers/longhorn-v2-coexist.sh": "d2dc290c47828826b2df48061e943ab3552bc40de0e63ffdeb9171be4d289a9d",
+    "tests/helpers/longhorn-v2-control-faults.py": "6860cad735bebeb34a2c1c05beb28d61222ed54995ad06e1d926286528e61ab0",
+    "tests/helpers/longhorn-v2-core.py": "1183a3cf637eeead416050df545b67fe85eef95ab4e4322b56bb79173234b811",
+    "tests/helpers/longhorn-v2-core.sh": "4ffacbe2d16a2f66316f4e6d54147266bfaf035e0850f29cdf1cb9715e1f368d",
+    "tests/helpers/longhorn-v2-cpu-isolation.py": "7e92344f1f9aeaa0afb9672316400cfbc35ff37a2fb5e4ba7909a14baffb1120",
+    "tests/helpers/longhorn-v2-data-protection.sh": "94c6bf21a1ec2608f2f8bef3e5f006b015c6ef66cf5b25081629988c34575eef",
+    "tests/helpers/longhorn-v2-detached-backup.py": "10aaa4582fe557f9e6169603ba74c746dee30306963dc3a81efdfae2b767eb87",
+    "tests/helpers/longhorn-v2-detached-backup.sh": "2465bed3aa20b2ae34d026258598644ffad3d111c555ebaf583b743e1a3e53b2",
+    "tests/helpers/longhorn-v2-disaster.py": "4d28886ad0cdb3a7ef8f5634fea31d3cb843e45a6935fd0b02754f516e90f074",
+    "tests/helpers/longhorn-v2-disaster.sh": "48f97a622f57c440d4378935baed3be28ffe5c080c1963f0be0c1fc8d881828c",
+    "tests/helpers/longhorn-v2-disk-faults.py": "0f0cf44b8dd509718f9758fcd37c28a0f9c4daa2afa8e1b512f86b310256715e",
+    "tests/helpers/longhorn-v2-disk-lifecycle.py": "9d7e5883a7c0616dc75f3b72aacb4917997d9f6a33e88e44080be50d509920bd",
+    "tests/helpers/longhorn-v2-disk-lifecycle.sh": "1494a1b219271772cc7cd216b9c1289ba1243d177175ce0705f029c3b6c8479e",
+    "tests/helpers/longhorn-v2-dr-failover.py": "7a50c45b5faebbb3012f1dc4cd3491b090341387255d5b11d4631dbf72699197",
+    "tests/helpers/longhorn-v2-dr-failover.sh": "c9efc4b694b40fc9a3bdf97157d6dcb58f956b8ce97abf25a089a653518aa4c7",
+    "tests/helpers/longhorn-v2-dr-store.py": "ea3c0c893c5d69f72437dbf263a13c2a97002d653da1feef652c96630ca99600",
+    "tests/helpers/longhorn-v2-dr-store.sh": "b7721f474f24116448d70d539bc54fa24aca5ad92f4ab776aecbfb967a4954da",
+    "tests/helpers/longhorn-v2-dr-target-core-recovery.sh": "a3bbc8ace8562f7ce7e5d2529913f58a958813c0a6cff05364971f310c47dc7d",
+    "tests/helpers/longhorn-v2-dr-target-install.py": "90647ef395f9b4be858f409c8fc5c1d76abfb3f157536a312cbd5f98d174b4b4",
+    "tests/helpers/longhorn-v2-dr-target-install.sh": "c7162addd108602e6efa2204bef4d7ea52fdc7cc16eda075a3e92b0588e70569",
+    "tests/helpers/longhorn-v2-dr-target.py": "5a8112f03c9b7e5abca1a112441ccecc422b7130772954be546cc9048e84fe1a",
+    "tests/helpers/longhorn-v2-dr-target.sh": "11666b7513cc151359efbea7d7e24354ab69594bd3d0caacdfae44094610a25a",
+    "tests/helpers/longhorn-v2-failure.sh": "7ef1787f263856191c00c231903cba9a3767dcfda782a623bd0616b6cb626fef",
+    "tests/helpers/longhorn-v2-im-adopt.py": "fea0c08f5f55dd8e512dbbfad0f8abdc7fbdb479690dd9cd5358b2e88f787b11",
+    "tests/helpers/longhorn-v2-im-adopt.sh": "9c995c8276d138de6060acd45d40ec423a80b1492adac1151e42ea76e57c1e5d",
+    "tests/helpers/longhorn-v2-incomplete-clone.py": "c3d09a22bd8b7719fe754b89a9eacadae13446ee361d63f1f567b9ae21cb75d2",
+    "tests/helpers/longhorn-v2-incomplete-clone.sh": "4693b32a8f824441b68fafb62e147f220b5adc660c1d22e43dfdf77701a44d88",
+    "tests/helpers/longhorn-v2-install.py": "c6a9bf7a0755aad74ae2ed30381845fcfb1cf1f5364eb5d67307e017609feb2d",
+    "tests/helpers/longhorn-v2-install.sh": "1f9e196fe4b52169e6fccbe0947f2e937c020adb1f0c9b12b16d519c03b19fde",
+    "tests/helpers/longhorn-v2-integrity.py": "a1a450bd7184c2afdd9ceb8d612b6e0aec61c77b641b4d14225fec24e6411b81",
+    "tests/helpers/longhorn-v2-interrupt-manager.sh": "064c56500adb445765cebafe737c5e233dd52e37b523c9b6c5122c06841b2c4e",
+    "tests/helpers/longhorn-v2-interrupt.py": "1312f9dc46224a8636d172f575d247d449cb497e5283b74ebc0e803ed48037ee",
+    "tests/helpers/longhorn-v2-lab.py": "fddd887351d6e52472fe7d51fd753fa0aa949590765c59e7119a2ad677f4e368",
+    "tests/helpers/longhorn-v2-linked-acceptance.sh": "369ed31d01fd41e4674a7570ecc453c4d2bb846163690b172ad42de87baca1af",
+    "tests/helpers/longhorn-v2-linked-clones.py": "28d6045cb5473dd9595594c2a1ebede35ef534dfe2ad3b49f3e102fdf19d4408",
+    "tests/helpers/longhorn-v2-linked-clones.sh": "af51796e74e944d19ccf24ada03f0fb8a9509cf5ad25a100db7704e6e5bc419c",
+    "tests/helpers/longhorn-v2-linked-lifecycle.py": "ef1c4f6c6f7d2543750853586c13977ccacf60f0a0c3b17c04e4c993dfacb0c1",
+    "tests/helpers/longhorn-v2-linked-lifecycle.sh": "eefda8285474dff64803fe26ecd7aa5d46eb621d26919af3dbfc3ded861eb057",
+    "tests/helpers/longhorn-v2-live.sh": "58ee65040781a72727a83c1c0a9b6eeaca58ef8f04690883de1f0903fb8d8c70",
+    "tests/helpers/longhorn-v2-maintenance-drain.py": "c7a8b6f6868f544be2e43488593f13c43773e31b6b741054ad8d9ea0b5575ede",
+    "tests/helpers/longhorn-v2-maintenance-drain.sh": "9ef0645779ea0eec904628324e22fc119498a8f8a76bbb9e43ca8cba65c15d86",
+    "tests/helpers/longhorn-v2-maintenance.py": "7005a66b46d33c2e549429e371b487b9846354eb8ec669e21bbdd307d10fccb5",
+    "tests/helpers/longhorn-v2-manager-loss.py": "d55bf82c3661999acc8aa227bec4570bb6baf5b9d8e27d6d7c9e86b11574e816",
+    "tests/helpers/longhorn-v2-middleware.py": "be72587254e27f96199fdc9601010d8be8e3aebb17437a160a7308e34a2aa94e",
+    "tests/helpers/longhorn-v2-middleware.sh": "b0533843955d7daf624ead47a4858064b985e5c32265290cbbbd32699f2cb2d7",
+    "tests/helpers/longhorn-v2-monitoring.py": "d13ca826964c3390cf4960e186c77e0ad191d82c4ef56482fe12066ee45c337d",
+    "tests/helpers/longhorn-v2-monitoring.sh": "d27723f830c9338207b84ac55d6c23ece11a6c9ea97389ca73feceebfb5ee54e",
+    "tests/helpers/longhorn-v2-observability.py": "9844a72b7270a5aff62595736e1061131fc32369e2b53c270e6ce42745311907",
+    "tests/helpers/longhorn-v2-observability.sh": "666d106b2fced7cc675b30731be2cf7a9c2d3fb413d9ff1f8a449d2b7b0cacf3",
+    "tests/helpers/longhorn-v2-platform-install.py": "a0551ebfd5d3ca5c88b0b09644e5560c0d6dcff1903bafb0984a21fc7c3330c9",
+    "tests/helpers/longhorn-v2-pool.py": "e0218335083a2cfac76a1f0f1e7a21439f719b311bbc0cf34af191fd0fa0e680",
+    "tests/helpers/longhorn-v2-post-reboot-environment.py": "459f0e2d7b1c4fe749adea6056f600b63fddb1f183a2f8e917f71808ac5fe211",
+    "tests/helpers/longhorn-v2-post-reboot-environment.sh": "c9f38fd818c059f1242bdc3f0fee7972c52b0b86a78c2bb035665a6f7a0d88d8",
+    "tests/helpers/longhorn-v2-reboot-relay.py": "4565f7806acd19570aa26d72e89a32a666561d8e6ac9d91d2aa6bdfb9b611374",
+    "tests/helpers/longhorn-v2-recurring.py": "9298fb86641c83833ed6ed1aade65ff8b7e8684ef1b283213cdf21f6f266c92e",
+    "tests/helpers/longhorn-v2-recurring.sh": "26dfeac9de3421ab35e3fb101a47b8fccff221e991bc240e6d59597eae27b480",
+    "tests/helpers/longhorn-v2-resources-reboot.py": "65b2a7f0e379b02627cf7167bf7ab483f4053541e669f2055578b42f8173f4cd",
+    "tests/helpers/longhorn-v2-resources-reboot.sh": "352cc925dc6971e0c4d89d7138de14145c35a61d2e2a82ab0bdea23d2b15cf3c",
+    "tests/helpers/longhorn-v2-resources.py": "89320e5dbe79f46fae0ea6ed9b33c2ba565426cdbf3a6d1f92736b32babf6a89",
+    "tests/helpers/longhorn-v2-resources.sh": "e1ddd1c771a12a1491724ec82b7d18f5088442efda611323f476d40b2e7062c3",
+    "tests/helpers/longhorn-v2-runtime-continuation.py": "671431cae755adb2efbf17b2f3c7a15454bbb73fc232a060b27b35b319805901",
+    "tests/helpers/longhorn-v2-runtime-faults.py": "453101a0b0ee1350f692b0a08648bc4e99968637e8e24a320c89ff346e44f4ac",
+    "tests/helpers/longhorn-v2-runtime-resources.py": "0b4afdc8dad125c547606af4634dbe91ed0c7e87e4237a912aeaf894e99cf69c",
+    "tests/helpers/longhorn-v2-runtime-resources.sh": "bb09e6f8bb9511f5e51d3d8b79588b4b1e02847bb7dc5a5a0e4384a98dc09145",
+    "tests/helpers/longhorn-v2-systembackup.py": "b4eaa6d1f1d095c68c1a51fc50c4c5c3e41d9fc52578ed24adafce2207b1a78e",
+    "tests/helpers/longhorn-v2-systembackup.sh": "55dbc3538db84df4b00f37732aceadd4765eb40eb8f2efd3c8b0203f8f6f94fb",
+    "tests/helpers/longhorn-v2-systemrestore.py": "715dd533179b4d4ca9ce95f3b8846f371e3af6c3986696bb98a2159db070ca3e",
+    "tests/helpers/longhorn-v2-systemrestore.sh": "37f3b3fe81314b082b19ba3660531ad4a8ccf8e734e944cf789adab1608df6a9",
+    "tests/helpers/longhorn-v2-trim.py": "2bb327613f21b8f4908ab74b98f8c5290e4f18862b80084f6e68f035178bff6b",
+    "tests/helpers/longhorn-v2-upgrade-baseline.py": "30a35db6b0929ab721b4d59fc370fad857c1ad1051127622101b3bc6fd957f2e",
+    "tests/helpers/longhorn-v2-upgrade-lifecycle.sh": "60b2ec0f6491ba1f06027923ba3d2e0330b34d70b3fa8f14aa5ddea2fd125e5c",
+    "tests/helpers/longhorn-v2-upgrade-prepare.py": "f4d734f0958e04f183d4fdbd64010174f5703f02fb3f3c205e7bf908ae04b242",
+    "tests/helpers/longhorn-v2-volumes.sh": "58d452f82920254bcf6c70355231597c48a29f46a41c41a75a8e1cbb0c4e6ec4",
+    "tests/helpers/run-durable-gate.sh": "352244f3c876f5f9626c0c21f574de3aecb61642e0be10324623b15b6b9b1843",
+    "tests/longhorn-test-matrix.yaml": "502b4ca2b4abf37f653f9de2142b421177d6d81100b45b292ec8993495cf3e64",
+    "tests/run_enterprise_regression.sh": "388e6b90784bd5a95ad7ce10c4309d9afcb042d7f6caae4ecf481101708e3895",
+    "tests/unit/test_longhorn_accounts.py": "6f01de33a85ce93405fbcc09dfdacbc587ca4e9c8ca35c895c4bca8ef9ac7d70",
+    "tests/unit/test_longhorn_backup_refusal.py": "59002ee9166cda7849e73dd627a382e7adcc24f56f183bdb9f66c62f6f38853f",
+    "tests/unit/test_longhorn_block_retirement.py": "5dab918b606fdf7f46dcca901d6a05694cc9c9bc21b461468b9d014ef111abd7",
+    "tests/unit/test_longhorn_capacity.py": "2fa27b8ef6049acf963b8af3492f1d0abcac4e79b990228374e703d85c166ff1",
+    "tests/unit/test_longhorn_cleanup.py": "f5bba053ec9659831c94431c9f24d283eb9615b9c09253f36bd9805f669f0f09",
+    "tests/unit/test_longhorn_control_faults.py": "8a56ee0e6f36e475504526a6abb4d8135e38519cd6f781d8b260b15997f42734",
+    "tests/unit/test_longhorn_cpu_isolation_policy.py": "d76f548ad2777f753db5dc743eb733b341bae03b7e99c941031328ea2667154c",
+    "tests/unit/test_longhorn_delivery.py": "8b048f2146216c48c3a26a7f173b7cec5dbf70d72423848e3ce213ba7a7ad684",
+    "tests/unit/test_longhorn_disk_lifecycle.py": "924f6509cd47c1f47b0cd5296e4eb8798189ec09f3c08723e8fe56ab364cfd8f",
+    "tests/unit/test_longhorn_disk_lifecycle_shell.py": "502a1c4257624ecac83c1c7e6744dcc6e63b9685c33785a43f849ac4888635c7",
+    "tests/unit/test_longhorn_documentation.py": "bc04cda5d17e4c3025a57343902e12a16ea3a3eae3198c192da2bc920ec2cbc6",
+    "tests/unit/test_longhorn_encryption.py": "5a1c7d1ae691f37983a206d7cf01903b4a1fbb54dd0a5af1f359926b8bbe6d31",
+    "tests/unit/test_longhorn_faults.py": "45a0beb5ce41cff61681ac95adb45a3447371e70192c00822a3f5775bc17feaf",
+    "tests/unit/test_longhorn_filesystem_reconcile.py": "63c5ccbbfabff453fc7955c2eb39dbb161764f9c64638f6486bb6b5d2d62473c",
+    "tests/unit/test_longhorn_full_evidence.py": "6706aa3549217d0208a62de6ee3e2fb2d8be9e6675bdaa8fc58ba5d8920aa79f",
+    "tests/unit/test_longhorn_full_maintenance.py": "f839856168aa53a56a82ab95993218f15ca58c7938681068af86902e2cc3a06e",
+    "tests/unit/test_longhorn_full_material.py": "4cfd3968a0c88269d59a4d8616e002892e23735ada1769d1081b961792ac629b",
+    "tests/unit/test_longhorn_full_shell.py": "de25c7280bb37752567841dd8bb7cd7512d9710b45569aca01bf497b6044f912",
+    "tests/unit/test_longhorn_gate.py": "9914d2fa126664a837a0d1e1b7d257d241c68ae3dbeaa36d9a8d628023995bff",
+    "tests/unit/test_longhorn_im_revision_3_adopt.py": "ac222c8fbe2851fb702288c4dd6d9d04312ffe24e97d9806c1379e5725400fa1",
+    "tests/unit/test_longhorn_im_revision_adopt.py": "9881c03de519213de2ee3e67ab2c0cc0e7116f6869f0aaa8b7d268136d4a661f",
+    "tests/unit/test_longhorn_im_revision_evidence.py": "a23eaaeeefc8550e87d6c58eb903044bca366120364c69a93bfad8500d3f37bd",
+    "tests/unit/test_longhorn_integrity.py": "f5cac52188fb5f5d89828872ffef6cfd419942aae33162f5c5270789b859a65b",
+    "tests/unit/test_longhorn_lab.py": "3fa18bccef81268be102c2434dcc574106d9577ee5fe3784137b79f17cff42b8",
+    "tests/unit/test_longhorn_last_replica.py": "e19b79345fc8ac892cf50cfb19cfd7cd5ae65661d0cc5b805e5d8e56a6eaf8c5",
+    "tests/unit/test_longhorn_last_replica_shell.py": "a2c8aa25844d8fe423d529295ef9f7519487a94e7205d25b7a1d5347713fa8ae",
+    "tests/unit/test_longhorn_maintenance.py": "575384d6f7b5283e76231c0e5024705f1891b6b3ff84cd35d918d30011637850",
+    "tests/unit/test_longhorn_manager_adopt.py": "04eb3503b5c722bb28b3bd9664e605df11711cdfeec706918a132314e793db0f",
+    "tests/unit/test_longhorn_middleware_webhook.py": "cb68316ff0bd8dd56a57ed400d4750d90d695060d03f45d3489fc1f223b72c44",
+    "tests/unit/test_longhorn_monitoring_cache_reconcile.py": "b8123408053b42b0c36e0ea02db6ed2be82a67595bab99f72c75389af9b4a5cf",
+    "tests/unit/test_longhorn_network.py": "f6f4347f06d80a914d773393571c82fb51a432270d7f9316d7b1fa4fd41a0ccc",
+    "tests/unit/test_longhorn_node_failure.py": "00fed5b5d1c7c8fbe49778ef3b560a06640922406aa1385f1a3227bb72b2b2de",
+    "tests/unit/test_longhorn_node_failure_shell.py": "62a984fb34a067ca262e209c4e7079aa3d0741865a9807f55fb0fd84fc08990b",
+    "tests/unit/test_longhorn_node_lifecycle.py": "f9987b459c435bcf377cb652989815e11ccdba9bdd24d54dcb240b9ce04fea64",
+    "tests/unit/test_longhorn_node_lifecycle_shell.py": "89fc2dc493b31bb5985b05ba1fd4bbbe29b8e8b77720199cbe1fcf9669ab5333",
+    "tests/unit/test_longhorn_node_local.py": "d43b07247611787a35bf2d1476f07d2a063a79b95a78326dbaaa44e0de474a2f",
+    "tests/unit/test_longhorn_node_local_shell.py": "a13928f968224805701414ab64eec631e2f878bfd9af97695a84e9dd08a74131",
+    "tests/unit/test_longhorn_ownership.py": "c30274a7c0355aa3c64fdd5a2cfac337643a26d00fc6b0b6c715420ff1d01e73",
+    "tests/unit/test_longhorn_ownership_aggregate.py": "abebabcda82c8b77bc2b8d49fa7fe8f68bc16f0d42cf618589d7de49952efb82",
+    "tests/unit/test_longhorn_ownership_evidence.py": "85f774f18329a04b70aabe617a003623aa4e27240f126a7a581dec3c35c412da",
+    "tests/unit/test_longhorn_parallel.py": "daa57a71961bc42c9830a56eff7a3adfeabef0baf272753e4a965367b12c0821",
+    "tests/unit/test_longhorn_platform.py": "9281ca1ac63853aed009d7190ddc27c3299831d91cab1926175e8c957814dd04",
+    "tests/unit/test_longhorn_protection_context.py": "72ca36a3480b6af685c59642414702c19944238370655e8c49080ca473151f1c",
+    "tests/unit/test_longhorn_recurring.py": "684852e24cc60a6251715717283612218b07e6d223eea12b84fd9f834d73ca4e",
+    "tests/unit/test_longhorn_recurring_credentials.py": "46ea3a5404c7e43dec5f977cdc5e504e43bf32fbb9b49fc4442c015ccd2669c8",
+    "tests/unit/test_longhorn_recurring_rotation.py": "d95f96237557926b5b3f08be305033c99c72da593812a8e238841bcf9fcd6f68",
+    "tests/unit/test_longhorn_recurring_rotation_business.py": "0bcfd4f951e8a53e29ec22b2445cf116826830de76a73fdd8b79653d4cf0c086",
+    "tests/unit/test_longhorn_remaining_public_routes.py": "6e2407bb8f1d6e8a2676065782123c82ebb03fe6782ec087fd8a88e6018c8aa6",
+    "tests/unit/test_longhorn_restore_reassert.py": "aa7379e42492d44e64e05fbefbb6d05cbe676b5a16107fcf69a6de540236503d",
+    "tests/unit/test_longhorn_security.py": "9d6c7946cf0294d83c516de20c5e34427f07b640267472420867f5acfa444653",
+    "tests/unit/test_longhorn_static_reuse.py": "1ff251aa515cc673a3dc63d82e0f1fd0b251ee22b9b6b29dc4c5730e72363a83",
+    "tests/unit/test_longhorn_support_bundle_focus.py": "ba6e40aa9c02a8f4b9d876b5d91d3a0e394f3d66e6b8406f76380339e6c4bc30",
+    "tests/unit/test_longhorn_support_stream.py": "37d85bc2af9badff3d0bd0d12f5b5aca0de97fb70d42ca6f66bec0f13f1577ec",
+    "tests/unit/test_longhorn_system_recovery.py": "b6d91f9321a4130750d67d83486358e90406920e39a244689f505d7a8a6e1150",
+    "tests/unit/test_longhorn_system_recovery_shell.py": "8cac3243671b6284b6ad608d349b281aa8892f0605fcca13a4617887eb9e4bcb",
+    "tests/unit/test_longhorn_trim.py": "a66b91fbfb06ca3c17f3931615d9f117ebb506be635fcacd086353aed3bc6de0",
+    "tests/unit/test_longhorn_uninstall.py": "3823795b3075a75c52618e6c0501f2cff0a2aa03d68506c68f293dac887f9173",
+    "tests/unit/test_longhorn_upgrade_lifecycle.py": "4565962bf2c646dcbcd857a605d243f34cc5447d383dd89efc7cb45f10bc0fbf",
+    "tests/unit/test_longhorn_v1_disaster.py": "fa9183127a322dfc1b4c69de65adc36861feec4010323cad3ab77c4ae4a20a0c",
+    "tests/unit/test_longhorn_v1_middleware.py": "5b77f4ddee43fd771ae2b5936a20f907196eb116df62017ffb9754b210544314",
+    "tests/unit/test_longhorn_v1_monitoring_cache.py": "21903ff068861faef14239df6878c843b6228c68c2d888eea425bbfc82965efd",
+    "tests/unit/test_longhorn_v1_observability.py": "328ebe147e5e05827b24c48c23804a18b04eb2ea30de2a25a11b936601bc5856",
+    "tests/unit/test_longhorn_v1_operations_wiring.py": "b247959f0a9f01a0f45922283c311df9e81012e7b0325f1833b12f79ad5c4e99",
+    "tests/unit/test_longhorn_v1_reboot_relay.py": "ceadc7eb0fb075949e004c95ec5fab711445c2a912d8844131dabec9b7cdeb70",
+    "tests/unit/test_longhorn_v1_recovery_target.py": "52c4b4ebfb5fde83ee6d52d086419a533c1020162753c595baf019e72a3f7916",
+    "tests/unit/test_longhorn_v1_stability.py": "eaff697df75dcb62878da42ca36d3b86534736659003a0f8cea70f388d19eb0e",
+    "tests/unit/test_longhorn_v1_storage_faults.py": "b1998f15a3f345cf6b841bb521497405bd9efaf8c942625650592d99ff521baf",
+    "tests/unit/test_longhorn_v1_storage_faults_shell.py": "8646766e753e2910b8ab2922683f8a5e1f14c2bb0d52ee5400239927e8a3b0cb",
+    "tests/unit/test_longhorn_v1_upgrade_lifecycle.py": "1a52f9d8fe3caf097bbac9c8c3354440e26f2c3989a2d344d47bd1692c636fd3",
+    "tests/unit/test_longhorn_v1_upgrade_prepare.py": "ed4032c9aab9489db0ea96dee637113f7be6e50af24e9bff08b973e1a8e133a8",
+    "tests/unit/test_longhorn_v1_upgrade_shell.py": "a3d030325b89b678fb5c1780bf5c03e07c6b62e6fee44cbe0d57b622aaa55948",
+    "tests/unit/test_longhorn_v2.py": "fa3574250f823e9c8de0b8d001dd5d9dfc21f4715fc40535a41479ffa989afb8",
+    "tests/unit/test_longhorn_v2_all_replicas.py": "8d1aa69b9dd53e407b913b0d1456bbaf6658b72be2d601368b3fed64898b9817",
+    "tests/unit/test_longhorn_v2_backups.py": "12d0274419c0d94ede3b271093d356d5fd53f52bd119a3020637722e68583971",
+    "tests/unit/test_longhorn_v2_boot_fixture.py": "61bf0a3dddade0ae892118ddd17a04bde5d5cd4ebc50cce44da37ec10dc4ded3",
+    "tests/unit/test_longhorn_v2_broken_restore.py": "5e4081e07c7baac89b2bce8a1720c734966e387d0df919de62c2ddc916f7cc05",
+    "tests/unit/test_longhorn_v2_cleanup.py": "dff6a1153599c9db6cebc45406cfadeea0d22a11b96d2d7df76ebbfc9cb05cd0",
+    "tests/unit/test_longhorn_v2_cleanup_recovery.py": "23ec819159aeea5195e1a4ace8c8db44c3aba5b44c79e0c7748908740bf1795a",
+    "tests/unit/test_longhorn_v2_clone.py": "eaa93d591be87b4bc8508f2332c5a3560c530771bd7adbf2e476bfe0114dba6c",
+    "tests/unit/test_longhorn_v2_clone_cleanup_reuse.py": "38fa6dc7f38351d689938a47ca47caae4bd9ba0ac6c6a8a8ce4dea96d8ccee76",
+    "tests/unit/test_longhorn_v2_clone_lifecycle.py": "0d2d0b050de46608514068103aeddc4088cdae012a1bf02cee4038f6bd39eb1f",
+    "tests/unit/test_longhorn_v2_clones.py": "a60e0726bc60db0ece784eff78c3d211bb926be89365b5893aaa89f5b46635e0",
+    "tests/unit/test_longhorn_v2_coexist.py": "c57ff02a08b7522e70fe1ac752f0c70591aeaa341d5e8809015aa75e81acc5b8",
+    "tests/unit/test_longhorn_v2_coexist_shell.py": "d804d23db1d812b29ec8fb5c723524a57d3292e5be340d7631fef3623a258f07",
+    "tests/unit/test_longhorn_v2_control_faults.py": "5cc83ae32616ad1585100434da12865581e6eacbafc3cf005b4a0475a7fc84e7",
+    "tests/unit/test_longhorn_v2_core.py": "c63db58d335770ed6304c765c1a4da5cfbf82c2dcec7c5831496f4003ed0f91c",
+    "tests/unit/test_longhorn_v2_cpu_isolation.py": "f6db1d8b48bf5b20b5820c088719c3561bc492d91b2ad88b0a20375020ba10c3",
+    "tests/unit/test_longhorn_v2_data_protection.py": "e722950e7720cce86dac0dcc3e6fa84114e68bdefc883f97d590075690bdfebd",
+    "tests/unit/test_longhorn_v2_detached_backup.py": "d2000783d0c760959e12f5bb01af4b55a17260bf657a9adc0a0625cc8dac0f18",
+    "tests/unit/test_longhorn_v2_disaster.py": "47a3db9eeb53232731acb627bc71f8d64079b4a5b3c2a7687d214e8e1efc8954",
+    "tests/unit/test_longhorn_v2_disk_faults.py": "f9c017ad7c54c37151b7f4bd985dfa438a6af433fa172746ca815f5e0173f98d",
+    "tests/unit/test_longhorn_v2_disk_lifecycle.py": "1a6a78c716ead764609f2b6992677e13552d4c2d877beb605f6b6cf746018adc",
+    "tests/unit/test_longhorn_v2_dr_failover.py": "4aa262a19448bb572b6cc0d741361a49340aa4ea8a3eb3e3b8259683f0b2b555",
+    "tests/unit/test_longhorn_v2_dr_store.py": "a11af839ec3e5770fc7425da4e64ee0b541887f618cab7b6d393c1a612488218",
+    "tests/unit/test_longhorn_v2_dr_target.py": "dc8f4e90f3947cf59165369fe651bc88f14eecd8ee2da64a601c0679d3928117",
+    "tests/unit/test_longhorn_v2_dr_target_install.py": "34ba3b5e2f89ff9b42bee1e32a8ef8e7dc8f4fd1f31b0712cd67e9301799805b",
+    "tests/unit/test_longhorn_v2_endpoint_cleanup.py": "e48bf13a82a3a8725ceb0344715101d2a37460906b2e473a8cc52c9813d5121f",
+    "tests/unit/test_longhorn_v2_failure_runner.py": "70913f328bf029c8ac2e71232a7ce1e55b88722cf66b88c4f5788c21821cbd07",
+    "tests/unit/test_longhorn_v2_im_adopt.py": "a0e55024ab5db9747c03100d2e71631bdffd28bc3a00473083ea1b754d72fe03",
+    "tests/unit/test_longhorn_v2_incomplete_clone.py": "c36615b90922d8b901b6ecac1a2221a89cc85cc8740210d046f5b70a09f2a497",
+    "tests/unit/test_longhorn_v2_install.py": "5ea71dfe1c173449693c5756b1d65369764f7437f343c4deca6ff1eeae6bf9aa",
+    "tests/unit/test_longhorn_v2_integrity.py": "96a306be9d2fe8cdecfb1e095ece808828f2a072990d0ae419b6947e9dd2d126",
+    "tests/unit/test_longhorn_v2_interrupt.py": "a147ecf52486299eb4361e364af816758c165fb57341a6302611edba94c855da",
+    "tests/unit/test_longhorn_v2_interrupt_manager.py": "1928a107ab3dcfe0ad4ba379428f77e441f209e571ae96ec422836efb3d1f828",
+    "tests/unit/test_longhorn_v2_lab.py": "c9a68e3540179877c2725ee6b3e9861f2e49b1ea973dcf60b9877d0b26c531bb",
+    "tests/unit/test_longhorn_v2_linked_clones.py": "9b7c08ba031cfa33eea2476ccc91179eac92812158e87b52a77950923bec1ba0",
+    "tests/unit/test_longhorn_v2_linked_lifecycle.py": "2def9f1cce0f2c61eb9f6a6c9be92defd77053f8bda89fc58a2a65214fccc304",
+    "tests/unit/test_longhorn_v2_linked_lifecycle_shell.py": "fed65a746d30520b4ef816e474eec5f960a49227be987b80eecbdb3636810694",
+    "tests/unit/test_longhorn_v2_maintenance.py": "7e7b4870093bf103b2a98e2666d72bc3d623734dcd91e35b97b2397b7c8eefef",
+    "tests/unit/test_longhorn_v2_maintenance_drain.py": "b817944f69af02c0ea2318fafe5f777593ad62080645d1e9ae85dad2235d1a9b",
+    "tests/unit/test_longhorn_v2_maintenance_drain_shell.py": "9b14cb32599193f557308cb960f8853f981496556fc00a3417eef636a90a5070",
+    "tests/unit/test_longhorn_v2_manager_loss.py": "553113f4b9bfdc3a6660c973a4472e3fc13ef23033a7cc0584077e41a32d648b",
+    "tests/unit/test_longhorn_v2_middleware.py": "cd450a18162a7e5f23e70c6118f8868848737d1cb9a7d5843a9664ec473278c4",
+    "tests/unit/test_longhorn_v2_monitoring.py": "7f1f486e5d30bde2e334ea1e20e8d2b68b4071a6884b70449bb4bc697a7068d8",
+    "tests/unit/test_longhorn_v2_observability.py": "4f9d4724c5d3719a9a8ec32649526a42e77f4f872723e7658c8594bb1883e188",
+    "tests/unit/test_longhorn_v2_platform_install.py": "852672916bdbd48a91e1cfa5555ba217926cdb5d63ec54dbba43c317ef8da74b",
+    "tests/unit/test_longhorn_v2_pool.py": "55757ad231c0cee1da905860e7662fd713a2dc950caaeab01869c4fb34eca3f8",
+    "tests/unit/test_longhorn_v2_post_reboot_environment.py": "f6ca3a6633c362d4d87a452115f784fd057c5e752d64d5c026ea51b03f019291",
+    "tests/unit/test_longhorn_v2_reboot_relay.py": "cbbd518b7296677ded0f7e26ee43285589e93b312b6a36b599ac482e5c28873a",
+    "tests/unit/test_longhorn_v2_recurring.py": "7d76be4aaf63b3b22f828bc349aadda9b4d8deb6f48f9eb30cf9304ab80b4c9a",
+    "tests/unit/test_longhorn_v2_resources.py": "db02d5eeb85b27c097d9cfc12badda28d64fe51d19aa8437cead4b39d8f1544a",
+    "tests/unit/test_longhorn_v2_resources_reboot.py": "d467c21b3a7d9c2999a291124ce23aab0d978ce5bbe7251a45c59d4a927a872e",
+    "tests/unit/test_longhorn_v2_runtime_consumers.py": "15aeb4271ac5839c82454769e5a5defbda951fd874deb23cde6a5a27f24fddab",
+    "tests/unit/test_longhorn_v2_runtime_continuation_runner.py": "4f62432ae001c0bdb0baf8a4f05c5915e8452a1123f58b5b2abce5ccfa494560",
+    "tests/unit/test_longhorn_v2_runtime_faults.py": "f778d9652d8285c4c26f25abbff49606ca988f677b392f89604da2e177394b7c",
+    "tests/unit/test_longhorn_v2_runtime_reader.py": "6de5a146789db9d618adbd2596021ad68429208a602cb23ebdbafd1c02706360",
+    "tests/unit/test_longhorn_v2_runtime_resources.py": "431828f4e6b07324f415898dd102ae385b17e13e3b87861a211fe7fe9fbf8d1c",
+    "tests/unit/test_longhorn_v2_runtime_resources_shell.py": "b68104c654b80560fb0b31d84f44265c5a91e7bf342d76204d1ad9ee48c58660",
+    "tests/unit/test_longhorn_v2_systembackup.py": "8fa6b42b2f8ac9c3190a400519958a25f38078787a4d6c39a7ebce861e487185",
+    "tests/unit/test_longhorn_v2_systemrestore.py": "beeaabfe8b41470233a3fc2a24d6cf256283068ac5cd7eefaf0f6bc77c624659",
+    "tests/unit/test_longhorn_v2_trim.py": "912ee4b2471051913408af643a0aa1cd4d5aa2a5273d6011cf3a7c76074cf0e8",
+    "tests/unit/test_longhorn_v2_upgrade_baseline.py": "78d26026578fbc457c0f17d47e10abe2455817d5cd2a5b2e285958879b97ba7a",
+    "tests/unit/test_longhorn_v2_upgrade_checkpoint.py": "f8ed1a4ddcd12db7a0d4d13ac32cfeddf7c28c0fd136134df04ed5b5bda63aff",
+    "tests/unit/test_longhorn_v2_upgrade_prepare.py": "eed43aa90134ad4ad207f60daa421999777f409adb8766bf87943246356539a6",
+    "tests/unit/test_longhorn_v2_upgrade_recovery.py": "f12a82cdec683d8804d874a81cfb804c27eac1e6ef697e09e9d99efaf72c2134",
+    "tests/unit/test_longhorn_v2_upgrade_shell.py": "61e96706407cf6e8fe28246fa9dd6f9f531ad301b58dcc2df99a7459f1efbb76"
+  },
+  "full_result": {
+    "path": "logs/longhorn-full/run.rxqX1wMm/full-result.json",
+    "sha256": "0e4f2dbb320a0d8389f106c20dff7fb98e2caa56c309029d3cbd7bdc5928c80c"
+  },
+  "outer_durable_required": false,
+  "rc": 0,
+  "receipt_refs": {
+    "exit": {
+      "path": "logs/longhorn-cases/full-20261103-102832/durable-exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "finalized": {
+      "path": "logs/longhorn-cases/full-20261103-102832/durable-finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    "log": {
+      "path": "logs/longhorn-cases/full-20261103-102832/gate.log",
+      "sha256": "fc0b65a46404b1edfab3fe4ddfc4d6f0057eef23628941802d81509faf2ec600"
+    },
+    "status": {
+      "path": "logs/longhorn-cases/full-20261103-102832/durable-status.txt",
+      "sha256": "a4205c827be32f3e22fea2f1b8a6b7bcd29f32c0bdd82f0eebd29a96603ff9dc"
+    }
+  },
+  "schema": 1,
+  "signed_scope": "fresh-v1-v2-full",
+  "status": "pass",
+  "version": "1.12.1"
+}

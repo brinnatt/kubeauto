@@ -1,0 +1,35 @@
+meta:
+  version: 1
+  updated: "2026-08-25"
+  component: apache-kafka
+  scope: "Independent Kafka middleware delivery branch; does not replace the enterprise core or MySQL matrices"
+  runner: bash tests/run_enterprise_regression.sh --kafka-only
+  result: PASS
+
+versions:
+  operator: "1.2.0"
+  kafka: "4.3.1"
+  metadata: "4.3-IV0"
+  drain_cleaner: "1.6.1"
+  kubernetes: "1.33.6"
+
+cases:
+  - {id: KAFKA-01, group: static, desc: "Version, Chart SHA256, image and six-repository contracts", status: pass, evidence: "2026-08-25: 29 focused unit and six-repository contract tests passed; both vendored Chart SHA256 checks passed"}
+  - {id: KAFKA-02, group: preflight, desc: "Clean namespace, capacity, three failure domains, time, DNS, network and StorageClass R/W", status: pass, evidence: "2026-08-25: clean preflight passed on six Kubernetes 1.33.6 nodes with expandable Longhorn 1.10.1 block storage"}
+  - {id: KAFKA-03, group: supply-chain, desc: "All pinned production and test images materialized with manifest digest evidence", status: pass, evidence: "2026-08-25: Strimzi 1.2.0, Kafka 4.3.0/4.3.1, Drain Cleaner 1.6.1 and Longhorn artifacts were digest-verified and materialized from TalkEdu"}
+  - {id: KAFKA-04, group: install, desc: "Operator, CRD, three controllers, three brokers, Entity Operator, Cruise Control, Exporter, Drain Cleaner and PVC readiness", status: pass, evidence: "2026-08-25: all production workloads, CRDs, six active PVCs and two Drain Cleaner replicas reached Ready"}
+  - {id: KAFKA-05, group: kraft, desc: "KRaft quorum, leader, voters and broker registration are stable", status: pass, evidence: "2026-08-25: quorum reported one leader, three current voters, three registered brokers and zero follower lag"}
+  - {id: KAFKA-06, group: data, desc: "TLS production, consumption, transaction commit/abort, partition order, offsets, count and hash", status: pass, evidence: "2026-08-25: TLS data hash, partition order, committed offsets and read_committed transaction isolation passed"}
+  - {id: KAFKA-07, group: security, desc: "SCRAM, ACL and quotas succeed while wrong CA, credential, topic and group access fail", status: pass, evidence: "2026-08-25: valid SCRAM/ACL paths and wrong CA, password, topic and group negative paths passed with quotas verified"}
+  - {id: KAFKA-08, group: broker-failure, desc: "Single broker and worker failure meet availability target and recover full ISR without offline partitions", status: pass, evidence: "2026-08-25: acks=all writes and reads continued across one Broker loss; three Brokers and full ISR recovered"}
+  - {id: KAFKA-09, group: controller-failure, desc: "Single controller loss retains quorum and majority loss safely rejects metadata mutation", status: pass, evidence: "2026-08-25: one Controller loss retained service; majority loss rejected metadata mutation and recovered to three voters"}
+  - {id: KAFKA-10, group: rebalance, desc: "Broker scale and Cruise Control rebalance converge without data or offset drift", status: pass, evidence: "2026-08-25: scale-out, Cruise Control Rebalancing and scale-in converged with data, offsets and full ISR preserved"}
+  - {id: KAFKA-11, group: storage, desc: "Disk watermarks, scoped fill, online PVC expansion and recovery close the loop", status: pass, evidence: "2026-08-25: bounded pressure at /var/lib/kafka/data recovered; three active Broker PVCs and filesystems expanded online from 5Gi to 6Gi"}
+  - {id: KAFKA-12, group: credentials, desc: "User password and certificate rotation retain service while old identity fails", status: pass, evidence: "2026-08-25: new SCRAM credential succeeded, old credential failed, forced cluster CA renewal rolled safely and retained data service"}
+  - {id: KAFKA-13, group: observability, desc: "Metrics, lag, ISR, disk and Operator alerts can be triggered, diagnosed and recovered", status: pass, evidence: "2026-08-25: Broker JMX, Exporter consumer lag and Operator JVM metrics were collected after fault recovery"}
+  - {id: KAFKA-14, group: performance, desc: "Fixed producer, consumer, end-to-end, broker-failure and soak baselines are valid", status: pass, evidence: "2026-08-25: fixed 50000 x 1KiB baseline completed at 9338.81 records/s producer throughput and 9741.17 messages/s consumer throughput"}
+  - {id: KAFKA-15, group: node-drain, desc: "Drain Cleaner, PDB and kubectl drain cooperate one Pod at a time with ISR recovery", status: pass, evidence: "2026-08-25: official Drain Cleaner denial was observed, Operator rolled the Broker, the second drain completed, and post-drain produce/consume plus ISR passed"}
+  - {id: KAFKA-16, group: upgrade, desc: "Operator, CRD and Kafka rolling upgrade plus rollback window follow the official path", status: pass, evidence: "2026-08-25: 4.3.0 to 4.3.1 upgrade, message persistence, 4.3.0 rollback, read verification and final 4.3.1 convergence passed"}
+  - {id: KAFKA-17, group: dr, desc: "MirrorMaker 2 replication, checkpoints, failover, failback and lag boundary when enabled", status: not applicable, evidence: "MirrorMaker 2 is outside the approved phase-one single-cluster scope and requires an independent disaster-recovery design"}
+  - {id: KAFKA-18, group: idempotence, desc: "Second production role run preserves PVC, Secret and NodePool identity without unintended rollout", status: pass, evidence: "2026-08-25: second role execution preserved PVC, Secret, NodePool and Kafka Pod identities"}
+  - {id: KAFKA-19, group: cleanup, desc: "Normal, failed and interrupted cleanup removes only run-owned resources and clean verification passes", status: pass, evidence: "2026-08-25: ordered dependent-resource cleanup completed; storage and Kafka clean verification both passed twice after the successful gate"}

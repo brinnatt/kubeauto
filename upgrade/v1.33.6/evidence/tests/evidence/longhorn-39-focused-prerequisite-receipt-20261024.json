@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "date": "2026-10-24",
+  "case": "LONGHORN-39",
+  "status": "pass",
+  "rc": 0,
+  "failure_markers": 0,
+  "durable": {
+    "exit": 0,
+    "finalized": 0
+  },
+  "complete_matrix_item": true,
+  "version": "1.12.1",
+  "original_acceptance": {
+    "path": "tests/evidence/longhorn-stability-complete-20261022.json",
+    "sha256": "ac2fd06b292f80a2940f84fd7a1651ee568ca24df8c5e725bc6acc25120bc150"
+  },
+  "verified_owning_scopes": {
+    "complete_original_module": {
+      "evidence": {
+        "path": "tests/evidence/longhorn-stability-complete-20261022.json",
+        "sha256": "ac2fd06b292f80a2940f84fd7a1651ee568ca24df8c5e725bc6acc25120bc150"
+      },
+      "durable": {
+        "local_exit": 0,
+        "local_finalized": 0,
+        "remote_exit": 0,
+        "remote_finalized": 0,
+        "module_exit": 0,
+        "module_finalized": 0,
+        "business_exit": 0,
+        "business_finalized": 0
+      },
+      "raw_files_verified": 9,
+      "clean_complete_module_logs": [
+        {
+          "path": "logs/longhorn-cases/stability-39-business-20261022/owning-gate.log",
+          "sha256": "6520405dae69a3ba676a95699abc0006e9f296a03a98866389ce60e1a1d86a0b"
+        }
+      ],
+      "success_marker": "LONGHORN_STABILITY_PASS",
+      "scoped_clean_marker": "LONGHORN_STABILITY_SCOPED_CLEAN_PASS"
+    }
+  },
+  "evidence_kind": "read-only-schema-normalization-of-existing-complete-focused-acceptance",
+  "boundary": "No live replay or new module success. Original records and all declared scopes retain version, data, resource, cleanup and extrapolation boundaries; final current full regression remains mandatory."
+}

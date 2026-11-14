@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "MONGODB-14"
+  ],
+  "runner": "bash tests/run_enterprise_regression.sh --mongodb-maintenance",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "core_uid": "4ddd4664-de27-41af-a579-93ed34c6fb03",
+  "markers": [
+    "MONGODB_MAINTENANCE_PDB_REFUSAL_PASS status=429 protected-uid=preserved",
+    "MONGODB_MAINTENANCE_DRAIN_PASS pdb=true node-restored=true",
+    "MONGODB_MAINTENANCE_ROLL_MEMBER_PASS pod=mongodb-gate-data-rs0-0",
+    "MONGODB_MAINTENANCE_ROLL_MEMBER_PASS pod=mongodb-gate-data-rs0-1",
+    "MONGODB_MAINTENANCE_ROLL_MEMBER_PASS pod=mongodb-gate-data-rs0-2",
+    "MONGODB_WORKLOAD_CLEAN_PASS",
+    "MONGODB_MAINTENANCE_SCOPED_CLEAN_PASS",
+    "MONGODB_MAINTENANCE_PASS",
+    "MONGODB_GATE_EXIT rc=0"
+  ],
+  "acknowledged_write_ledger": {
+    "acknowledged": 2382,
+    "retryErrors": 0,
+    "sha256": "2e17fa010550d70fc0a343a490918bfeffbfff23e2db62cc3be47f97af782f87"
+  },
+  "durable_status": "state=exited pid=101913 rc=0 bytes=3681 pass_markers=10 failure_markers=0 latest=MONGODB_GATE_EXIT rc=0",
+  "log_sha256": "2415df3cc15239bd5e204ffa0062dd97e05e69f385212dbcbe937ae73d166060",
+  "dependencies": {
+    "roles/cluster-addon/files/mongodb.py": "56ca2fe4ccd722e6ae65e51e08d88a55947bb065fe48a71eb5d96ccee822b46f",
+    "tests/helpers/mongodb-scenarios.py": "b4e72622d05a728f64ee375cec343598a307e3d81ba1676aba0b9f2cbbd46509",
+    "tests/helpers/mongodb-lab.py": "3736b4d1ce5db875136999ae97f5ba3c14ae311b03e37913d0b7bff85d6e3f0a",
+    "tests/helpers/mongodb-install-gate.sh": "18ec343a94146996f39322cc491ef03b7196fc4686ea1d60ca650dcd0aeab5ec",
+    "tests/helpers/mongodb-runner.sh": "c25d9c3dc7ac8bd31806f63f32c0002ec34bad682dbae59f479f6ea31d655df9",
+    "tests/unit/test_mongodb_scenarios.py": "f11597737bd8c66470b2eae535d0559ad775ae92c9a9d772f268ca0b7a9e236c"
+  },
+  "scope": "Drain selected MongoDB rs0 workload on one leased worker, verify PDB rejects second eviction with 429 and preserves protected Pod UID; restore node scheduling; sequential Eviction API replacement of all three members under majority+journal workload. Does not claim whole-node evacuation or machine reboot.",
+  "cleanup": "Original PVC identities/capacity retained; node scheduling and maintenance label restored; fault journal, workload and UID-bound client removed; product healthy."
+}

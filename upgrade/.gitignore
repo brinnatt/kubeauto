@@ -1,0 +1,7 @@
+# Private raw archives and runtime state belong to the upgrade workspace,
+# but must never be committed with the formal evidence records.
+**/private/
+**/runtime/
+*.log
+*.pid
+__pycache__/

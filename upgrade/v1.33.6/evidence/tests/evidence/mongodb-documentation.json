@@ -1,0 +1,420 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "MONGODB-42"
+  ],
+  "runner": "bash tests/run_enterprise_regression.sh --mongodb-documentation",
+  "review_kind": "Author full content review, actual figure rendering/visual inspection and two document-only reader-path checks; no independent reviewer or customer acceptance claimed",
+  "documents": {
+    "docs/middleware/mongodb/development-manual.md": "cbb18743922140e280dda2086f9b1bc94486d112bc799ef5c9dee3a03ade7fec",
+    "docs/middleware/mongodb/operations-manual.md": "1181f4e8b3aa7b40eb961cb771ffbb2121dc2483ee808033fa1693e93ccbf320",
+    "docs/middleware/mongodb/technical-whitepaper.md": "3db760e20d4bb0f3948a2019efe98587ee58125f74fce4da26270b59a113dad7"
+  },
+  "content_review": "pass",
+  "open_defects": [],
+  "reader_paths": {
+    "novice": "pass",
+    "experienced": "pass"
+  },
+  "reader_path_notes": {
+    "novice": "Healthy platform and explicit deployment/kubeconfig -> sizing/CSI/CNI/PKI -> one-time stable credentials -> config+download+setup -> real TLS/SCRAM majority+j Decimal128 client -> UID-bound client cleanup -> baseline and independent restore. All existing production command/config blocks unchanged; added result captions and task tables do not add live behavior.",
+    "experienced": "Task index -> explicit context -> backup engine/schedule/PITR choices -> independent target inventory/secrets/UID/external destination -> data and restore-boundary checks -> source-loss/cutover -> staged rotation -> volume/member/shard changes -> fixed two-stage upgrade/independent compatible restore -> identity-bound retirement. Inputs, stops, waits, ownership and recovery exits checked."
+  },
+  "content_findings_closed": [
+    "Replaced thin Operator-centric whitepaper with a connected BSON/model/index/query/MVCC/journal/oplog/election/concern/transaction/routing/migration explanation; source forms and delivered scope explicit.",
+    "Published real M43 performance, stability, upgrade, expansion, lag, rotation, backup/restore/PITR/retention/disaster and observability results with conditions, decisions and limits; no evidence-link-only assertion.",
+    "Corrected MongoDB8.0 majority oplog durability vs asynchronous secondary apply; no all-member visibility inference.",
+    "Corrected query diagram: covered index path can still require sorting or aggregation; final layout visually checked.",
+    "Corrected resource sampling point to end of steady phases before node fault; samples are neither peaks nor hardware capacity claims.",
+    "Fixed RPO subtraction direction in operations; no invented failover or whole-site recovery timing.",
+    "Kept all established Secret/PVC/CRD, monitor data-read, MinIO deletion TLS, init permissions, FCV/downgrade and physical-key boundaries.",
+    "Added backup switch matrix, restore flow/result comparisons, rotation/alert outcomes and capacity/change task index without changing existing production commands.",
+    "Added maintainer mapping and measurement semantics so future documentation retains raw inputs, numerical scope and immutable historical execution evidence."
+  ],
+  "scope": "MongoDB three formal manuals only; documentation-only changes to explanation, figures and existing evidence presentation. Product, test-gate code, images, production commands and configurations unchanged. Other middleware and Ceph untouched.",
+  "source_research": {
+    "reuse": "Reuse the unchanged pinned Percona/Operator/PBM/Chart/Exporter topic research from this task; extend core database mechanisms with bounded MongoDB v8.0 official topic reads. No claim to all MongoDB products or an independent upstream whitepaper.",
+    "pins": {
+      "operator": "https://github.com/percona/percona-server-mongodb-operator/tree/a4367b91e914abe73bacf85e9a7f4b587addd40c",
+      "operator_docs": "https://github.com/percona/k8spsmdb-docs/tree/e81024c295e8ebaf9cc06766cb2564e6e3308b02",
+      "server_docs": "https://github.com/percona/psmdb-docs/tree/10bd40c99426316dfc264c16f2221d335876dbab",
+      "backup": "https://github.com/percona/percona-backup-mongodb/tree/9641a911c853ecc79614816c0266cb53819cd5df",
+      "charts": "https://github.com/percona/percona-helm-charts/tree/2af1f993e0f06760e023f21e33ab9b9e8dda7b4f",
+      "exporter": "https://github.com/percona/mongodb_exporter/tree/v0.53.0"
+    },
+    "topic_mapping": [
+      {
+        "topic": "Versions, official Chart and CRD, default-off ownership and control boundaries",
+        "manuals": [
+          "technical-whitepaper.md#版本和适用范围",
+          "development-manual.md#保持控制边界"
+        ],
+        "sources": [
+          "versions.md",
+          "helm.md",
+          "operator.md",
+          "RN/Kubernetes-Operator-for-PSMONGODB-RN1.23.1.html"
+        ]
+      },
+      {
+        "topic": "Replica/sharding, majority+j, BSON, transactions and migration",
+        "manuals": [
+          "technical-whitepaper.md#副本集与分片",
+          "technical-whitepaper.md#写入确认与读取",
+          "technical-whitepaper.md#事务和分片键"
+        ],
+        "sources": [
+          "replication.md",
+          "sharding.md",
+          "scaling.md",
+          "MongoDB8.0 writeConcern/readConcern/transactions/shardCollection/moveChunk/moveCollection references"
+        ]
+      },
+      {
+        "topic": "Authentication, application/system roles, manual TLS and staged CA rotation",
+        "manuals": [
+          "operations-manual.md#准备命名空间和稳定凭据",
+          "operations-manual.md#密码与证书轮换"
+        ],
+        "sources": [
+          "users.md",
+          "system-users.md",
+          "app-users.md",
+          "tls-manual.md",
+          "tls-update.md",
+          "tls-cert-management-policy.md"
+        ]
+      },
+      {
+        "topic": "PBM logical/physical/PITR, objects, keys, retention and source loss",
+        "manuals": [
+          "operations-manual.md#备份与保留",
+          "operations-manual.md#独立恢复和时间点恢复",
+          "technical-whitepaper.md#数据保护与恢复"
+        ],
+        "sources": [
+          "backups.md",
+          "backup-tutorial.md",
+          "backups-restore.md",
+          "backups-pitr.md",
+          "PBM2.15.0 metadata/restore and Operator1.23.1 physical.go/deleteBackupImpl/DeletePITRChunks/MainStorage source"
+        ]
+      },
+      {
+        "topic": "Sizing, explicit volume expansion, health and exporter",
+        "manuals": [
+          "operations-manual.md#容量扩缩与版本变更",
+          "operations-manual.md#巡检与故障入口"
+        ],
+        "sources": [
+          "storage.md",
+          "monitoring.md",
+          "Exporter0.53.0 README",
+          "MongoDB8.0 WiredTiger and Kubernetes1.33.6 CSIStorageCapacity source"
+        ]
+      },
+      {
+        "topic": "Two-stage upgrade, FCV, conservative downgrade refusal and ordered retirement",
+        "manuals": [
+          "operations-manual.md#固定版本升级与恢复选择",
+          "operations-manual.md#下线与数据保留"
+        ],
+        "sources": [
+          "update.md",
+          "update-operator.md",
+          "update-major.md",
+          "PSMDB8.0 minor-upgrade.md",
+          "MongoDB8.0 downgrade considerations",
+          "delete.md"
+        ]
+      },
+      {
+        "topic": "Persistent logging, native log rotation and safe space recovery",
+        "manuals": [
+          "operations-manual.md#日志保留与卷空间",
+          "technical-whitepaper.md#容量与性能",
+          "development-manual.md#保持控制边界"
+        ],
+        "sources": [
+          "logrotate.md at pinned operator_docs commit",
+          "build/logcollector/logrotate/logrotate.conf",
+          "build/logcollector/entrypoint.sh",
+          "pkg/psmdb/logcollector/logrotate/container.go",
+          "pkg/controller/perconaservermongodb/psmdb_controller.go"
+        ]
+      },
+      {
+        "topic": "Nonempty logrotate init ownership replay and PBM physical init security context",
+        "manuals": [
+          "operations-manual.md#日志保留与卷空间",
+          "technical-whitepaper.md#安全边界",
+          "development-manual.md#保持控制边界"
+        ],
+        "sources": [
+          "Operator a4367b91e914abe73bacf85e9a7f4b587addd40c build/init-entrypoint.sh, pkg/psmdb/init/init.go, pkg/psmdb/logcollector/logrotate/container.go, pkg/controller/perconaservermongodbrestore/physical.go",
+          "logrotate.md"
+        ]
+      },
+      {
+        "topic": "Helm CRD field transfer and partial SSA validation",
+        "manuals": [
+          "operations-manual.md#固定版本升级与恢复选择",
+          "development-manual.md#保持控制边界",
+          "technical-whitepaper.md#变更与故障边界"
+        ],
+        "sources": [
+          "Pinned update-operator.md and update-crd-helm.md",
+          "Kubernetes release-1.33 server-side-apply.md blob2cac487a54c174f9f5777fcf4fc149a730c5880e",
+          "kubectl v0.33.6 apply.go blob6ea921eb91848e41c800927aa6a1d8f1286a6852 and factory_client_access.go blob6a1646b844ea69b7086d27060e1534ac9e560eef"
+        ]
+      }
+    ],
+    "refreshed_this_continuation": "Core data model/query/storage/replication/routing topics above; existing fixed-version research reused for unchanged integration. Official mechanism, project interface and measured result distinguished.",
+    "boundaries": "Sources support bounded topics and exact integration versions; examples not exercised by existing product gates are marked illustrative. Missing host CPU/device baselines, peaks and end-to-end RTO are stated explicitly, not synthesized.",
+    "additional_core_topics": [
+      {
+        "topic": "data modeling and embedding/reference decisions",
+        "url": "https://www.mongodb.com/docs/v8.0/data-modeling/",
+        "manual": "technical-whitepaper.md#数据模型与查询执行"
+      },
+      {
+        "topic": "compound B-tree indexes and prefix cost",
+        "url": "https://www.mongodb.com/docs/v8.0/core/indexes/index-types/index-compound/",
+        "manual": "technical-whitepaper.md#索引如何改变一次查询"
+      },
+      {
+        "topic": "explain stages, plan cache and latency boundary",
+        "url": "https://www.mongodb.com/docs/v8.0/reference/explain-results/",
+        "manual": "technical-whitepaper.md#索引如何改变一次查询"
+      },
+      {
+        "topic": "MVCC cache/checkpoints/journal and memory",
+        "url": "https://www.mongodb.com/docs/v8.0/core/wiredtiger/",
+        "manual": "technical-whitepaper.md#存储引擎与三类日志"
+      },
+      {
+        "topic": "elections, partition and recovery dependency",
+        "url": "https://www.mongodb.com/docs/v8.0/core/replica-set-elections/",
+        "manual": "technical-whitepaper.md#副本集与分片"
+      },
+      {
+        "topic": "oplog window, lag and flow control",
+        "url": "https://www.mongodb.com/docs/v8.0/core/replica-set-oplog/",
+        "manual": "technical-whitepaper.md#副本集与分片"
+      },
+      {
+        "topic": "mongos targeted/broadcast routing and result merging",
+        "url": "https://www.mongodb.com/docs/v8.0/core/sharded-cluster-query-router/",
+        "manual": "technical-whitepaper.md#分片解决数据分布与路由"
+      },
+      {
+        "topic": "balancer thresholds, migration phases and deferred cleanup",
+        "url": "https://www.mongodb.com/docs/v8.0/core/sharding-balancer-administration/",
+        "manual": "technical-whitepaper.md#分片解决数据分布与路由"
+      }
+    ],
+    "additional_reading_evidence": {
+      "record": "logs/mongodb-documentation/20261018-v6/additional-topics.json",
+      "sha256": "e05955b8804a70d03a74f1e40d588ed4d0770d79972498de6d871ca2f2a5acae",
+      "read_date": "2026-10-18",
+      "reused_core_cache": "MongoDB v8.0 WiredTiger, transactions, compound indexes, oplog, concerns and sharding command references from the same task",
+      "limits": "Earlier general limits page cache was truncated and is not claimed fully read. Unconsumed Atlas/commercial/cloud, resharding/zones/change-stream/search interfaces are outside this revision; specific capability boundaries appear in prose. PBM2.16 cache material is excluded; pinned PBM2.15 source remains authoritative."
+    }
+  },
+  "figures": [
+    {
+      "document": "docs/middleware/mongodb/development-manual.md",
+      "index": 1,
+      "source_sha256": "0c0b89e3c7f8880cbd76124fa2ba20ede9376a71dc452ef48aeaa35212fcf7ca",
+      "rendered": true,
+      "visually_checked": true,
+      "artifact": "logs/mongodb-documentation/20261018-v6/development-manual-1.png",
+      "artifact_sha256": "3d0d6367ecc1338408ee7f95f096f11f6c3ee67840638f075ba18b03a61907ad",
+      "review": "Rendered with Mermaid CLI and inspected final PNG in this author session; Chinese labels, edges, ordering, wrapping and agreement with prose checked"
+    },
+    {
+      "document": "docs/middleware/mongodb/operations-manual.md",
+      "index": 1,
+      "source_sha256": "ad2cbacf172e127873dc81a56545342a3536997a7c2535fa66c5821533ee12f9",
+      "rendered": true,
+      "visually_checked": true,
+      "artifact": "logs/mongodb-documentation/20261018-v6/operations-manual-1.png",
+      "artifact_sha256": "477bfd7f81dd41f653257a334cabbd984d92175263cdb83b0392ef07e64f8ec3",
+      "review": "Rendered with Mermaid CLI and inspected final PNG in this author session; Chinese labels, edges, ordering, wrapping and agreement with prose checked"
+    },
+    {
+      "document": "docs/middleware/mongodb/operations-manual.md",
+      "index": 2,
+      "source_sha256": "9bc74f5458da03f6b8fc0803ef5fe84ed0ec6e846d05f077d3a6f9c7e3fc9e43",
+      "rendered": true,
+      "visually_checked": true,
+      "artifact": "logs/mongodb-documentation/20261018-v6/operations-manual-2.png",
+      "artifact_sha256": "05a0ea3d11cdb84b025684e73b948ce136f2dbd9bf4c7d647a50a9385b88566d",
+      "review": "Rendered with Mermaid CLI and inspected final PNG in this author session; Chinese labels, edges, ordering, wrapping and agreement with prose checked"
+    },
+    {
+      "document": "docs/middleware/mongodb/technical-whitepaper.md",
+      "index": 1,
+      "source_sha256": "3143726dd3c892d7a1523d8c0d374a0be433f1f9d7d99b9457dfe7e003155ebe",
+      "rendered": true,
+      "visually_checked": true,
+      "artifact": "logs/mongodb-documentation/20261018-v6/technical-whitepaper-1.png",
+      "artifact_sha256": "f65b92297a1012e861e751ba90d5f81fa151b6a28c2c03b9074547f4750be12f",
+      "review": "Rendered with Mermaid CLI and inspected final PNG in this author session; Chinese labels, edges, ordering, wrapping and agreement with prose checked"
+    },
+    {
+      "document": "docs/middleware/mongodb/technical-whitepaper.md",
+      "index": 2,
+      "source_sha256": "221356e8191546e0a760b617ad7b73d804a770cd955ccc0ff8574936756ef902",
+      "rendered": true,
+      "visually_checked": true,
+      "artifact": "logs/mongodb-documentation/20261018-v6/technical-whitepaper-2.png",
+      "artifact_sha256": "b48c61522f0e43b1fbcb9dd9a9c0c56fd6ac036105ef0d3833325994caf533f4",
+      "review": "Rendered with Mermaid CLI and inspected final PNG in this author session; Chinese labels, edges, ordering, wrapping and agreement with prose checked"
+    },
+    {
+      "document": "docs/middleware/mongodb/technical-whitepaper.md",
+      "index": 3,
+      "source_sha256": "f67c002b2dbb8f7e828dc339898c507fabd31cb8677726d800c56b52d7741e6b",
+      "rendered": true,
+      "visually_checked": true,
+      "artifact": "logs/mongodb-documentation/20261018-v6/technical-whitepaper-3.png",
+      "artifact_sha256": "ae63505e14541150f3f8d7301657714d4a12b6872801d33abbaa19edc345de83",
+      "review": "Rendered with Mermaid CLI and inspected final PNG in this author session; Chinese labels, edges, ordering, wrapping and agreement with prose checked"
+    },
+    {
+      "document": "docs/middleware/mongodb/technical-whitepaper.md",
+      "index": 4,
+      "source_sha256": "3c7ba13b119d64b3ed5f190165de9ab9b470b5fb266d5d075bdea4a49345fbba",
+      "rendered": true,
+      "visually_checked": true,
+      "artifact": "logs/mongodb-documentation/20261018-v6/technical-whitepaper-4.png",
+      "artifact_sha256": "45b1ec818b7d30fdb345cb5b0bd76ed3415df0056a38c6b2fb63534e99f2eee2",
+      "review": "Rendered with Mermaid CLI and inspected final PNG in this author session; Chinese labels, edges, ordering, wrapping and agreement with prose checked"
+    },
+    {
+      "document": "docs/middleware/mongodb/technical-whitepaper.md",
+      "index": 5,
+      "source_sha256": "5934bf857631d35e645a4351262523fb1c0bc59ef125d94bd5b7baeef12a3a05",
+      "rendered": true,
+      "visually_checked": true,
+      "artifact": "logs/mongodb-documentation/20261018-v6/technical-whitepaper-5.png",
+      "artifact_sha256": "851106755e53afd530b8853ee522fa7b599a84a225cbca61ee088d03bf825b5b",
+      "review": "Rendered with Mermaid CLI and inspected final PNG in this author session; Chinese labels, edges, ordering, wrapping and agreement with prose checked"
+    },
+    {
+      "document": "docs/middleware/mongodb/technical-whitepaper.md",
+      "index": 6,
+      "source_sha256": "ee0dc3d0589206344dd50e8252330708963e5ac156134578f79892a49775d981",
+      "rendered": true,
+      "visually_checked": true,
+      "artifact": "logs/mongodb-documentation/20261018-v6/technical-whitepaper-6.png",
+      "artifact_sha256": "c7a90c8d7ce57806d2db65917890ba1adc5887c59dd79902076b2e3627638680",
+      "review": "Rendered with Mermaid CLI and inspected final PNG in this author session; Chinese labels, edges, ordering, wrapping and agreement with prose checked"
+    },
+    {
+      "document": "docs/middleware/mongodb/technical-whitepaper.md",
+      "index": 7,
+      "source_sha256": "3858256760df9e9db66a4aabd59fc9357ed9e58bc24f61bcc64fcc37481fd684",
+      "rendered": true,
+      "visually_checked": true,
+      "artifact": "logs/mongodb-documentation/20261018-v6/technical-whitepaper-7.png",
+      "artifact_sha256": "0584ca5c122f053767c235d8acf8a9947ff4b916c5b2e60f2f50d3fb8f96e640",
+      "review": "Rendered with Mermaid CLI and inspected final PNG in this author session; Chinese labels, edges, ordering, wrapping and agreement with prose checked"
+    },
+    {
+      "document": "docs/middleware/mongodb/technical-whitepaper.md",
+      "index": 8,
+      "source_sha256": "e3039369059aec6066964b0a74b9d159aa13b562576516c47eff3d3f85e7d739",
+      "rendered": true,
+      "visually_checked": true,
+      "artifact": "logs/mongodb-documentation/20261018-v6/technical-whitepaper-8.png",
+      "artifact_sha256": "6e8c1cad7d45e34584d9cbbdb4746190af0e7e9ef2c0eb72fcb3a4dad0bad9b1",
+      "review": "Rendered with Mermaid CLI and inspected final PNG in this author session; Chinese labels, edges, ordering, wrapping and agreement with prose checked"
+    },
+    {
+      "document": "docs/middleware/mongodb/technical-whitepaper.md",
+      "index": 9,
+      "source_sha256": "7cb6c01aab2215cda615905eab384f3c914515c2ceeb82748ea9c1956a60319d",
+      "rendered": true,
+      "visually_checked": true,
+      "artifact": "logs/mongodb-documentation/20261018-v6/technical-whitepaper-9.png",
+      "artifact_sha256": "0d716f09ba33460153af8239633674e8a66039ae53ab5f9c5e46d118ab5fa206",
+      "review": "Rendered with Mermaid CLI and inspected final PNG in this author session; Chinese labels, edges, ordering, wrapping and agreement with prose checked"
+    }
+  ],
+  "static_check_rc": 0,
+  "static_counts": {
+    "bash": 30,
+    "yaml": 11,
+    "python": 6,
+    "javascript": 2,
+    "local_links": 84,
+    "mermaid": 12
+  },
+  "rotation_command_verification": "Exact existing inline rotation code executed offline for password/TLS allowed and username/privacy/conflict refusal cases; existing M43 rotation reused. No live mutations.",
+  "operation_evidence": [
+    {
+      "case_id": "MONGODB-43",
+      "path": "tests/evidence/mongodb-full-20261018.json",
+      "sha256": "6e8448bb8395aa6a5477da0c5749e956708f267c384ad5d64f0ff46e80a872ba",
+      "scope": "Complete fixed-version clean run, 41 module log SHA256 and durable statuses independently checked; all actual values extracted from these module logs"
+    }
+  ],
+  "operation_evidence_limit": "Reuses completed product GA; no new live run or universal production capacity/whole-site RTO claimed. Production non-Mermaid code fences in operations are byte-identical to pre-revision HEAD.",
+  "fact_verification": {
+    "record": "logs/mongodb-documentation/20261018-v6/fact-check.json",
+    "sha256": "7a7d962a61c69a199bfe91d15ddf61092fc5079c26c100c3a87643d2c39ce33c",
+    "module_logs_verified": 41,
+    "performance_and_stability": "Raw profile JSON, table rows, latency percentiles, retries, samples and measured MiB cross-checked",
+    "other_scenarios": "Capacity, lag, rotation, sharding migration/restore, retention and source loss markers checked with conditions"
+  },
+  "content_and_reader_path_review": {
+    "record": "logs/mongodb-documentation/20261018-v6/content-reader-path-review.txt",
+    "sha256": "1e5d15ee0f9e3dd412b66d30cbe906ff9b77d2be4188e4c905db7b20638b90ae",
+    "method": "One complete current content review and two document-only task-path checks; concrete rendering/semantics/sampling/RPO issues corrected"
+  },
+  "static_log": "logs/mongodb-documentation/20261018-v6/static-check.log",
+  "static_log_sha256": "a845724940a75c608087499371514be1a730d5c88fa8e4fa688cc6e0103ac91f",
+  "focused_contracts": {
+    "command": ".venv/bin/python -m unittest tests.unit.test_documentation_contract tests.unit.test_middleware_documentation tests.unit.test_mongodb_matrix -v",
+    "tests": 28,
+    "rc": 0,
+    "log": "logs/mongodb-documentation/20261018-v6/contracts.log",
+    "sha256": "9ddef741b51442b6586e76a3ec393d8a746f0e4cd3081df4211d6cdcd27d8743"
+  },
+  "historical_execution_bindings": {
+    "policy": "M43 and executed hashes/static evidence remain byte-unchanged. Its M42 prerequisite refers to the pre-revision document review, not the current text. This new M42 binds the current manuals and reuses only unchanged operation evidence; it does not rewrite historical acceptance or claim rerun413 static/1310 unit tests.",
+    "prior_M42": {
+      "canonical_path": "tests/evidence/mongodb-documentation.json",
+      "sha256": "56084774efa39511bb7ea475cb54b6a548ae8b85c8eb6db576b0b022e5310ef5",
+      "archive": "logs/mongodb-documentation/20261018-v6/previous-documentation.json",
+      "git_commit": "6be0e555bedd7c77ae93950eea59a385ab51a7ee",
+      "git_blob": "17b63b9ae1ae9ee3872793da73ca5e697a867b67"
+    },
+    "executed_static": {
+      "path": "logs/mongodb-cases/full-20261018-042852/executed-static-evidence.json",
+      "sha256": "4f95175ad8812bf0952a85c830a68093a1dbe21ae9fb6736936a835c9c9200ec"
+    },
+    "prior_manuals": {
+      "docs/middleware/mongodb/development-manual.md": "8821c532c546ccd689f2f0fc8f997e6cccfcfe3124f29853d17a0f6f21030a0b",
+      "docs/middleware/mongodb/operations-manual.md": "4ae7c866ac4ed1c57dff9d45f60b6534d7bbad426690bbf151007eb8e232dfaa",
+      "docs/middleware/mongodb/technical-whitepaper.md": "3b7680025532865be26214204c5ba5990ac58785dcc08226ea39f963cc1757fa"
+    },
+    "new_manuals_bound_above": true
+  },
+  "current_review": "2026-10-18 v6: author full content/reader-path/figure/data review after official core-topic synthesis and complete GA evidence reuse",
+  "result": "PASS author content and both document-only reader paths, 12 final rendered/visually checked figures, exact raw evidence facts, local static and 28 focused contracts; fixed documentation gate recorded separately below",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "markers": [
+    "MONGODB_DOCUMENTATION_PASS"
+  ],
+  "gate_log": "logs/mongodb-documentation/20261018-v6/gate.log",
+  "gate_log_sha256": "66a9dd4816324d84a23c978996d4c6bfab7044a0adc8a3aece2ad60968a1cae7",
+  "gate_status": {
+    "path": "logs/mongodb-documentation/20261018-v6/gate.status.json",
+    "sha256": "065314653c5a291eff4f40be67f41b0bcbc68c48462217a1ebb188d94053d111",
+    "rc": 0
+  }
+}

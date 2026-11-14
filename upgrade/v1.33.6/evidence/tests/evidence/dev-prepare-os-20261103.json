@@ -1,0 +1,78 @@
+{
+  "date": "2026-11-03",
+  "branch": "dev",
+  "baseline_commit": "748178807af8dead9b403ca4c81d90630da8876e",
+  "matrix_scope": [
+    "T2-OS-02",
+    "T2-OS-04",
+    "T2-MR-02",
+    "T2-MR-05"
+  ],
+  "status": "pass",
+  "entry": "KUBEAUTO_MATRIX_WIP=1 bash tests/run_enterprise_regression.sh --prepare-os-only",
+  "hosts": {
+    "control": "192.168.47.138",
+    "targets": {
+      "192.168.47.138": "Ubuntu 22.04",
+      "192.168.47.141": "Anolis 23.3"
+    }
+  },
+  "inputs_sha256": {
+    "conf/config.yml": "24ebecaec847661c860bc101abad5f70a26be40dc2a71cd7228bb93fc49552c2",
+    "service/cluster/manager.py": "a6944952b1acd5cc46d223f33814cea62e95f2325025f13946feb50507af65af",
+    "roles/prepare/vars/main.yml": "f71032e45c396430df99596fcd7be1d2ee0831000b5f7c736c4f4c09d07bd9ff",
+    "roles/prepare/templates/10-k8s-modules.conf.j2": "8e577f82490898a043044614ee726b0f618c50fa4d1efbc6893f04a438bae9f6",
+    "roles/prepare/templates/95-k8s-journald.conf.j2": "f2eeefc081e01a809525d50d71c38fcc0a52a63975f40479ecf32f3555da2a04",
+    "roles/prepare/templates/95-k8s-sysctl.conf.j2": "187432cf9ee63705d2fb142cc7b184ea8e801f8f6e877533dbe598aa128b4bb0",
+    "roles/prepare/templates/30-k8s-ulimits.conf.j2": "faa64b5e013655f048af92de0e12ce3fcebaebec2d6a242e40d19234011576d4",
+    "roles/prepare/tasks/suse.yml": "f41d02cb85b209db27219f35c3d4798a53c4dc984b04a61426bf080c5db7f579",
+    "roles/prepare/tasks/firewall.yml": "43ccd2de2afb18f1e2c0cdb9ab9aa342e6b781e7ae8b7697cf4de60b8eb93886",
+    "roles/prepare/tasks/redhat.yml": "d1e1a4c01289428d66a24565bffc226e56147a6a5eb343ec27d6adf5b62301e3",
+    "roles/prepare/tasks/common.yml": "3050b7007d281a0e31c8f2dbcef0316b721b08f9e9534f398ca8859800d01302",
+    "roles/prepare/tasks/podruntime-slice.yml": "3412e46ec34107a9eb7fdd7921a8db463a079e0e70b320da2303a9f277edd34f",
+    "roles/prepare/tasks/debian.yml": "4f772f1d2e0a5fd07b1464c6545d7715329de0a334c7c9c9df6853c5707701a8",
+    "roles/prepare/tasks/main.yml": "5afadfa01fa3b0ed9e0036ba62c2ee7121502996457b5380790bd00f8cbafc32",
+    "roles/prepare/tasks/network-tools.yml": "21fc39a4a0330f8c35a04451780a1decda67e1013412c59801ce02a4be69231c",
+    "roles/prepare/files/huawei-mirror-rhel.sh": "dfd1146ca90256302b8bd649c599f9b3c939de394cd33c1b732848ac4199dc8c",
+    "roles/prepare/files/huawei-mirror-suse.sh": "3d17d06ec56cb3f6d5eb7ca435f8cf8edf9db02b21ba84bd28df7513fa212d04",
+    "roles/prepare/files/sctp.conf": "472c4c5f6d431e9d4fdff8d4a202d0e9804fbae021b6cf9502bef8081378d5bb",
+    "roles/prepare/files/huawei-mirror-debian.sh": "782c4d831e8f98435a313a46d67b3492ec5027f019d352e945495c665cdcabd4",
+    "tests/helpers/delivery-gap-retest.sh": "094c4dc9bdbf861aec2edef013b4acb3dd4bfdf11ac5ed6fe70fcfb11345affd",
+    "tests/helpers/prepare-os-production-gate.sh": "77de48374edb000543b362ecaf6b942ff25d134fb030fea070a9d3bd7df1e19e"
+  },
+  "raw_archive": {
+    "path": "logs/dev-production-fixes-20261103/prepare-accepted/accepted-raw.tar",
+    "sha256": "f6514f4dc95334a275c30b8dd88d916850e0ff390cac4ec5df946c3eea90be7d",
+    "mode": "0600; private runtime evidence, never commit archive"
+  },
+  "remote_log_sha256": "b4f42a7680ad9ebca6112c91c3d4209ea1a5d6a1dda039f6e03759ff0de4faf0",
+  "local_supervisor_log": "logs/dev-production-fixes-20261103/prepare-os-corrected-live.log",
+  "durable": {
+    "exit": 0,
+    "finalized": 0,
+    "failure_markers": 0
+  },
+  "business": {
+    "product_stages": [
+      "01",
+      "01"
+    ],
+    "retained_packages": true,
+    "network_executables_per_host": 8,
+    "firewall": "firewalld inactive/masked when installed; ufw inactive/disabled or pre-existing masked",
+    "resources_reserved": "all three switches no"
+  },
+  "cleanup": {
+    "scope": "prepare-only artifacts on 138/141; empty certificate directories; kubeconfig admitted by unique run CA/server/context then exact file hash; cluster directory removed; active runtime/data or foreign files refuse cleanup",
+    "terminal": "PREPARE_OS_ACCEPTED; LAB_CLEAN_VERIFY_PASS"
+  },
+  "evidence_reuse": {
+    "Debian/openEuler/openSUSE": "current changed prepare already exercised by accepted Nacos run; unchanged native-control/package/runtime gates retain their pinned evidence",
+    "Anolis": "new evidence signs only changed prepare; does not requalify the RT/cgroup runtime environment"
+  },
+  "limits": [
+    "No new runtime, Kubernetes topology or unrelated middleware test.",
+    "First prepare-os-live.log and prepare-os-recovery-live.log remain failed gate runs; no PASS is imported from them.",
+    "The current helper accepts pre-existing masked ufw and handles regenerated admin certificates without weakening cluster identity or Longhorn product guards."
+  ]
+}

@@ -1,0 +1,584 @@
+schema_version: 1
+meta:
+  recorded_on: '2026-11-14'
+  component: kubernetes-minor-upgrade
+  source: v1.33.6
+  target: v1.34.13
+  phase: design-only
+  execution_enabled: false
+  runner: null
+  validator: null
+  status_command: null
+  evidence_root: upgrade/v1.34.13/evidence
+  scope: 新增迁移/目标集成主张验收；原GA保留，逐断言继承证据并补缺口，父项不是独立全量现场任务
+  launch_rule: 按子项实际证明方式校验。需现场的命令/marker/租约/清理/合同未齐全不得执行；静态/资料项不强造现场动作。
+groups:
+- id: U0
+  name: 源基线与官方组合
+- id: U1
+  name: 制品与本地合同
+- id: U2
+  name: 受控迁移
+- id: U3
+  name: 目标平台集成
+- id: U4
+  name: 恢复
+- id: U5
+  name: 新建安装
+- id: U6
+  name: 文档交付
+- id: U7
+  name: 最终验收
+cases:
+- id: UPG-01
+  group: U0
+  desc: 已GA源基线的交付与证据身份关联
+  status: pending
+  evidence: ''
+  depends_on: []
+  component_ids:
+  - product
+  - kubernetes
+  - test-infrastructure
+  coverage: 精确客户交付和依赖闭包；源码观察、官方依据、项目证据分别记录。
+  product_entry: 本项为归档/官方/制品身份/静态资料核对；实际产品运行证据按所属现场子项引用
+  disproof: 缺失某主张必需的源身份时，拒绝该目标复用结论；不得撤销源GA或默认全量重测。
+  disproof_command: null
+  runner_command: null
+  success_marker: null
+  official_source_ids: []
+  fixture: 本地资料与不可变副本；不因本项单独创建集群
+  cleanup: 本项无现场清理；如有受控制品核验，仅回收本项临时资料，不触碰运行环境
+  subcases: []
+  subcase_expansion_complete: false
+  planned_evidence_methods:
+  - archived-project-evidence
+  - static-contract
+  live_scope_rule: 先复用并判断差异；只将缺失的新迁移/变化断言加入现场；同一步可关联多个父项。
+- id: UPG-02
+  group: U0
+  desc: 官方版本搭配、过渡路径及维护边界
+  status: pending
+  evidence: ''
+  depends_on:
+  - UPG-01
+  component_ids:
+  - product
+  - kubernetes
+  - binary-packs
+  - runtime
+  - calico
+  - flannel
+  - cilium
+  - kube-router
+  - kube-ovn
+  - dns
+  - metrics
+  - ingress
+  - dashboard
+  - local-storage
+  - ceph
+  - longhorn
+  - monitoring
+  - logging
+  - elasticsearch
+  - mysql
+  - kafka
+  - mongodb
+  - redis
+  - minio
+  - nacos
+  - rocketmq
+  - registry
+  - control-client
+  - test-infrastructure
+  - tools
+  coverage: 逐pin/路径的两端与过渡支持、维护期、API/许可/补丁和恢复约束。
+  product_entry: 本项为归档/官方/制品身份/静态资料核对；实际产品运行证据按所属现场子项引用
+  disproof: 提供越过官方支持范围的目标组件或未读关键资料，必须拒绝冻结。
+  disproof_command: null
+  runner_command: null
+  success_marker: null
+  official_source_ids:
+  - K8S-SKEW
+  fixture: 本地资料与不可变副本；不因本项单独创建集群
+  cleanup: 本项无现场清理；如有受控制品核验，仅回收本项临时资料，不触碰运行环境
+  subcases: []
+  subcase_expansion_complete: false
+  planned_evidence_methods:
+  - official-applicability
+  - static-contract
+  live_scope_rule: 先复用并判断差异；只将缺失的新迁移/变化断言加入现场；同一步可关联多个父项。
+- id: UPG-03
+  group: U1
+  desc: 最小制品集合与双端双架构准入
+  status: pending
+  evidence: ''
+  depends_on:
+  - UPG-02
+  - UPG-04
+  component_ids:
+  - product
+  - kubernetes
+  - binary-packs
+  - test-infrastructure
+  coverage: 全部消费制品的复用/新增/变化/失效分类、正式发布与来源/完整性。
+  product_entry: 本项为归档/官方/制品身份/静态资料核对；实际产品运行证据按所属现场子项引用
+  disproof: 计划多出一个非允许镜像或任一架构/registry身份缺失，必须在发布/现场前拒绝。
+  disproof_command: null
+  runner_command: null
+  success_marker: null
+  official_source_ids: []
+  fixture: 本地资料与不可变副本；不因本项单独创建集群
+  cleanup: 本项无现场清理；如有受控制品核验，仅回收本项临时资料，不触碰运行环境
+  subcases: []
+  subcase_expansion_complete: false
+  planned_evidence_methods:
+  - archived-project-evidence
+  - static-contract
+  live_scope_rule: 先复用并判断差异；只将缺失的新迁移/变化断言加入现场；同一步可关联多个父项。
+- id: UPG-04
+  group: U1
+  desc: 升级门禁、产品与六仓静态合同
+  status: pending
+  evidence: ''
+  depends_on:
+  - UPG-02
+  component_ids:
+  - product
+  - kubernetes
+  - control-client
+  coverage: 真实模块handoff/前后置/拒绝/作用域恢复、模板/版本/入口及最终launcher拒绝合同。
+  product_entry: 本项为归档/官方/制品身份/静态资料核对；实际产品运行证据按所属现场子项引用
+  disproof: 改变调用顺序或提供pending/stale前置，真实launcher必须在任何实验室变更前拒绝。
+  disproof_command: null
+  runner_command: null
+  success_marker: null
+  official_source_ids: []
+  fixture: 本地资料与不可变副本；不因本项单独创建集群
+  cleanup: 本项无现场清理；如有受控制品核验，仅回收本项临时资料，不触碰运行环境
+  subcases: []
+  subcase_expansion_complete: false
+  planned_evidence_methods:
+  - static-contract
+  live_scope_rule: 先复用并判断差异；只将缺失的新迁移/变化断言加入现场；同一步可关联多个父项。
+- id: UPG-05
+  group: U2
+  desc: 源健康、恢复点、资源租约与变更前拒绝
+  status: pending
+  evidence: ''
+  depends_on:
+  - UPG-01
+  - UPG-03
+  - UPG-04
+  component_ids:
+  - kubernetes
+  - runtime
+  - test-infrastructure
+  coverage: 干净自有源集群、业务账本、有效备份/恢复出口、容量/PDB及租约。
+  product_entry: config.yml + 文档规定的 kubecli 入口；本项实际动作和命令在P3/P4冻结
+  disproof: 不健康源、跳minor/降级、外来journal或缺失容量/恢复点必须不改变集群。
+  disproof_command: null
+  runner_command: null
+  success_marker: null
+  official_source_ids:
+  - K8S-SKEW
+  fixture: runner所属独立夹具；精确版本、拓扑、归属与run/change ID待P3/P4冻结
+  cleanup: 只回收本轮所属对象/故障/进程/租约，验证前后边界；最终项另需LAB_CLEAN_VERIFY_PASS
+  subcases: []
+  subcase_expansion_complete: false
+  planned_evidence_methods:
+  - archived-project-evidence
+  - official-applicability
+  - static-contract
+  - new-live-evidence
+  live_scope_rule: 先复用并判断差异；只将缺失的新迁移/变化断言加入现场；同一步可关联多个父项。
+- id: UPG-06
+  group: U2
+  desc: HA 控制面逐 minor 与混合阶段顺序
+  status: pending
+  evidence: ''
+  depends_on:
+  - UPG-05
+  component_ids:
+  - kubernetes
+  - binary-packs
+  coverage: 真实HA所有可达API版本、逐实例健康、控制器顺序、持续业务和首失败停止。
+  product_entry: config.yml + 文档规定的 kubecli 入口；本项实际动作和命令在P3/P4冻结
+  disproof: 仍有可达旧API时提前更新kubelet/不允许的控制组件，必须被计划/执行准入拒绝。
+  disproof_command: null
+  runner_command: null
+  success_marker: null
+  official_source_ids:
+  - K8S-SKEW
+  fixture: runner所属独立夹具；精确版本、拓扑、归属与run/change ID待P3/P4冻结
+  cleanup: 只回收本轮所属对象/故障/进程/租约，验证前后边界；最终项另需LAB_CLEAN_VERIFY_PASS
+  subcases: []
+  subcase_expansion_complete: false
+  planned_evidence_methods:
+  - archived-project-evidence
+  - official-applicability
+  - static-contract
+  - new-live-evidence
+  live_scope_rule: 先复用并判断差异；只将缺失的新迁移/变化断言加入现场；同一步可关联多个父项。
+- id: UPG-07
+  group: U2
+  desc: 逐节点 drain、运行时及调度恢复
+  status: pending
+  evidence: ''
+  depends_on:
+  - UPG-06
+  component_ids:
+  - kubernetes
+  - runtime
+  coverage: PDB/故障预算/本地数据、cordon/drain/update/uncordon、两运行时与资源预留/cgroup差异。
+  product_entry: config.yml + 文档规定的 kubecli 入口；本项实际动作和命令在P3/P4冻结
+  disproof: PDB阻止驱逐时不得强删/扩大批次；允许条件恢复后原账本与调度必须恢复。
+  disproof_command: null
+  runner_command: null
+  success_marker: null
+  official_source_ids:
+  - K8S-SKEW
+  fixture: runner所属独立夹具；精确版本、拓扑、归属与run/change ID待P3/P4冻结
+  cleanup: 只回收本轮所属对象/故障/进程/租约，验证前后边界；最终项另需LAB_CLEAN_VERIFY_PASS
+  subcases: []
+  subcase_expansion_complete: false
+  planned_evidence_methods:
+  - archived-project-evidence
+  - official-applicability
+  - static-contract
+  - new-live-evidence
+  live_scope_rule: 先复用并判断差异；只将缺失的新迁移/变化断言加入现场；同一步可关联多个父项。
+- id: UPG-08
+  group: U3
+  desc: 各支持网络、DNS 与 Service 连续性
+  status: pending
+  evidence: ''
+  depends_on:
+  - UPG-07
+  component_ids:
+  - calico
+  - flannel
+  - cilium
+  - kube-router
+  - kube-ovn
+  - dns
+  coverage: 所有继续支持网络路径的证据去向；官方兼容/旧证据/静态及变化断言的最小跨节点/策略/收敛补证。
+  product_entry: config.yml + 文档规定的 kubecli 入口；本项实际动作和命令在P3/P4冻结
+  disproof: 阻断任一声明支持的数据路径，业务断言必须失败；单Pod Ready不能通过。
+  disproof_command: null
+  runner_command: null
+  success_marker: null
+  official_source_ids:
+  - K8S-SKEW
+  fixture: runner所属独立夹具；精确版本、拓扑、归属与run/change ID待P3/P4冻结
+  cleanup: 只回收本轮所属对象/故障/进程/租约，验证前后边界；最终项另需LAB_CLEAN_VERIFY_PASS
+  subcases: []
+  subcase_expansion_complete: false
+  planned_evidence_methods:
+  - archived-project-evidence
+  - official-applicability
+  - static-contract
+  - new-live-evidence
+  live_scope_rule: 先复用并判断差异；只将缺失的新迁移/变化断言加入现场；同一步可关联多个父项。
+- id: UPG-09
+  group: U3
+  desc: 持久存储、CSI 与快照数据保持
+  status: pending
+  evidence: ''
+  depends_on:
+  - UPG-07
+  component_ids:
+  - local-storage
+  - ceph
+  - longhorn
+  coverage: 各存储路径逐主张复用；只补变化或迁移引入的账本/卷身份/重挂载/快照与CRD所有权缺口，不默认重跑存储全部故障与性能。
+  product_entry: config.yml + 文档规定的 kubecli 入口；本项实际动作和命令在P3/P4冻结
+  disproof: 账本不一致、卷身份漂移或重复全局控制器必须失败；副本数健康不能覆盖数据错误。
+  disproof_command: null
+  runner_command: null
+  success_marker: null
+  official_source_ids:
+  - K8S-SKEW
+  fixture: runner所属独立夹具；精确版本、拓扑、归属与run/change ID待P3/P4冻结
+  cleanup: 只回收本轮所属对象/故障/进程/租约，验证前后边界；最终项另需LAB_CLEAN_VERIFY_PASS
+  subcases: []
+  subcase_expansion_complete: false
+  planned_evidence_methods:
+  - archived-project-evidence
+  - official-applicability
+  - static-contract
+  - new-live-evidence
+  live_scope_rule: 先复用并判断差异；只将缺失的新迁移/变化断言加入现场；同一步可关联多个父项。
+- id: UPG-10
+  group: U3
+  desc: 中间件与共享控制器的目标平台集成
+  status: pending
+  evidence: ''
+  depends_on:
+  - UPG-08
+  - UPG-09
+  component_ids:
+  - mysql
+  - kafka
+  - mongodb
+  - redis
+  - elasticsearch
+  - logging
+  - minio
+  - nacos
+  - rocketmq
+  coverage: 各拓扑业务/恢复旧证据与官方配套继续覆盖；只补变化的协调/重连/PDB/补丁和共享ECK隔离断言，不重跑全部中间件长链。
+  product_entry: config.yml + 文档规定的 kubecli 入口；本项实际动作和命令在P3/P4冻结
+  disproof: 缺失某承诺路径的业务/协调断言或共享消费者被误改，父项不得通过。
+  disproof_command: null
+  runner_command: null
+  success_marker: null
+  official_source_ids:
+  - K8S-SKEW
+  fixture: runner所属独立夹具；精确版本、拓扑、归属与run/change ID待P3/P4冻结
+  cleanup: 只回收本轮所属对象/故障/进程/租约，验证前后边界；最终项另需LAB_CLEAN_VERIFY_PASS
+  subcases: []
+  subcase_expansion_complete: false
+  planned_evidence_methods:
+  - archived-project-evidence
+  - official-applicability
+  - static-contract
+  - new-live-evidence
+  live_scope_rule: 先复用并判断差异；只将缺失的新迁移/变化断言加入现场；同一步可关联多个父项。
+- id: UPG-11
+  group: U3
+  desc: 安全、入口、指标与日志目标接口
+  status: pending
+  evidence: ''
+  depends_on:
+  - UPG-08
+  - UPG-10
+  component_ids:
+  - metrics
+  - ingress
+  - dashboard
+  - monitoring
+  - logging
+  coverage: 安全/入口/指标日志按断言复用；变化的TLS/RBAC/准入或真实流量/采集查询接口最小补证。
+  product_entry: config.yml + 文档规定的 kubecli 入口；本项实际动作和命令在P3/P4冻结
+  disproof: 错误CA/权限必须拒绝；目标指标/日志为空不能凭Pod状态通过。
+  disproof_command: null
+  runner_command: null
+  success_marker: null
+  official_source_ids:
+  - K8S-SKEW
+  fixture: runner所属独立夹具；精确版本、拓扑、归属与run/change ID待P3/P4冻结
+  cleanup: 只回收本轮所属对象/故障/进程/租约，验证前后边界；最终项另需LAB_CLEAN_VERIFY_PASS
+  subcases: []
+  subcase_expansion_complete: false
+  planned_evidence_methods:
+  - archived-project-evidence
+  - official-applicability
+  - static-contract
+  - new-live-evidence
+  live_scope_rule: 先复用并判断差异；只将缺失的新迁移/变化断言加入现场；同一步可关联多个父项。
+- id: UPG-12
+  group: U4
+  desc: 升级中断、限定恢复与不可逆边界
+  status: pending
+  evidence: ''
+  depends_on:
+  - UPG-06
+  - UPG-07
+  - UPG-09
+  component_ids:
+  - kubernetes
+  - binary-packs
+  - longhorn
+  - elasticsearch
+  coverage: 各声明故障点的journal/身份、续跑、官方允许恢复、数据窗口与清理；不得盲目降级。
+  product_entry: config.yml + 文档规定的 kubecli 入口；本项实际动作和命令在P3/P4冻结
+  disproof: 改动journal集群身份或输入、重复不可逆步骤必须拒绝；恢复后保留确认数据边界。
+  disproof_command: null
+  runner_command: null
+  success_marker: null
+  official_source_ids:
+  - K8S-SKEW
+  fixture: runner所属独立夹具；精确版本、拓扑、归属与run/change ID待P3/P4冻结
+  cleanup: 只回收本轮所属对象/故障/进程/租约，验证前后边界；最终项另需LAB_CLEAN_VERIFY_PASS
+  subcases: []
+  subcase_expansion_complete: false
+  planned_evidence_methods:
+  - archived-project-evidence
+  - official-applicability
+  - static-contract
+  - new-live-evidence
+  live_scope_rule: 先复用并判断差异；只将缺失的新迁移/变化断言加入现场；同一步可关联多个父项。
+- id: UPG-13
+  group: U5
+  desc: 目标干净新建安装与幂等
+  status: pending
+  evidence: ''
+  depends_on:
+  - UPG-03
+  - UPG-04
+  - UPG-05
+  component_ids:
+  - product
+  - kubernetes
+  - runtime
+  - registry
+  - control-client
+  coverage: 独立干净目标新建主路径与幂等；其他支持路径有复用/官方/静态或新增证据映射，不默认逐路径新建。
+  product_entry: config.yml + 文档规定的 kubecli 入口；本项实际动作和命令在P3/P4冻结
+  disproof: 缺失旧环境隐式资源时目标新安装也须成立；第二遍不得重建身份或丢业务。
+  disproof_command: null
+  runner_command: null
+  success_marker: null
+  official_source_ids:
+  - K8S-SKEW
+  fixture: runner所属独立夹具；精确版本、拓扑、归属与run/change ID待P3/P4冻结
+  cleanup: 只回收本轮所属对象/故障/进程/租约，验证前后边界；最终项另需LAB_CLEAN_VERIFY_PASS
+  subcases: []
+  subcase_expansion_complete: false
+  planned_evidence_methods:
+  - archived-project-evidence
+  - official-applicability
+  - static-contract
+  - new-live-evidence
+  live_scope_rule: 先复用并判断差异；只将缺失的新迁移/变化断言加入现场；同一步可关联多个父项。
+- id: UPG-14
+  group: U6
+  desc: 客户升级步骤、来源覆盖与交付身份
+  status: pending
+  evidence: ''
+  depends_on:
+  - UPG-02
+  - UPG-06
+  - UPG-07
+  - UPG-08
+  - UPG-09
+  - UPG-10
+  - UPG-11
+  - UPG-12
+  - UPG-13
+  component_ids:
+  - product
+  - kubernetes
+  - binary-packs
+  - runtime
+  - calico
+  - flannel
+  - cilium
+  - kube-router
+  - kube-ovn
+  - dns
+  - metrics
+  - ingress
+  - dashboard
+  - local-storage
+  - ceph
+  - longhorn
+  - monitoring
+  - logging
+  - elasticsearch
+  - mysql
+  - kafka
+  - mongodb
+  - redis
+  - minio
+  - nacos
+  - rocketmq
+  - registry
+  - control-client
+  - test-infrastructure
+  - tools
+  coverage: 正式升级操作/恢复闭环、固定组合与制品、官方四类目录、静态与读者路径；不冒充客户签收。
+  product_entry: 本项为归档/官方/制品身份/静态资料核对；实际产品运行证据按所属现场子项引用
+  disproof: 移除关键输入/停止/恢复或用未核验结果写成功保证，内容评审必须拒绝签收。
+  disproof_command: null
+  runner_command: null
+  success_marker: null
+  official_source_ids: []
+  fixture: 本地资料与不可变副本；不因本项单独创建集群
+  cleanup: 本项无现场清理；如有受控制品核验，仅回收本项临时资料，不触碰运行环境
+  subcases: []
+  subcase_expansion_complete: false
+  planned_evidence_methods:
+  - archived-project-evidence
+  - official-applicability
+  - static-contract
+  live_scope_rule: 先复用并判断差异；只将缺失的新迁移/变化断言加入现场；同一步可关联多个父项。
+- id: UPG-15
+  group: U7
+  desc: 第一跳最终干净完整范围验收
+  status: pending
+  evidence: ''
+  depends_on:
+  - UPG-01
+  - UPG-02
+  - UPG-03
+  - UPG-04
+  - UPG-05
+  - UPG-06
+  - UPG-07
+  - UPG-08
+  - UPG-09
+  - UPG-10
+  - UPG-11
+  - UPG-12
+  - UPG-13
+  - UPG-14
+  component_ids:
+  - product
+  - kubernetes
+  - binary-packs
+  - runtime
+  - calico
+  - flannel
+  - cilium
+  - kube-router
+  - kube-ovn
+  - dns
+  - metrics
+  - ingress
+  - dashboard
+  - local-storage
+  - ceph
+  - longhorn
+  - monitoring
+  - logging
+  - elasticsearch
+  - mysql
+  - kafka
+  - mongodb
+  - redis
+  - minio
+  - nacos
+  - rocketmq
+  - registry
+  - control-client
+  - test-infrastructure
+  - tools
+  coverage: 冻结的新迁移、新建主路径和受影响整合步骤实际完整执行；旧深测作为前置复用；durable0/零失败/完整成功与最终清理。
+  product_entry: config.yml + 文档规定的 kubecli 入口；本项实际动作和命令在P3/P4冻结
+  disproof: 任一前置pending/stale时不变更；运行计划提前结束、模块失败或清理不完整时不得输出最终PASS。
+  disproof_command: null
+  runner_command: null
+  success_marker: null
+  official_source_ids:
+  - K8S-SKEW
+  fixture: runner所属独立夹具；精确版本、拓扑、归属与run/change ID待P3/P4冻结
+  cleanup: 只回收本轮所属对象/故障/进程/租约，验证前后边界；最终项另需LAB_CLEAN_VERIFY_PASS
+  subcases: []
+  subcase_expansion_complete: false
+  planned_evidence_methods:
+  - archived-project-evidence
+  - official-applicability
+  - static-contract
+  - new-live-evidence
+  live_scope_rule: 先复用并判断差异；只将缺失的新迁移/变化断言加入现场；同一步可关联多个父项。
+evidence_method_policy:
+  allowed:
+  - archived-project-evidence
+  - official-applicability
+  - static-contract
+  - new-live-evidence
+  rule: 每个父项展开具体断言及证据方式；覆盖清单不直接变成现场任务清单；复用需记录适用性
+  final_run: 只执行冻结的新主张/受影响整合步骤，不重跑所有被继承的深测

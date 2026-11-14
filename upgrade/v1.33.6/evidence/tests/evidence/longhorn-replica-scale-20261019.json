@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "case": "LONGHORN-27",
+  "date": "2026-10-19",
+  "status": "pass",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-replica-scale </dev/null",
+  "product_entry": "config.yml + kubecli setup longhorn-gate 09",
+  "rc": 0,
+  "durable_pid": 2377487,
+  "failure_markers": 0,
+  "success_marker": "LONGHORN_REPLICA_SCALE_PASS",
+  "scoped_clean_marker": "LONGHORN_REPLICA_SCALE_SCOPED_CLEAN_PASS",
+  "checks": {
+    "markers": [
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_EXPECTED_PRODUCT_REFUSAL_VERIFIED",
+      "LONGHORN_REPLICA_SCALE_REFUSAL_VERIFIED fault_domains=3 requested=4",
+      "LONGHORN_FSYNC_REMOUNT_VERIFIED bytes=9437184 sha256=1e7b1b785af645da5a6aad141c6eb8f7f238080431a85e08b0663e3f6f8a743a replica_nodes=longhorn-node-165,longhorn-node-212,longhorn-node-238",
+      "LONGHORN_BUSINESS_FIXTURES_CLEAN_PASS",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_REPLICA_SCALE_BUSINESS_PASS",
+      "LONGHORN_REGISTRY_TRANSPORT_CLEAN_PASS",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_REPLICA_SCALE_SCOPED_CLEAN_PASS",
+      "LONGHORN_REPLICA_SCALE_PASS"
+    ],
+    "healthy_core_and_storage_retained": true
+  },
+  "boundary": "Focused replica-scale acceptance only; no other pending module or full delivery acceptance inferred. Frozen source records actual synchronized inputs.",
+  "files": {
+    "logs/longhorn-cases/replica-scale-20261019-131908/durable-status.txt": "59cd6dbe11512dfbcb58661c3dd0e9330f095a6e75d622b10ea1cdbac62c9973",
+    "logs/longhorn-cases/replica-scale-20261019-131908/frozen-source.txt": "e7eac9e7dbe3970ef1b817e79bc469f246e57f3915c1336e4e49f499d00b22f4",
+    "logs/longhorn-cases/replica-scale-20261019-131908/gate.log": "5ab22077d75bf98e466ecc85c4391ebfa9781ce963de59230e1a9fa91b9ef334"
+  }
+}

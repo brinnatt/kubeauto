@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "MONGODB-08"
+  ],
+  "runner": "bash tests/run_enterprise_regression.sh --mongodb-install-business",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "core_uid": "4ddd4664-de27-41af-a579-93ed34c6fb03",
+  "versions": {
+    "kubernetes": "1.33.6",
+    "operator": "1.23.1",
+    "chart": "1.23.2",
+    "psmdb": "8.0.32-14"
+  },
+  "markers": [
+    "MONGODB_DATA_PLANE_READY current-generation=true tls=verified encrypted=true",
+    "MONGODB_INSTALL_BUSINESS_PASS majority-write-read=true tls=verified",
+    "MONGODB_INSTALL_CLIENT_CLEAN_PASS uid=verified",
+    "MONGODB_INSTALL_SCOPED_CLEAN_PASS",
+    "MONGODB_INSTALL_PASS",
+    "MONGODB_GATE_EXIT rc=0"
+  ],
+  "log_sha256": "e89c7080ecaa1a68f5687828e299ff68b9b06814d7f60b0fd41fa087c8c133ff",
+  "durable_status": "state=exited pid=66511 rc=0 bytes=8255 pass_markers=35 failure_markers=0 latest=MONGODB_GATE_EXIT rc=0",
+  "dependencies": {
+    "common/constants.py": "fbbda37a48043dfae5bffbadccef46715001eef46b827e5091a7584b9bbaaa68",
+    "conf/config.yml": "09bba31619bee82a4cc4d213df205b57b647cffcbafe177b243b42d169411670",
+    "roles/cluster-addon/files/mongodb.py": "56ca2fe4ccd722e6ae65e51e08d88a55947bb065fe48a71eb5d96ccee822b46f",
+    "roles/cluster-addon/files/psmdb-operator-1.23.1.tgz": "08ce50b0cbd582694790d201c9573d61a0e0b89d460961d8590cd1ee82039ccd",
+    "roles/cluster-addon/files/psmdb-operator-1.23.1.tgz.sha256": "cb65bc2750af64b3003896430677687cf6f03def72175af4d386643315191f7d",
+    "roles/cluster-addon/files/psmdb-operator-1.23.2.tgz": "80e629dc31f8cfe2615a5efb8b0d1d2ed418f25e8c0b168f981412c8594a07e9",
+    "roles/cluster-addon/files/psmdb-operator-1.23.2.tgz.sha256": "86742d0a9301cff0dbeb3563255a543ca7382c16444e519513f07ec71f9511a6",
+    "roles/cluster-addon/tasks/main.yml": "8b1baa5582bf571c78bdd15a9eaf5870c460bd15158ec57937a080b5bfbb5787",
+    "roles/cluster-addon/tasks/mongodb.yml": "54c4bc852b347bf93b042fc92ced671066a9c414d3b59f100543ba78cae964a4",
+    "roles/cluster-addon/templates/mongodb/cluster.yaml.j2": "3cd0a7715438ad77b94970c7b4e7c77b041fa7f37858194787ceca2dde1e066e",
+    "roles/cluster-addon/templates/mongodb/monitoring.yaml.j2": "f162b9c6f9895336fb8edc286c2aa18a5664f81f841d3ec68b4466ff948597ec",
+    "roles/cluster-addon/templates/mongodb/network-policy.yaml.j2": "f87a24e157764c8e11158811c98fcb11feb1bec1ab486a9d9592e2aa355d5a0e",
+    "roles/cluster-addon/templates/mongodb/operator-values.yaml.j2": "37fd64d5982868817c473c8b67b057528283a528b841ee36ceab77c29435dd0b",
+    "service/cluster/manager.py": "ae88657bfa393f042d371210af7b941feda2e0894486fd27313c2048fb1f100a",
+    "tests/helpers/mongodb-lab-storage.py": "9d6f0fad96b2377b1123d537b1ab3b6dbdf1e71509dcf5158908a5f4b7a56b27",
+    "tests/helpers/mongodb-lab.py": "2366ef954d7ee9743035b7859a801375f8d1652fb0f5615610395713ed52c05f",
+    "tests/helpers/mongodb-platform.py": "69f215ab8980901021944b2a2b60b9ae684e10028093e69525cd98d915ad9004",
+    "tests/helpers/mongodb-registry-relay.py": "cf207bd8c45caffb244118a2757f7e4a4b66ed8727b6e1dc829085263b73ee1f",
+    "tests/helpers/mongodb-scenarios.py": "0f7e74002f3f05e3ff14ae186a572eb77b290d7e34129ed88d3fcb2a51a938c5",
+    "tests/helpers/mongodb-static.sh": "b8e8da3246509c0340965bc31ff8fa7414fc2215a18e527fc799bc79a457049e",
+    "tests/unit/test_mongodb_delivery.py": "0a18fc48b65cc7a3d8e21aa53a265db78547394f0a115487b28ad5638ce6863c",
+    "tests/unit/test_mongodb_lab.py": "0165ba9315b732da9ed5421f36c926b5c6c9c40d6cdadb5e9265c7dbf45bec01",
+    "tests/unit/test_mongodb_matrix.py": "3e744ac27bf960e5af452911b7ae015c4edcb17bbd5f4a6f1e3563b0ebed31dd",
+    "tests/unit/test_mongodb_platform.py": "62b580cf111e03f843e13bffe1ba72ac5b13d306448d5e6280c0585f21a6399e",
+    "tests/unit/test_mongodb_scenarios.py": "4c34261e91de5475a511cf432a4137561f0db6fc580471a57062bfebb725777a",
+    "tests/unit/test_mongodb_storage.py": "708349da7fc1d5fbc767e3fb7372ff7a973d4bc4ed52049f3b77505da3cbbadf",
+    "tests/helpers/mongodb-install-gate.sh": "cb0969529963b772ce84b48c4df3a626b073d16577953caadf30fbf64763c60a",
+    "tests/helpers/mongodb-runner.sh": "656dda54868bed25e1d24a2cdf3db6adb24bf1fbe660cc2a038465d111236020",
+    "tests/helpers/mongodb-backups.py": "607dc9b75d14fa9a5cf327802d68783872e98d59d705a337695681478ad12abc",
+    "tests/unit/test_mongodb_backups.py": "61943917ab8f7cf8842dc3ea70463f029d88f80c333c1457626c35587217bb6a"
+  },
+  "cleanup": "installation probe database dropped in finally; exact installation client removed using UID precondition; verified healthy database/CSI baseline retained",
+  "prior_boundary": "Clean owned core and CSI from storage gate; fixed runner product deployment and focused repair of mongosh startup; unchanged core UID; no fault journal"
+}

@@ -1,0 +1,1714 @@
+meta:
+  version: 1
+  updated: '2026-11-03'
+  component: longhorn
+  scope: Independent storage branch; Longhorn 1.12.1 V1 filesystem and GA V2 replicated block disks, Kubernetes
+    1.33.6, Helm-managed; no automatic migration of existing middleware PVCs
+  result: 54/54 PASS; full regression 56/56 PASS
+  regression_result: PASS
+  regression_evidence: tests/evidence/longhorn-full-ga-20261103.json
+  regression_log: logs/longhorn-cases/full-20261103-102832/gate.log
+  execution_state: Designed acceptance contract; live modes must refuse execution until their implementation
+    and prerequisites pass
+  runner: bash tests/run_enterprise_regression.sh --longhorn-only
+  acceptance: Every applicable case requires current business assertions, durable rc=0, zero failure markers
+    and scoped cleanup; final full run additionally requires LONGHORN_DELIVERY_BRANCH_PASS and LAB_CLEAN_VERIFY_PASS
+  source_commits:
+    chart: f349c091c50700cb6cb8a4df8aaa29ea214bdd48
+    manager: 8320238242e8c804325d9588ec1db10feb9f36b8
+    upgrade_manager: fcba150e04d609c944b53cb92f7cd8adf32d7585
+    documentation: 6f1c5dd3768ba12b047d582108858d693cc37fe9
+    external_snapshotter: 78e32cd84e0abec2621924a30e38c755f93e180a
+  official:
+    release: https://github.com/longhorn/longhorn/releases/tag/v1.12.1
+    installation: https://longhorn.io/docs/1.12.1/deploy/install/
+    architecture: https://longhorn.io/docs/1.12.1/concepts/
+    maintenance: https://longhorn.io/docs/1.12.1/maintenance/maintenance/
+    backup: https://longhorn.io/docs/1.12.1/snapshots-and-backups/
+    upgrade: https://longhorn.io/docs/1.12.1/deploy/upgrade/
+    engine_comparison: https://longhorn.io/docs/1.12.1/data-engine-comparison/
+    release_boundaries: https://longhorn.io/docs/1.12.1/important-notes/
+    production_guidance: https://longhorn.io/docs/1.12.1/best-practices/
+  gate_change_class: Product integration and independent test gate; no existing middleware storage fixture
+    changes
+  product_entry: config.yml + kubecli download -E longhorn + kubecli setup longhorn-gate 09
+  live_prerequisites:
+  - Published exact pins; equal TalkEdu/Docker Hub multiarch manifests, fingerprints and archive checksums
+  - Syntax, templates, CRD schemas, ownership, markers, cleanup and focused deterministic contracts
+  - Exclusive shared-pool leases, approved hosts and runner-owned clean disks/mounts
+  - Each changed assertion must pass its narrowest mode before the final clean full run
+  evidence_policy: Official mechanisms, support boundaries and qualified published measurements inform
+    design; current project evidence proves config+kubecli integration. Existing V1 business PASS does
+    not cover V2. V2 cases 44-54 require their own current complete module evidence; focused qualification does not
+    accept an incomplete module. Final case 43 includes both engines.
+versions:
+  kubernetes: 1.33.6
+  longhorn: 1.12.1
+  upgrade_source: 1.12.0
+  chart_sha256: c8cf4b35a9d872cd5f7e44fd26d8e6ac7c2abaee42f4e2f2a0b0ebbc6e3a6116
+  upgrade_chart_sha256: 869bb20701b154473606f1e8967b27f34f2448a2dfe6eb8970f1cae6957384f5
+  snapshot_controller: 8.6.0
+boundaries:
+  volume_modes: Application Filesystem RWO/RWOP/RWX and raw Block RWO are independent of host diskType;
+    V1 results do not qualify V2. No RWX shared-block or hypervisor live-migration promise.
+  backup_consistency: Crash-consistent per-volume snapshots; database native consistency/PITR remains
+    application-owned
+  upgrade: 1.12.0 -> 1.12.1 only; V2 volumes must be detached before the patch upgrade; legacy linked
+    clones and backing-image dependencies require explicit handling; no in-place downgrade
+  excluded:
+  - Experimental UBLK frontend and sharded/erasure-coded layout; legacy V2 backing images are removed
+    upstream, so upgrade must reject unresolved dependencies and document migration
+  - Rancher/Fleet/ArgoCD/Flux installation ownership, Windows clients and managed-cloud distribution setup
+  - Multus installation, cloud autoscaler provisioning and hypervisor live migration
+  unaffected: Existing Kafka/Redis/MongoDB Longhorn 1.10.1 test fixtures and Ceph nine-module documents
+  data_engines:
+    v1: Filesystem-type ext4/xfs disks, already independently mounted; V1 acceptance is tracked independently
+      of V2
+    v2: GA replicated layout on raw block-type disks; current product accepts explicit AIO only. V2-only
+      volume operations and complete data-protection modules have separate evidence; native PCI lifecycle,
+      the remaining V2 operations and final full acceptance remain pending.
+  engine_selection: Prefer one engine per production cluster per official guidance; dual-engine coexistence
+    is an explicit, resource-budgeted option. Never change an existing volume data engine in place.
+cases:
+- id: LONGHORN-01
+  group: static
+  desc: Pinned charts, constants, catalog, official schemas and rendered image/namespace/selector contracts
+  status: pass
+  evidence: tests/evidence/longhorn-current-static-20261024.json
+  prior_current_static_evidence: tests/evidence/longhorn-current-static-20261022.json
+
+  full_wiring_failure_evidence: tests/evidence/longhorn-full-wiring-static-first-failure-20261022.json
+  command: bash tests/run_enterprise_regression.sh --longhorn-static-only </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-static-only </dev/null
+  success_marker: LONGHORN_STATIC_PASS
+  fixture_boundary: Local source/chart fixtures; no host or cluster mutation
+  cleanup_scope: Temporary render directories only
+  evidence_requirements:
+  - Current version and frozen input digest
+  - Exact success marker, durable rc=0, zero failure markers
+  - Scoped clean marker and original baseline identity/data verification
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/references/helm-values/
+  implementation_status: implemented
+  previous_evidence: tests/evidence/longhorn-v2-manager-loss-diagnostics-static-20261021.json
+  prior_accepted_evidence: tests/evidence/longhorn-runtime-env-isolation-static-20261022.json
+  compatibility_failure_evidence: tests/evidence/longhorn-node-events-compatibility-static-first-failure-20261022.json
+  compatibility_static_evidence: tests/evidence/longhorn-node-events-compatible-static-20261022.json
+  host_qualification_evidence: tests/evidence/longhorn-v2-host-qualification-20261020.json
+  host_recovery_evidence: tests/evidence/longhorn-v2-host-recovery-20261020.json
+  manager_pin_impact: tests/fixtures/longhorn-manager-pin-transition.json
+
+- id: LONGHORN-02
+  group: disabled
+  desc: 'Default disabled: no host facts/packages/services, Kubernetes reads or mutations; invalid values
+    reject before mutation'
+  status: pass
+  command: bash tests/run_enterprise_regression.sh --longhorn-disabled </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-disabled </dev/null
+  success_marker: LONGHORN_DISABLED_PASS
+  fixture_boundary: Isolated empty config and read/mutation spies
+  cleanup_scope: No remote calls or resources permitted
+  evidence_requirements:
+  - Current version and frozen input digest
+  - Exact success marker, durable rc=0, zero failure markers
+  - Scoped clean marker and original baseline identity/data verification
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/deploy/install/install-with-helm/
+  implementation_status: implemented
+  evidence: tests/evidence/longhorn-disabled-20261019.json
+- id: LONGHORN-03
+  group: ownership
+  desc: Foreign namespaces, Longhorn/CSI releases, CRDs, StorageClasses and request IDs reject without
+    adoption
+  status: pass
+  command: bash tests/run_enterprise_regression.sh --longhorn-ownership </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-ownership </dev/null
+  success_marker: LONGHORN_OWNERSHIP_PASS
+  fixture_boundary: Independent foreign namespace, release/CRD/SC canaries with captured UID
+  cleanup_scope: Only runner-created canaries by original UID; foreign baseline unchanged
+  evidence_requirements:
+  - Current version and frozen input digest
+  - Exact success marker, durable rc=0, zero failure markers
+  - Scoped clean marker and original baseline identity/data verification
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/deploy/install/install-with-helm/
+  - https://longhorn.io/docs/1.12.1/snapshots-and-backups/csi-snapshot-support/enable-csi-snapshot-support/
+  implementation_status: implemented
+  diagnostic_evidence: tests/evidence/longhorn-ownership-csi-gap-20261020.json
+  focused_qualification: bash tests/run_enterprise_regression.sh --longhorn-ownership-csi-refusal-qualification
+    </dev/null
+  csi_refusal_evidence: tests/evidence/longhorn-ownership-csi-refusal-qualification-20261020.json
+  preinstall_qualification: bash tests/run_enterprise_regression.sh --longhorn-ownership-preinstall-refusal-qualification
+    </dev/null
+  preinstall_refusal_evidence: tests/evidence/longhorn-ownership-preinstall-refusal-qualification-20261020.json
+  class_refusal_evidence: tests/evidence/longhorn-ownership-class-refusal-qualification-20261020.json
+  controller_refusal_evidence: tests/evidence/longhorn-ownership-controller-refusal-qualification-20261020.json
+  official_behavior: One common snapshot controller per cluster; native Snapshot admission binds the existing
+    source volume. EngineController garbage-collects non-creating Snapshot CRs missing from engine snapshots;
+    use ready real snapshots for request identity.
+  project_assertion: Product preflight refuses foreign resources and conflicting immutable request IDs
+    before host or storage reconciliation.
+  request_fixture_failure: tests/evidence/longhorn-ownership-request-fixture-failure-20261020.json
+  request_fixture_recovery: tests/evidence/longhorn-ownership-request-fixture-recovery-20261020.json
+  request_refusal_evidence: tests/evidence/longhorn-ownership-request-refusal-qualification-20261020.json
+  evidence: tests/evidence/longhorn-ownership-accepted-20261021.json
+  acceptance_command: bash tests/run_enterprise_regression.sh --longhorn-ownership-evidence-import
+  acceptance_boundary: Six complete original scopes consumed with frozen verifiers, unchanged 106-file
+    product closure and original fixture/data continuity; historical failed parents remain failed.
+- id: LONGHORN-04
+  group: artifacts
+  desc: All runtime/upgrade/backup/client artifacts have equal dual-registry amd64/arm64 digests and build
+    fingerprints
+  status: pass
+  command: bash tests/run_enterprise_regression.sh --longhorn-artifacts </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-artifacts </dev/null
+  success_marker: LONGHORN_ARTIFACTS_PASS
+  fixture_boundary: Published release evidence and read-only registry manifests
+  cleanup_scope: No cluster objects; temporary verified downloads only
+  evidence_requirements:
+  - Current version and frozen input digest
+  - Exact success marker, durable rc=0, zero failure markers
+  - Scoped clean marker and original baseline identity/data verification
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/deploy/install/airgap/
+  implementation_status: implemented
+  evidence: tests/evidence/longhorn-manager-current-artifacts-20261024.json
+  manager_pin_impact: tests/fixtures/longhorn-manager-pin-transition.json
+
+- id: LONGHORN-05
+  group: platform
+  desc: Linux package/kernel/iSCSI/NFS/mount propagation and independent disk identity; missing dependency/root
+    disk rejection
+  status: pass
+  command: bash tests/run_enterprise_regression.sh --longhorn-platform </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-platform </dev/null
+  success_marker: LONGHORN_PLATFORM_PASS
+  fixture_boundary: Leased nodes and runner-owned independent filesystem mount
+  cleanup_scope: Restore original mount/service state; no unowned disk writes
+  evidence_requirements:
+  - Current version and frozen input digest
+  - Exact success marker, durable rc=0, zero failure markers
+  - Scoped clean marker and original baseline identity/data verification
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/deploy/install/
+  - https://longhorn.io/docs/1.12.1/best-practices/
+  - https://longhorn.io/docs/1.12.1/nodes-and-volumes/nodes/multidisk/
+  implementation_status: implemented
+  previous_evidence: tests/evidence/longhorn-platform-20261021.json
+  evidence: tests/evidence/longhorn-platform-accepted-20261021.json
+- id: LONGHORN-06
+  group: install
+  desc: config+kubecli installs Chart, CSI and only allowlisted disks; three independent replica placements
+    and fsync/read-back hash
+  status: pass
+  command: bash tests/run_enterprise_regression.sh --longhorn-install </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-install </dev/null
+  success_marker: LONGHORN_INSTALL_PASS
+  fixture_boundary: Dedicated cluster and exact storage-node/disk allowlist
+  cleanup_scope: Keep verified healthy baseline, remove only business probes
+  evidence_requirements:
+  - Current version and frozen input digest
+  - Exact success marker, durable rc=0, zero failure markers
+  - Scoped clean marker and original baseline identity/data verification
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/deploy/install/install-with-helm/
+  - https://longhorn.io/docs/1.12.1/nodes-and-volumes/nodes/default-disk-and-node-config/
+  implementation_status: implemented
+  previous_evidence: tests/evidence/longhorn-install-20261020.json
+  pre_derived_evidence: tests/evidence/longhorn-install-csi-guard-20261020.json
+  evidence: tests/evidence/longhorn-install-derived-20261021.json
+  acceptance_boundary: Current derived instance-manager clean install passed through the original owning install stage;
+    durable exit/finalized=0/0, zero failure markers, scoped cleanup, exact three qualified filesystem
+    disks and 9437184-byte fsync/cross-worker readback. All 777 remote frozen inputs matched before
+    and after collection. Independent V2 failure and incomplete parent remain unchanged.
+- id: LONGHORN-07
+  group: idempotence
+  desc: Second identical product run preserves Helm revision, workload/PVC/Secret UIDs and acknowledged
+    data
+  status: pass
+  command: bash tests/run_enterprise_regression.sh --longhorn-idempotence </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-idempotence </dev/null
+  success_marker: LONGHORN_IDEMPOTENCE_PASS
+  fixture_boundary: Original release/node/volume/credential identities and durable data
+  cleanup_scope: No baseline replacements; remove only temporary measurements
+  evidence_requirements:
+  - Current version and frozen input digest
+  - Exact success marker, durable rc=0, zero failure markers
+  - Scoped clean marker and original baseline identity/data verification
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/advanced-resources/deploy/customizing-default-settings/
+  implementation_status: implemented
+  previous_evidence: tests/evidence/longhorn-idempotence-20261019.json
+  evidence: tests/evidence/longhorn-idempotence-20261021.json
+  data_engines:
+  - v1
+- id: LONGHORN-08
+  group: rwo
+  desc: RWO filesystem, RWOP exclusivity, raw Block and wrong attachment rejection; reattachment preserves
+    durable bytes
+  status: pass
+  command: bash tests/run_enterprise_regression.sh --longhorn-rwo </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-rwo </dev/null
+  success_marker: LONGHORN_RWO_PASS
+  fixture_boundary: Independent RWO/RWOP/Block PVCs and real clients
+  cleanup_scope: UID-bound clients/PVC/PV/Longhorn volumes; no retained baseline deletion
+  evidence_requirements:
+  - Current version and frozen input digest
+  - Exact success marker, durable rc=0, zero failure markers
+  - Scoped clean marker and original baseline identity/data verification
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/nodes-and-volumes/volumes/create-volumes/
+  implementation_status: implemented
+  evidence: tests/evidence/longhorn-rwo-20261019.json
+  data_engines:
+  - v1
+- id: LONGHORN-09
+  group: rwx
+  desc: Two-node NFSv4.1 shared filesystem, permissions, cross-client advisory locks, share-manager replacement,
+    client errors/retries and recovery
+  status: pass
+  command: bash tests/run_enterprise_regression.sh --longhorn-rwx </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-rwx </dev/null
+  success_marker: LONGHORN_RWX_PASS
+  fixture_boundary: Independent RWX volume, two node-pinned clients and share-manager fault
+  cleanup_scope: Restore share-manager service, reap clients then verify and remove owned volume
+  evidence_requirements:
+  - Current version and frozen input digest
+  - Exact success marker, durable rc=0, zero failure markers
+  - Scoped clean marker and original baseline identity/data verification
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/nodes-and-volumes/volumes/rwx-volumes/
+  implementation_status: implemented
+  evidence: tests/evidence/longhorn-rwx-20261019.json
+  data_engines:
+  - v1
+- id: LONGHORN-10
+  group: reclaim
+  desc: Retain/Delete behavior, retained PV rebinding, existing class immutability and no default-class
+    takeover
+  status: pass
+  command: bash tests/run_enterprise_regression.sh --longhorn-reclaim </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-reclaim </dev/null
+  success_marker: LONGHORN_RECLAIM_PASS
+  fixture_boundary: Dedicated Retain/Delete StorageClasses and independent PVCs
+  cleanup_scope: Retain data hash before explicit owned volume removal; foreign/default classes unchanged
+  evidence_requirements:
+  - Current version and frozen input digest
+  - Exact success marker, durable rc=0, zero failure markers
+  - Scoped clean marker and original baseline identity/data verification
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/nodes-and-volumes/volumes/delete-volumes/
+  - https://longhorn.io/docs/1.12.1/references/storage-class-parameters/
+  implementation_status: implemented
+  evidence: tests/evidence/longhorn-reclaim-20261019.json
+  data_engines:
+  - v1
+- id: LONGHORN-11
+  group: expansion
+  desc: Online filesystem and block expansion, encrypted expansion, stable PV/PVC identity and shrink
+    refusal
+  status: pass
+  command: bash tests/run_enterprise_regression.sh --longhorn-expansion </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-expansion </dev/null
+  success_marker: LONGHORN_EXPANSION_PASS
+  fixture_boundary: Independent filesystem, block and encrypted PVCs
+  cleanup_scope: Original key/source protected; owned probes and expanded volumes removed
+  evidence_requirements:
+  - Current version and frozen input digest
+  - Exact success marker, durable rc=0, zero failure markers
+  - Scoped clean marker and original baseline identity/data verification
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/nodes-and-volumes/volumes/expansion/
+  implementation_status: implemented
+  evidence: tests/evidence/longhorn-expansion-20261019.json
+  data_engines:
+  - v1
+- id: LONGHORN-12
+  group: snapshot
+  desc: 'Native and CSI snapshots: ready state, immutable requests, independent restore and before/after
+    data boundary'
+  status: pass
+  current_attempt_failure: tests/evidence/longhorn-v1-snapshot-network-first-failure-20261020.json
+  impact_evidence: tests/evidence/longhorn-operation-null-conditions-impact-20261020.json
+  command: bash tests/run_enterprise_regression.sh --longhorn-snapshot </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-snapshot </dev/null
+  success_marker: LONGHORN_SNAPSHOT_PASS
+  fixture_boundary: Unique immutable native/CSI snapshots and independent restores
+  cleanup_scope: Remove owned restored volumes and snapshots, retain source hash/UID
+  evidence_requirements:
+  - Current version and frozen input digest
+  - Exact success marker, durable rc=0, zero failure markers
+  - Scoped clean marker and original baseline identity/data verification
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/snapshots-and-backups/setup-a-snapshot/
+  - https://longhorn.io/docs/1.12.1/snapshots-and-backups/csi-snapshot-support/csi-volume-snapshot-associated-with-longhorn-snapshot/
+  implementation_status: implemented
+  evidence: tests/evidence/longhorn-snapshot-20261020.json
+  data_engines:
+  - v1
+- id: LONGHORN-13
+  group: clone
+  desc: CSI PVC clone, source-size constraint, independent write isolation, source volume preservation
+  status: pass
+  command: bash tests/run_enterprise_regression.sh --longhorn-clone </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-clone </dev/null
+  success_marker: LONGHORN_CLONE_PASS
+  fixture_boundary: Independent cloned PVC and source test volume
+  cleanup_scope: Remove clone only after isolation proof; retain source until module cleanup
+  evidence_requirements:
+  - Current version and frozen input digest
+  - Exact success marker, durable rc=0, zero failure markers
+  - Scoped clean marker and original baseline identity/data verification
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/snapshots-and-backups/csi-volume-clone/
+  implementation_status: implemented
+  evidence: tests/evidence/longhorn-clone-20261019.json
+  data_engines:
+  - v1
+- id: LONGHORN-14
+  group: backup
+  desc: Full/incremental external backup, nonzero readable objects and SHA256; new-volume restore and
+    business hash
+  status: pass
+  command: bash tests/run_enterprise_regression.sh --longhorn-backup </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-backup </dev/null
+  success_marker: LONGHORN_BACKUP_PASS
+  fixture_boundary: TLS object store on an independent failure domain and owned backup prefix
+  cleanup_scope: Keep verified reusable backup receipt; remove temporary restore PVC/client
+  evidence_requirements:
+  - Current version and frozen input digest
+  - Exact success marker, durable rc=0, zero failure markers
+  - Scoped clean marker and original baseline identity/data verification
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/snapshots-and-backups/backup-and-restore/create-a-backup/
+  - https://longhorn.io/docs/1.12.1/snapshots-and-backups/backup-and-restore/restore-from-a-backup/
+  implementation_status: implemented
+  evidence: tests/evidence/longhorn-backup-20261021.json
+  data_engines:
+  - v1
+- id: LONGHORN-15
+  group: backup-refusal
+  desc: Wrong credentials/CA/unreachable target reject; no false completed backup; recovered target restores
+    data
+  status: pass
+  command: bash tests/run_enterprise_regression.sh --longhorn-backup-refusal </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-backup-refusal </dev/null
+  success_marker: LONGHORN_BACKUP_REFUSAL_PASS
+  fixture_boundary: One independent UID-bound fixture Secret; inject wrong key, CA and endpoint separately,
+    restoring original bytes between variants; no foreign target or credential mutation
+  cleanup_scope: Restore original target/Secret identity, delete only own failed requests and fixture
+    prefix
+  evidence_requirements:
+  - Current version and frozen input digest
+  - Exact success marker, durable rc=0, zero failure markers
+  - Scoped clean marker and original baseline identity/data verification
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/snapshots-and-backups/backup-and-restore/set-backup-target/
+  implementation_status: implemented
+  evidence: tests/evidence/longhorn-backup-refusal-20261021.json
+  data_engines:
+  - v1
+  acceptance_command: bash tests/run_enterprise_regression.sh --longhorn-v1-post-revision-backups-v2-failure-acceptance
+- id: LONGHORN-16
+  group: recurring
+  desc: Scheduled snapshot/backup retention, selection, detached-volume behavior, failure and credential
+    rotation
+  status: pass
+  evidence: tests/evidence/longhorn-recurring-20261021.json
+  previous_evidence: tests/evidence/longhorn-recurring-20261020.json
+  command: bash tests/run_enterprise_regression.sh --longhorn-recurring </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-recurring </dev/null
+  success_marker: LONGHORN_RECURRING_PASS
+  fixture_boundary: Owned jobs/selectors/backup prefix and credential rotation journal
+  cleanup_scope: Disable fixture schedule first; restore original credentials; remove only fixture backups
+  evidence_requirements:
+  - Current version and frozen input digest
+  - Exact success marker, durable rc=0, zero failure markers
+  - Scoped clean marker and original baseline identity/data verification
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/snapshots-and-backups/scheduling-backups-and-snapshots/
+  implementation_status: implemented
+  data_engines:
+  - v1
+  acceptance_boundary: Current snapshot, backup and credential-rotation business/cleanup scopes passed;
+    durable exit/finalized are zero, 702 frozen inputs match, and all 13 raw artifacts are SHA-bound.
+    The failed parallel parent and V2 failure branch retain their original status.
+- id: LONGHORN-17
+  group: system-restore
+  desc: SystemBackup/Restore retains declared state and restores absent volumes from external backups;
+    all-volume-detached guard
+  status: pass
+  evidence: tests/evidence/longhorn-system-restore-complete-20261023.json
+  command: bash tests/run_enterprise_regression.sh --longhorn-system-restore </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-system-restore </dev/null
+  success_marker: LONGHORN_SYSTEM_RESTORE_PASS
+  fixture_boundary: Dedicated recovery cluster, exported source identities, verified external backups
+  cleanup_scope: Restore no-fault state; retire only isolated target and owned backup prefix
+  official_behavior: SystemRestore rolls out the resource bundle, skips existing Volumes and their PV/PVC,
+    and restores missing volumes from their latest available external backups. Nodes, disk tags, credentials,
+    application controllers and excluded settings must be prepared separately; all existing volumes are
+    detached.
+  project_assertion: Create the SystemBackup and SystemRestore through config+kubecli. Independently read
+    the bundle and referenced volume backup blocks before recovery; bind actual restored backup IDs to
+    business watermarks instead of treating bundle time as an atomic multi-volume point. Verify missing-volume
+    recovery, unchanged existing-volume UID/data, target PV/PVC bindings and separately supplied settings/credentials.
+  prerequisites: Separately leased same-version recovery target, verified source bundle and volume backups,
+    prepared nodes/tags/Secrets, stopped application controllers and no attached target volumes.
+  failure_paths: Product rejects restore with an attached volume before creating the request. Missing/unreadable
+    backup or unfinished rollout stops application startup; preserve first failure and partial resource
+    identities. Deleting SystemRestore aborts remaining rollout and does not undo resources already restored.
+  evidence_requirements:
+  - Current version and frozen input digest
+  - Exact success marker, durable rc=0, zero failure markers
+  - Scoped clean marker and original baseline identity/data verification
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/advanced-resources/system-backup-restore/
+  - https://longhorn.io/docs/1.12.1/advanced-resources/system-backup-restore/restore-longhorn-system/
+  implementation_status: implemented
+  data_engines:
+  - v1
+- id: LONGHORN-18
+  group: disaster-recovery
+  desc: Separate cluster DR standby sync, fenced activation, last-restored backup/RPO boundary, business
+    recovery and controlled failback
+  status: pass
+  evidence: tests/evidence/longhorn-disaster-recovery-complete-20261022.json
+  command: bash tests/run_enterprise_regression.sh --longhorn-disaster-recovery </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-disaster-recovery </dev/null
+  success_marker: LONGHORN_DISASTER_RECOVERY_PASS
+  fixture_boundary: Two separately leased clusters and independently retained backup target
+  cleanup_scope: Fence old active before promotion; controlled failback; retire only test clusters and
+    prefix
+  official_behavior: DR uses asynchronous backup-store polling and incremental restore into a standby
+    volume; its last actually restored backup bounds the recovery point. Standby cannot serve workloads,
+    PV/PVC, snapshots or backups; activation converts it into a normal writable volume and ends standby
+    synchronization.
+  project_assertion: Deploy both storage systems through config+kubecli and exercise the documented native
+    DR task. Verify two successive backup IDs actually restored, standby restrictions and original source
+    identity; fence the source before activation, bind the recovered volume, check the last-restored business
+    watermark, then preserve new writes through a separately fenced failback and re-establish standby.
+  prerequisites: Two separately leased clusters, identical reachable external backup target and approved
+    source-fencing/target-activation authority; a backup-only copy within one cluster is not this scenario.
+  failure_paths: Pending restore, inadequate replicas, unknown source isolation or unacceptable recovery-point
+    loss stops promotion. An unreachable source is not fenced; do not enable degraded availability merely
+    to force activation or assume that an activated volume automatically returns to standby.
+  evidence_requirements:
+  - Current version and frozen input digest
+  - Exact success marker, durable rc=0, zero failure markers
+  - Scoped clean marker and original baseline identity/data verification
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/snapshots-and-backups/setup-disaster-recovery-volumes/
+  implementation_status: implemented
+  data_engines:
+  - v1
+- id: LONGHORN-19
+  disk_fault_first_failure_evidence: tests/evidence/longhorn-v1-disk-boot-option-first-failure-20261022.json
+  disk_fault_command: bash tests/run_enterprise_regression.sh --longhorn-disk-failure </dev/null
+  disk_fault_success_marker: LONGHORN_DISK_FAILURE_PASS
+  group: replica-failure
+  desc: Single replica process/disk failure, acknowledged-write ledger, rebuild and full healthy replica
+    set
+  status: pass
+  evidence: tests/evidence/longhorn-19-focused-prerequisite-receipt-20261024.json
+  original_schema_evidence: tests/evidence/longhorn-replica-and-disk-failure-20261022.json
+  physical_disk_evidence: tests/evidence/longhorn-disk-failure-20261022.json
+  native_process_evidence: tests/evidence/longhorn-replica-failure-20261022.json
+
+  command: bash tests/run_enterprise_regression.sh --longhorn-replica-failure </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-replica-failure </dev/null
+  success_marker: LONGHORN_REPLICA_FAILURE_PASS
+  fixture_boundary: Dedicated volume and confirmed-write ledger; original Volume/Replica/InstanceManager/Pod
+    identities and server-checked native process UUID; no whole-manager restart
+  cleanup_scope: Restore injected fault, wait healthy replica set, verify all acknowledged bytes then
+    remove probe
+  evidence_requirements:
+  - Current version and frozen input digest
+  - Exact success marker, durable rc=0, zero failure markers
+  - Scoped clean marker and original baseline identity/data verification
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/high-availability/
+  - https://longhorn.io/docs/1.12.1/advanced-resources/rebuilding/fast-replica-rebuilding/
+  - https://github.com/longhorn/longhorn-instance-manager/blob/cfd63a673e3047ca176185619565d5a81d33ec1c/app/cmd/process.go
+  implementation_status: implemented
+  data_engines:
+  - v1
+  disk_fault_preflight_evidence: tests/evidence/longhorn-v1-disk-recovery-preflight-20261022.json
+  disk_fault_recovery_evidence: tests/evidence/longhorn-v1-disk-recovery-20261022.json
+- id: LONGHORN-20
+  group: node-failure
+  desc: Worker reboot and workload rescheduling; fencing required before force-detach; data/PVC identity
+    and recovery
+  status: pass
+  evidence: tests/evidence/longhorn-node-failure-20261022.json
+  command: bash tests/run_enterprise_regression.sh --longhorn-node-failure </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-node-failure </dev/null
+  success_marker: LONGHORN_NODE_FAILURE_PASS
+  fixture_boundary: Whitelisted leased worker, owned volume/client and reboot journal
+  cleanup_scope: Restore worker Ready and original scheduling state; verify data before fixture removal
+  evidence_requirements:
+  - Current version and frozen input digest
+  - Exact success marker, durable rc=0, zero failure markers
+  - Scoped clean marker and original baseline identity/data verification
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/high-availability/
+  - https://longhorn.io/docs/1.12.1/maintenance/maintenance/
+  implementation_status: implemented
+  diagnostic_evidence: tests/evidence/longhorn-node-failure-first-failure-20261022.json
+  cleanup_event_failure_evidence: tests/evidence/longhorn-node-failure-cleanup-first-failure-20261022.json
+  scoped_recovery_evidence: tests/evidence/longhorn-node-failure-recovery-20261022.json
+  data_engines:
+  - v1
+- id: LONGHORN-21
+  group: engine-failure
+  desc: Engine/instance-manager/manager loss, client error accounting, ledger verification and eventual
+    healthy data plane
+  status: pass
+  command: bash tests/run_enterprise_regression.sh --longhorn-engine-failure </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-engine-failure </dev/null
+  success_marker: LONGHORN_ENGINE_FAILURE_PASS
+  recovery_boundary: Native component recovery; engine crash uses documented manual recreation of a bare
+    application Pod, not automatic managed-workload restart
+  fixture_boundary: Exact engine/instance-manager/manager UID and continuous ledger
+  cleanup_scope: Restore healthy components and verify original PVC/data; remove owned clients
+  evidence_requirements:
+  - Current version and frozen input digest
+  - Exact success marker, durable rc=0, zero failure markers
+  - Scoped clean marker and original baseline identity/data verification
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/concepts/
+  - https://longhorn.io/docs/1.12.1/high-availability/
+  implementation_status: implemented
+  evidence: tests/evidence/longhorn-engine-failure-20261019.json
+  data_engines:
+  - v1
+- id: LONGHORN-22
+  group: network-failure
+  desc: Bounded replica-network partition, availability/timeout evidence, no unsafe concurrent attachment,
+    recovery
+  status: pass
+  evidence: tests/evidence/longhorn-network-failure-20261022.json
+  command: bash tests/run_enterprise_regression.sh --longhorn-network-failure </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-network-failure </dev/null
+  success_marker: LONGHORN_NETWORK_FAILURE_PASS
+  fixture_boundary: Run-ID bounded network fault and dedicated volume
+  cleanup_scope: Restore exact rules first; verify connectivity/replicas/data, remove probe
+  evidence_requirements:
+  - Current version and frozen input digest
+  - Exact success marker, durable rc=0, zero failure markers
+  - Scoped clean marker and original baseline identity/data verification
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/references/networking/
+  - https://longhorn.io/docs/1.12.1/high-availability/
+  implementation_status: implemented
+  data_engines:
+  - v1
+- id: LONGHORN-23
+  group: last-replica
+  desc: Last-replica drain/removal protection, all-replica loss stops I/O, explicit evidence-based recovery
+    without automatic data deletion
+  status: pass
+  evidence: tests/evidence/longhorn-23-focused-prerequisite-receipt-20261024.json
+  original_schema_evidence: tests/evidence/longhorn-last-replica-20261022.json
+  first_failure: tests/evidence/longhorn-last-replica-first-failure-20261022.json
+  balance_contract: tests/evidence/longhorn-last-replica-balance-contract-20261022.json
+  command: bash tests/run_enterprise_regression.sh --longhorn-last-replica </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-last-replica </dev/null
+  success_marker: LONGHORN_LAST_REPLICA_PASS
+  fixture_boundary: Dedicated disposable data volume and captured last-good replica identity
+  cleanup_scope: Restore fault before cleanup; never salvage or delete unrelated replica data
+  evidence_requirements:
+  - Current version and frozen input digest
+  - Exact success marker, durable rc=0, zero failure markers
+  - Scoped clean marker and original baseline identity/data verification
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/maintenance/maintenance/
+  - https://longhorn.io/docs/1.12.1/advanced-resources/data-recovery/corrupted-replica/
+  implementation_status: implemented
+  data_engines:
+  - v1
+- id: LONGHORN-24
+  group: maintenance
+  desc: Planned drain, remaining fault budget, PDB refusal, uncordon and data verification; no --disable-eviction
+    bypass
+  status: pass
+  evidence: tests/evidence/longhorn-maintenance-20261022.json
+  command: bash tests/run_enterprise_regression.sh --longhorn-maintenance </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-maintenance </dev/null
+  success_marker: LONGHORN_MAINTENANCE_PASS
+  fixture_boundary: Leased worker and original cordon/taint state plus data ledger
+  cleanup_scope: Restore scheduling state and verify replica/data health; remove only probes
+  official_behavior: Drain protection is enforced through Instance Manager PDB eviction. Policies react
+    to cordon because Longhorn cannot distinguish it from an intended drain. Default block-if-contains-last-replica
+    protects the last healthy replica but can leave a drained volume degraded; full eviction requires
+    receiving capacity and can take substantially longer. Manually attached volumes require explicit detach.
+  project_assertion: Use a runner-owned application with immutable fsync acknowledgements. Record node
+    UID, original scheduling state and drain policy; prove the last-replica PDB refusal, then restore
+    a healthy independent replica before the allowed drain. Check workload migration, real attachment/replica
+    placement, acknowledged data and absence of old-node instances; restore original scheduling/policy
+    and full redundancy.
+  prerequisites: Healthy isolated baseline, approved receiving capacity/fault budget and recorded policy;
+    do not impose an unconditional three-healthy-replica assertion while one of three storage nodes is
+    drained.
+  failure_paths: PDB rejection, remaining manual attachment, timeout or unknown replica state stops host
+    maintenance. No --disable-eviction, PDB deletion or unconditional shutdown; cancellation restores
+    original node state and verifies business health before another node is touched.
+  evidence_requirements:
+  - Current version and frozen input digest
+  - Exact success marker, durable rc=0, zero failure markers
+  - Scoped clean marker and original baseline identity/data verification
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/maintenance/maintenance/
+  implementation_status: implemented
+  data_engines:
+  - v1
+  wiring_contract: tests/evidence/longhorn-v1-operations-wiring-contract-20261021.json
+  first_failure: tests/evidence/longhorn-maintenance-first-failure-20261021.json
+  replica_balance_contract: tests/evidence/longhorn-maintenance-boot-repair-contract-20261021.json
+- id: LONGHORN-25
+  group: node-lifecycle
+  desc: Product add-node prerequisites, Longhorn data-node expansion, eviction, guarded del-node/master
+    and identity-safe retirement
+  status: pass
+  evidence: tests/evidence/longhorn-node-lifecycle-complete-20261024.json
+  recovery_evidence: tests/evidence/longhorn-node-partial-join-recovery-20261024.json
+  topology_contract: tests/evidence/longhorn-node-same-subnet-contract-20261024.json
+  acceptance_topology: Independent V1 cluster on three released 192.168.47 hosts, plus released .149 receiving worker; no cross-subnet Kubernetes node traffic. Original six-node V1 fixture remains unchanged.
+  command: bash tests/run_enterprise_regression.sh --longhorn-node-lifecycle </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-node-lifecycle </dev/null
+  success_marker: LONGHORN_NODE_LIFECYCLE_PASS
+  fixture_boundary: Additional leased receiving node, approved disk and replica evacuation journal
+  cleanup_scope: Retire only empty owned data node; release lease after mount/process absence
+  evidence_requirements:
+  - Current version and frozen input digest
+  - Exact success marker, durable rc=0, zero failure markers
+  - Scoped clean marker and original baseline identity/data verification
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/maintenance/maintenance/
+  - https://longhorn.io/docs/1.12.1/nodes-and-volumes/nodes/default-disk-and-node-config/
+  implementation_status: implemented
+  data_engines:
+  - v1
+- id: LONGHORN-26
+  group: disk-lifecycle
+  desc: Add independent filesystem disk, duplicate FS rejection, replica/backing-image eviction, empty-disk
+    removal and replacement
+  status: pass
+  evidence: tests/evidence/longhorn-disk-lifecycle-20261022.json
+  acceptance_boundary: Complete V1 mounted filesystem disk lifecycle, original data restoration and scoped cleanup; durable exit/finalized=0, zero failure markers and 828 unchanged remote inputs. No V2 or full delivery claim.
+  command: bash tests/run_enterprise_regression.sh --longhorn-disk-lifecycle </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-disk-lifecycle </dev/null
+  success_marker: LONGHORN_DISK_LIFECYCLE_GATE_PASS
+  fixture_boundary: Runner-owned extra filesystem with stable device identity
+  cleanup_scope: Evacuate and verify empty before removing disk CR; unmount only own fixture
+  evidence_requirements:
+  - Current version and frozen input digest
+  - Exact success marker, durable rc=0, zero failure markers
+  - Scoped clean marker and original baseline identity/data verification
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/nodes-and-volumes/nodes/multidisk/
+  implementation_status: implemented
+  data_engines:
+  - v1
+  wiring_contract: tests/evidence/longhorn-v1-operations-wiring-contract-20261021.json
+- id: LONGHORN-27
+  group: replica-scale
+  desc: Replica count and auto-balance changes preserve acknowledged data and placement; insufficient-domain
+    refusal
+  status: pass
+  command: bash tests/run_enterprise_regression.sh --longhorn-replica-scale </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-replica-scale </dev/null
+  success_marker: LONGHORN_REPLICA_SCALE_PASS
+  fixture_boundary: Dedicated volume and topology/replica-count snapshot
+  cleanup_scope: Restore original count/placement and healthy data; remove test volume
+  evidence_requirements:
+  - Current version and frozen input digest
+  - Exact success marker, durable rc=0, zero failure markers
+  - Scoped clean marker and original baseline identity/data verification
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/high-availability/auto-balance-replicas/
+  implementation_status: implemented
+  evidence: tests/evidence/longhorn-replica-scale-20261019.json
+  data_engines:
+  - v1
+- id: LONGHORN-28
+  group: capacity
+  desc: Physical/scheduled capacity, snapshot amplification, low-space scheduling refusal and bounded
+    full-disk recovery
+  status: pass
+  command: bash tests/run_enterprise_regression.sh --longhorn-capacity </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-capacity </dev/null
+  success_marker: LONGHORN_CAPACITY_PASS
+  fixture_boundary: Bounded disposable filesystem, filler file and original thresholds
+  cleanup_scope: Remove exact filler first, restore thresholds, wait healthy and verify business hash
+  evidence_requirements:
+  - Current version and frozen input digest
+  - Exact success marker, durable rc=0, zero failure markers
+  - Scoped clean marker and original baseline identity/data verification
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/nodes-and-volumes/nodes/scheduling/
+  - https://longhorn.io/docs/1.12.1/nodes-and-volumes/nodes/node-space-usage/
+  implementation_status: implemented
+  data_engines:
+  - v1
+  wiring_contract: tests/evidence/longhorn-v1-operations-wiring-contract-20261021.json
+  evidence: tests/evidence/longhorn-capacity-20261022.json
+- id: LONGHORN-29
+  group: trim
+  desc: Delete versus snapshot retention, controlled snapshot purge/TRIM, actual host allocation and original
+    business data
+  status: pass
+  command: bash tests/run_enterprise_regression.sh --longhorn-trim </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-trim </dev/null
+  success_marker: LONGHORN_TRIM_PASS
+  fixture_boundary: Disposable filesystem volume and known allocated blocks/snapshot graph
+  cleanup_scope: Verify retained data, remove only owned snapshots and probe PVC
+  evidence_requirements:
+  - Current version and frozen input digest
+  - Exact success marker, durable rc=0, zero failure markers
+  - Scoped clean marker and original baseline identity/data verification
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/nodes-and-volumes/volumes/trim-filesystem/
+  implementation_status: implemented
+  evidence: tests/evidence/longhorn-trim-20261019.json
+  data_engines:
+  - v1
+- id: LONGHORN-30
+  group: integrity
+  desc: Snapshot checksum and corrupted-replica evidence; isolated native replica export and application
+    integrity check
+  status: pass
+  evidence: tests/evidence/longhorn-integrity-20261022.json
+  acceptance_boundary: Complete V1 integrity module; three-replica offline consensus, isolated corruption detection, native read-only export, original data restoration and scoped cleanup. Durable exit/finalized=0, zero failures, 828 remote inputs unchanged. No full rehash or parent delivery claim.
+  cleanup_monitoring_failure_evidence: tests/evidence/longhorn-integrity-cleanup-monitoring-first-failures-20261022.json
+  continuation_failure_evidence: tests/evidence/longhorn-integrity-monitoring-first-failures-20261022.json
+  command: bash tests/run_enterprise_regression.sh --longhorn-integrity </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-integrity </dev/null
+  success_marker: LONGHORN_INTEGRITY_PASS
+  fixture_boundary: Disposable snapshot/replica and independent native export directory
+  cleanup_scope: Restore original fault scope; preserve corruption evidence; remove only isolated export
+    and volume
+  evidence_requirements:
+  - Current version and frozen input digest
+  - Exact success marker, durable rc=0, zero failure markers
+  - Scoped clean marker and original baseline identity/data verification
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/advanced-resources/data-integrity/snapshot-data-integrity-check/
+  - https://longhorn.io/docs/1.12.1/advanced-resources/data-recovery/export-from-replica/
+  implementation_status: implemented
+  data_engines:
+  - v1
+  wiring_contract: tests/evidence/longhorn-v1-operations-wiring-contract-20261021.json
+- id: LONGHORN-31
+  group: encryption
+  desc: LUKS filesystem/block, wrong/lost key refusal, backup encryption and recovered secret restores
+    data; no re-encryption by Secret overwrite
+  status: pass
+  command: bash tests/run_enterprise_regression.sh --longhorn-encryption </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-encryption </dev/null
+  success_marker: LONGHORN_ENCRYPTION_PASS
+  fixture_boundary: Dedicated owned keys/classes/PVCs plus independently escrowed original key
+  cleanup_scope: Restore original key before mount/data proof; remove keys only after owned volumes are
+    gone
+  evidence_requirements:
+  - Current version and frozen input digest
+  - Exact success marker, durable rc=0, zero failure markers
+  - Scoped clean marker and original baseline identity/data verification
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/advanced-resources/security/volume-encryption/
+  implementation_status: implemented
+  evidence: tests/evidence/longhorn-encryption-20261021.json
+  previous_evidence: tests/evidence/longhorn-encryption-20261019.json
+  data_engines:
+  - v1
+  acceptance_boundary: Current filesystem/block wrong-or-missing-key refusal and encrypted full/incremental
+    backup restore scopes passed through product entry points; durable exit/finalized are zero, 702
+    frozen inputs match, and all 13 raw artifacts are SHA-bound. The failed parallel parent and V2
+    failure branch retain their original status.
+- id: LONGHORN-32
+  group: security
+  desc: Privileged namespace/RBAC boundary, control-plane mTLS allow/refuse, certificate rotation and
+    key-safe diagnostics
+  status: pass
+  command: bash tests/run_enterprise_regression.sh --longhorn-security </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-security </dev/null
+  success_marker: LONGHORN_SECURITY_PASS
+  fixture_boundary: Separate test PKI, legal/illegal gRPC clients and rotation journal
+  cleanup_scope: Detach only the UID-journaled new-CA client before restoring trust/components; verify
+    original materials and data; remove test PKI
+  evidence_requirements:
+  - Current version and frozen input digest
+  - Exact success marker, durable rc=0, zero failure markers
+  - Scoped clean marker and original baseline identity/data verification
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/advanced-resources/security/mtls-support/
+  implementation_status: implemented
+  evidence: tests/evidence/longhorn-security-20261021.json
+  pending_reason: The prior complete security retry stopped at a test-gate readiness predicate that
+    rejected a legitimate DaemonSet replacement transition. Its exact deterministic contracts and
+    scoped TLS/business recovery passed; rerun the security module on the qualified current pin.
+    Successful idempotence and V2 branches remain independently reusable.
+  first_failure_evidence: tests/evidence/longhorn-security-ds-transition-first-failure-20261021.json
+- id: LONGHORN-33
+  group: network-policy
+  desc: Allowed component and metrics traffic, foreign workload refusal and verified webhook/HA paths
+  status: pass
+  command: bash tests/run_enterprise_regression.sh --longhorn-network-policy </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-network-policy </dev/null
+  success_marker: LONGHORN_NETWORK_POLICY_PASS
+  fixture_boundary: Owned allowed/foreign clients and original policy identities
+  cleanup_scope: Restore exact policies, verify webhook/HA and original data; remove clients
+  evidence_requirements:
+  - Current version and frozen input digest
+  - Exact success marker, durable rc=0, zero failure markers
+  - Scoped clean marker and original baseline identity/data verification
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/references/networking/
+  implementation_status: implemented
+  evidence: tests/evidence/longhorn-network-policy-20261019.json
+- id: LONGHORN-34
+  group: observability
+  desc: Real Prometheus scrape, absent-series handling, degraded/capacity/backup alerts, resolution and
+    bounded support bundle
+  status: pass
+  evidence: tests/evidence/longhorn-v1-observability-complete-20261023.json
+  command: bash tests/run_enterprise_regression.sh --longhorn-observability </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-observability </dev/null
+  success_marker: LONGHORN_OBSERVABILITY_PASS
+  fixture_boundary: Published Prometheus and owned scrape/rule/client resources
+  cleanup_scope: Resolve injected fault first; verify alert recovery and original targets; remove only
+    owned monitor
+  evidence_requirements:
+  - Current version and frozen input digest
+  - Exact success marker, durable rc=0, zero failure markers
+  - Scoped clean marker and original baseline identity/data verification
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/monitoring/metrics/
+  - https://longhorn.io/docs/1.12.1/monitoring/alert-rules-example/
+  - https://longhorn.io/docs/1.12.1/monitoring/prometheus-and-grafana-setup/
+  implementation_status: implemented
+  support_download_first_failure_evidence: tests/evidence/longhorn-observability-support-transfer-first-failure-20261022.json
+  support_transfer_qualification_evidence: tests/evidence/longhorn-support-http-qualification-20261023.json
+- id: LONGHORN-35
+  group: upgrade
+  desc: 1.12.0 -> 1.12.1 manager/CRD/engine upgrade through product, UID/data retention and direct-downgrade
+    rejection
+  status: pass
+  evidence: tests/evidence/longhorn-v1-upgrade-complete-20261023.json
+  command: bash tests/run_enterprise_regression.sh --longhorn-upgrade </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-upgrade </dev/null
+  success_marker: LONGHORN_UPGRADE_PASS
+  fixture_boundary: Clean 1.12.0 cluster/CRD baseline and verified pre-upgrade backup
+  cleanup_scope: Finish at healthy 1.12.1; preserve original data identity; no direct downgrade
+  evidence_requirements:
+  - Current version and frozen input digest
+  - Exact success marker, durable rc=0, zero failure markers
+  - Scoped clean marker and original baseline identity/data verification
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/deploy/upgrade/longhorn-manager/
+  - https://longhorn.io/docs/1.12.1/deploy/upgrade/upgrade-engine/
+  implementation_status: implemented
+- id: LONGHORN-36
+  group: upgrade-recovery
+  desc: Precheck rejection versus completed-upgrade boundary; isolated recovery from verified backup instead
+    of unsupported downgrade
+  status: pass
+  evidence: tests/evidence/longhorn-v1-upgrade-complete-20261023.json
+  command: bash tests/run_enterprise_regression.sh --longhorn-upgrade-recovery </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-upgrade-recovery </dev/null
+  success_marker: LONGHORN_UPGRADE_RECOVERY_PASS
+  fixture_boundary: Separate checker-refusal fixture and independent backup recovery target
+  cleanup_scope: Preserve original upgraded system; remove isolated recovery target after data proof
+  official_behavior: An unsupported-path Helm pre-upgrade rejection occurs before the new release rollout;
+    official recovery to the previous revision applies to that intact old-system boundary. It does not
+    authorize downgrading a completed Manager/CRD/engine upgrade or reverting a newer volume data format.
+  project_assertion: Use distinct fixtures for precheck refusal and post-upgrade recovery. In the first,
+    prove unchanged old workload/CRD/engine identities and confirmed data. In the second, preserve the
+    upgraded source and use config+kubecli plus the verified external recovery material on an isolated
+    supported target; verify restored application watermarks and direct-downgrade rejection without attempting
+    a real format downgrade.
+  prerequisites: Fixed 1.12.0 source and1.12.1 target artifacts, independently restored pre-upgrade backup,
+    recorded source identities and separately leased recovery capacity.
+  failure_paths: Classify precheck rejection versus partial/completed rollout from actual hook/release/CRD/engine
+    state. Unknown rollout state stops rollback; retain original data and first diagnostics rather than
+    using Helm rollback, forced reinstall or finalizer removal as generic recovery.
+  evidence_requirements:
+  - Current version and frozen input digest
+  - Exact success marker, durable rc=0, zero failure markers
+  - Scoped clean marker and original baseline identity/data verification
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/deploy/upgrade/longhorn-manager/
+  implementation_status: implemented
+- id: LONGHORN-37
+  group: middleware
+  desc: Product-deployed database and monitoring consumers use explicit Longhorn classes; native backup
+    complements volume backup
+  status: pass
+  evidence: tests/evidence/longhorn-37-focused-prerequisite-receipt-20261024.json
+  original_schema_evidence: tests/evidence/longhorn-middleware-hex-blob-business-20261022.json
+  command: bash tests/run_enterprise_regression.sh --longhorn-middleware </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-middleware </dev/null
+  success_marker: LONGHORN_MIDDLEWARE_PASS
+  fixture_boundary: Config+kubecli-deployed database and monitoring with explicit Longhorn SC
+  cleanup_scope: Native application backup/restore first; remove only own consumers and their volumes
+  evidence_requirements:
+  - Current version and frozen input digest
+  - Exact success marker, durable rc=0, zero failure markers
+  - Scoped clean marker and original baseline identity/data verification
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/references/storage-class-parameters/
+  - https://longhorn.io/docs/1.12.1/snapshots-and-backups/backup-and-restore/restore-statefulset/
+  implementation_status: implemented
+- id: LONGHORN-38
+  group: performance
+  desc: 'Fixed fsync random/sequential workloads: p50/p95/p99, IOPS/throughput, resource profile and zero
+    silent corruption'
+  status: pass
+  command: bash tests/run_enterprise_regression.sh --longhorn-performance </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-performance </dev/null
+  success_marker: LONGHORN_PERFORMANCE_PASS
+  fixture_boundary: Dedicated fixed-size test data, client version and latency/ack ledger
+  cleanup_scope: Stop clients, verify acknowledged data, remove own volume; preserve summarized raw metrics
+  evidence_requirements:
+  - Current version and frozen input digest
+  - Exact success marker, durable rc=0, zero failure markers
+  - Scoped clean marker and original baseline identity/data verification
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/references/reference-setup-performance-scalability-and-sizing-guidelines/
+  - https://longhorn.io/docs/1.12.1/best-practices/
+  implementation_status: implemented
+  evidence: tests/evidence/longhorn-performance-20261019.json
+  data_engines:
+  - v1
+- id: LONGHORN-39
+  group: stability
+  desc: At least 30-minute acknowledged-write load with controller, worker and replica faults; retries/errors
+    reported separately
+  status: pass
+  command: bash tests/run_enterprise_regression.sh --longhorn-stability </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-stability </dev/null
+  success_marker: LONGHORN_STABILITY_PASS
+  fixture_boundary: Dedicated 30-minute load, precise component/worker fault journal
+  cleanup_scope: Restore all faults and services, validate complete ledger, remove only workload/data
+    fixtures
+  evidence_requirements:
+  - Current version and frozen input digest
+  - Exact success marker, durable rc=0, zero failure markers
+  - Scoped clean marker and original baseline identity/data verification
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/best-practices/
+  - https://longhorn.io/docs/1.12.1/high-availability/
+  implementation_status: implemented
+  first_failure_evidence: tests/evidence/longhorn-stability-first-failure-20261022.json
+  evidence: tests/evidence/longhorn-39-focused-prerequisite-receipt-20261024.json
+  original_schema_evidence: tests/evidence/longhorn-stability-complete-20261022.json
+  data_engines:
+  - v1
+- id: LONGHORN-40
+  group: uninstall
+  desc: Nonempty-volume/PV uninstall and destroy refusal; empty-cluster official uninstall hook succeeds;
+    no finalizer stripping
+  status: pass
+  command: bash tests/run_enterprise_regression.sh --longhorn-uninstall </dev/null
+  qualification_command: bash tests/run_enterprise_regression.sh --longhorn-uninstall-refusal-qualification
+    </dev/null
+  backup_retention_qualification_command: bash tests/run_enterprise_regression.sh --longhorn-uninstall-backup-qualification
+    </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-uninstall </dev/null
+  success_marker: LONGHORN_UNINSTALL_PASS
+  fixture_boundary: Separate nonempty refusal canary followed by empty owned storage deployment
+  cleanup_scope: Verify native uninstall completion; shared snapshot APIs and external backups retained
+  official_behavior: Helm uninstall runs the official deletion job; deleting-confirmation-flag must be
+    true for the job to proceed. Workload/data consumers must be retired first. Helm command acceptance
+    or a missing release alone does not prove that CRDs, webhooks and data-plane components have been
+    removed.
+  project_assertion: With confirmed data present, config+kubecli uninstall and cluster teardown must both
+    refuse before destructive actions, preserving application/PV/Volume identities and data. After scoped
+    business cleanup, use explicit product uninstall intent and the native hook; verify release, Longhorn
+    CRDs, webhooks, owned classes and node-bootstrap metadata are gone while shared snapshot resources
+    and external backup objects retain their identities and readable content.
+  prerequisites: Runner-owned healthy installation, bound and Retain PV refusal canaries, independent
+    backup retention authority, original shared-resource identities and an approved empty-store uninstall
+    window.
+  failure_paths: Nonempty PV/Volume, unfinished protection operation or remaining CSI snapshot content
+    stops uninstall. Hook failure, partial cleanup or interruption preserves diagnostics and original
+    receipts; do not strip finalizers or broaden deletion to shared APIs/foreign namespaces to create
+    a success marker.
+  evidence_requirements:
+  - Current version and frozen input digest
+  - Exact success marker, durable rc=0, zero failure markers
+  - Scoped clean marker and original baseline identity/data verification
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/deploy/uninstall/
+  implementation_status: implemented
+  nonempty_qualification_evidence: tests/evidence/longhorn-uninstall-refusal-qualification-20261020.json
+  first_failure_evidence: tests/evidence/longhorn-uninstall-backup-cleanup-failure-20261020.json
+  backup_retention_qualification_evidence: tests/evidence/longhorn-uninstall-backup-qualification-20261020.json
+  native_failure_evidence: tests/evidence/longhorn-uninstall-namespace-boundary-failure-20261020.json
+  host_recovery_failure_evidence: tests/evidence/longhorn-uninstall-host-journal-failure-20261020.json
+  focused_recovery_evidence: tests/evidence/longhorn-uninstall-host-recovery-20261020.json
+  previous_evidence: tests/evidence/longhorn-uninstall-20261020.json
+  evidence: tests/evidence/longhorn-uninstall-20261021.json
+  acceptance_boundary: Current complete module; bound/Released uninstall and destroy refusals, Retain
+    rebind data, native uninstall, nine shared snapshot resources and external backup retention passed.
+    Module durable exit/finalized are both zero; the failed V2 parent remains failed and no GA is inferred.
+- id: LONGHORN-41
+  group: cleanup
+  desc: Normal/failure/interruption cleanup restores faults, services, labels, mounts and test-owned fixtures;
+    foreign data untouched
+  status: pass
+  evidence: tests/evidence/longhorn-cleanup-abort-archive-complete-20261024.json
+  command: bash tests/run_enterprise_regression.sh --longhorn-cleanup </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-cleanup </dev/null
+  success_marker: LONGHORN_CLEANUP_PASS
+  fixture_boundary: Separate normal/failure/interruption journals with foreign canary
+  cleanup_scope: All declared owned objects/faults/mounts/processes gone; original canary UID/hash unchanged
+  evidence_requirements:
+  - Current version and frozen input digest
+  - Exact success marker, durable rc=0, zero failure markers
+  - Scoped clean marker and original baseline identity/data verification
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/deploy/uninstall/
+  - https://longhorn.io/docs/1.12.1/maintenance/maintenance/
+  implementation_status: implemented
+  ownership_interruption_qualification: bash tests/run_enterprise_regression.sh --longhorn-ownership-interruption-qualification
+    </dev/null
+  ownership_recovery_contract: tests/evidence/longhorn-ownership-recovery-contract-20261020.json
+  ownership_interruption_evidence: tests/evidence/longhorn-ownership-interruption-qualification-20261020.json
+  qualification_command: bash tests/run_enterprise_regression.sh --longhorn-cleanup-qualification </dev/null
+  qualification_contract: tests/evidence/longhorn-cleanup-integrated-contract-20261021.json
+  archive_handoff_impact: tests/evidence/longhorn-upgrade-abort-archive-impact-20261024.json
+- id: LONGHORN-42
+  group: documentation
+  desc: Three formal manuals, source/content review, novice and experienced-reader paths, rendered diagrams
+    and actual evidence boundaries
+  status: pass
+  command: bash tests/run_enterprise_regression.sh --longhorn-documentation </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-documentation </dev/null
+  success_marker: LONGHORN_DOCUMENTATION_PASS
+  fixture_boundary: Formal manuals and applicable source/current evidence mapping
+  cleanup_scope: Temporary shell/diagram renders only; no live mutation
+  evidence_requirements:
+  - Current version and frozen input digest
+  - Exact success marker, durable rc=0, zero failure markers
+  - Scoped clean marker and original baseline identity/data verification
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/concepts/
+  - https://longhorn.io/docs/1.12.1/references/
+  implementation_status: implemented
+  uninstall_document_evidence: tests/evidence/longhorn-uninstall-document-review-20261020.json
+  csi_document_evidence: tests/evidence/longhorn-ownership-csi-document-review-20261020.json
+  content_document_evidence: tests/evidence/longhorn-full-content-document-review-20261020.json
+  previous_evidence: tests/evidence/longhorn-documentation-revision2-20261021.json
+  evidence: tests/evidence/longhorn-documentation-current-20261024.json
+
+- id: LONGHORN-43
+  group: delivery
+  desc: One final clean full V1 and V2 Longhorn regression, current evidence per case, durable rc=0, zero
+    failure markers and LAB_CLEAN_VERIFY_PASS
+  status: pass
+  evidence: tests/evidence/longhorn-full-ga-20261103.json
+  command: bash tests/run_enterprise_regression.sh --longhorn-only </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-only </dev/null
+  success_marker: LONGHORN_DELIVERY_BRANCH_PASS
+  fixture_boundary: One clean exclusively leased full scenario, exact frozen inputs and module receipts
+  cleanup_scope: All faults, owned cluster/mounts/processes removed; foreign data unchanged and leases
+    released
+  evidence_requirements:
+  - Current version and frozen input digest
+  - Exact success marker, durable rc=0, zero failure markers
+  - Scoped clean marker and original baseline identity/data verification
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/deploy/install/
+  - https://longhorn.io/docs/1.12.1/deploy/upgrade/
+  implementation_status: implemented
+- id: LONGHORN-44
+  group: v2-platform
+  desc: V2 host and resource qualification before mutation
+  status: pass
+  evidence: tests/evidence/longhorn-v2-platform-complete-20261023.json
+  acceptance_boundary: Complete original platform gate including accepted host/page/AIO prerequisites, current three runtime profiles, safety refusals and original baseline restoration. Owning durable exit/finalized=0 and zero failure markers; no final delivery or customer signature.
+  data_engines:
+  - v2
+  command: bash tests/run_enterprise_regression.sh --longhorn-v2-platform </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-v2-platform </dev/null
+  success_marker: LONGHORN_V2_PLATFORM_PASS
+  fixture_boundary: Read-only host probes and runner-owned module/resource configuration; preserve foreign
+    settings and restore only exact owned files/state.
+  cleanup_scope: Read-only host probes and runner-owned module/resource configuration; preserve foreign
+    settings and restore only exact owned files/state.
+  official_behavior: V2 is GA since 1.12.0; production NVMe/TCP guidance requires kernel >=6.7, AMD64
+    SSE4.2, modules and adequate CPU/memory. Hugepages can be disabled using anonymous memory; interrupt
+    mode differs from busy polling.
+  project_assertion: Validate explicit engine/node selection, loaded modules, kernel/architecture, guaranteed
+    CPU vs reactor cores, sparse online CPU IDs, hugepage or anonymous memory budget and actual kubelet
+    capacity. For exclusive allocation, verify actual static checkpoints and every native Node policy,
+    whole-CPU budget, Guaranteed IM Pod resources and core count precedence. Qualify anonymous-memory
+    and exclusive-CPU settings together against actual container cgroup memory limits, SPDK allocation
+    and sustained business I/O; the pinned controller sets ordinary memory requests/limits to 128Mi in
+    exclusive mode, while the launch wrapper forwards the configured memory size to spdk_tgt. Separate
+    valid settings do not prove their combination. Qualify iobuf counts against the shared SPDK memory
+    budget and actual startup JSON/runtime allocation, with defaults omitted from native Pod flags; disabled
+    V2 performs no V2 host changes.
+  prerequisites: Leased approved nodes, read-only host inventory and current published instance-manager
+    image; do not reuse the current 5.14 V1 pool as V2-qualified.
+  prerequisite_evidence: tests/evidence/longhorn-v2-registry-qualification-20261020.json
+  failure_paths: Reject unsupported kernel, missing CPU flags/modules, insufficient CPU/memory/hugepages,
+    malformed masks and unsafe live resource-setting changes before mutation.
+  evidence_requirements:
+  - Current exact engine/version/topology and frozen product inputs
+  - Business assertions through config+kubecli; official results are design evidence, not project PASS
+  - Durable rc=0, zero failure markers, scoped cleanup and unchanged foreign/source canaries
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/deploy/install/
+  - https://longhorn.io/docs/1.12.1/advanced-resources/v2-data-engine/hugepage-configuration/
+  - https://longhorn.io/docs/1.12.1/advanced-resources/v2-data-engine/configurable-cpu-cores/
+  - https://longhorn.io/docs/1.12.1/advanced-resources/v2-data-engine/interrupt-mode/
+  - https://longhorn.io/docs/1.12.1/important-notes/#cpu-core-allocation-with-the-kubernetes-cpu-manager
+  - https://longhorn.io/docs/1.12.1/references/settings/#data-engine-iobuf-large-pool-size
+  - https://longhorn.io/docs/1.12.1/references/settings/#data-engine-iobuf-small-pool-size
+  implementation_status: implemented
+  runtime_ledger_first_failure_evidence: tests/evidence/longhorn-v2-runtime-ledger-first-failure-20261023.json
+- id: LONGHORN-45
+  group: v2-disk-lifecycle
+  desc: Raw disk admission, stable identity, eviction, replacement and retirement
+  status: pass
+  evidence: tests/evidence/longhorn-v2-disk-lifecycle-complete-20261024.json
+  data_engines:
+  - v2
+  command: bash tests/run_enterprise_regression.sh --longhorn-v2-disk-lifecycle </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-v2-disk-lifecycle </dev/null
+  success_marker: LONGHORN_V2_DISK_LIFECYCLE_PASS
+  fixture_boundary: Only allowlisted disposable disks and exact owned metadata; never wipe customer media
+    or bind arbitrary PCI devices. Restore native-driver binding by original identity.
+  cleanup_scope: Only allowlisted disposable disks and exact owned metadata; never wipe customer media
+    or bind arbitrary PCI devices. Restore native-driver binding by original identity.
+  official_behavior: V2 uses block-type disks; aio uses stable by-id paths, native nvme/virtio-blk use
+    PCI BDF and may remove the kernel device. VirtIO requests use auto plus BDF and report virtio-blk
+    in status; the pinned Node CRD does not accept literal virtio-blk in spec. Native NVMe requires IOMMU
+    isolation and more I/O queues than reactor cores; ARM64 has a documented multi-core NVMe issue.
+  project_assertion: Bind declared raw devices to cluster/node and persistent hardware identity; compare
+    native disk UUID/driver; prove no filesystem preparation, root-disk selection or implicit wipe. Evacuate
+    before removal; require native SPDK disk/bdev/controller absence and independently verified restored
+    PCI binding where applicable before receipt release or hardware removal. Node diskStatus disappearance
+    is insufficient. pinned NodeController drops the status even when native DiskDelete returns an error,
+    and NVMe deletion can log unbind/detach errors while returning success. Preserve replacement and foreign-device
+    canaries.
+  prerequisites: Runner-qualified dedicated disposable disks with stable IDs; native-driver coverage requires
+    actual compatible PCI devices and IOMMU/queue inventory.
+  failure_paths: Refuse root/boot, mounted/swap, partitioned, holders, nested Longhorn, foreign signatures,
+    duplicate aliases, device replacement, busy eviction and unresolved PCI group members; reject ARM64
+    native NVMe until the pinned limitation is safely addressed.
+  evidence_requirements:
+  - Current exact engine/version/topology and frozen product inputs
+  - Business assertions through config+kubecli; official results are design evidence, not project PASS
+  - Durable rc=0, zero failure markers, scoped cleanup and unchanged foreign/source canaries
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/nodes-and-volumes/nodes/multidisk/
+  - https://longhorn.io/docs/1.12.1/nodes-and-volumes/nodes/disks-or-nodes-eviction/
+  - https://longhorn.io/docs/1.12.1/important-notes/
+  implementation_status: implemented
+  lifecycle_cleanup_command: bash tests/run_enterprise_regression.sh --longhorn-v2-disk-lifecycle-cleanup </dev/null
+  lifecycle_contract_evidence: tests/evidence/longhorn-v2-disk-lifecycle-contract-20261021.json
+- id: LONGHORN-46
+  group: v2-install
+  desc: Product V2-only and explicit dual-engine installation, placement and idempotence
+  status: pass
+  evidence: tests/evidence/longhorn-v2-install-tail-complete-20261023.json
+  data_engines:
+  - v2
+  command: bash tests/run_enterprise_regression.sh --longhorn-v2-install </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-v2-install </dev/null
+  success_marker: LONGHORN_V2_INSTALL_PASS
+  fixture_boundary: Owned installation namespace, classes, node labels and disk declarations; preserve
+    foreign objects, source data and unrelated classes.
+  cleanup_scope: Owned installation namespace, classes, node labels and disk declarations; preserve foreign
+    objects, source data and unrelated classes.
+  official_behavior: V1 and V2 have separate instance managers and disk types. Official production guidance
+    prefers one engine; V2 workloads must run on V2-enabled nodes and selective activation uses the disable-v2
+    label.
+  project_assertion: config+kubecli installs V2-only and explicitly budgeted coexistence configurations,
+    creates engine-specific immutable classes, converges only declared disks and proves three independent
+    replicas plus fsync/hash and cross-node reattachment. Repeat product reconcile without unexpected
+    Helm/resource/data changes.
+  prerequisites: V2 platform/disk gates and artifact identity green; independent clean cluster and private
+    test configuration.
+  failure_paths: Refuse class/engine mismatch, disabled-engine consumers, foreign labels/CRDs/disks and
+    insufficient eligible failure domains; do not silently create filesystem default disks.
+  evidence_requirements:
+  - Current exact engine/version/topology and frozen product inputs
+  - Business assertions through config+kubecli; official results are design evidence, not project PASS
+  - Durable rc=0, zero failure markers, scoped cleanup and unchanged foreign/source canaries
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/best-practices/
+  - https://longhorn.io/docs/1.12.1/advanced-resources/v2-data-engine/selective-v2-data-engine-activation/
+  - https://longhorn.io/docs/1.12.1/nodes-and-volumes/nodes/default-disk-and-node-config/
+  - https://longhorn.io/docs/1.12.1/references/storage-class-parameters/
+  aio_qualification_evidence: tests/evidence/longhorn-v2-aio-install-qualification-20261020.json
+  pending_reason: V2-only three-node AIO installation and fsync/remount qualification passed; explicit
+    dual-engine, placement refusal and idempotence remain pending.
+  implementation_status: implemented
+- id: LONGHORN-47
+  group: v2-volumes
+  desc: V2 access modes, reclaim, expansion, encryption and space reclamation
+  status: pass
+  data_engines:
+  - v2
+  command: bash tests/run_enterprise_regression.sh --longhorn-v2-volumes </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-v2-volumes </dev/null
+  success_marker: LONGHORN_V2_VOLUMES_PASS
+  fixture_boundary: UID-bound business volumes, clients and Secrets; restore exact injected key state
+    before deleting only owned objects.
+  cleanup_scope: UID-bound business volumes, clients and Secrets; restore exact injected key state before
+    deleting only owned objects.
+  official_behavior: Replicated V2 supports RWX, expansion, encryption and trim; application Block is
+    independent of host disk type. New 1.12.1 encrypted V2 volumes reserve LUKS metadata; older encrypted
+    V2 volumes retain the documented 16 MiB difference.
+  project_assertion: Exercise RWO filesystem, RWOP contention, raw Block, two-node NFS RWX recovery, Retain/Delete
+    rebind, online filesystem/block/encrypted expansion, wrong/lost key rejection and recovered key data
+    identity. Verify actual V2 allocation and snapshot-aware discard, not V1 sparse-file accounting.
+  prerequisites: Healthy three-node V2 installation; independent PVCs, encryption Secret escrow and recorded
+    original object identities.
+  failure_paths: Reject multi-attach, shrink, wrong/lost keys and unsafe retained PV adoption; preserve
+    confirmed bytes across reattachment and failed operations.
+  evidence_requirements:
+  - Current exact engine/version/topology and frozen product inputs
+  - Business assertions through config+kubecli; official results are design evidence, not project PASS
+  - Durable rc=0, zero failure markers, scoped cleanup and unchanged foreign/source canaries
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/data-engine-comparison/
+  - https://longhorn.io/docs/1.12.1/nodes-and-volumes/volumes/expansion/
+  - https://longhorn.io/docs/1.12.1/advanced-resources/security/volume-encryption/
+  - https://longhorn.io/docs/1.12.1/nodes-and-volumes/volumes/trim-filesystem/
+  volume_modes_qualification: bash tests/run_enterprise_regression.sh --longhorn-v2-volume-modes-qualification
+    </dev/null
+  expansion_qualification: bash tests/run_enterprise_regression.sh --longhorn-v2-expansion-qualification
+    </dev/null
+  reclaim_qualification: bash tests/run_enterprise_regression.sh --longhorn-v2-reclaim-qualification </dev/null
+  encryption_qualification: bash tests/run_enterprise_regression.sh --longhorn-v2-encryption-qualification
+    </dev/null
+  trim_qualification: bash tests/run_enterprise_regression.sh --longhorn-v2-trim-qualification </dev/null
+  volume_modes_qualification_evidence: tests/evidence/longhorn-v2-volume-modes-qualification-20261020.json
+  expansion_qualification_evidence: tests/evidence/longhorn-v2-expansion-qualification-20261020.json
+  reclaim_qualification_evidence: tests/evidence/longhorn-v2-reclaim-qualification-20261020.json
+  encryption_qualification_evidence: tests/evidence/longhorn-v2-encryption-qualification-20261020.json
+  trim_qualification_evidence: tests/evidence/longhorn-v2-trim-qualification-20261020.json
+  evidence: tests/evidence/longhorn-v2-volumes-20261020.json
+  implementation_status: implemented
+- id: LONGHORN-48
+  group: v2-data-protection
+  desc: V2 snapshots, integrity, external backup, schedules, system recovery and DR
+  status: pass
+  evidence: tests/evidence/longhorn-full-ga-20261103.json
+  previous_module_evidence: tests/evidence/longhorn-v2-data-protection-complete-20261021.json
+  broken_restore_qualification: bash tests/run_enterprise_regression.sh --longhorn-v2-broken-restore-qualification
+  broken_restore_qualification_evidence: tests/evidence/longhorn-v2-broken-restore-qualification-20261021.json
+  broken_restore_cleanup: bash tests/run_enterprise_regression.sh --longhorn-v2-broken-restore-cleanup
+  composed_subcases_evidence: tests/evidence/longhorn-v2-data-protection-complete-20261021.json
+  previous_partial_composition_evidence: tests/evidence/longhorn-v2-data-protection-20261021.json
+  broken_restore_preflight_contract: tests/evidence/longhorn-v2-broken-restore-preflight-contract-20261021.json
+  broken_restore_first_failure: tests/evidence/longhorn-v2-broken-restore-first-failure-20261021.json
+  broken_restore_initialization_contract: tests/evidence/longhorn-v2-broken-restore-initialization-contract-20261021.json
+  broken_restore_event_first_failure: tests/evidence/longhorn-v2-broken-restore-event-first-failure-20261021.json
+  broken_restore_event_contract: tests/evidence/longhorn-v2-broken-restore-event-contract-20261021.json
+  broken_restore_contract: tests/evidence/longhorn-v2-broken-restore-contract-20261021.json
+  broken_restore_static: tests/evidence/longhorn-v2-broken-restore-native-event-static-20261021.json
+  broken_restore_design: tests/evidence/longhorn-v2-broken-restore-source-20261021.json
+  data_engines:
+  - v2
+  command: bash tests/run_enterprise_regression.sh --longhorn-v2-data-protection </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-v2-data-protection </dev/null
+  success_marker: LONGHORN_V2_DATA_PROTECTION_PASS
+  fixture_boundary: Exact scheduled jobs, snapshots, backup objects, source/restore/DR volumes and private
+    credentials; stop schedules and restore references before cleanup.
+  cleanup_scope: Exact scheduled jobs, snapshots, backup objects, source/restore/DR volumes and private
+    credentials; stop schedules and restore references before cleanup.
+  official_behavior: Replicated V2 supports snapshots, checksum, backups, recurring jobs, system recovery
+    and DR. Deleting the head-parent snapshot merges immediately; V1 removed-snapshot retention assertions
+    do not apply.
+  project_assertion: Verify native/CSI snapshots and checksum, independent restore/time boundary/write
+    isolation, full/incremental external objects and hash, scheduled selection/retention/detached behavior
+    and credential refusal/recovery. Exercise detached SystemBackup/Restore, independent DR standby/fenced
+    activation and controlled failback through documented product workflows.
+  prerequisites: Healthy V2 source plus independent TLS backup store and independent approved DR target;
+    current credential and source ownership journals.
+  failure_paths: Accept only native, identity-bound evidence of admitted Backup error or webhook pre-admission
+    refusal; Job success is insufficient. Reject invalid CA/credentials, broken restore chain, unfenced
+    activation and system restore with attached volumes. The documented handoff workflow verifies remote-source
+    fencing before native activation; Longhorn itself cannot prove isolation of the other cluster.
+  evidence_requirements:
+  - Current exact engine/version/topology and frozen product inputs
+  - Business assertions through config+kubecli; official results are design evidence, not project PASS
+  - Durable rc=0, zero failure markers, scoped cleanup and unchanged foreign/source canaries
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/data-engine-comparison/
+  - https://longhorn.io/docs/1.12.1/snapshots-and-backups/
+  - https://longhorn.io/docs/1.12.1/advanced-resources/data-integrity/snapshot-data-integrity-check/
+  - https://longhorn.io/docs/1.12.1/advanced-resources/system-backup-restore/
+  - https://longhorn.io/docs/1.12.1/snapshots-and-backups/setup-disaster-recovery-volumes/
+  backup_store_qualification: bash tests/run_enterprise_regression.sh --longhorn-v2-backup-store-qualification
+    </dev/null
+  backup_store_qualification_evidence: tests/evidence/longhorn-v2-backup-store-qualification-20261020.json
+  backup_refusal_qualification: bash tests/run_enterprise_regression.sh --longhorn-v2-backup-refusal-qualification
+    </dev/null
+  backup_refusal_qualification_evidence: tests/evidence/longhorn-v2-backup-refusal-qualification-20261020.json
+  recurring_qualification: bash tests/run_enterprise_regression.sh --longhorn-v2-recurring-selector-qualification
+    </dev/null
+  recurring_qualification_evidence: tests/evidence/longhorn-v2-recurring-selector-qualification-20261020.json
+  recurring_snapshot_qualification: bash tests/run_enterprise_regression.sh --longhorn-v2-recurring-snapshot-qualification
+    </dev/null
+  recurring_snapshot_qualification_evidence: tests/evidence/longhorn-v2-recurring-snapshot-qualification-20261020.json
+  recurring_backup_qualification: bash tests/run_enterprise_regression.sh --longhorn-v2-recurring-backup-qualification
+    </dev/null
+  recurring_backup_qualification_evidence: tests/evidence/longhorn-v2-recurring-backup-qualification-20261020.json
+  recurring_rotation_qualification: bash tests/run_enterprise_regression.sh --longhorn-v2-recurring-rotation-qualification
+    </dev/null
+  recurring_rotation_qualification_evidence: tests/evidence/longhorn-v2-recurring-rotation-qualification-20261020.json
+  backup_qualification: bash tests/run_enterprise_regression.sh --longhorn-v2-backup-qualification </dev/null
+  backup_qualification_evidence: tests/evidence/longhorn-v2-backup-qualification-20261020.json
+  systembackup_cleanup: bash tests/run_enterprise_regression.sh --longhorn-v2-systembackup-cleanup </dev/null
+  systembackup_cleanup_evidence: tests/evidence/longhorn-v2-systembackup-cleanup-20261020.json
+  systembackup_cleanup_first_failure: tests/evidence/longhorn-v2-systembackup-checksum-first-failure-20261020.json
+  systembackup_recovery: bash tests/run_enterprise_regression.sh --longhorn-v2-systembackup-recovery </dev/null
+  systembackup_metadata_first_failure: tests/evidence/longhorn-v2-systembackup-metadata-first-failure-20261020.json
+  systembackup_first_failure: tests/evidence/longhorn-v2-systembackup-null-conditions-first-failure-20261020.json
+  systembackup_qualification: bash tests/run_enterprise_regression.sh --longhorn-v2-systembackup-qualification
+    </dev/null
+  systembackup_qualification_evidence: tests/evidence/longhorn-v2-systembackup-qualification-20261020.json
+  systemrestore_qualification: bash tests/run_enterprise_regression.sh --longhorn-v2-systemrestore-qualification
+    </dev/null
+  systemrestore_qualification_evidence: tests/evidence/longhorn-v2-systemrestore-qualification-20261020.json
+  systemrestore_source_evidence: tests/evidence/longhorn-v2-systemrestore-source-20261020.json
+  systemrestore_first_failure: tests/evidence/longhorn-v2-systemrestore-url-first-failure-20261020.json
+  systemrestore_recovery: bash tests/run_enterprise_regression.sh --longhorn-v2-systemrestore-recovery
+    </dev/null
+  systemrestore_recovery_evidence: tests/evidence/longhorn-v2-systemrestore-recovery-20261020.json
+  detached_backup_qualification: bash tests/run_enterprise_regression.sh --longhorn-v2-detached-backup-qualification
+    </dev/null
+  detached_backup_source_evidence: tests/evidence/longhorn-v2-detached-backup-source-20261020.json
+  detached_backup_qualification_evidence: tests/evidence/longhorn-v2-detached-backup-qualification-20261020.json
+  detached_backup_recovery: bash tests/run_enterprise_regression.sh --longhorn-v2-detached-backup-recovery
+    </dev/null
+  detached_backup_recovery_evidence: tests/evidence/longhorn-v2-detached-backup-recovery-20261020.json
+  detached_backup_first_failure: tests/evidence/longhorn-v2-detached-backup-network-first-failure-20261020.json
+  dr_target_current_inputs: tests/evidence/longhorn-v2-dr-target-149-ready-20261020.json
+  dr_target_registry_qualification: bash tests/run_enterprise_regression.sh --longhorn-v2-dr-target-registry-qualification
+    </dev/null
+  dr_target_core: bash tests/run_enterprise_regression.sh --longhorn-v2-dr-target-core </dev/null
+  dr_target_inputs: tests/evidence/longhorn-v2-dr-target-149-inputs-20261020.json
+  integrity_qualification: bash tests/run_enterprise_regression.sh --longhorn-v2-integrity-qualification
+    </dev/null
+  integrity_qualification_evidence: tests/evidence/longhorn-v2-integrity-qualification-20261020.json
+  snapshot_qualification: bash tests/run_enterprise_regression.sh --longhorn-v2-snapshot-qualification
+    </dev/null
+  snapshot_qualification_evidence: tests/evidence/longhorn-v2-snapshot-qualification-20261020.json
+  implementation_status: implemented
+  dr_target_registry_evidence: tests/evidence/longhorn-v2-dr-target-registry-qualification-20261020.json
+  dr_target_core_evidence: tests/evidence/longhorn-v2-dr-target-core-20261020.json
+  dr_target_install_qualification: bash tests/run_enterprise_regression.sh --longhorn-v2-dr-target-install-qualification
+  dr_target_install_evidence: tests/evidence/longhorn-v2-dr-target-install-qualification-20261020.json
+  dr_target_install_recovery_evidence: tests/evidence/longhorn-v2-dr-target-install-recovery-20261020.json
+  dr_store_qualification: bash tests/run_enterprise_regression.sh --longhorn-v2-dr-store-qualification
+  dr_store_design: tests/evidence/longhorn-v2-dr-store-source-20261021.json
+  dr_store_evidence: tests/evidence/longhorn-v2-dr-store-qualification-20261021.json
+  dr_standby_qualification: bash tests/run_enterprise_regression.sh --longhorn-v2-dr-standby-qualification
+  dr_standby_design: tests/evidence/longhorn-v2-dr-standby-source-20261021.json
+  dr_activation_qualification: bash tests/run_enterprise_regression.sh --longhorn-v2-dr-activation-qualification
+  dr_activation_evidence: tests/evidence/longhorn-v2-dr-activation-qualification-20261021.json
+  dr_failback_evidence: tests/evidence/longhorn-v2-dr-failback-qualification-20261021.json
+  dr_failback_qualification: bash tests/run_enterprise_regression.sh --longhorn-v2-dr-failback-qualification
+  dr_handoff_design: tests/evidence/longhorn-v2-dr-handoff-source-20261021.json
+  dr_standby_evidence: tests/evidence/longhorn-v2-dr-standby-qualification-20261021.json
+  dr_standby_first_failure: tests/evidence/longhorn-v2-dr-standby-transport-first-failure-20261021.json
+  dr_target_install_first_failure: tests/evidence/longhorn-v2-dr-target-install-writer-first-failure-20261020.json
+  dr_target_install_recovery: bash tests/run_enterprise_regression.sh --longhorn-v2-dr-target-install-recovery
+  single_replica_impact_evidence: tests/evidence/longhorn-single-replica-impact-20261020.json
+  acceptance_boundary: Complete eleven-stage V2 AIO data-protection module, durable rc=0, zero failure markers,
+    209 matching frozen inputs and independently unchanged dual-cluster baselines. Software-fenced planned
+    handoff and failback; no sudden site loss, power fencing, target HA or final clean delivery claim.
+- id: LONGHORN-49
+  group: v2-clone
+  desc: Full-copy and new linked/nested clone lifecycle and dependency protection
+  status: pass
+  evidence: tests/evidence/longhorn-v2-clone-complete-20261024.json
+  data_engines:
+  - v2
+  command: bash tests/run_enterprise_regression.sh --longhorn-v2-clone </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-v2-clone </dev/null
+  success_marker: LONGHORN_V2_CLONE_PASS
+  fixture_boundary: Only UID-bound source/clone/snapshot graph and backup prefix; remove dependents in
+    native safe order, never strip protection finalizers.
+  cleanup_scope: Only UID-bound source/clone/snapshot graph and backup prefix; remove dependents in native
+    safe order, never strip protection finalizers.
+  official_behavior: 1.12.1 linked clones share source blocks, co-locate replicas, support snapshots/backups/expansion/rebuild
+    and nested clones. Source entrypoint snapshots are protected; clone replicas cannot exceed source
+    replicas. Legacy clones are a separate upgrade restriction.
+  project_assertion: Verify full-copy independence and linked/nested clone initial data, bidirectional
+    write isolation, source snapshot/replica-count guards, placement, dependency-aware eviction/rebuild,
+    expansion and independent backup restoration.
+  prerequisites: Healthy 1.12.1 V2 source and instance managers at the required proxy API; distinct source/clone
+    classes and external backup store.
+  failure_paths: Reject unequal initial sizes, excess replicas, deleting protected entrypoint, reducing
+    source replicas below clone needs, nesting from incomplete clones and unsupported legacy operations.
+  evidence_requirements:
+  - Current exact engine/version/topology and frozen product inputs
+  - Business assertions through config+kubecli; official results are design evidence, not project PASS
+  - Durable rc=0, zero failure markers, scoped cleanup and unchanged foreign/source canaries
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/snapshots-and-backups/csi-volume-clone/
+  - https://longhorn.io/docs/1.12.1/important-notes/
+  linked_clone_first_failure: tests/evidence/longhorn-v2-linked-tls-first-failure-20261021.json
+  linked_clone_tls_source_gap: tests/evidence/longhorn-v2-linked-tls-source-gap-20261021.json
+  linked_clone_qualification: bash tests/run_enterprise_regression.sh --longhorn-v2-linked-clone-qualification
+  linked_clone_cleanup: bash tests/run_enterprise_regression.sh --longhorn-v2-linked-clone-cleanup
+  linked_clone_design: tests/evidence/longhorn-v2-linked-clone-source-20261021.json
+  linked_clone_static_evidence: tests/evidence/longhorn-v2-broken-restore-current-static-20261021.json
+  linked_clone_cleanup_contract: tests/evidence/longhorn-v2-linked-orphan-receipt-contract-20261021.json
+  linked_clone_ordering_contract: tests/evidence/longhorn-v2-linked-ordering-contract-20261021.json
+  linked_clone_datasource_contract: tests/evidence/longhorn-v2-linked-datasource-contract-20261021.json
+  full_copy_lifecycle_qualification: bash tests/run_enterprise_regression.sh --longhorn-v2-full-copy-lifecycle-qualification
+  full_copy_lifecycle_evidence: tests/evidence/longhorn-v2-full-copy-lifecycle-qualification-20261021.json
+  full_copy_lifecycle_design: tests/evidence/longhorn-v2-full-copy-lifecycle-source-20261021.json
+  full_copy_qualification: bash tests/run_enterprise_regression.sh --longhorn-v2-full-copy-clone-qualification
+    </dev/null
+  full_copy_qualification_evidence: tests/evidence/longhorn-v2-full-copy-clone-qualification-20261020.json
+  acceptance_boundary: Canonical49 consumes independently complete original child stages and full-copy/real legacy upgrade evidence; failed parent retained. No final clean delivery or customer signature.
+  implementation_status: implemented
+  publication_evidence: tests/evidence/longhorn-v2-linked-tls-rebuild-publication-20261021.json
+  full_copy_reuse_evidence: tests/evidence/longhorn-v2-full-copy-reuse-impact-20261021.json
+- id: LONGHORN-50
+  group: v2-failure
+  desc: V2 engine, SPDK instance manager, disk, node and network failure recovery
+  status: pass
+  evidence: tests/evidence/longhorn-v2-failure-complete-20261025.json
+  data_engines:
+  - v2
+  command: bash tests/run_enterprise_regression.sh --longhorn-v2-failure </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-v2-failure </dev/null
+  success_marker: LONGHORN_V2_FAILURE_PASS
+  fixture_boundary: Original V2 instance/Pod/disk/network identities and owned fault journals; recover
+    fault before business deletion and verify healthy shared dependencies.
+  cleanup_scope: Original V2 instance/Pod/disk/network identities and owned fault journals; recover fault
+    before business deletion and verify healthy shared dependencies.
+  official_behavior: V2 engine/replica instances live in the SPDK target rather than V1 processes; full/delta/online
+    fast rebuild are supported. Offline fast rebuild and V1 revision-counter recovery are not supported;
+    rebuild QoS is V2-specific.
+  project_assertion: Use V2 native object/runtime identities for bounded single-replica/disk, engine,
+    instance-manager/manager, worker and network faults. Maintain a fsync-confirmed ledger, report errors/retries,
+    require fresh confirmed I/O after recovery and cross-node readback; configure optional replicaRebuildingBandwidthLimit
+    through config+kubecli and verify native Setting convergence, positive per-volume override versus
+    zero inheritance, dynamic updates during rebuilding and actual engine rebuildStatus.appliedRebuildingMBps.
+    Do not require detached volumes or invent status when no rebuild is active; retain detached-only guards
+    for startup resource changes. Verify safe refusal after all replicas fail.
+  prerequisites: V2 native fault interface qualified against pinned manager/SPDK source; dedicated healthy
+    volumes, exclusive fault domain and restore-tested backup.
+  failure_paths: Reject unknown shared consumers, replaced identities, unbounded network rules, unsafe
+    simultaneous attachment or automatic selection of an unproven last replica.
+  evidence_requirements:
+  - Current exact engine/version/topology and frozen product inputs
+  - Business assertions through config+kubecli; official results are design evidence, not project PASS
+  - Durable rc=0, zero failure markers, scoped cleanup and unchanged foreign/source canaries
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/advanced-resources/rebuilding/
+  - https://longhorn.io/docs/1.12.1/advanced-resources/rebuilding/replica-rebuild-qos/
+  - https://longhorn.io/docs/1.12.1/high-availability/node-failure/
+  - https://longhorn.io/docs/1.12.1/high-availability/recover-volume/
+  implementation_status: implemented
+  replica_im_loss_static_evidence: tests/evidence/longhorn-v2-replica-im-loss-reentry-static-20261021.json
+  replica_im_loss_reentry_contract: tests/evidence/longhorn-v2-replica-im-loss-reentry-contract-20261021.json
+  replica_im_loss_cleanup_command: bash tests/run_enterprise_regression.sh --longhorn-v2-replica-im-loss-cleanup
+  replica_im_loss_local_cleanup_evidence: tests/evidence/longhorn-v2-replica-im-loss-local-cleanup-static-20261021.json
+  replica_im_loss_source_evidence: tests/evidence/longhorn-v2-replica-im-loss-source-20261021.json
+  replica_im_loss_qualification_command: bash tests/run_enterprise_regression.sh --longhorn-v2-replica-im-loss-qualification
+  replica_im_loss_evidence: tests/evidence/longhorn-v2-replica-im-loss-qualification-20261021.json
+  manager_loss_qualification_command: bash tests/run_enterprise_regression.sh --longhorn-v2-manager-loss-qualification
+  manager_loss_cleanup_command: bash tests/run_enterprise_regression.sh --longhorn-v2-manager-loss-cleanup
+  manager_loss_source_evidence: tests/evidence/longhorn-v2-manager-loss-source-20261021.json
+  manager_loss_contract_evidence: tests/evidence/longhorn-v2-manager-loss-contract-20261021.json
+  manager_loss_diagnostics_contract: tests/evidence/longhorn-v2-manager-loss-diagnostics-contract-20261021.json
+  manager_loss_impact_evidence: tests/evidence/longhorn-v2-manager-loss-impact-20261021.json
+  manager_loss_static_evidence: tests/evidence/longhorn-v2-manager-loss-diagnostics-static-20261021.json
+  prior_pending_reason: >-
+    Six independent current .2 fault scopes are accepted: replica-im, manager,
+    attached-SPDK, remote-SPDK, replica-network and worker-reboot. Worker-reboot verified the
+    actual new boot, original observer pause/resume, native three-replica recovery, 1292 original
+    fsync acknowledgements (84672512 bytes), 20 fresh writes (1310720 bytes), cross-node readback,
+    complete scoped cleanup and durable rc=0/finalized=0. Single-disk, rebuild-qos and all-replicas
+    remain pending. Batch 807 single-disk reached real AIO/NVMe errors and RAID replica removal,
+    but the original 180-second CR degradation assertion timed out with RW/running state;
+    native status propagation remains under causal analysis. Its scoped cleanup passed while
+    durable rc=1 is retained. Preserve historical failed parents and do not infer full module PASS.
+  single_disk_native_first_failure: tests/evidence/longhorn-v2-single-disk-native-first-failure-20261022.json
+  single_disk_source_contract: tests/evidence/longhorn-v2-raid-status-source-contract-20261022.json
+  replica_im_current_evidence: tests/evidence/longhorn-v2-failure-replica-im-20261021.json
+  manager_current_evidence: tests/evidence/longhorn-v2-failure-manager-20261021.json
+  attached_spdk_current_evidence: tests/evidence/longhorn-v2-failure-attached-spdk-20261021.json
+  remote_spdk_current_evidence: tests/evidence/longhorn-v2-failure-remote-spdk-20261021.json
+  replica_network_current_evidence: tests/evidence/longhorn-v2-failure-replica-network-20261021.json
+  worker_reboot_current_evidence: tests/evidence/longhorn-v2-failure-worker-reboot-20261021.json
+  worker_reboot_first_failure: tests/evidence/longhorn-v2-worker-reboot-first-failure-20261021.json
+  worker_reboot_retirement_contract: tests/evidence/longhorn-maintenance-boot-repair-contract-20261021.json
+  worker_reboot_relay_contract: tests/evidence/longhorn-v2-reboot-relay-contract-20261021.json
+  remote_spdk_first_failure: tests/evidence/longhorn-v2-failure-remote-spdk-first-failure-20261021.json
+  read_only_recovery_contract: tests/evidence/longhorn-v2-readonly-remaining-contract-20261021.json
+  mount_observation_repair_contract: tests/evidence/longhorn-v2-remote-spdk-mount-observation-contract-20261021.json
+  remaining_command: bash tests/run_enterprise_regression.sh --longhorn-v1-operations-v2-worker-tail </dev/null
+  remaining_contract: tests/evidence/longhorn-operations-worker-tail-contract-20261021.json
+- id: LONGHORN-51
+  group: v2-maintenance
+  desc: V2 node expansion, drain, selective activation and runtime setting changes
+  status: pass
+  evidence: tests/evidence/longhorn-v2-maintenance-complete-20261024.json
+  drain_qualification_evidence: tests/evidence/longhorn-v2-maintenance-drain-qualification-20261023.json
+  data_engines:
+  - v2
+  command: bash tests/run_enterprise_regression.sh --longhorn-v2-maintenance </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-v2-maintenance </dev/null
+  success_marker: LONGHORN_V2_MAINTENANCE_PASS
+  fixture_boundary: Owned node labels/cordons, setting fields and node/disks; restore prior settings and
+    scheduling before releasing scope.
+  cleanup_scope: Owned node labels/cordons, setting fields and node/disks; restore prior settings and
+    scheduling before releasing scope.
+  official_behavior: V2 consumers must use enabled nodes; CPU/memory/interrupt changes have detached-volume
+    and instance-manager restart constraints. Coexistence consumes separate guaranteed reservations.
+  project_assertion: Exercise product add-node/client qualification, raw storage expansion, replica balance,
+    PDB/last-replica drain refusal, maintenance/reboot, explicit resource setting changes while detached,
+    then remount and data verification. For iobuf tuning, prove attached-volume and impossible-memory-budget
+    refusal, native new-IM argument convergence, original data and rollback to default pools without stale
+    startup flags; product-deployed middleware/monitoring consumers use explicit V2 classes.
+  prerequisites: Healthy leased V2 pool with spare capacity/failure domain, recorded settings, original
+    workload and disk identities.
+  failure_paths: Refuse disabling a serving engine/node, attached-volume runtime changes, under-reserved
+    SPDK cores, active replicas on retired disks/nodes and unavailable kubelet static CPU policy when
+    exclusive core allocation is requested.
+  evidence_requirements:
+  - Current exact engine/version/topology and frozen product inputs
+  - Business assertions through config+kubecli; official results are design evidence, not project PASS
+  - Durable rc=0, zero failure markers, scoped cleanup and unchanged foreign/source canaries
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/maintenance/maintenance/
+  - https://longhorn.io/docs/1.12.1/advanced-resources/v2-data-engine/selective-v2-data-engine-activation/
+  - https://longhorn.io/docs/1.12.1/advanced-resources/v2-data-engine/configurable-cpu-cores/
+  - https://longhorn.io/docs/1.12.1/advanced-resources/v2-data-engine/hugepage-configuration/
+  implementation_status: implemented
+  interrupt_qualification_command: bash tests/run_enterprise_regression.sh --longhorn-v2-interrupt-qualification
+  interrupt_cleanup_command: bash tests/run_enterprise_regression.sh --longhorn-v2-interrupt-cleanup
+  interrupt_source_evidence: tests/evidence/longhorn-v2-interrupt-source-20261021.json
+  interrupt_contract_evidence: tests/evidence/longhorn-v2-interrupt-contract-20261021.json
+  interrupt_static_evidence: tests/evidence/longhorn-v2-interrupt-static-20261021.json
+  interrupt_impact_evidence: tests/evidence/longhorn-v2-interrupt-impact-20261021.json
+  maintenance_contract: tests/evidence/longhorn-v2-maintenance-integration-contract-20261021.json
+  middleware_contract: tests/evidence/longhorn-v2-middleware-integration-contract-20261021.json
+- id: LONGHORN-52
+  group: v2-upgrade
+  desc: Detached 1.12.0 to 1.12.1 V2 upgrade and backup-based recovery
+  status: pass
+  evidence: tests/evidence/longhorn-v2-upgrade-lifecycle-20261021.json
+  data_engines:
+  - v2
+  command: bash tests/run_enterprise_regression.sh --longhorn-v2-upgrade </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-v2-upgrade </dev/null
+  success_marker: LONGHORN_V2_UPGRADE_PASS
+  fixture_boundary: Dedicated old/new installations and owned migration/recovery volumes; keep source
+    until destination data and independent backup restore are verified.
+  cleanup_scope: Dedicated old/new installations and owned migration/recovery volumes; keep source until
+    destination data and independent backup restore are verified.
+  official_behavior: V2 has no live 1.12 patch engine upgrade; detach first. Legacy linked clones have
+    restricted operations; removed backing-image dependencies require migration. Old encrypted V2 usable
+    size is not automatically corrected.
+  project_assertion: Use actual 1.12.0 CRDs/runtime and verified system/data backup, reject unsafe preconditions
+    before mutation, upgrade through config+kubecli with all V2 volumes detached, verify CRD/volume/PVC/key/disk
+    identity and data after reattachment. Exercise isolated restore recovery instead of Helm downgrade.
+  prerequisites: Clean version-pinned old installation; independent restore-tested backup and explicit
+    change ID; owned legacy/encrypted fixtures for boundary checks, never customer source migration.
+  failure_paths: Refuse attached V2 volumes, unresolved legacy backing images/unsupported clone operations,
+    unready backups, direct downgrade and partial-state adoption.
+  evidence_requirements:
+  - Current exact engine/version/topology and frozen product inputs
+  - Business assertions through config+kubecli; official results are design evidence, not project PASS
+  - Durable rc=0, zero failure markers, scoped cleanup and unchanged foreign/source canaries
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/important-notes/
+  - https://longhorn.io/docs/1.12.1/deploy/upgrade/
+  - https://longhorn.io/docs/1.12.1/deploy/upgrade/upgrade-engine/
+  implementation_status: implemented
+- id: LONGHORN-53
+  group: v2-observability-performance
+  desc: V2 metrics, capacity, resource profiles and faulted sustained load
+  status: pass
+  evidence: tests/evidence/longhorn-v2-observability-performance-complete-20261023.json
+  first_scrape_failure_evidence: tests/evidence/longhorn-v2-first-scrape-first-failure-20261022.json
+  cpu_reuse_order_failure_evidence: tests/evidence/longhorn-v2-monitoring-cpu-reuse-first-failure-20261022.json
+  namespace_graph_failure_evidence: tests/evidence/longhorn-v2-monitoring-namespace-first-failure-20261022.json
+  cleanup_monitoring_failure_evidence: tests/evidence/longhorn-integrity-cleanup-monitoring-first-failures-20261022.json
+  continuation_failure_evidence: tests/evidence/longhorn-integrity-monitoring-first-failures-20261022.json
+  data_engines:
+  - v2
+  command: bash tests/run_enterprise_regression.sh --longhorn-v2-observability-performance </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-v2-observability-performance </dev/null
+  success_marker: LONGHORN_V2_OBSERVABILITY_PERFORMANCE_PASS
+  fixture_boundary: Independent test PVCs, bounded filler data, owned alerts and metric consumers; restore
+    thresholds and faults before removal.
+  cleanup_scope: Independent test PVCs, bounded filler data, owned alerts and metric consumers; restore
+    thresholds and faults before removal.
+  official_behavior: Official known issues include attach latency at scale; V2 has SPDK CPU/memory pools
+    and raw-disk capacity behavior. The linked historical sizing report is V1 1.6.0/1.6.1, not V2 1.12.1
+    performance evidence.
+  project_assertion: Real Prometheus scrape and degraded/space/backup alert activation/resolution, missing
+    samples and support bundle boundaries; measure bounded raw-disk pressure recovery and sequential/random
+    fsync load with percentiles, errors, CPU/memory/hugepages and rebuild QoS. Include at least 30 minutes
+    confirmed-write fault load and bounded concurrent-volume attach/detach observations. Correlate iobuf
+    exhaustion with workload size/queue depth and measured pool allocation before comparing tuning results.
+    Host CPU isolation qualification must account for per-IM overrides and actual IRQ/workqueue/RPS masks;
+    upstream clearing uses all online CPUs, so verify exact prior custom host policy restoration separately
+    before accepting cleanup.
+  prerequisites: Healthy V2/Prometheus product installations and verified support images; explicit workload/data/cache/resource
+    budget and stop conditions.
+  failure_paths: Stop at pressure, accumulating attach backlog, failed data check or fault outside budget;
+    do not enforce historical throughput or claim polling/interrupt equivalence, production maximum size
+    or SLA.
+  evidence_requirements:
+  - Current exact engine/version/topology and frozen product inputs
+  - Business assertions through config+kubecli; official results are design evidence, not project PASS
+  - Durable rc=0, zero failure markers, scoped cleanup and unchanged foreign/source canaries
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/monitoring/
+  - https://longhorn.io/docs/1.12.1/best-practices/
+  - https://longhorn.io/docs/1.12.1/important-notes/
+  - https://longhorn.io/docs/1.12.1/references/reference-setup-performance-scalability-and-sizing-guidelines/
+  implementation_status: implemented
+- id: LONGHORN-54
+  group: v2-cleanup
+  desc: V2 uninstall guards and success, failure, interruption cleanup
+  status: pass
+  evidence: tests/evidence/longhorn-v2-cleanup-complete-20261024.json
+  target_retirement_evidence: tests/evidence/longhorn-v2-target-retirement-complete-20261024.json
+  data_engines:
+  - v2
+  command: bash tests/run_enterprise_regression.sh --longhorn-v2-cleanup </dev/null
+  smallest_disproof: bash tests/run_enterprise_regression.sh --longhorn-v2-cleanup </dev/null
+  success_marker: LONGHORN_V2_CLEANUP_PASS
+  fixture_boundary: Only declared raw disks and original owned metadata/configuration; preserve customer
+    data and packages; return native driver binding by identity and prove no stale SPDK fault or leaked
+    lease.
+  cleanup_scope: Only declared raw disks and original owned metadata/configuration; preserve customer
+    data and packages; return native driver binding by identity and prove no stale SPDK fault or leaked
+    lease.
+  official_behavior: Native uninstall requires protected data to be removed explicitly; raw disks and
+    PCI binding have different cleanup needs from filesystem mounts. Orphaned instance management is not
+    supported for V2.
+  project_assertion: Reject uninstall/destroy with volumes, retained PVs or dependencies; prove native
+    empty uninstall, exact owned raw-device/label/resource receipts, preserved foreign data and normal/failure/SIGTERM
+    restoration. Final full run verifies no V1/V2 fault or owned fixture remains.
+  prerequisites: UID and persistent device identities captured before changes; independent foreign canaries
+    and original driver/config state.
+  failure_paths: Refuse unknown disks, replaced PCI/by-id identity, active mounts/volumes, altered host
+    configuration or missing ownership receipt; no forced wipe/finalizer removal.
+  evidence_requirements:
+  - Current exact engine/version/topology and frozen product inputs
+  - Business assertions through config+kubecli; official results are design evidence, not project PASS
+  - Durable rc=0, zero failure markers, scoped cleanup and unchanged foreign/source canaries
+  official_reference:
+  - https://longhorn.io/docs/1.12.1/deploy/uninstall/
+  - https://longhorn.io/docs/1.12.1/nodes-and-volumes/nodes/graceful-node-removal/
+  - https://longhorn.io/docs/1.12.1/advanced-resources/data-cleanup/
+  implementation_status: implemented

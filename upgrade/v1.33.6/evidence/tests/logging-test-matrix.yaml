@@ -1,0 +1,78 @@
+meta:
+  version: 1
+  updated: "2026-09-07"
+  component: logging
+  scope: "Independent EFK/Loki delivery branch; one route only per cluster"
+  runner: bash tests/run_enterprise_regression.sh --logging-only
+  result: PASS
+
+coverage_summary:
+  tier0_total: 0
+  tier0_pass: 0
+  tier1_total: 0
+  tier1_pass: 0
+  tier2_total: 44
+  tier2_pass: 44
+  tier2_pending: 0
+  tier2_fail: 0
+  tier3_total: 0
+  tier3_pass: 0
+  overall_assessment: "44/44"
+
+versions:
+  eck: "3.5.0"
+  elasticsearch: "9.5.1"
+  kibana: "9.5.1"
+  fluent_bit: "5.1.1"
+  logstash: "9.5.1"
+  loki: "3.7.6"
+  loki_chart: "18.9.0"
+  alloy: "1.18.1"
+  alloy_chart: "1.11.1"
+  kubernetes: "1.33.6"
+
+tier2_matrix:
+  - {id: LOGGING-01, group: static, desc: "Configuration defaults disabled and has no plaintext credential", status: pass, evidence: "2026-09-06 clean Kafka-buffer gate rc=0"}
+  - {id: LOGGING-02, group: static, desc: "EFK/Loki selector and EFK delivery enum reject invalid combinations", status: pass, evidence: "2026-09-06 clean Kafka-buffer gate rc=0"}
+  - {id: LOGGING-03, group: static, desc: "ECK CRD/operator official SHA256 and Chart appVersion contracts", status: pass, evidence: "2026-09-06 clean Kafka-buffer gate rc=0"}
+  - {id: LOGGING-04, group: static, desc: "Loki and Alloy Chart SHA256, provenance and image digest contracts", status: pass, evidence: "2026-09-06 clean Kafka-buffer gate rc=0"}
+  - {id: LOGGING-05, group: static, desc: "Six-repository constants, Dockerfile, CI, dual-push and fallback audit", status: pass, evidence: "2026-09-06 clean Kafka-buffer gate rc=0"}
+  - {id: LOGGING-06, group: preflight, desc: "Clean logging namespace, ownership labels and no competing route", status: pass, evidence: "2026-09-06 clean Kafka-buffer gate rc=0"}
+  - {id: LOGGING-07, group: preflight, desc: "Prometheus/Grafana prerequisite and monitoring CRD capability", status: pass, evidence: "2026-09-06 clean Kafka-buffer gate rc=0"}
+  - {id: LOGGING-08, group: preflight, desc: "Kubernetes version, RBAC, DNS, time and three failure domains", status: pass, evidence: "2026-09-06 clean Kafka-buffer gate rc=0"}
+  - {id: LOGGING-09, group: preflight, desc: "EFK ES nodes schedulable with 8Gi memory and StorageClass R/W", status: pass, evidence: "2026-09-06 clean Kafka-buffer gate rc=0"}
+  - {id: LOGGING-10, group: preflight, desc: "TLS certificate hostname/chain/key and S3 endpoint CA validation", status: pass, evidence: "2026-09-06 clean Kafka-buffer gate rc=0"}
+  - {id: LOGGING-11, group: preflight, desc: "Loki object storage buckets, Secret keys and Gateway auth Secret", status: pass, evidence: "2026-09-06 clean Loki gate rc=0"}
+  - {id: LOGGING-12, group: install-efk, desc: "ECK operator, CRDs and webhook reach Ready", status: pass, evidence: "2026-09-06 clean Kafka-buffer gate rc=0"}
+  - {id: LOGGING-13, group: install-efk, desc: "Elasticsearch 3/3 nodes, PVCs, TLS and anti-affinity", status: pass, evidence: "2026-09-06 clean Kafka-buffer gate rc=0"}
+  - {id: LOGGING-14, group: install-efk, desc: "Kibana 2/2, HTTPS backend and selected Ingress controller", status: pass, evidence: "2026-09-06 clean Kafka-buffer gate rc=0"}
+  - {id: LOGGING-15, group: install-efk, desc: "Controlled API channel and ECK generated CA/admin credential handling", status: pass, evidence: "2026-09-06 clean Kafka-buffer gate rc=0"}
+  - {id: LOGGING-16, group: data-efk, desc: "ILM policy, index template, shard/replica and least-privilege writer", status: pass, evidence: "2026-09-06 clean Kafka-buffer gate rc=0"}
+  - {id: LOGGING-17, group: data-efk, desc: "Fluent Bit DaemonSet covers every node with CRI parsing and filesystem buffer", status: pass, evidence: "2026-09-06 clean Kafka-buffer gate rc=0"}
+  - {id: LOGGING-18, group: data-efk, desc: "Real stdout/stderr to CRI to Elasticsearch to Kibana query", status: pass, evidence: "2026-09-06 clean Kafka-buffer gate rc=0"}
+  - {id: LOGGING-19, group: data-efk, desc: "Kibana dashboard, saved objects and query persistence", status: pass, evidence: "2026-09-06 clean Kafka-buffer gate rc=0"}
+  - {id: LOGGING-20, group: observability, desc: "Every Prometheus replica has the exact Fluent Bit targets UP and both output metrics cover every collector Pod", status: pass, evidence: "2026-09-06 clean Kafka-buffer gate rc=0"}
+  - {id: LOGGING-21, group: observability, desc: "Every Prometheus replica loads the exact three Fluent Bit rules with health OK and empty lastError", status: pass, evidence: "2026-09-06 clean Kafka-buffer gate rc=0"}
+  - {id: LOGGING-22, group: backup, desc: "SLM policy and real snapshot SUCCESS with zero failed shards", status: pass, evidence: "2026-09-06 clean Kafka-buffer gate rc=0"}
+  - {id: LOGGING-23, group: backup, desc: "Restore isolated index, verify deterministic documents and clean it", status: pass, evidence: "2026-09-06 clean Kafka-buffer gate rc=0"}
+  - {id: LOGGING-24, group: failure-efk, desc: "Single Elasticsearch, Kibana and Fluent Bit failure recover without data loss", status: pass, evidence: "2026-09-06 clean Kafka-buffer gate rc=0"}
+  - {id: LOGGING-25, group: idempotence, desc: "Repeated EFK product workflow preserves PVC, Secret and workload identity", status: pass, evidence: "2026-09-06 clean Kafka-buffer gate rc=0"}
+  - {id: LOGGING-26, group: kafka-buffer, desc: "Existing delivered Kafka dependency, TLS/SCRAM user, Topic and ACL", status: pass, evidence: "2026-09-06 clean Kafka-buffer gate rc=0"}
+  - {id: LOGGING-27, group: kafka-buffer, desc: "Fluent Bit to Kafka delivery has no simultaneous direct Elasticsearch output", status: pass, evidence: "2026-09-06 clean Kafka-buffer gate rc=0"}
+  - {id: LOGGING-28, group: kafka-buffer, desc: "Logstash 2/2 same consumer group and Elasticsearch least privilege", status: pass, evidence: "2026-09-06 clean Kafka-buffer gate rc=0"}
+  - {id: LOGGING-29, group: kafka-buffer, desc: "Stop Logstash produces lag and recovery replays to zero", status: pass, evidence: "2026-09-06 clean Kafka-buffer gate rc=0"}
+  - {id: LOGGING-30, group: install-loki, desc: "Loki Chart 3/3 single-binary, replication factor 3 and object storage", status: pass, evidence: "2026-09-06 clean Loki gate rc=0"}
+  - {id: LOGGING-31, group: install-loki, desc: "Gateway Basic Auth accepts valid client and returns 401 unauthenticated", status: pass, evidence: "2026-09-06 clean Loki gate rc=0; ready=401 unauth=401 auth=200"}
+  - {id: LOGGING-32, group: install-loki, desc: "Alloy DaemonSet one Pod per node with positions persistence", status: pass, evidence: "2026-09-06 clean Loki gate rc=0"}
+  - {id: LOGGING-33, group: data-loki, desc: "Real stdout to Alloy to Gateway to Loki and LogQL query", status: pass, evidence: "2026-09-06 clean Loki gate rc=0"}
+  - {id: LOGGING-34, group: data-loki, desc: "Grafana Loki datasource Save/Test and dashboard query", status: pass, evidence: "2026-09-06 clean Loki gate rc=0"}
+  - {id: LOGGING-35, group: observability, desc: "Loki/Alloy targets, rules and alert recovery in every Prometheus replica", status: pass, evidence: "2026-09-06 clean Loki gate rc=0"}
+  - {id: LOGGING-36, group: failure-loki, desc: "Loki member, Gateway and Alloy failure recover with positions continuity", status: pass, evidence: "2026-09-06 clean Loki gate rc=0"}
+  - {id: LOGGING-37, group: backup-loki, desc: "Object storage restart/recovery and retained log readability", status: pass, evidence: "2026-09-06 clean Loki gate rc=0"}
+  - {id: LOGGING-38, group: upgrade, desc: "Approved component upgrade preflight, rollback boundary and data retention", status: pass, evidence: "2026-09-07 clean Kafka-buffer gate rc=0"}
+  - {id: LOGGING-39, group: security, desc: "Secret rotation, TLS verification, RBAC and no credential leakage", status: pass, evidence: "2026-09-07 clean Kafka-buffer gate rc=0"}
+  - {id: LOGGING-40, group: performance, desc: "Fixed ingestion/query baseline, backpressure and bounded resource behavior", status: pass, evidence: "2026-09-07 clean Kafka-buffer gate rc=0; source=20 unique, query=20"}
+  - {id: LOGGING-41, group: cleanup, desc: "EFK normal/failed/interrupted scoped cleanup and clean verification", status: pass, evidence: "2026-09-07 clean Kafka-buffer gate rc=0"}
+  - {id: LOGGING-42, group: cleanup, desc: "Loki normal/failed/interrupted scoped cleanup and clean verification", status: pass, evidence: "2026-09-06 clean Loki gate rc=0"}
+  - {id: LOGGING-43, group: route-safety, desc: "EFK and Loki cannot be concurrently enabled or silently adopted", status: pass, evidence: "2026-09-07 clean Kafka-buffer gate rc=0"}
+  - {id: LOGGING-44, group: route-safety, desc: "Customer-selected route documented with continuous main path and rollback branch", status: pass, evidence: "2026-09-07 clean Kafka-buffer gate rc=0"}

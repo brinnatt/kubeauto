@@ -1,0 +1,822 @@
+schema_version: 1
+recorded_on: '2026-11-14'
+source_release: upgrade/v1.33.6/release.yaml
+target_release: upgrade/v1.34.13/release.yaml
+owning_matrix: upgrade/v1.34.13/test-matrix.yaml
+scope_frozen: false
+authorization: 方案文件与本地静态检查；不含实现、创建分支、发布或现场回归
+evidence_policy: upgrade/acceptance.md
+matrix_reference_rule: 候选原ID均在对应现有矩阵存在，但列表尚未穷尽；映射不修改旧状态、不代表有效复用。
+artifact_scope:
+  consumer_inventory_complete: false
+  reuse_candidates: []
+  allowed_build_set: []
+  allowed_publish_set: []
+  actual_plan: null
+  note: 空集合只表示本轮无发布授权，不能推断不需要制品；未来核验实际计划为允许集子集。
+support_paths:
+  policy: 保留原支持功能；以下是覆盖盘点维度，不是本轮现场执行清单。每条路径用官方/副本/静态/新增实测明确去向。
+  topology:
+  - AIO
+  - HA multi-master
+  - dedicated-etcd
+  - external-LB（按实际依赖）
+  runtime:
+  - containerd
+  - Docker + cri-dockerd
+  network:
+  - Calico etcdv3
+  - Flannel
+  - Cilium/Hubble
+  - kube-router
+  - Kube-OVN
+  proxy:
+  - ipvs
+  - iptables
+  - Cilium replacement（如原交付支持，须核实）
+  storage:
+  - OpenEBS/local-path/NFS
+  - Ceph RBD/CephFS
+  - Longhorn V1/V2
+  architecture:
+  - linux/amd64
+  - linux/arm64
+  combination_plan: null
+  equivalence_proofs: []
+  environment_scope: 依据根AGENTS白名单及变化的OS/内核/cgroup约束，不默认重跑全部发行版。
+  combination_rule: 不构造笛卡尔组合；逐断言等价或共享实测，缺口才进入现场集合。
+impact_mappings:
+- component_id: product
+  matrix_paths:
+  - tests/enterprise-test-matrix.yaml
+  candidate_original_ids:
+  - T0-01
+  - T0-05
+  - T0-10
+  - T2-CX-01
+  original_id_expansion_complete: false
+  upgrade_parent_ids:
+  - UPG-01
+  - UPG-03
+  - UPG-04
+  decision: investigate
+  dependency_analysis: 产品打包、版本模板和 six-repo 输入；文档变更不使所有二进制证据失效。
+  reuse_evidence:
+  - upgrade/v1.33.6/evidence/tests/evidence/dev-production-fixes-20261103.json
+  - upgrade/v1.33.6/evidence/tests/evidence/dev-production-static-20261103.json
+  changed_inputs: []
+  minimal_supplement: null
+  disproof_command: null
+  existing_full_gate_disposition: 默认保留原完整验收结论；只对已证明变化的主张按所属契约补证，尚未授权重跑组件完整长链。
+  archived_matrix_snapshots:
+  - upgrade/v1.33.6/evidence/tests/enterprise-test-matrix.yaml
+  reuse_assessment: 副本已归档；目标断言适用性待版本增量判断，未冒签目标PASS；空列表不表示原能力未GA。
+  new_live_steps: []
+  live_scope_frozen: false
+- component_id: kubernetes
+  matrix_paths:
+  - tests/enterprise-test-matrix.yaml
+  candidate_original_ids:
+  - T1-G3-05
+  - T2-CX-02
+  - T2-TO-01
+  - T2-TO-02
+  - T2-TO-03
+  original_id_expansion_complete: false
+  upgrade_parent_ids:
+  - UPG-06
+  - UPG-07
+  - UPG-13
+  decision: investigate
+  dependency_analysis: 旧 upgrade 只证明 1.33.5→1.33.6 补丁；跨 minor/HA/drain/目标安装必须有新证据。
+  reuse_evidence:
+  - upgrade/v1.33.6/evidence/tests/evidence/ext-images-20261008.json
+  changed_inputs: []
+  minimal_supplement: null
+  disproof_command: null
+  existing_full_gate_disposition: 默认保留原完整验收结论；只对已证明变化的主张按所属契约补证，尚未授权重跑组件完整长链。
+  archived_matrix_snapshots:
+  - upgrade/v1.33.6/evidence/tests/enterprise-test-matrix.yaml
+  reuse_assessment: 副本已归档；目标断言适用性待版本增量判断，未冒签目标PASS；空列表不表示原能力未GA。
+  new_live_steps: []
+  live_scope_frozen: false
+- component_id: binary-packs
+  matrix_paths:
+  - tests/enterprise-test-matrix.yaml
+  candidate_original_ids:
+  - T2-CX-01
+  - T0-06
+  original_id_expansion_complete: false
+  upgrade_parent_ids:
+  - UPG-03
+  - UPG-04
+  - UPG-12
+  decision: investigate
+  dependency_analysis: 先核对包内精确消费路径；etcd或辅助程序未变的深度证据不能被包tag变化无依据作废。
+  reuse_evidence: []
+  changed_inputs: []
+  minimal_supplement: null
+  disproof_command: null
+  existing_full_gate_disposition: 默认保留原完整验收结论；只对已证明变化的主张按所属契约补证，尚未授权重跑组件完整长链。
+  archived_matrix_snapshots:
+  - upgrade/v1.33.6/evidence/tests/enterprise-test-matrix.yaml
+  reuse_assessment: 副本已归档；目标断言适用性待版本增量判断，未冒签目标PASS；空列表不表示原能力未GA。
+  new_live_steps: []
+  live_scope_frozen: false
+- component_id: runtime
+  matrix_paths:
+  - tests/enterprise-test-matrix.yaml
+  candidate_original_ids:
+  - T2-RT-01
+  - T2-RT-01b
+  - T2-RT-02
+  - T2-NA-01
+  - T2-NA-02
+  - T2-NA-03
+  - T2-NA-04
+  original_id_expansion_complete: false
+  upgrade_parent_ids:
+  - UPG-07
+  - UPG-13
+  decision: investigate
+  dependency_analysis: K8s、CRI/cgroup、运行时维护期与配置变化；Docker/containerd 不天然等价。
+  reuse_evidence: []
+  changed_inputs: []
+  minimal_supplement: null
+  disproof_command: null
+  existing_full_gate_disposition: 默认保留原完整验收结论；只对已证明变化的主张按所属契约补证，尚未授权重跑组件完整长链。
+  archived_matrix_snapshots:
+  - upgrade/v1.33.6/evidence/tests/enterprise-test-matrix.yaml
+  reuse_assessment: 副本已归档；目标断言适用性待版本增量判断，未冒签目标PASS；空列表不表示原能力未GA。
+  new_live_steps: []
+  live_scope_frozen: false
+- component_id: calico
+  matrix_paths:
+  - tests/enterprise-test-matrix.yaml
+  candidate_original_ids:
+  - T2-NW-01
+  - T2-PM-01
+  - T2-PM-02
+  original_id_expansion_complete: false
+  upgrade_parent_ids:
+  - UPG-08
+  decision: investigate
+  dependency_analysis: 官方测试缺口与桥接版本；etcdv3配置及跨节点/NetworkPolicy/Service 路径受影响。
+  reuse_evidence:
+  - upgrade/v1.33.6/evidence/tests/evidence/dev-nacos-startup-20261103.json
+  changed_inputs: []
+  minimal_supplement: null
+  disproof_command: null
+  existing_full_gate_disposition: 默认保留原完整验收结论；只对已证明变化的主张按所属契约补证，尚未授权重跑组件完整长链。
+  archived_matrix_snapshots:
+  - upgrade/v1.33.6/evidence/tests/enterprise-test-matrix.yaml
+  reuse_assessment: 副本已归档；目标断言适用性待版本增量判断，未冒签目标PASS；空列表不表示原能力未GA。
+  new_live_steps: []
+  live_scope_frozen: false
+- component_id: flannel
+  matrix_paths:
+  - tests/enterprise-test-matrix.yaml
+  candidate_original_ids:
+  - T2-NW-02
+  original_id_expansion_complete: false
+  upgrade_parent_ids:
+  - UPG-08
+  decision: investigate
+  dependency_analysis: 分别核验源/目标、CNI plugin 与 PodCIDR 数据路径。
+  reuse_evidence: []
+  changed_inputs: []
+  minimal_supplement: null
+  disproof_command: null
+  existing_full_gate_disposition: 默认保留原完整验收结论；只对已证明变化的主张按所属契约补证，尚未授权重跑组件完整长链。
+  archived_matrix_snapshots:
+  - upgrade/v1.33.6/evidence/tests/enterprise-test-matrix.yaml
+  reuse_assessment: 副本已归档；目标断言适用性待版本增量判断，未冒签目标PASS；空列表不表示原能力未GA。
+  new_live_steps: []
+  live_scope_frozen: false
+- component_id: cilium
+  matrix_paths:
+  - tests/enterprise-test-matrix.yaml
+  candidate_original_ids:
+  - T2-NW-03
+  - T2-AD-15
+  original_id_expansion_complete: false
+  upgrade_parent_ids:
+  - UPG-08
+  decision: investigate
+  dependency_analysis: 官方范围覆盖不代替内核、Hubble与网络策略目标集成。
+  reuse_evidence: []
+  changed_inputs: []
+  minimal_supplement: null
+  disproof_command: null
+  existing_full_gate_disposition: 默认保留原完整验收结论；只对已证明变化的主张按所属契约补证，尚未授权重跑组件完整长链。
+  archived_matrix_snapshots:
+  - upgrade/v1.33.6/evidence/tests/enterprise-test-matrix.yaml
+  reuse_assessment: 副本已归档；目标断言适用性待版本增量判断，未冒签目标PASS；空列表不表示原能力未GA。
+  new_live_steps: []
+  live_scope_frozen: false
+- component_id: kube-router
+  matrix_paths:
+  - tests/enterprise-test-matrix.yaml
+  candidate_original_ids:
+  - T2-NW-04
+  original_id_expansion_complete: false
+  upgrade_parent_ids:
+  - UPG-08
+  decision: investigate
+  dependency_analysis: 核验 API、内核与路由/策略路径，支持边界未明确前不冻结。
+  reuse_evidence: []
+  changed_inputs: []
+  minimal_supplement: null
+  disproof_command: null
+  existing_full_gate_disposition: 默认保留原完整验收结论；只对已证明变化的主张按所属契约补证，尚未授权重跑组件完整长链。
+  archived_matrix_snapshots:
+  - upgrade/v1.33.6/evidence/tests/enterprise-test-matrix.yaml
+  reuse_assessment: 副本已归档；目标断言适用性待版本增量判断，未冒签目标PASS；空列表不表示原能力未GA。
+  new_live_steps: []
+  live_scope_frozen: false
+- component_id: kube-ovn
+  matrix_paths:
+  - tests/enterprise-test-matrix.yaml
+  candidate_original_ids:
+  - T2-NW-05
+  original_id_expansion_complete: false
+  upgrade_parent_ids:
+  - UPG-08
+  decision: investigate
+  dependency_analysis: 核验 OVS/OVN/内核、CRD 与官方支持窗口。
+  reuse_evidence: []
+  changed_inputs: []
+  minimal_supplement: null
+  disproof_command: null
+  existing_full_gate_disposition: 默认保留原完整验收结论；只对已证明变化的主张按所属契约补证，尚未授权重跑组件完整长链。
+  archived_matrix_snapshots:
+  - upgrade/v1.33.6/evidence/tests/enterprise-test-matrix.yaml
+  reuse_assessment: 副本已归档；目标断言适用性待版本增量判断，未冒签目标PASS；空列表不表示原能力未GA。
+  new_live_steps: []
+  live_scope_frozen: false
+- component_id: dns
+  matrix_paths:
+  - tests/enterprise-test-matrix.yaml
+  candidate_original_ids:
+  - T2-AD-01
+  - T2-AD-03
+  - T2-PM-01
+  - T2-PM-02
+  original_id_expansion_complete: false
+  upgrade_parent_ids:
+  - UPG-08
+  decision: investigate
+  dependency_analysis: CoreDNS/NodeLocal/Service 在升级期间与目标状态都需真实解析和业务访问。
+  reuse_evidence:
+  - upgrade/v1.33.6/evidence/tests/evidence/dev-nacos-startup-20261103.json
+  changed_inputs: []
+  minimal_supplement: null
+  disproof_command: null
+  existing_full_gate_disposition: 默认保留原完整验收结论；只对已证明变化的主张按所属契约补证，尚未授权重跑组件完整长链。
+  archived_matrix_snapshots:
+  - upgrade/v1.33.6/evidence/tests/enterprise-test-matrix.yaml
+  reuse_assessment: 副本已归档；目标断言适用性待版本增量判断，未冒签目标PASS；空列表不表示原能力未GA。
+  new_live_steps: []
+  live_scope_frozen: false
+- component_id: metrics
+  matrix_paths:
+  - tests/enterprise-test-matrix.yaml
+  candidate_original_ids:
+  - T2-AD-02
+  original_id_expansion_complete: false
+  upgrade_parent_ids:
+  - UPG-11
+  decision: investigate
+  dependency_analysis: API聚合、kubelet证书与实际采样，不能只检查Pod。
+  reuse_evidence: []
+  changed_inputs: []
+  minimal_supplement: null
+  disproof_command: null
+  existing_full_gate_disposition: 默认保留原完整验收结论；只对已证明变化的主张按所属契约补证，尚未授权重跑组件完整长链。
+  archived_matrix_snapshots:
+  - upgrade/v1.33.6/evidence/tests/enterprise-test-matrix.yaml
+  reuse_assessment: 副本已归档；目标断言适用性待版本增量判断，未冒签目标PASS；空列表不表示原能力未GA。
+  new_live_steps: []
+  live_scope_frozen: false
+- component_id: ingress
+  matrix_paths:
+  - tests/enterprise-test-matrix.yaml
+  candidate_original_ids:
+  - T2-AD-04
+  original_id_expansion_complete: false
+  upgrade_parent_ids:
+  - UPG-02
+  - UPG-11
+  decision: investigate
+  dependency_analysis: 先关闭维护状态冲突；若替换，单列协议/注解/TLS/准入差异与迁移范围。
+  reuse_evidence: []
+  changed_inputs: []
+  minimal_supplement: null
+  disproof_command: null
+  existing_full_gate_disposition: 默认保留原完整验收结论；只对已证明变化的主张按所属契约补证，尚未授权重跑组件完整长链。
+  archived_matrix_snapshots:
+  - upgrade/v1.33.6/evidence/tests/enterprise-test-matrix.yaml
+  reuse_assessment: 副本已归档；目标断言适用性待版本增量判断，未冒签目标PASS；空列表不表示原能力未GA。
+  new_live_steps: []
+  live_scope_frozen: false
+- component_id: dashboard
+  matrix_paths:
+  - tests/enterprise-test-matrix.yaml
+  candidate_original_ids:
+  - T2-AD-06
+  original_id_expansion_complete: false
+  upgrade_parent_ids:
+  - UPG-11
+  decision: investigate
+  dependency_analysis: Chart配套、Kong、认证/RBAC与API；不默认顺带换新版UI。
+  reuse_evidence: []
+  changed_inputs: []
+  minimal_supplement: null
+  disproof_command: null
+  existing_full_gate_disposition: 默认保留原完整验收结论；只对已证明变化的主张按所属契约补证，尚未授权重跑组件完整长链。
+  archived_matrix_snapshots:
+  - upgrade/v1.33.6/evidence/tests/enterprise-test-matrix.yaml
+  reuse_assessment: 副本已归档；目标断言适用性待版本增量判断，未冒签目标PASS；空列表不表示原能力未GA。
+  new_live_steps: []
+  live_scope_frozen: false
+- component_id: local-storage
+  matrix_paths:
+  - tests/enterprise-test-matrix.yaml
+  candidate_original_ids:
+  - T2-AD-07
+  - T2-AD-08
+  - T2-AD-10
+  - T2-AD-11
+  original_id_expansion_complete: false
+  upgrade_parent_ids:
+  - UPG-09
+  decision: investigate
+  dependency_analysis: CSI/sidecar、snapshot-controller全局所有权与PVC数据；各后端不能用一次挂载互相替代。
+  reuse_evidence:
+  - upgrade/v1.33.6/evidence/tests/evidence/dev-rocky9-nfs-20261103.json
+  changed_inputs: []
+  minimal_supplement: null
+  disproof_command: null
+  existing_full_gate_disposition: 默认保留原完整验收结论；只对已证明变化的主张按所属契约补证，尚未授权重跑组件完整长链。
+  archived_matrix_snapshots:
+  - upgrade/v1.33.6/evidence/tests/enterprise-test-matrix.yaml
+  reuse_assessment: 副本已归档；目标断言适用性待版本增量判断，未冒签目标PASS；空列表不表示原能力未GA。
+  new_live_steps: []
+  live_scope_frozen: false
+- component_id: ceph
+  matrix_paths:
+  - tests/ceph-test-matrix.yaml
+  candidate_original_ids: []
+  original_id_expansion_complete: false
+  upgrade_parent_ids:
+  - UPG-09
+  decision: investigate
+  dependency_analysis: 按RBD/CephFS与架构展开原ID；独立Ceph数据面/OS证据只在依赖成立时复用，不重排九模块文档。
+  reuse_evidence:
+  - upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-01.json
+  - upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-02.json
+  - upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-03.json
+  - upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-04.json
+  - upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-05.json
+  - upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-06.json
+  - upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-07.json
+  - upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-08.json
+  - upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-09.json
+  - upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-10.json
+  - upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-11.json
+  - upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-12.json
+  - upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-13.json
+  - upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-14.json
+  - upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-15.json
+  - upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-16.json
+  - upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-17.json
+  - upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-18.json
+  - upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-19.json
+  - upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-20.json
+  - upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-21.json
+  - upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-22.json
+  - upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-23.json
+  - upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-24.json
+  - upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-25.json
+  - upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-26.json
+  - upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-27.json
+  - upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-28.json
+  changed_inputs: []
+  minimal_supplement: null
+  disproof_command: null
+  existing_full_gate_disposition: 默认保留原完整验收结论；只对已证明变化的主张按所属契约补证，尚未授权重跑组件完整长链。
+  archived_matrix_snapshots:
+  - upgrade/v1.33.6/evidence/tests/ceph-test-matrix.yaml
+  reuse_assessment: 副本已归档；目标断言适用性待版本增量判断，未冒签目标PASS；空列表不表示原能力未GA。
+  new_live_steps: []
+  live_scope_frozen: false
+- component_id: longhorn
+  matrix_paths:
+  - tests/longhorn-test-matrix.yaml
+  candidate_original_ids:
+  - LONGHORN-24
+  - LONGHORN-35
+  - LONGHORN-36
+  - LONGHORN-43
+  - LONGHORN-51
+  - LONGHORN-52
+  original_id_expansion_complete: false
+  upgrade_parent_ids:
+  - UPG-09
+  - UPG-12
+  decision: investigate
+  dependency_analysis: V1/V2、drain/PDB、补丁与数据保持；原完整项43不可静默豁免，先形成影响/复用或调整依据。
+  reuse_evidence:
+  - upgrade/v1.33.6/evidence/tests/evidence/longhorn-full-ga-20261103.json
+  - upgrade/v1.33.6/evidence/tests/evidence/longhorn-maintenance-20261022.json
+  - upgrade/v1.33.6/evidence/tests/evidence/longhorn-v1-upgrade-complete-20261023.json
+  - upgrade/v1.33.6/evidence/tests/evidence/longhorn-v2-maintenance-complete-20261024.json
+  - upgrade/v1.33.6/evidence/tests/evidence/longhorn-v2-upgrade-lifecycle-20261021.json
+  changed_inputs: []
+  minimal_supplement: null
+  disproof_command: null
+  existing_full_gate_disposition: 默认保留原完整验收结论；只对已证明变化的主张按所属契约补证，尚未授权重跑组件完整长链。
+  archived_matrix_snapshots:
+  - upgrade/v1.33.6/evidence/tests/longhorn-test-matrix.yaml
+  reuse_assessment: 副本已归档；目标断言适用性待版本增量判断，未冒签目标PASS；空列表不表示原能力未GA。
+  new_live_steps: []
+  live_scope_frozen: false
+- component_id: monitoring
+  matrix_paths:
+  - tests/enterprise-test-matrix.yaml
+  candidate_original_ids:
+  - PROM-03
+  - PROM-07
+  - PROM-09
+  - PROM-11
+  - PROM-13
+  original_id_expansion_complete: false
+  upgrade_parent_ids:
+  - UPG-11
+  decision: investigate
+  dependency_analysis: 采集端点、TLS、CRD/webhook、HPA与指标变化；既有稳定性能数字保留原环境边界。
+  reuse_evidence: []
+  changed_inputs: []
+  minimal_supplement: null
+  disproof_command: null
+  existing_full_gate_disposition: 默认保留原完整验收结论；只对已证明变化的主张按所属契约补证，尚未授权重跑组件完整长链。
+  archived_matrix_snapshots:
+  - upgrade/v1.33.6/evidence/tests/enterprise-test-matrix.yaml
+  reuse_assessment: 副本已归档；目标断言适用性待版本增量判断，未冒签目标PASS；空列表不表示原能力未GA。
+  new_live_steps: []
+  live_scope_frozen: false
+- component_id: logging
+  matrix_paths:
+  - tests/logging-test-matrix.yaml
+  candidate_original_ids: []
+  original_id_expansion_complete: false
+  upgrade_parent_ids:
+  - UPG-10
+  - UPG-11
+  decision: investigate
+  dependency_analysis: 按EFK/Loki各自消费者绑定原ID；共享ECK和采集权限/格式变化可影响业务ES。
+  reuse_evidence: []
+  changed_inputs: []
+  minimal_supplement: null
+  disproof_command: null
+  existing_full_gate_disposition: 默认保留原完整验收结论；只对已证明变化的主张按所属契约补证，尚未授权重跑组件完整长链。
+  archived_matrix_snapshots:
+  - upgrade/v1.33.6/evidence/tests/logging-test-matrix.yaml
+  reuse_assessment: 副本已归档；目标断言适用性待版本增量判断，未冒签目标PASS；空列表不表示原能力未GA。
+  new_live_steps: []
+  live_scope_frozen: false
+- component_id: elasticsearch
+  matrix_paths:
+  - tests/elasticsearch-test-matrix.yaml
+  candidate_original_ids:
+  - ES-35
+  - ES-50
+  - ES-53
+  - ES-54
+  - ES-55
+  - ES-59
+  original_id_expansion_complete: false
+  upgrade_parent_ids:
+  - UPG-10
+  - UPG-12
+  decision: investigate
+  dependency_analysis: 唯一ECK/CRD与双方隔离；原55/59完整项按实际变更处理，不能只凭升级矩阵替代。
+  reuse_evidence:
+  - upgrade/v1.33.6/evidence/tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  changed_inputs: []
+  minimal_supplement: null
+  disproof_command: null
+  existing_full_gate_disposition: 默认保留原完整验收结论；只对已证明变化的主张按所属契约补证，尚未授权重跑组件完整长链。
+  archived_matrix_snapshots:
+  - upgrade/v1.33.6/evidence/tests/elasticsearch-test-matrix.yaml
+  reuse_assessment: 副本已归档；目标断言适用性待版本增量判断，未冒签目标PASS；空列表不表示原能力未GA。
+  new_live_steps: []
+  live_scope_frozen: false
+- component_id: mysql
+  matrix_paths:
+  - tests/mysql-test-matrix.yaml
+  candidate_original_ids: []
+  original_id_expansion_complete: false
+  upgrade_parent_ids:
+  - UPG-10
+  decision: investigate
+  dependency_analysis: Operator协调、PDB/重连、PVC/业务账本；引擎/PITR深度证据能否复用须查版本与存储依赖。
+  reuse_evidence: []
+  changed_inputs: []
+  minimal_supplement: null
+  disproof_command: null
+  existing_full_gate_disposition: 默认保留原完整验收结论；只对已证明变化的主张按所属契约补证，尚未授权重跑组件完整长链。
+  archived_matrix_snapshots:
+  - upgrade/v1.33.6/evidence/tests/mysql-test-matrix.yaml
+  reuse_assessment: 副本已归档；目标断言适用性待版本增量判断，未冒签目标PASS；空列表不表示原能力未GA。
+  new_live_steps: []
+  live_scope_frozen: false
+- component_id: kafka
+  matrix_paths:
+  - tests/kafka-test-matrix.yaml
+  candidate_original_ids:
+  - KAFKA-04
+  - KAFKA-06
+  - KAFKA-08
+  original_id_expansion_complete: false
+  upgrade_parent_ids:
+  - UPG-10
+  decision: investigate
+  dependency_analysis: Strimzi/CRD协调、Drain Cleaner、卷、quorum和确认消息；不默认升级Kafka metadata。
+  reuse_evidence: []
+  changed_inputs: []
+  minimal_supplement: null
+  disproof_command: null
+  existing_full_gate_disposition: 默认保留原完整验收结论；只对已证明变化的主张按所属契约补证，尚未授权重跑组件完整长链。
+  archived_matrix_snapshots:
+  - upgrade/v1.33.6/evidence/tests/kafka-test-matrix.yaml
+  reuse_assessment: 副本已归档；目标断言适用性待版本增量判断，未冒签目标PASS；空列表不表示原能力未GA。
+  new_live_steps: []
+  live_scope_frozen: false
+- component_id: mongodb
+  matrix_paths:
+  - tests/mongodb-test-matrix.yaml
+  candidate_original_ids:
+  - MONGODB-14
+  - MONGODB-37
+  original_id_expansion_complete: false
+  upgrade_parent_ids:
+  - UPG-10
+  decision: investigate
+  dependency_analysis: 两拓扑、PDB、majority+j账本、Operator与PVC；不因K8s升级自动推进FCV。
+  reuse_evidence:
+  - upgrade/v1.33.6/evidence/tests/evidence/mongodb-maintenance-20261015.json
+  - upgrade/v1.33.6/evidence/tests/evidence/mongodb-upgrade-20261017.json
+  changed_inputs: []
+  minimal_supplement: null
+  disproof_command: null
+  existing_full_gate_disposition: 默认保留原完整验收结论；只对已证明变化的主张按所属契约补证，尚未授权重跑组件完整长链。
+  archived_matrix_snapshots:
+  - upgrade/v1.33.6/evidence/tests/mongodb-test-matrix.yaml
+  reuse_assessment: 副本已归档；目标断言适用性待版本增量判断，未冒签目标PASS；空列表不表示原能力未GA。
+  new_live_steps: []
+  live_scope_frozen: false
+- component_id: redis
+  matrix_paths:
+  - tests/redis-test-matrix.yaml
+  candidate_original_ids:
+  - REDIS-07
+  - REDIS-11
+  - REDIS-13
+  original_id_expansion_complete: false
+  upgrade_parent_ids:
+  - UPG-10
+  decision: investigate
+  dependency_analysis: Sentinel/Cluster、持久化、绝对TTL与槽位/重连，自有ASM/控制器修复保持。
+  reuse_evidence:
+  - upgrade/v1.33.6/evidence/tests/evidence/redis-full-20261013-164045.json
+  changed_inputs: []
+  minimal_supplement: null
+  disproof_command: null
+  existing_full_gate_disposition: 默认保留原完整验收结论；只对已证明变化的主张按所属契约补证，尚未授权重跑组件完整长链。
+  archived_matrix_snapshots:
+  - upgrade/v1.33.6/evidence/tests/redis-test-matrix.yaml
+  reuse_assessment: 副本已归档；目标断言适用性待版本增量判断，未冒签目标PASS；空列表不表示原能力未GA。
+  new_live_steps: []
+  live_scope_frozen: false
+- component_id: minio
+  matrix_paths:
+  - tests/enterprise-test-matrix.yaml
+  candidate_original_ids:
+  - T2-AD-09
+  - T2-AD-14
+  original_id_expansion_complete: false
+  upgrade_parent_ids:
+  - UPG-10
+  decision: investigate
+  dependency_analysis: Operator/tenant配套、对象读写与PVC；若作备份后端还需检查恢复消费者。
+  reuse_evidence: []
+  changed_inputs: []
+  minimal_supplement: null
+  disproof_command: null
+  existing_full_gate_disposition: 默认保留原完整验收结论；只对已证明变化的主张按所属契约补证，尚未授权重跑组件完整长链。
+  archived_matrix_snapshots:
+  - upgrade/v1.33.6/evidence/tests/enterprise-test-matrix.yaml
+  reuse_assessment: 副本已归档；目标断言适用性待版本增量判断，未冒签目标PASS；空列表不表示原能力未GA。
+  new_live_steps: []
+  live_scope_frozen: false
+- component_id: nacos
+  matrix_paths:
+  - tests/enterprise-test-matrix.yaml
+  candidate_original_ids:
+  - T2-AD-13
+  original_id_expansion_complete: false
+  upgrade_parent_ids:
+  - UPG-10
+  decision: investigate
+  dependency_analysis: 配置/注册读回、TLS/MySQL和Pod重建，保留旧哨兵而非重写。
+  reuse_evidence:
+  - upgrade/v1.33.6/evidence/tests/evidence/dev-nacos-startup-20261103.json
+  changed_inputs: []
+  minimal_supplement: null
+  disproof_command: null
+  existing_full_gate_disposition: 默认保留原完整验收结论；只对已证明变化的主张按所属契约补证，尚未授权重跑组件完整长链。
+  archived_matrix_snapshots:
+  - upgrade/v1.33.6/evidence/tests/enterprise-test-matrix.yaml
+  reuse_assessment: 副本已归档；目标断言适用性待版本增量判断，未冒签目标PASS；空列表不表示原能力未GA。
+  new_live_steps: []
+  live_scope_frozen: false
+- component_id: rocketmq
+  matrix_paths:
+  - tests/enterprise-test-matrix.yaml
+  candidate_original_ids:
+  - T2-AD-12
+  - T2-AD-12b
+  original_id_expansion_complete: false
+  upgrade_parent_ids:
+  - UPG-10
+  decision: investigate
+  dependency_analysis: 先消除浮动operator固定身份缺口，生产拓扑和消息账本分别核验。
+  reuse_evidence: []
+  changed_inputs: []
+  minimal_supplement: null
+  disproof_command: null
+  existing_full_gate_disposition: 默认保留原完整验收结论；只对已证明变化的主张按所属契约补证，尚未授权重跑组件完整长链。
+  archived_matrix_snapshots:
+  - upgrade/v1.33.6/evidence/tests/enterprise-test-matrix.yaml
+  reuse_assessment: 副本已归档；目标断言适用性待版本增量判断，未冒签目标PASS；空列表不表示原能力未GA。
+  new_live_steps: []
+  live_scope_frozen: false
+- component_id: registry
+  matrix_paths:
+  - tests/enterprise-test-matrix.yaml
+  candidate_original_ids:
+  - T0-09
+  - T0-12
+  - T2-TO-05
+  - T2-RT-03
+  original_id_expansion_complete: false
+  upgrade_parent_ids:
+  - UPG-03
+  - UPG-13
+  decision: investigate
+  dependency_analysis: 明确K8s是否实际消费变化的registry/Harbor路径；不因K8s版本自动重测宿主重启所有场景。
+  reuse_evidence: []
+  changed_inputs: []
+  minimal_supplement: null
+  disproof_command: null
+  existing_full_gate_disposition: 默认保留原完整验收结论；只对已证明变化的主张按所属契约补证，尚未授权重跑组件完整长链。
+  archived_matrix_snapshots:
+  - upgrade/v1.33.6/evidence/tests/enterprise-test-matrix.yaml
+  reuse_assessment: 副本已归档；目标断言适用性待版本增量判断，未冒签目标PASS；空列表不表示原能力未GA。
+  new_live_steps: []
+  live_scope_frozen: false
+- component_id: control-client
+  matrix_paths:
+  - tests/enterprise-test-matrix.yaml
+  candidate_original_ids:
+  - T0-02
+  - T0-03
+  - T0-11
+  - T2-MR-03
+  original_id_expansion_complete: false
+  upgrade_parent_ids:
+  - UPG-04
+  - UPG-13
+  decision: investigate
+  dependency_analysis: Python K8s client支持矩阵、冻结SDK和原生/EE Ansible边界；不自动升级全部依赖。
+  reuse_evidence: []
+  changed_inputs: []
+  minimal_supplement: null
+  disproof_command: null
+  existing_full_gate_disposition: 默认保留原完整验收结论；只对已证明变化的主张按所属契约补证，尚未授权重跑组件完整长链。
+  archived_matrix_snapshots:
+  - upgrade/v1.33.6/evidence/tests/enterprise-test-matrix.yaml
+  reuse_assessment: 副本已归档；目标断言适用性待版本增量判断，未冒签目标PASS；空列表不表示原能力未GA。
+  new_live_steps: []
+  live_scope_frozen: false
+- component_id: test-infrastructure
+  matrix_paths:
+  - tests/enterprise-test-matrix.yaml
+  candidate_original_ids:
+  - T0-10
+  - T2-CX-04
+  - T2-AD-17
+  original_id_expansion_complete: false
+  upgrade_parent_ids:
+  - UPG-03
+  - UPG-04
+  decision: investigate
+  dependency_analysis: 旧版/恢复/备份/负载/DR fixture 单独列依赖，不把库存当允许构建集。
+  reuse_evidence:
+  - upgrade/v1.33.6/evidence/tests/evidence/dev-production-fixes-20261103.json
+  - upgrade/v1.33.6/evidence/tests/evidence/ext-images-20261008.json
+  changed_inputs: []
+  minimal_supplement: null
+  disproof_command: null
+  existing_full_gate_disposition: 默认保留原完整验收结论；只对已证明变化的主张按所属契约补证，尚未授权重跑组件完整长链。
+  archived_matrix_snapshots:
+  - upgrade/v1.33.6/evidence/tests/enterprise-test-matrix.yaml
+  reuse_assessment: 副本已归档；目标断言适用性待版本增量判断，未冒签目标PASS；空列表不表示原能力未GA。
+  new_live_steps: []
+  live_scope_frozen: false
+- component_id: tools
+  matrix_paths:
+  - tests/tools-test-matrix.yaml
+  candidate_original_ids: []
+  original_id_expansion_complete: false
+  upgrade_parent_ids:
+  - UPG-03
+  decision: investigate
+  dependency_analysis: 独立工具不继承主项目PASS；只有证明消费变化才进入其专用最小验证，否则核验复用。
+  reuse_evidence:
+  - upgrade/v1.33.6/evidence/tests/evidence/mysql-backup-20261108.json
+  - upgrade/v1.33.6/evidence/tests/evidence/mysql-migration-20261109.json
+  changed_inputs: []
+  minimal_supplement: null
+  disproof_command: null
+  existing_full_gate_disposition: 默认保留原完整验收结论；只对已证明变化的主张按所属契约补证，尚未授权重跑组件完整长链。
+  archived_matrix_snapshots:
+  - upgrade/v1.33.6/evidence/tests/tools-test-matrix.yaml
+  reuse_assessment: 副本已归档；目标断言适用性待版本增量判断，未冒签目标PASS；空列表不表示原能力未GA。
+  new_live_steps: []
+  live_scope_frozen: false
+resource_plan:
+  authority: AGENTS.md Fixed lab authority
+  hosts: []
+  leases: []
+  capacity_budgets: []
+  disk_allowlists: []
+  port_ownership: []
+  parallel_branches: []
+  conflicts: []
+  cleanup_scope: null
+final_run:
+  parent_id: UPG-15
+  frozen: false
+  steps: []
+  launcher: null
+  refusal_contract: null
+  run_id: null
+  prerequisite_rule: 除UPG-15外全部适用父项当前完整证据，通过真实launcher变更前校验；缺失/pending/fail/过期拒绝。
+  clean_setup: true
+  clean_verify_marker: LAB_CLEAN_VERIFY_PASS
+  historical_deep_cases: 只有逐依赖核验后的原证据作为前置；不冒称本轮重跑
+  coverage_methods: 适用旧证据+官方依据+静态合同作为前置；最终只实际执行冻结的迁移、新建主路径和受影响整合
+  no_repeated_full_components: true
+completion_conditions:
+- 全部组件映射展开到实际具体依赖/原ID，复用与补测有可审核依据
+- 所有原强制完整项均有明确处置，不以本矩阵静默替换
+- 支持路径组合/等价依据、主机租约、容量、精确入口/超时/清理冻结
+- 逐次构建和发布计划在允许集合内，不借模式名扩大范围
+baseline_policy:
+  source_ga: upgrade/v1.33.6/release.yaml#accepted_ga_baseline
+  reopen_source_ga: false
+  default: 保留已接受功能断言的证据，先做官方兼容与版本差异判断；investigate不表示重测
+  manifest: upgrade/v1.33.6/evidence-manifest.yaml
+  copy_rule: 目标reuse_evidence仅指向upgrade内副本，复制完整性不等于目标适用性通过
+scope_control:
+  coverage_rule: 全部承诺路径须有证据去向，不要求本轮全部现场执行
+  new_live_step_fields:
+  - parent_ids
+  - claim
+  - changed_dependency_or_new_claim_gap
+  - prior_evidence_considered
+  - why_not_reusable
+  - smallest_disproof
+  - shared_setup
+  - time_and_resource_bound
+  - success_exit
+  - failure_exit
+  - cleanup
+  deferred: 没有明确差异/新主张缺口时，不加入历史故障/PITR/DR/性能/长稳场景
+  deduplication: 同次真实步骤按断言支持多个父项，不为不同marker重复执行
+  scope_changes: []
+  expansion_rule: 扩大已冻结范围先列ID/依据/不可复用原因和增量成本；超出本次授权或预算时不启动增量
+cost_control:
+  state: planning-only
+  user_context: 用户表示三天测试约700元且不可承担长期重复回归；这不是已授权预算
+  authorized_live_budget: null
+  max_agent_work_budget: null
+  max_live_wall_clock: null
+  max_environment_occupancy: null
+  billing_telemetry: 未取得真实token/费用计量，不从时长换算费用或承诺节省比例
+  live_launch_enabled: false
+  launch_condition: 实现范围、最小步骤、成本上界和所需合同均冻结并在授权内，才允许现场
+  monitoring: 优先持久runner心跳与阶段摘要，异常定点诊断；不反复全量读日志
+  overrun_action: 停止启动未授权增量，保留首失败并完成安全恢复/清理

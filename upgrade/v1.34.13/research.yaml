@@ -1,0 +1,735 @@
+schema_version: 1
+recorded_on: '2026-11-14'
+quality_standard: docs/documentation-quality-standard.md 第1/10/11节
+known_official_observations: upgrade/official-sources.yaml
+scope: 第一跳全组件域研究基线；按真实依赖边界展开，不递归审计厂商全部产品
+completion_claim: false
+directory_item_contract:
+  required:
+  - official_category
+  - original_topic
+  - version_or_commit
+  - url
+  - observed_on
+  - status
+  - mechanism_and_constraints
+  - project_mapping
+  - document_destination
+  - exclusion_basis
+  - acceptance_refs
+  statuses:
+  - pending
+  - understood
+  - excluded
+  - unavailable
+  rule: 四类目录分别完整处理；已读专题不等于全目录完成。排除有依据，重复项保留到同结论的映射。
+topics:
+- id: R-01
+  topic: 官方四类资料完整目录与增量
+  task: 按组件/版本盘点官方用户、运维、技术、开发等价入口；复用已有完整基线，补目录差异和缺项。
+  output: 每个目录项的版本/URL、阅读或排除依据、机制约束、项目/正文去向
+- id: R-02
+  topic: Kubernetes 目标发布差异
+  task: 固定 1.33.6/可选源 patch 与 1.34.13 的 release notes、弃用/移除、feature gate/flags/default、已知问题与安全公告。
+  output: 对应到 API/模板/配置/命令、UPG 父项和最小反证；无依据不修实现
+- id: R-03
+  topic: 组件支持窗口与配套
+  task: 逐 pin 判断 tested/supported/minimum/API/source-pin，核对维护期、许可、Chart/appVersion、Operator/CRD/引擎/sidecar/客户端。
+  output: 目标与过渡版本的约束交集；没有官方矩阵则保留实际依据和关键缺口
+- id: R-04
+  topic: 主机与运行时约束
+  task: 核对内核/cgroup/CRI/RuntimeConfig、runc/CNI、目标架构、动态库及客户容量，不沿用旧环境资格代替新要求。
+  output: 保持/变化的环境要求及实际影响；不任意扩大 OS 全量回归
+- id: R-05
+  topic: 升级与恢复语义
+  task: 核对源/目标/桥接、HA偏差、drain/PDB/卷、CRD存储与转换、etcd/数据格式、备份恢复、不可逆点。
+  output: 每条迁移边、停止/重入/恢复条件与数据窗口
+- id: R-06
+  topic: 自有补丁与共享依赖
+  task: 检查 Redis/Longhorn/ES 等 -kubeauto 镜像修复是否已被上游接收，保持修复语义；核验 ECK/快照/监控共享所有权。
+  output: 补丁账和各消费者影响；拒绝以未修订官方镜像静默替换
+component_records:
+- component_id: product
+  official_entrypoints:
+  - https://pyinstaller.org/en/v6.16.0/
+  entrypoint_status: 待核对目录，不宣称上述入口全部已读取或适用于最终版本
+  existing_research_reference:
+    matrix_snapshots:
+    - upgrade/v1.33.6/evidence/tests/enterprise-test-matrix.yaml
+    assessment: 既有记录入口，尚未宣称有完整官方目录映射；复用已有结论，缺项增量补齐。
+  source_version_binding: upgrade/v1.33.6/inventory.yaml
+  target_version_binding: null
+  directory_inventories:
+    user_manual: null
+    operations_manual: null
+    technical_whitepaper_or_topics: null
+    development_manual_or_api: null
+  directory_items: []
+  delta_topics: []
+  excluded_items: []
+  unavailable_items: []
+  status: pending
+  known_source_ids: []
+- component_id: kubernetes
+  official_entrypoints:
+  - https://kubernetes.io/releases/version-skew-policy/
+  entrypoint_status: 待核对目录，不宣称上述入口全部已读取或适用于最终版本
+  existing_research_reference:
+    matrix_snapshots:
+    - upgrade/v1.33.6/evidence/tests/enterprise-test-matrix.yaml
+    assessment: 既有记录入口，尚未宣称有完整官方目录映射；复用已有结论，缺项增量补齐。
+  source_version_binding: upgrade/v1.33.6/inventory.yaml
+  target_version_binding: null
+  directory_inventories:
+    user_manual: null
+    operations_manual: null
+    technical_whitepaper_or_topics: null
+    development_manual_or_api: null
+  directory_items: []
+  delta_topics: []
+  excluded_items: []
+  unavailable_items: []
+  status: pending
+  known_source_ids:
+  - K8S-STABLE
+  - K8S-SKEW
+  - K8S-LIFECYCLE
+  - K8S-DEPENDENCIES-13413
+- component_id: binary-packs
+  official_entrypoints:
+  - https://etcd.io/docs/
+  - https://github.com/cloudflare/cfssl
+  entrypoint_status: 待核对目录，不宣称上述入口全部已读取或适用于最终版本
+  existing_research_reference:
+    matrix_snapshots:
+    - upgrade/v1.33.6/evidence/tests/enterprise-test-matrix.yaml
+    assessment: 既有记录入口，尚未宣称有完整官方目录映射；复用已有结论，缺项增量补齐。
+  source_version_binding: upgrade/v1.33.6/inventory.yaml
+  target_version_binding: null
+  directory_inventories:
+    user_manual: null
+    operations_manual: null
+    technical_whitepaper_or_topics: null
+    development_manual_or_api: null
+  directory_items: []
+  delta_topics: []
+  excluded_items: []
+  unavailable_items: []
+  status: pending
+  known_source_ids: []
+- component_id: runtime
+  official_entrypoints:
+  - https://containerd.io/releases/
+  - https://docs.docker.com/engine/
+  - https://github.com/Mirantis/cri-dockerd
+  entrypoint_status: 待核对目录，不宣称上述入口全部已读取或适用于最终版本
+  existing_research_reference:
+    matrix_snapshots:
+    - upgrade/v1.33.6/evidence/tests/enterprise-test-matrix.yaml
+    assessment: 既有记录入口，尚未宣称有完整官方目录映射；复用已有结论，缺项增量补齐。
+  source_version_binding: upgrade/v1.33.6/inventory.yaml
+  target_version_binding: null
+  directory_inventories:
+    user_manual: null
+    operations_manual: null
+    technical_whitepaper_or_topics: null
+    development_manual_or_api: null
+  directory_items: []
+  delta_topics: []
+  excluded_items: []
+  unavailable_items: []
+  status: pending
+  known_source_ids:
+  - CONTAINERD
+  incremental_focus: 现有2.1.4满足1.34所列下限但2.1已EOL；维护期和源/目标过渡选型需先闭合，不重跑全部OS。
+- component_id: calico
+  official_entrypoints:
+  - https://docs.tigera.io/calico/3.28/getting-started/kubernetes/requirements
+  entrypoint_status: 待核对目录，不宣称上述入口全部已读取或适用于最终版本
+  existing_research_reference:
+    matrix_snapshots:
+    - upgrade/v1.33.6/evidence/tests/enterprise-test-matrix.yaml
+    assessment: 既有记录入口，尚未宣称有完整官方目录映射；复用已有结论，缺项增量补齐。
+  source_version_binding: upgrade/v1.33.6/inventory.yaml
+  target_version_binding: null
+  directory_inventories:
+    user_manual: null
+    operations_manual: null
+    technical_whitepaper_or_topics: null
+    development_manual_or_api: null
+  directory_items: []
+  delta_topics: []
+  excluded_items: []
+  unavailable_items: []
+  status: pending
+  known_source_ids:
+  - CALICO-328
+  incremental_focus: 3.28官方测试表未覆盖目标1.34，选型及etcdv3桥接需先闭合；不否定旧项目GA，不把缺矩阵改成全量测试。
+- component_id: flannel
+  official_entrypoints:
+  - https://github.com/flannel-io/flannel
+  entrypoint_status: 待核对目录，不宣称上述入口全部已读取或适用于最终版本
+  existing_research_reference:
+    matrix_snapshots:
+    - upgrade/v1.33.6/evidence/tests/enterprise-test-matrix.yaml
+    assessment: 既有记录入口，尚未宣称有完整官方目录映射；复用已有结论，缺项增量补齐。
+  source_version_binding: upgrade/v1.33.6/inventory.yaml
+  target_version_binding: null
+  directory_inventories:
+    user_manual: null
+    operations_manual: null
+    technical_whitepaper_or_topics: null
+    development_manual_or_api: null
+  directory_items: []
+  delta_topics: []
+  excluded_items: []
+  unavailable_items: []
+  status: pending
+  known_source_ids: []
+- component_id: cilium
+  official_entrypoints:
+  - https://docs.cilium.io/en/stable/
+  entrypoint_status: 待核对目录，不宣称上述入口全部已读取或适用于最终版本
+  existing_research_reference:
+    matrix_snapshots:
+    - upgrade/v1.33.6/evidence/tests/enterprise-test-matrix.yaml
+    assessment: 既有记录入口，尚未宣称有完整官方目录映射；复用已有结论，缺项增量补齐。
+  source_version_binding: upgrade/v1.33.6/inventory.yaml
+  target_version_binding: null
+  directory_inventories:
+    user_manual: null
+    operations_manual: null
+    technical_whitepaper_or_topics: null
+    development_manual_or_api: null
+  directory_items: []
+  delta_topics: []
+  excluded_items: []
+  unavailable_items: []
+  status: pending
+  known_source_ids:
+  - CILIUM-1195
+  incremental_focus: 现有1.19.5官方已测试1.33和1.34；优先核对版本增量及项目模式，不以核心表替代Hubble/内核等边界。
+- component_id: kube-router
+  official_entrypoints:
+  - https://github.com/cloudnativelabs/kube-router
+  entrypoint_status: 待核对目录，不宣称上述入口全部已读取或适用于最终版本
+  existing_research_reference:
+    matrix_snapshots:
+    - upgrade/v1.33.6/evidence/tests/enterprise-test-matrix.yaml
+    assessment: 既有记录入口，尚未宣称有完整官方目录映射；复用已有结论，缺项增量补齐。
+  source_version_binding: upgrade/v1.33.6/inventory.yaml
+  target_version_binding: null
+  directory_inventories:
+    user_manual: null
+    operations_manual: null
+    technical_whitepaper_or_topics: null
+    development_manual_or_api: null
+  directory_items: []
+  delta_topics: []
+  excluded_items: []
+  unavailable_items: []
+  status: pending
+  known_source_ids: []
+- component_id: kube-ovn
+  official_entrypoints:
+  - https://kubeovn.github.io/docs/
+  entrypoint_status: 待核对目录，不宣称上述入口全部已读取或适用于最终版本
+  existing_research_reference:
+    matrix_snapshots:
+    - upgrade/v1.33.6/evidence/tests/enterprise-test-matrix.yaml
+    assessment: 既有记录入口，尚未宣称有完整官方目录映射；复用已有结论，缺项增量补齐。
+  source_version_binding: upgrade/v1.33.6/inventory.yaml
+  target_version_binding: null
+  directory_inventories:
+    user_manual: null
+    operations_manual: null
+    technical_whitepaper_or_topics: null
+    development_manual_or_api: null
+  directory_items: []
+  delta_topics: []
+  excluded_items: []
+  unavailable_items: []
+  status: pending
+  known_source_ids: []
+- component_id: dns
+  official_entrypoints:
+  - https://coredns.io/
+  - https://kubernetes.io/docs/tasks/administer-cluster/nodelocaldns/
+  entrypoint_status: 待核对目录，不宣称上述入口全部已读取或适用于最终版本
+  existing_research_reference:
+    matrix_snapshots:
+    - upgrade/v1.33.6/evidence/tests/enterprise-test-matrix.yaml
+    assessment: 既有记录入口，尚未宣称有完整官方目录映射；复用已有结论，缺项增量补齐。
+  source_version_binding: upgrade/v1.33.6/inventory.yaml
+  target_version_binding: null
+  directory_inventories:
+    user_manual: null
+    operations_manual: null
+    technical_whitepaper_or_topics: null
+    development_manual_or_api: null
+  directory_items: []
+  delta_topics: []
+  excluded_items: []
+  unavailable_items: []
+  status: pending
+  known_source_ids: []
+- component_id: metrics
+  official_entrypoints:
+  - https://github.com/kubernetes-sigs/metrics-server
+  entrypoint_status: 待核对目录，不宣称上述入口全部已读取或适用于最终版本
+  existing_research_reference:
+    matrix_snapshots:
+    - upgrade/v1.33.6/evidence/tests/enterprise-test-matrix.yaml
+    assessment: 既有记录入口，尚未宣称有完整官方目录映射；复用已有结论，缺项增量补齐。
+  source_version_binding: upgrade/v1.33.6/inventory.yaml
+  target_version_binding: null
+  directory_inventories:
+    user_manual: null
+    operations_manual: null
+    technical_whitepaper_or_topics: null
+    development_manual_or_api: null
+  directory_items: []
+  delta_topics: []
+  excluded_items: []
+  unavailable_items: []
+  status: pending
+  known_source_ids:
+  - METRICS-080
+  incremental_focus: 现有0.8.x官方支持1.31+，不能因K8s minor变化默认重测全部指标；冻结前仍核对最新兼容patch与实际API/配置差异。
+- component_id: ingress
+  official_entrypoints:
+  - https://kubernetes.github.io/ingress-nginx/
+  - https://kubernetes.io/blog/2025/11/11/ingress-nginx-retirement/
+  entrypoint_status: 待核对目录，不宣称上述入口全部已读取或适用于最终版本
+  existing_research_reference:
+    matrix_snapshots:
+    - upgrade/v1.33.6/evidence/tests/enterprise-test-matrix.yaml
+    assessment: 既有记录入口，尚未宣称有完整官方目录映射；复用已有结论，缺项增量补齐。
+  source_version_binding: upgrade/v1.33.6/inventory.yaml
+  target_version_binding: null
+  directory_inventories:
+    user_manual: null
+    operations_manual: null
+    technical_whitepaper_or_topics: null
+    development_manual_or_api: null
+  directory_items: []
+  delta_topics: []
+  excluded_items: []
+  unavailable_items: []
+  status: pending
+  known_source_ids:
+  - INGRESS-LIFECYCLE
+  incremental_focus: 退役公告与部署页观察冲突待解；未授权控制器替换，风险只阻断相关选型，不扩大至全部中间件。
+- component_id: dashboard
+  official_entrypoints:
+  - https://github.com/kubernetes/dashboard
+  entrypoint_status: 待核对目录，不宣称上述入口全部已读取或适用于最终版本
+  existing_research_reference:
+    matrix_snapshots:
+    - upgrade/v1.33.6/evidence/tests/enterprise-test-matrix.yaml
+    assessment: 既有记录入口，尚未宣称有完整官方目录映射；复用已有结论，缺项增量补齐。
+  source_version_binding: upgrade/v1.33.6/inventory.yaml
+  target_version_binding: null
+  directory_inventories:
+    user_manual: null
+    operations_manual: null
+    technical_whitepaper_or_topics: null
+    development_manual_or_api: null
+  directory_items: []
+  delta_topics: []
+  excluded_items: []
+  unavailable_items: []
+  status: pending
+  known_source_ids: []
+- component_id: local-storage
+  official_entrypoints:
+  - https://openebs.io/docs/
+  - https://github.com/rancher/local-path-provisioner
+  - https://github.com/kubernetes-sigs/nfs-subdir-external-provisioner
+  - https://kubernetes-csi.github.io/docs/
+  entrypoint_status: 待核对目录，不宣称上述入口全部已读取或适用于最终版本
+  existing_research_reference:
+    matrix_snapshots:
+    - upgrade/v1.33.6/evidence/tests/enterprise-test-matrix.yaml
+    assessment: 既有记录入口，尚未宣称有完整官方目录映射；复用已有结论，缺项增量补齐。
+  source_version_binding: upgrade/v1.33.6/inventory.yaml
+  target_version_binding: null
+  directory_inventories:
+    user_manual: null
+    operations_manual: null
+    technical_whitepaper_or_topics: null
+    development_manual_or_api: null
+  directory_items: []
+  delta_topics: []
+  excluded_items: []
+  unavailable_items: []
+  status: pending
+  known_source_ids: []
+- component_id: ceph
+  official_entrypoints:
+  - https://docs.ceph.com/en/tentacle/
+  - https://github.com/ceph/ceph-csi
+  entrypoint_status: 待核对目录，不宣称上述入口全部已读取或适用于最终版本
+  existing_research_reference:
+    matrix_snapshots:
+    - upgrade/v1.33.6/evidence/tests/ceph-test-matrix.yaml
+    assessment: 既有记录入口，尚未宣称有完整官方目录映射；复用已有结论，缺项增量补齐。
+  source_version_binding: upgrade/v1.33.6/inventory.yaml
+  target_version_binding: null
+  directory_inventories:
+    user_manual: null
+    operations_manual: null
+    technical_whitepaper_or_topics: null
+    development_manual_or_api: null
+  directory_items: []
+  delta_topics: []
+  excluded_items: []
+  unavailable_items: []
+  status: pending
+  known_source_ids:
+  - CEPHCSI-3171
+  incremental_focus: 现有CSI3.17.1表列目标1.34–1.36；源1.33官方测试与ARM64边界单独保留，不触发Ceph数据面全量复测。
+- component_id: longhorn
+  official_entrypoints:
+  - https://longhorn.io/docs/1.12.1/
+  entrypoint_status: 待核对目录，不宣称上述入口全部已读取或适用于最终版本
+  existing_research_reference:
+    matrix_snapshots:
+    - upgrade/v1.33.6/evidence/tests/longhorn-test-matrix.yaml
+    assessment: 既有记录入口，尚未宣称有完整官方目录映射；复用已有结论，缺项增量补齐。
+  source_version_binding: upgrade/v1.33.6/inventory.yaml
+  target_version_binding: null
+  directory_inventories:
+    user_manual: null
+    operations_manual: null
+    technical_whitepaper_or_topics: null
+    development_manual_or_api: null
+  directory_items: []
+  delta_topics: []
+  excluded_items: []
+  unavailable_items: []
+  status: pending
+  known_source_ids:
+  - LONGHORN-1121
+  incremental_focus: 现有1.12.1官方已测试1.33–1.36；先核对最新兼容patch与自有补丁。网络策略测试限定发行版/CNI，优先核验原网络策略证据的目标适用性。
+- component_id: monitoring
+  official_entrypoints:
+  - https://prometheus-operator.dev/
+  - https://github.com/prometheus-community/helm-charts
+  - https://prometheus.io/docs/
+  entrypoint_status: 待核对目录，不宣称上述入口全部已读取或适用于最终版本
+  existing_research_reference:
+    matrix_snapshots:
+    - upgrade/v1.33.6/evidence/tests/enterprise-test-matrix.yaml
+    assessment: 既有记录入口，尚未宣称有完整官方目录映射；复用已有结论，缺项增量补齐。
+  source_version_binding: upgrade/v1.33.6/inventory.yaml
+  target_version_binding: null
+  directory_inventories:
+    user_manual: null
+    operations_manual: null
+    technical_whitepaper_or_topics: null
+    development_manual_or_api: null
+  directory_items: []
+  delta_topics: []
+  excluded_items: []
+  unavailable_items: []
+  status: pending
+  known_source_ids: []
+- component_id: logging
+  official_entrypoints:
+  - https://www.elastic.co/support/matrix
+  - https://grafana.com/docs/loki/
+  - https://grafana.com/docs/alloy/
+  entrypoint_status: 待核对目录，不宣称上述入口全部已读取或适用于最终版本
+  existing_research_reference:
+    matrix_snapshots:
+    - upgrade/v1.33.6/evidence/tests/logging-test-matrix.yaml
+    assessment: 既有记录入口，尚未宣称有完整官方目录映射；复用已有结论，缺项增量补齐。
+  source_version_binding: upgrade/v1.33.6/inventory.yaml
+  target_version_binding: null
+  directory_inventories:
+    user_manual: null
+    operations_manual: null
+    technical_whitepaper_or_topics: null
+    development_manual_or_api: null
+  directory_items: []
+  delta_topics: []
+  excluded_items: []
+  unavailable_items: []
+  status: pending
+  known_source_ids: []
+- component_id: elasticsearch
+  official_entrypoints:
+  - https://www.elastic.co/support/matrix
+  - https://www.elastic.co/docs/deploy-manage/upgrade
+  entrypoint_status: 待核对目录，不宣称上述入口全部已读取或适用于最终版本
+  existing_research_reference:
+    matrix_snapshots:
+    - upgrade/v1.33.6/evidence/tests/elasticsearch-test-matrix.yaml
+    assessment: 既有记录入口，尚未宣称有完整官方目录映射；复用已有结论，缺项增量补齐。
+  source_version_binding: upgrade/v1.33.6/inventory.yaml
+  target_version_binding: null
+  directory_inventories:
+    user_manual: null
+    operations_manual: null
+    technical_whitepaper_or_topics: null
+    development_manual_or_api: null
+  directory_items: []
+  delta_topics: []
+  excluded_items: []
+  unavailable_items: []
+  status: pending
+  known_source_ids: []
+- component_id: mysql
+  official_entrypoints:
+  - https://docs.percona.com/percona-operator-for-mysql/pxc/
+  entrypoint_status: 待核对目录，不宣称上述入口全部已读取或适用于最终版本
+  existing_research_reference:
+    matrix_snapshots:
+    - upgrade/v1.33.6/evidence/tests/mysql-test-matrix.yaml
+    assessment: 既有记录入口，尚未宣称有完整官方目录映射；复用已有结论，缺项增量补齐。
+  source_version_binding: upgrade/v1.33.6/inventory.yaml
+  target_version_binding: null
+  directory_inventories:
+    user_manual: null
+    operations_manual: null
+    technical_whitepaper_or_topics: null
+    development_manual_or_api: null
+  directory_items: []
+  delta_topics: []
+  excluded_items: []
+  unavailable_items: []
+  status: pending
+  known_source_ids: []
+- component_id: kafka
+  official_entrypoints:
+  - https://strimzi.io/downloads/
+  - https://strimzi.io/docs/operators/1.2.0/
+  entrypoint_status: 待核对目录，不宣称上述入口全部已读取或适用于最终版本
+  existing_research_reference:
+    matrix_snapshots:
+    - upgrade/v1.33.6/evidence/tests/kafka-test-matrix.yaml
+    assessment: 既有记录入口，尚未宣称有完整官方目录映射；复用已有结论，缺项增量补齐。
+  source_version_binding: upgrade/v1.33.6/inventory.yaml
+  target_version_binding: null
+  directory_inventories:
+    user_manual: null
+    operations_manual: null
+    technical_whitepaper_or_topics: null
+    development_manual_or_api: null
+  directory_items: []
+  delta_topics: []
+  excluded_items: []
+  unavailable_items: []
+  status: pending
+  known_source_ids:
+  - STRIMZI-120
+  incremental_focus: 现有Strimzi1.2.0支持K8s1.30–1.36且配套Kafka4.3.1；优先保留不变业务深测，核对CRD/Drain Cleaner等实际差异。
+- component_id: mongodb
+  official_entrypoints:
+  - https://docs.percona.com/percona-operator-for-mongodb/
+  entrypoint_status: 待核对目录，不宣称上述入口全部已读取或适用于最终版本
+  existing_research_reference:
+    matrix_snapshots:
+    - upgrade/v1.33.6/evidence/tests/mongodb-test-matrix.yaml
+    assessment: 既有记录入口，尚未宣称有完整官方目录映射；复用已有结论，缺项增量补齐。
+  source_version_binding: upgrade/v1.33.6/inventory.yaml
+  target_version_binding: null
+  directory_inventories:
+    user_manual: null
+    operations_manual: null
+    technical_whitepaper_or_topics: null
+    development_manual_or_api: null
+  directory_items: []
+  delta_topics: []
+  excluded_items: []
+  unavailable_items: []
+  status: pending
+  known_source_ids: []
+- component_id: redis
+  official_entrypoints:
+  - https://redis-operator.opstree.dev/
+  - https://redis.io/docs/latest/
+  entrypoint_status: 待核对目录，不宣称上述入口全部已读取或适用于最终版本
+  existing_research_reference:
+    matrix_snapshots:
+    - upgrade/v1.33.6/evidence/tests/redis-test-matrix.yaml
+    assessment: 既有记录入口，尚未宣称有完整官方目录映射；复用已有结论，缺项增量补齐。
+  source_version_binding: upgrade/v1.33.6/inventory.yaml
+  target_version_binding: null
+  directory_inventories:
+    user_manual: null
+    operations_manual: null
+    technical_whitepaper_or_topics: null
+    development_manual_or_api: null
+  directory_items: []
+  delta_topics: []
+  excluded_items: []
+  unavailable_items: []
+  status: pending
+  known_source_ids: []
+- component_id: minio
+  official_entrypoints:
+  - https://github.com/minio/operator
+  - https://github.com/minio/minio
+  entrypoint_status: 待核对目录，不宣称上述入口全部已读取或适用于最终版本
+  existing_research_reference:
+    matrix_snapshots:
+    - upgrade/v1.33.6/evidence/tests/enterprise-test-matrix.yaml
+    assessment: 既有记录入口，尚未宣称有完整官方目录映射；复用已有结论，缺项增量补齐。
+  source_version_binding: upgrade/v1.33.6/inventory.yaml
+  target_version_binding: null
+  directory_inventories:
+    user_manual: null
+    operations_manual: null
+    technical_whitepaper_or_topics: null
+    development_manual_or_api: null
+  directory_items: []
+  delta_topics: []
+  excluded_items: []
+  unavailable_items: []
+  status: pending
+  known_source_ids: []
+- component_id: nacos
+  official_entrypoints:
+  - https://nacos.io/docs/
+  entrypoint_status: 待核对目录，不宣称上述入口全部已读取或适用于最终版本
+  existing_research_reference:
+    matrix_snapshots:
+    - upgrade/v1.33.6/evidence/tests/enterprise-test-matrix.yaml
+    assessment: 既有记录入口，尚未宣称有完整官方目录映射；复用已有结论，缺项增量补齐。
+  source_version_binding: upgrade/v1.33.6/inventory.yaml
+  target_version_binding: null
+  directory_inventories:
+    user_manual: null
+    operations_manual: null
+    technical_whitepaper_or_topics: null
+    development_manual_or_api: null
+  directory_items: []
+  delta_topics: []
+  excluded_items: []
+  unavailable_items: []
+  status: pending
+  known_source_ids: []
+- component_id: rocketmq
+  official_entrypoints:
+  - https://rocketmq.apache.org/docs/
+  - https://github.com/apache/rocketmq-operator
+  entrypoint_status: 待核对目录，不宣称上述入口全部已读取或适用于最终版本
+  existing_research_reference:
+    matrix_snapshots:
+    - upgrade/v1.33.6/evidence/tests/enterprise-test-matrix.yaml
+    assessment: 既有记录入口，尚未宣称有完整官方目录映射；复用已有结论，缺项增量补齐。
+  source_version_binding: upgrade/v1.33.6/inventory.yaml
+  target_version_binding: null
+  directory_inventories:
+    user_manual: null
+    operations_manual: null
+    technical_whitepaper_or_topics: null
+    development_manual_or_api: null
+  directory_items: []
+  delta_topics: []
+  excluded_items: []
+  unavailable_items: []
+  status: pending
+  known_source_ids: []
+- component_id: registry
+  official_entrypoints:
+  - https://goharbor.io/docs/
+  - https://distribution.github.io/distribution/
+  entrypoint_status: 待核对目录，不宣称上述入口全部已读取或适用于最终版本
+  existing_research_reference:
+    matrix_snapshots:
+    - upgrade/v1.33.6/evidence/tests/enterprise-test-matrix.yaml
+    assessment: 既有记录入口，尚未宣称有完整官方目录映射；复用已有结论，缺项增量补齐。
+  source_version_binding: upgrade/v1.33.6/inventory.yaml
+  target_version_binding: null
+  directory_inventories:
+    user_manual: null
+    operations_manual: null
+    technical_whitepaper_or_topics: null
+    development_manual_or_api: null
+  directory_items: []
+  delta_topics: []
+  excluded_items: []
+  unavailable_items: []
+  status: pending
+  known_source_ids: []
+- component_id: control-client
+  official_entrypoints:
+  - https://github.com/kubernetes-client/python
+  - https://docs.ansible.com/ansible/latest/reference_appendices/release_and_maintenance.html
+  entrypoint_status: 待核对目录，不宣称上述入口全部已读取或适用于最终版本
+  existing_research_reference:
+    matrix_snapshots:
+    - upgrade/v1.33.6/evidence/tests/enterprise-test-matrix.yaml
+    assessment: 既有记录入口，尚未宣称有完整官方目录映射；复用已有结论，缺项增量补齐。
+  source_version_binding: upgrade/v1.33.6/inventory.yaml
+  target_version_binding: null
+  directory_inventories:
+    user_manual: null
+    operations_manual: null
+    technical_whitepaper_or_topics: null
+    development_manual_or_api: null
+  directory_items: []
+  delta_topics: []
+  excluded_items: []
+  unavailable_items: []
+  status: pending
+  known_source_ids: []
+- component_id: test-infrastructure
+  official_entrypoints:
+  - https://kubernetes.io/docs/
+  entrypoint_status: 待核对目录，不宣称上述入口全部已读取或适用于最终版本
+  existing_research_reference:
+    matrix_snapshots:
+    - upgrade/v1.33.6/evidence/tests/enterprise-test-matrix.yaml
+    assessment: 既有记录入口，尚未宣称有完整官方目录映射；复用已有结论，缺项增量补齐。
+  source_version_binding: upgrade/v1.33.6/inventory.yaml
+  target_version_binding: null
+  directory_inventories:
+    user_manual: null
+    operations_manual: null
+    technical_whitepaper_or_topics: null
+    development_manual_or_api: null
+  directory_items: []
+  delta_topics: []
+  excluded_items: []
+  unavailable_items: []
+  status: pending
+  known_source_ids: []
+- component_id: tools
+  official_entrypoints:
+  - https://kubernetes.io/docs/reference/using-api/client-libraries/
+  entrypoint_status: 待核对目录，不宣称上述入口全部已读取或适用于最终版本
+  existing_research_reference:
+    matrix_snapshots:
+    - upgrade/v1.33.6/evidence/tests/tools-test-matrix.yaml
+    assessment: 既有记录入口，尚未宣称有完整官方目录映射；复用已有结论，缺项增量补齐。
+  source_version_binding: upgrade/v1.33.6/inventory.yaml
+  target_version_binding: null
+  directory_inventories:
+    user_manual: null
+    operations_manual: null
+    technical_whitepaper_or_topics: null
+    development_manual_or_api: null
+  directory_items: []
+  delta_topics: []
+  excluded_items: []
+  unavailable_items: []
+  status: pending
+  known_source_ids: []
+retrieval_gaps:
+- source: raw.githubusercontent.com 多个官方源码链接
+  state: 部分握手/读超时或断开；已从官方网页/GitHub固定tag取得的结论见官方来源表，未取得全文继续待查
+- source: docs.cilium.io/en/v1.19/network/kubernetes/compatibility/
+  state: 403；已用固定 v1.19.5 官方源码文档取得兼容表，不将该替代等同完整文档阅读
+- source: longhorn.io/docs/1.12.1/deploy/important-notes/
+  state: 404；按现有矩阵给出的 /important-notes/ 入口后续核对，未读不签完成
+next_exit: P1/P2：逐组件关联已有研究基线，补四类目录/增量，关闭目标组合与过渡路径的关键约束
+incremental_research_policy:
+  baseline_ga: 已确认，不重新研究以证明旧GA
+  first_read: 先定位已有手册/矩阵官方记录，保留旧结论和目录映射；缺项如实补齐
+  delta: 按目标版本目录、发布说明/已知问题与实际接口差异增量处理；同一结论只研究一次
+  gaps: 研究/访问缺口不等于现场测试任务；只阻断依赖该结论的组合
+  reading_cost: 定点读取目录差异与涉及的官方主题，摘要未变的记录不重复全文读取

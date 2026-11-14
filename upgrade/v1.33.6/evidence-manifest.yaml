@@ -1,0 +1,1563 @@
+schema_version: 1
+recorded_on: '2026-11-14'
+source_repository_head: 940c9020144a88b370cba36793a4d7fad6a347ab
+purpose: 复制现有正式记录，保留历史边界，供目标逐主张复用；不是重新验收旧GA或目标PASS
+selection:
+  matrices: 核心、存储、中间件及独立tools现有矩阵快照；不改变历史状态
+  records: 现有pass父项evidence字段直接指向的JSON，以及当前增量/最终签署记录；不递归复制全部运行目录
+  independent_tools: 仅归档，不成为核心升级前置，不向核心借签PASS
+  credentials: 选中JSON经私钥/token格式、认证字段及完整Secret对象静态检查；业务账本token不是认证凭据
+summary:
+  matrix_snapshots: 10
+  formal_records: 133
+  total_files: 143
+  total_bytes: 6615267
+boundaries:
+  byte_identity_verified: true
+  original_runtime_archives_copied: false
+  raw_archive_bindings_reverified: false
+  transitive_record_closure_complete: false
+  target_applicability_accepted: false
+  source_ga_reopened: false
+  missing_reference_action: 按实际采用主张补齐其必要闭包；先定位归档和身份，不以未递归复制为由全量重测
+  path_resolution: 副本内部路径按原主仓根解释，以本清单source_path映射copy_path；不改写副本内容
+files:
+- source_path: tests/enterprise-test-matrix.yaml
+  copy_path: upgrade/v1.33.6/evidence/tests/enterprise-test-matrix.yaml
+  sha256: fbb30c1a0c57c5e34d0c38b24661f4e74ad2f4e67a160709f68e433cffd47ed1
+  bytes: 71072
+  kind: matrix-snapshot
+  copy_verified: true
+  original_claim_refs: []
+- source_path: tests/ceph-test-matrix.yaml
+  copy_path: upgrade/v1.33.6/evidence/tests/ceph-test-matrix.yaml
+  sha256: 549d693cdf4dfd35cf1c7909d1cd54f1fb278e04803919740db58a786f49d1ff
+  bytes: 36691
+  kind: matrix-snapshot
+  copy_verified: true
+  original_claim_refs: []
+- source_path: tests/longhorn-test-matrix.yaml
+  copy_path: upgrade/v1.33.6/evidence/tests/longhorn-test-matrix.yaml
+  sha256: 008577ad440370d60de83e8cd007fc1847154907fa38b682a16a9d6380e5438d
+  bytes: 113675
+  kind: matrix-snapshot
+  copy_verified: true
+  original_claim_refs: []
+- source_path: tests/mysql-test-matrix.yaml
+  copy_path: upgrade/v1.33.6/evidence/tests/mysql-test-matrix.yaml
+  sha256: 80cc8a8218fe708400bee14b07564bd598e488e97be26fb5269b1c3a972a3b8c
+  bytes: 3817
+  kind: matrix-snapshot
+  copy_verified: true
+  original_claim_refs: []
+- source_path: tests/kafka-test-matrix.yaml
+  copy_path: upgrade/v1.33.6/evidence/tests/kafka-test-matrix.yaml
+  sha256: 852dd43dbd79755690a69b2b018b68952e304455774d59e26551c237cd2cca8a
+  bytes: 5736
+  kind: matrix-snapshot
+  copy_verified: true
+  original_claim_refs: []
+- source_path: tests/mongodb-test-matrix.yaml
+  copy_path: upgrade/v1.33.6/evidence/tests/mongodb-test-matrix.yaml
+  sha256: 45b601f6bc4c5e89752f881a96198e206a48f0904690960a6dd86a388e722ebf
+  bytes: 33733
+  kind: matrix-snapshot
+  copy_verified: true
+  original_claim_refs: []
+- source_path: tests/redis-test-matrix.yaml
+  copy_path: upgrade/v1.33.6/evidence/tests/redis-test-matrix.yaml
+  sha256: 49e85844f9136b740f1151de28f7235ecdede87da3f31ba7cf3afb0be2573002
+  bytes: 8455
+  kind: matrix-snapshot
+  copy_verified: true
+  original_claim_refs: []
+- source_path: tests/elasticsearch-test-matrix.yaml
+  copy_path: upgrade/v1.33.6/evidence/tests/elasticsearch-test-matrix.yaml
+  sha256: fd6d6586d1420404287cbff706bd69e7536ba2a016f3cc356040fa1fb21320c2
+  bytes: 100288
+  kind: matrix-snapshot
+  copy_verified: true
+  original_claim_refs: []
+- source_path: tests/logging-test-matrix.yaml
+  copy_path: upgrade/v1.33.6/evidence/tests/logging-test-matrix.yaml
+  sha256: 53592350b7314700b101d7c98951693d52ca6f21451c76d5454a6b7842c9cc06
+  bytes: 8707
+  kind: matrix-snapshot
+  copy_verified: true
+  original_claim_refs: []
+- source_path: tests/tools-test-matrix.yaml
+  copy_path: upgrade/v1.33.6/evidence/tests/tools-test-matrix.yaml
+  sha256: c393d39c66e60716e05eb4dd01fffacbfcaec4d9058679ba6b406565497b2ecd
+  bytes: 63698
+  kind: matrix-snapshot
+  copy_verified: true
+  original_claim_refs: []
+- source_path: logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-01.json
+  copy_path: upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-01.json
+  sha256: 1e8fe2bae81019a0ec35c506b3469f1519c4d366aecd684e614f622676acdffd
+  bytes: 9809
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/ceph-test-matrix.yaml
+    id: CEPH-01
+- source_path: logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-02.json
+  copy_path: upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-02.json
+  sha256: 03ac1ff6f47c6fb64e2fd047c7125a10399e7b8e1830c77a7ff91505ac769c06
+  bytes: 1320
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/ceph-test-matrix.yaml
+    id: CEPH-02
+- source_path: logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-03.json
+  copy_path: upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-03.json
+  sha256: 29a1724e93b5c3bec770086d65562646c23a4dd998fba3808d7f4551ec61106f
+  bytes: 9373
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/ceph-test-matrix.yaml
+    id: CEPH-03
+- source_path: logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-04.json
+  copy_path: upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-04.json
+  sha256: 808954704bc86429d9d1d99e874bfdde6077210230ee1827af308820641f2084
+  bytes: 9144
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/ceph-test-matrix.yaml
+    id: CEPH-04
+- source_path: logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-05.json
+  copy_path: upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-05.json
+  sha256: 948dee706be3734ea832a3ecde0c526778cc9cce3bab0c95db13e6de93f87295
+  bytes: 10020
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/ceph-test-matrix.yaml
+    id: CEPH-05
+- source_path: logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-06.json
+  copy_path: upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-06.json
+  sha256: 4f808106132d39ca5b6ae2212578236eef8d67163e3d37f1ac2255461980387f
+  bytes: 9249
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/ceph-test-matrix.yaml
+    id: CEPH-06
+- source_path: logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-07.json
+  copy_path: upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-07.json
+  sha256: 6c93cc039934efaa85f147405251a81a83bebaf1a34179859186c859c3a21cea
+  bytes: 9247
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/ceph-test-matrix.yaml
+    id: CEPH-07
+- source_path: logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-08.json
+  copy_path: upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-08.json
+  sha256: 8f4de78303d355e67844e3edea08dff0a21f656f96d3a761f4962743670883d5
+  bytes: 9251
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/ceph-test-matrix.yaml
+    id: CEPH-08
+- source_path: logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-09.json
+  copy_path: upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-09.json
+  sha256: d41c3fde52c358f92490c1fe227f70a04543a3ce071f4ece9f65cfcf47790bea
+  bytes: 9254
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/ceph-test-matrix.yaml
+    id: CEPH-09
+- source_path: logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-10.json
+  copy_path: upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-10.json
+  sha256: c9a92becd5b00abca461742f360379a6a57e1660c3dc1e480f4acedc39de9121
+  bytes: 9469
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/ceph-test-matrix.yaml
+    id: CEPH-10
+- source_path: logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-11.json
+  copy_path: upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-11.json
+  sha256: 9bd6b4536d71ca2e043c0d5161eebfc75b1fad0b1d948915dd86c523560f115c
+  bytes: 9604
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/ceph-test-matrix.yaml
+    id: CEPH-11
+- source_path: logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-12.json
+  copy_path: upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-12.json
+  sha256: 687b5df26d1a56891e2e742ab6c1ed2ef71df4ab8fab7ca3e132f349c0c38e3f
+  bytes: 10010
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/ceph-test-matrix.yaml
+    id: CEPH-12
+- source_path: logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-13.json
+  copy_path: upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-13.json
+  sha256: 6055e3a6cfd2fc4a1c43423b1abef319b8effc9c37fbd3efe3715f881eb7e0f3
+  bytes: 11028
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/ceph-test-matrix.yaml
+    id: CEPH-13
+- source_path: logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-14.json
+  copy_path: upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-14.json
+  sha256: e24bf0b1cfe2014083691bc23d503568314fdc9e47de2e6d984159f778a952b4
+  bytes: 10774
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/ceph-test-matrix.yaml
+    id: CEPH-14
+- source_path: logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-15.json
+  copy_path: upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-15.json
+  sha256: eb47d38c9ebda272f54f20e756b2660f10fad02215f150808bebfacf58ff7568
+  bytes: 10755
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/ceph-test-matrix.yaml
+    id: CEPH-15
+- source_path: logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-16.json
+  copy_path: upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-16.json
+  sha256: c1bdbd994eeccd55076ef8fe5c0ccbf77bfe1966f5d97847bada2ae4d69f0168
+  bytes: 11409
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/ceph-test-matrix.yaml
+    id: CEPH-16
+- source_path: logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-17.json
+  copy_path: upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-17.json
+  sha256: 1ca68f461da3107a4571842c10f49d5b429e343754861525d3d24db936d05098
+  bytes: 10995
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/ceph-test-matrix.yaml
+    id: CEPH-17
+- source_path: logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-18.json
+  copy_path: upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-18.json
+  sha256: 0e565602ca4aed970071e9a1649258b1a3c6f9c395861600b81ae9ed8b594895
+  bytes: 10754
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/ceph-test-matrix.yaml
+    id: CEPH-18
+- source_path: logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-19.json
+  copy_path: upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-19.json
+  sha256: 41c818a44df5e3386904a13b46fa9bb4a27e72dddc67573f7a9c3e903a9393ee
+  bytes: 10753
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/ceph-test-matrix.yaml
+    id: CEPH-19
+- source_path: logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-20.json
+  copy_path: upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-20.json
+  sha256: 5ee617cdc21fec75af3745afb0d11c82b7960e60d22cf220e6e6e5b24035a117
+  bytes: 10012
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/ceph-test-matrix.yaml
+    id: CEPH-20
+- source_path: logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-21.json
+  copy_path: upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-21.json
+  sha256: e0391459beb1fcf64d8c0ef635b1cda77b6b56745b39b9632ca18d629ee6976b
+  bytes: 10012
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/ceph-test-matrix.yaml
+    id: CEPH-21
+- source_path: logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-22.json
+  copy_path: upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-22.json
+  sha256: 94c0c568b22da2470e0557d7f5eb6dd06d06f224ca4fc9f11e8de0f48ae4644d
+  bytes: 10504
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/ceph-test-matrix.yaml
+    id: CEPH-22
+- source_path: logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-23.json
+  copy_path: upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-23.json
+  sha256: 09760daccd12a15b8c62ee494c9cc2ac279950101f9fece2e9c68c24ccdc2364
+  bytes: 10145
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/ceph-test-matrix.yaml
+    id: CEPH-23
+- source_path: logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-24.json
+  copy_path: upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-24.json
+  sha256: a37b915e5529c94c2827a8dae779b1a5ef256f34f03fc08185471e8f0bdea8ba
+  bytes: 9254
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/ceph-test-matrix.yaml
+    id: CEPH-24
+- source_path: logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-25.json
+  copy_path: upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-25.json
+  sha256: b81f622138079c7df33a63e56df2775307def8bc30d60082e61d9b55158ebaf2
+  bytes: 9767
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/ceph-test-matrix.yaml
+    id: CEPH-25
+- source_path: logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-26.json
+  copy_path: upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-26.json
+  sha256: 2c6a5bdc778e85ccc8ab6f84a48796ee948ccad50dc5fc2fe6476aa10d186a92
+  bytes: 9494
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/ceph-test-matrix.yaml
+    id: CEPH-26
+- source_path: logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-27.json
+  copy_path: upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-27.json
+  sha256: 1539fd9228dc62be1036fc2f079325d39a5a93c8797c801c047428f1f7d4887b
+  bytes: 9913
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/ceph-test-matrix.yaml
+    id: CEPH-27
+- source_path: logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-28.json
+  copy_path: upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-28.json
+  sha256: 9b6d46f51c6317d44b3989dbb99e0ff2dea43a345b5d1eb4b90ddfab42c8c709
+  bytes: 9030
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/ceph-test-matrix.yaml
+    id: CEPH-28
+- source_path: tests/evidence/dev-nacos-startup-20261103.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/dev-nacos-startup-20261103.json
+  sha256: b041a80c2200f006aab82f43d9f24f3fd87337619de9b9dca474e310f3bc6f2d
+  bytes: 3245
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/enterprise-test-matrix.yaml
+    id: T1-G2-02
+  - matrix: tests/enterprise-test-matrix.yaml
+    id: T2-NW-01
+  - matrix: tests/enterprise-test-matrix.yaml
+    id: T2-PM-01
+  - matrix: tests/enterprise-test-matrix.yaml
+    id: T2-OS-01
+  - matrix: tests/enterprise-test-matrix.yaml
+    id: T2-OS-03
+  - matrix: tests/enterprise-test-matrix.yaml
+    id: T2-OS-05
+  - matrix: tests/enterprise-test-matrix.yaml
+    id: T2-OS-06
+  - matrix: tests/enterprise-test-matrix.yaml
+    id: T2-MR-01
+  - matrix: tests/enterprise-test-matrix.yaml
+    id: T2-AD-13
+  - matrix: tests/enterprise-test-matrix.yaml
+    id: nacos
+- source_path: tests/evidence/dev-prepare-os-20261103.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/dev-prepare-os-20261103.json
+  sha256: 9e0ac0435531d2af55676036f02679530d3e013ad7ef307594e7b21822dfc2af
+  bytes: 4656
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/enterprise-test-matrix.yaml
+    id: T2-OS-02
+  - matrix: tests/enterprise-test-matrix.yaml
+    id: T2-OS-04
+  - matrix: tests/enterprise-test-matrix.yaml
+    id: T2-MR-02
+  - matrix: tests/enterprise-test-matrix.yaml
+    id: T2-MR-05
+  - matrix: tests/enterprise-test-matrix.yaml
+    id: prepare-os
+- source_path: tests/evidence/dev-production-fixes-20261103.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/dev-production-fixes-20261103.json
+  sha256: e6d25fa89a51c691c45a892cd38b2b3f3c39862ee705ae65b9d41737a786a8a9
+  bytes: 3941
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/enterprise-test-matrix.yaml
+    id: T0-10
+  - matrix: tests/enterprise-test-matrix.yaml
+    id: full
+- source_path: tests/evidence/dev-production-static-20261103.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/dev-production-static-20261103.json
+  sha256: bca370c1f345e5bb799b591d996930c912d07aa10e8de90ff3274429ca2c9002
+  bytes: 12229
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/enterprise-test-matrix.yaml
+    id: T0-01
+  - matrix: tests/enterprise-test-matrix.yaml
+    id: static
+- source_path: tests/evidence/dev-rocky9-nfs-20261103.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/dev-rocky9-nfs-20261103.json
+  sha256: e1a0048c12116eedfcc3dfeb8c9354666b77482da644ce2056538a7f216ecbc3
+  bytes: 9226
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/enterprise-test-matrix.yaml
+    id: T2-OS-07
+  - matrix: tests/enterprise-test-matrix.yaml
+    id: T2-AD-11
+  - matrix: tests/enterprise-test-matrix.yaml
+    id: prepare-os
+  - matrix: tests/enterprise-test-matrix.yaml
+    id: nfs
+- source_path: tests/evidence/elasticsearch-documentation-20261108-162202-19758-documentation.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/elasticsearch-documentation-20261108-162202-19758-documentation.json
+  sha256: 4c826cb446f47ef34e33cec1fa8a418dd72c981a527825205d8303025cbca2ce
+  bytes: 3387
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-58
+- source_path: tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  sha256: 8799519d44ed3ee8d5e0a868d1f594f8e1e29230c8c9c71411047633457f667d
+  bytes: 500352
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-01
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-02
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-03
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-04
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-05
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-06
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-07
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-08
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-09
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-10
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-11
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-12
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-13
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-14
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-15
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-16
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-17
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-18
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-19
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-20
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-21
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-22
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-23
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-24
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-25
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-26
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-27
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-28
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-29
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-30
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-31
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-32
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-33
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-34
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-35
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-36
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-37
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-38
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-39
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-40
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-41
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-42
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-43
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-44
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-45
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-46
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-47
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-48
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-49
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-50
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-51
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-52
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-53
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-54
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-55
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-56
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-57
+  - matrix: tests/elasticsearch-test-matrix.yaml
+    id: ES-59
+- source_path: tests/evidence/ext-images-20261008.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/ext-images-20261008.json
+  sha256: dce00e7b2875ba89f6a8088e36b1f48cca414a975d89fede04276707850cebc1
+  bytes: 3394
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/enterprise-test-matrix.yaml
+    id: T2-CX-02
+  - matrix: tests/enterprise-test-matrix.yaml
+    id: T2-CX-03
+  - matrix: tests/enterprise-test-matrix.yaml
+    id: T2-CX-04
+  - matrix: tests/enterprise-test-matrix.yaml
+    id: T2-CX-05
+  - matrix: tests/enterprise-test-matrix.yaml
+    id: T2-CX-06
+- source_path: tests/evidence/longhorn-19-focused-prerequisite-receipt-20261024.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-19-focused-prerequisite-receipt-20261024.json
+  sha256: ec06fa7a6ebe5925524e2076b65aec19d06727c8afb2d0a7cdf154803b3bee73
+  bytes: 2260
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-19
+- source_path: tests/evidence/longhorn-23-focused-prerequisite-receipt-20261024.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-23-focused-prerequisite-receipt-20261024.json
+  sha256: 5e39510168d84df1baa40d1f7c440d3384ebe354b629df10c59b85abfa84ccde
+  bytes: 1530
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-23
+- source_path: tests/evidence/longhorn-37-focused-prerequisite-receipt-20261024.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-37-focused-prerequisite-receipt-20261024.json
+  sha256: af4f8307b5ad85174466a4ec161a02bf3290918c43a8f6079c30b8964fc65222
+  bytes: 1607
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-37
+- source_path: tests/evidence/longhorn-39-focused-prerequisite-receipt-20261024.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-39-focused-prerequisite-receipt-20261024.json
+  sha256: c289cd97aa6c306b8982f43187dea88d197fe43ae8334fee1fe6eb23a90119f9
+  bytes: 1638
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-39
+- source_path: tests/evidence/longhorn-backup-20261021.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-backup-20261021.json
+  sha256: 532bc3bfdca4726cfa4f68ae0fb90bf1720e89a0ada14fb2a6955ab66411092f
+  bytes: 90708
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-14
+- source_path: tests/evidence/longhorn-backup-refusal-20261021.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-backup-refusal-20261021.json
+  sha256: 2fe890a037680be96de9084781618cb1f7aaebdf2ac0329568978f82993820ff
+  bytes: 107493
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-15
+- source_path: tests/evidence/longhorn-capacity-20261022.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-capacity-20261022.json
+  sha256: cb3282fafec02938dd0774629cfcce73ec8fbbedd137ade89b52c980b5687f03
+  bytes: 123708
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-28
+- source_path: tests/evidence/longhorn-cleanup-abort-archive-complete-20261024.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-cleanup-abort-archive-complete-20261024.json
+  sha256: 6871a81b815b53810a96a9e3d66b6c26eed1e67efec02036e3219d8f5bff3a7c
+  bytes: 143263
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-41
+- source_path: tests/evidence/longhorn-clone-20261019.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-clone-20261019.json
+  sha256: cf19b529f27c9877408208c31cdfcf5f24660117f3a5373c5d012cf3cdaa88fd
+  bytes: 2292
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-13
+- source_path: tests/evidence/longhorn-current-static-20261024.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-current-static-20261024.json
+  sha256: 4c0db05dc0fccc7491f698bbd9dd4815ba5266c978074c8afe64a812b2e94ff6
+  bytes: 130705
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-01
+- source_path: tests/evidence/longhorn-disabled-20261019.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-disabled-20261019.json
+  sha256: e07daa07b24339b1bc0a80684fc897d54792f0d32ba1a709609ebc5ddc6a04d6
+  bytes: 1943
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-02
+- source_path: tests/evidence/longhorn-disaster-recovery-complete-20261022.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-disaster-recovery-complete-20261022.json
+  sha256: 4e0b1d09948065b15e2926ca17817bb035baaae66a819fa0760942ffbd632ded
+  bytes: 119471
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-18
+- source_path: tests/evidence/longhorn-disk-lifecycle-20261022.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-disk-lifecycle-20261022.json
+  sha256: 848e01df714895866379be6c057488e63887728069909cc401a05378146b03ec
+  bytes: 112783
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-26
+- source_path: tests/evidence/longhorn-documentation-current-20261024.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-documentation-current-20261024.json
+  sha256: 01ba8e2bf29651b3d96e927aafb1e078677eb46894281fa2dfd6809683f115e0
+  bytes: 1675
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-42
+- source_path: tests/evidence/longhorn-encryption-20261021.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-encryption-20261021.json
+  sha256: 412a440f60033cc4ac77c4f2ec032ae077410df219a0f93814213a6994ec327d
+  bytes: 151671
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-31
+- source_path: tests/evidence/longhorn-engine-failure-20261019.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-engine-failure-20261019.json
+  sha256: e6a49b7c924c476f502d997697014dac048088cefd6ea6c0f543ffe3b5e0ce34
+  bytes: 31124
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-21
+- source_path: tests/evidence/longhorn-expansion-20261019.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-expansion-20261019.json
+  sha256: 0c497e65e5c8fee43f8e446db96e64c0834ec519220a565cac3bf3af494fce19
+  bytes: 4231
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-11
+- source_path: tests/evidence/longhorn-full-ga-20261103.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-full-ga-20261103.json
+  sha256: fa2b6b07e9213ffbd1e93b61ae75524f63daa6c8fc5cf09f72ddb326897a7a40
+  bytes: 76503
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-43
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-48
+- source_path: tests/evidence/longhorn-idempotence-20261021.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-idempotence-20261021.json
+  sha256: 518dec19e058193b6667a25101edc3bddbab3be9c203772ebf22a76bdc2a81d1
+  bytes: 119103
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-07
+- source_path: tests/evidence/longhorn-install-derived-20261021.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-install-derived-20261021.json
+  sha256: 276643816b2897c4c38bd166b01c63524f15f51a892f309b0b86f772e8e0cf6f
+  bytes: 106471
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-06
+- source_path: tests/evidence/longhorn-integrity-20261022.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-integrity-20261022.json
+  sha256: c5acbbb9f70f3f9c38d16b3f9db69ae2a8f21093be179d22139b99c4f84458f4
+  bytes: 113976
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-30
+- source_path: tests/evidence/longhorn-maintenance-20261022.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-maintenance-20261022.json
+  sha256: 00f8aaef4685fc75723e977d8dc7c81f10f0a846b68c9ba78e31e519e7ba0573
+  bytes: 129856
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-24
+- source_path: tests/evidence/longhorn-manager-current-artifacts-20261024.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-manager-current-artifacts-20261024.json
+  sha256: 810032b7416fb2b50e44824d4f2da77b562ad26010a455887bac70881c217edc
+  bytes: 1751
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-04
+- source_path: tests/evidence/longhorn-network-failure-20261022.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-network-failure-20261022.json
+  sha256: 59ff382d040c1431d0aee20cabc06cd29effa3eab106bb72eab9d9b36e644946
+  bytes: 117210
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-22
+- source_path: tests/evidence/longhorn-network-policy-20261019.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-network-policy-20261019.json
+  sha256: 02a68b1731023949ea6cc594c235a0e01a5b9682b6db430422b262e7f1cb3407
+  bytes: 10187
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-33
+- source_path: tests/evidence/longhorn-node-failure-20261022.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-node-failure-20261022.json
+  sha256: f8e4ff39288a3a19cbf5be543f217361cdb863e7b5ed08090d44e1581a3ed7cb
+  bytes: 113838
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-20
+- source_path: tests/evidence/longhorn-node-lifecycle-complete-20261024.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-node-lifecycle-complete-20261024.json
+  sha256: c5948b4a42a87d08778321b5fa24004928c2bbbc3f5235992d93ea6120fffa2c
+  bytes: 138492
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-25
+- source_path: tests/evidence/longhorn-ownership-accepted-20261021.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-ownership-accepted-20261021.json
+  sha256: 007124c9a6a81d4155db0ea627f7c254988c6b0ab9637ce1f0c88c04e832b762
+  bytes: 4058
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-03
+- source_path: tests/evidence/longhorn-performance-20261019.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-performance-20261019.json
+  sha256: 4fb9edf2f9db3d407727835513c96ac4851aedddc65dac9f43b4cd03bc766432
+  bytes: 15609
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-38
+- source_path: tests/evidence/longhorn-platform-accepted-20261021.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-platform-accepted-20261021.json
+  sha256: fce60b77d3c655dfbdff8116667ddecce780fe85e3874c4ec5854e17a6dc7878
+  bytes: 79395
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-05
+- source_path: tests/evidence/longhorn-reclaim-20261019.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-reclaim-20261019.json
+  sha256: 86a9b2156f3131bf4755fd165ad062bd6bf66ceb5ddbd018c08c0e5cd5745eeb
+  bytes: 2283
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-10
+- source_path: tests/evidence/longhorn-recurring-20261021.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-recurring-20261021.json
+  sha256: 51b4486a1dacfc62ba1cd935977c30924310e3ab326704c988326a6c87b11a47
+  bytes: 139125
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-16
+- source_path: tests/evidence/longhorn-replica-scale-20261019.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-replica-scale-20261019.json
+  sha256: 5d7e06cf2d37211eb1627670653b5e8cba4ff04579f45af78ea26855d1744d94
+  bytes: 1852
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-27
+- source_path: tests/evidence/longhorn-rwo-20261019.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-rwo-20261019.json
+  sha256: 7bac6913bcaaef5e644f08d514c60cda5ae9147f67b37606a1d582d588c2d604
+  bytes: 2226
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-08
+- source_path: tests/evidence/longhorn-rwx-20261019.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-rwx-20261019.json
+  sha256: 9cf0abd25783a2c37bd43fb0c92bc128432fc2304d287f8eab62698fb55e6d46
+  bytes: 2149
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-09
+- source_path: tests/evidence/longhorn-security-20261021.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-security-20261021.json
+  sha256: cc1eedce6d2bde44caca352cd8d16560488eae80d17c6a21ead95694203ac5b9
+  bytes: 78730
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-32
+- source_path: tests/evidence/longhorn-snapshot-20261020.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-snapshot-20261020.json
+  sha256: 3bd5fe1cb29e37d9168636985bc464345e047b1983e713acbb8c610679f24b8c
+  bytes: 46242
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-12
+- source_path: tests/evidence/longhorn-system-restore-complete-20261023.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-system-restore-complete-20261023.json
+  sha256: 9d2f5d39a07d698a74d0edb411a99ff8d658807e99d35a5b2a6e1cbb550b379e
+  bytes: 121439
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-17
+- source_path: tests/evidence/longhorn-trim-20261019.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-trim-20261019.json
+  sha256: a3156ce904e748098d18ab52a3aeef28f8dd8e253212b2e9003e3b95e04b90a5
+  bytes: 5241
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-29
+- source_path: tests/evidence/longhorn-uninstall-20261021.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-uninstall-20261021.json
+  sha256: 84047c73c943c5ca371cf6a2f3e5e8da664707c521c16eea9b00321c75c6067f
+  bytes: 127661
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-40
+- source_path: tests/evidence/longhorn-v1-observability-complete-20261023.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-v1-observability-complete-20261023.json
+  sha256: f0b797e63817dc7eb1d0eb2a4daac685b649452052267c09b3b5e6d7d162efe7
+  bytes: 130127
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-34
+- source_path: tests/evidence/longhorn-v1-upgrade-complete-20261023.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-v1-upgrade-complete-20261023.json
+  sha256: 365f104600bc55d8eec8f2d15642e029606659e2c2e10cdefc8203a3717b9286
+  bytes: 122962
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-35
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-36
+- source_path: tests/evidence/longhorn-v2-cleanup-complete-20261024.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-v2-cleanup-complete-20261024.json
+  sha256: fa0a992e89e79f37739a5d8f17346982c6459aa6ac6ef464a065186758550c1a
+  bytes: 134317
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-54
+- source_path: tests/evidence/longhorn-v2-clone-complete-20261024.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-v2-clone-complete-20261024.json
+  sha256: b8881526422d4332da0fdd9b168539081a4606ef46e2cc179406d02cd1c4072a
+  bytes: 263499
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-49
+- source_path: tests/evidence/longhorn-v2-disk-lifecycle-complete-20261024.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-v2-disk-lifecycle-complete-20261024.json
+  sha256: 84ae23c16a66fde79707901be6f7bf8264d563ac6737ace0ce0e34f49cdf13f9
+  bytes: 131269
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-45
+- source_path: tests/evidence/longhorn-v2-failure-complete-20261025.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-v2-failure-complete-20261025.json
+  sha256: 66e923412980648cc8b9092efd023fbdfceef294c6ed2a5affd7520d46832b75
+  bytes: 99966
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-50
+- source_path: tests/evidence/longhorn-v2-install-tail-complete-20261023.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-v2-install-tail-complete-20261023.json
+  sha256: 28242e708a90336b12ebd3abf51dc3521290e523d1fc2e0715174381a44bdb5c
+  bytes: 150309
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-46
+- source_path: tests/evidence/longhorn-v2-maintenance-complete-20261024.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-v2-maintenance-complete-20261024.json
+  sha256: b127f1d1b750b23a9c0a8b1bbbe0feeca685a013a8689eca6421c883f4e3a8b6
+  bytes: 341413
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-51
+- source_path: tests/evidence/longhorn-v2-observability-performance-complete-20261023.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-v2-observability-performance-complete-20261023.json
+  sha256: 1f4f09cea97acbda289ceb2edb4481c7d3c88778cced1dc8c849f2d15c7d0ece
+  bytes: 156744
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-53
+- source_path: tests/evidence/longhorn-v2-platform-complete-20261023.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-v2-platform-complete-20261023.json
+  sha256: 2ec94176c1e688dcafc7b07ae32d43fa611085b6aed9dafaa7aa6d10d80eb2f3
+  bytes: 261472
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-44
+- source_path: tests/evidence/longhorn-v2-upgrade-lifecycle-20261021.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-v2-upgrade-lifecycle-20261021.json
+  sha256: e9f52afaa6ecb491ca80d9f110871ba5aab5cea09b4d7bf443a3ef86c0edc7ad
+  bytes: 381549
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-52
+- source_path: tests/evidence/longhorn-v2-volumes-20261020.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/longhorn-v2-volumes-20261020.json
+  sha256: 1f5a3cb9f2e9000c68bf605b3dc723bda3f888b6504355460606067a7a8b955a
+  bytes: 44480
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/longhorn-test-matrix.yaml
+    id: LONGHORN-47
+- source_path: tests/evidence/mongodb-artifacts-20261015.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/mongodb-artifacts-20261015.json
+  sha256: e1d71eed53ee85f50da053064e85fd82d2caa2e2b0a92e88eb33c212a96d6874
+  bytes: 15190
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/mongodb-test-matrix.yaml
+    id: MONGODB-04
+- source_path: tests/evidence/mongodb-backup-refusal-20261016.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/mongodb-backup-refusal-20261016.json
+  sha256: 0e8b2e98b82b98d57b7941f817bc1ea9cf96d9e46cfa10617a1dfbb6516b1e0c
+  bytes: 9540
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/mongodb-test-matrix.yaml
+    id: MONGODB-24
+- source_path: tests/evidence/mongodb-capacity-20261016.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/mongodb-capacity-20261016.json
+  sha256: f4809310c68fbf1d63c401c51cbd80ae2fc810cf9ef35df5ef5a67bf83b74d77
+  bytes: 8080
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/mongodb-test-matrix.yaml
+    id: MONGODB-33
+- source_path: tests/evidence/mongodb-cleanup-complete-20261017.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/mongodb-cleanup-complete-20261017.json
+  sha256: 22070e787f6c2372b97105600e89a39407236cc6a2918834f847551585cdef3e
+  bytes: 6897
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/mongodb-test-matrix.yaml
+    id: MONGODB-41
+- source_path: tests/evidence/mongodb-data-20261015.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/mongodb-data-20261015.json
+  sha256: ccec69a64ed5f306ecbd6b0b2c345f7afbc19eda366550db98c52916f44dd4a7
+  bytes: 1979
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/mongodb-test-matrix.yaml
+    id: MONGODB-09
+- source_path: tests/evidence/mongodb-disaster-recovery-20261016.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/mongodb-disaster-recovery-20261016.json
+  sha256: 0e74cdc07403ba58d9c40203de68aa5ed550d51f4d6d41283e353043564e93c6
+  bytes: 9898
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/mongodb-test-matrix.yaml
+    id: MONGODB-26
+- source_path: tests/evidence/mongodb-documentation.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/mongodb-documentation.json
+  sha256: 59a9a69840cf8702e89660ea07283f96defac132ce84c626c1bb0c1f43b18817
+  bytes: 24005
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/mongodb-test-matrix.yaml
+    id: MONGODB-42
+- source_path: tests/evidence/mongodb-encryption-20261016.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/mongodb-encryption-20261016.json
+  sha256: 7aacd37f789ba23bd93f6f9021c041415ece6229282417413d6febac4cbb0e8a
+  bytes: 13665
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/mongodb-test-matrix.yaml
+    id: MONGODB-17
+- source_path: tests/evidence/mongodb-failover-20261015.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/mongodb-failover-20261015.json
+  sha256: e0bd1a86f68449cd55623eb6e619b385823b18981e9b936bddeacf0f2a2bfe61
+  bytes: 1749
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/mongodb-test-matrix.yaml
+    id: MONGODB-11
+- source_path: tests/evidence/mongodb-full-20261018.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/mongodb-full-20261018.json
+  sha256: 6e8448bb8395aa6a5477da0c5749e956708f267c384ad5d64f0ff46e80a872ba
+  bytes: 38462
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/mongodb-test-matrix.yaml
+    id: MONGODB-43
+- source_path: tests/evidence/mongodb-idempotence-20261015.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/mongodb-idempotence-20261015.json
+  sha256: d3686528a6e76d32cd8c090027c9eb75b2450ff2bef48b25d1ee43af42627ab9
+  bytes: 1508
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/mongodb-test-matrix.yaml
+    id: MONGODB-39
+- source_path: tests/evidence/mongodb-install-20261015.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/mongodb-install-20261015.json
+  sha256: b89f5bf2a5e384265a9ceea936a1cb607436046aa285db53de22a5b8ec794a4e
+  bytes: 4701
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/mongodb-test-matrix.yaml
+    id: MONGODB-08
+- source_path: tests/evidence/mongodb-logical-backup-20261015.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/mongodb-logical-backup-20261015.json
+  sha256: 3c50ae06d45718429e77f0b20c644b117694bc949f0e758d8f66948115b261b2
+  bytes: 6547
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/mongodb-test-matrix.yaml
+    id: MONGODB-19
+- source_path: tests/evidence/mongodb-logical-restore-20261015.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/mongodb-logical-restore-20261015.json
+  sha256: 9e73f662cd4ab685b9915ca3d2eb41f9b8e24912d5a92fa8e44c5d3410e40ea4
+  bytes: 2312
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/mongodb-test-matrix.yaml
+    id: MONGODB-20
+- source_path: tests/evidence/mongodb-maintenance-20261015.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/mongodb-maintenance-20261015.json
+  sha256: dc13fe76f2a2e3d8151276e88b498db79c92cb32859b27964ecc4c907bed73fe
+  bytes: 2310
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/mongodb-test-matrix.yaml
+    id: MONGODB-14
+- source_path: tests/evidence/mongodb-network-20261015.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/mongodb-network-20261015.json
+  sha256: 71dcba327eb27158f9e0b165d302dd436d27c196a29f8afd79fab68ae19d7ff3
+  bytes: 2395
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/mongodb-test-matrix.yaml
+    id: MONGODB-18
+- source_path: tests/evidence/mongodb-observability-20261016.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/mongodb-observability-20261016.json
+  sha256: c6e8fedc47b52fa0108c327c1e5d2f0f2eb93d4bb53da5ffc1c9dd14a716fcee
+  bytes: 10518
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/mongodb-test-matrix.yaml
+    id: MONGODB-34
+- source_path: tests/evidence/mongodb-ownership-20261016.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/mongodb-ownership-20261016.json
+  sha256: abd4ff46fc0250341f9cd3fb7973a90b1f636a0512cc86941d23707819441d76
+  bytes: 5859
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/mongodb-test-matrix.yaml
+    id: MONGODB-40
+- source_path: tests/evidence/mongodb-performance-20261016.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/mongodb-performance-20261016.json
+  sha256: 0d56669a103ad08e107215c659bb2e9af35f99c36d7151f19dac58ebb1a0704d
+  bytes: 8684
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/mongodb-test-matrix.yaml
+    id: MONGODB-35
+- source_path: tests/evidence/mongodb-physical-backup-20261015.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/mongodb-physical-backup-20261015.json
+  sha256: 4ce5ef78a540dceb51c669f5e11b24b066251638e84b505b8afe4d30aef51f3f
+  bytes: 24050
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/mongodb-test-matrix.yaml
+    id: MONGODB-21
+- source_path: tests/evidence/mongodb-physical-restore-20261016.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/mongodb-physical-restore-20261016.json
+  sha256: ab98a2cec00cd7afc8abc3e58db824d62a4557f7d3136083f860a5f8770cffb0
+  bytes: 7032
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/mongodb-test-matrix.yaml
+    id: MONGODB-22
+- source_path: tests/evidence/mongodb-pitr-20261016.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/mongodb-pitr-20261016.json
+  sha256: 9ae3f213cec6618d8e6be33e7b1f8aa4cb8a1be74b594947114a7675f0349258
+  bytes: 2506
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/mongodb-test-matrix.yaml
+    id: MONGODB-23
+- source_path: tests/evidence/mongodb-platform-20261015.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/mongodb-platform-20261015.json
+  sha256: a02a1f17bfb01f316fa49775845ea824bc0fdb15d3dde61069c38176a3d05aa3
+  bytes: 1353
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/mongodb-test-matrix.yaml
+    id: MONGODB-05
+- source_path: tests/evidence/mongodb-preflight-20261015.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/mongodb-preflight-20261015.json
+  sha256: e1f3a7de7ffce7412a4897fb1cf098e1735de89b47d33e545a9267e947eae13c
+  bytes: 1527
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/mongodb-test-matrix.yaml
+    id: MONGODB-06
+- source_path: tests/evidence/mongodb-quorum-20261015.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/mongodb-quorum-20261015.json
+  sha256: ca7988b957ae32a4f5de9ec98c2b7ff1a33b8a7a48daf95cd35b8f0661dbbd34
+  bytes: 1858
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/mongodb-test-matrix.yaml
+    id: MONGODB-12
+- source_path: tests/evidence/mongodb-rebuild-20261015.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/mongodb-rebuild-20261015.json
+  sha256: 216a625e3d2ef5e53dd5a9fc55467fd77f8b7a6829bba3c979ec33417c444ddb
+  bytes: 2190
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/mongodb-test-matrix.yaml
+    id: MONGODB-13
+- source_path: tests/evidence/mongodb-replica-scale-20261016.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/mongodb-replica-scale-20261016.json
+  sha256: bc17a2fc2eb3eeb39c1293f5230dcdb0602930693e242088417d806df2408378
+  bytes: 6392
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/mongodb-test-matrix.yaml
+    id: MONGODB-32
+- source_path: tests/evidence/mongodb-retention-20261016.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/mongodb-retention-20261016.json
+  sha256: d4570e56474b1d08c09e512d1fa80addde800de7741fedbae677294a42a579f6
+  bytes: 41142
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/mongodb-test-matrix.yaml
+    id: MONGODB-25
+- source_path: tests/evidence/mongodb-rollback-20261016.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/mongodb-rollback-20261016.json
+  sha256: ba3f33fc730986ceed66da48fe3a3cd1b43efbd1f2bf58cad1146555658a5228
+  bytes: 10197
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/mongodb-test-matrix.yaml
+    id: MONGODB-38
+- source_path: tests/evidence/mongodb-rotation-20261016.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/mongodb-rotation-20261016.json
+  sha256: 3fbe4f622f476288fa098b9f802d4a406d4e1aa5449aa22f616613ec49abc7f0
+  bytes: 2848
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/mongodb-test-matrix.yaml
+    id: MONGODB-16
+- source_path: tests/evidence/mongodb-security-20261015.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/mongodb-security-20261015.json
+  sha256: 6b7a1ad11e712bca0077ad635022d81e546b0009e012336ebbc81a1e738e956c
+  bytes: 1605
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/mongodb-test-matrix.yaml
+    id: MONGODB-15
+- source_path: tests/evidence/mongodb-sharding-data-20261016.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/mongodb-sharding-data-20261016.json
+  sha256: d68e20625b166ddca2f81c1169768f71db2ff182a468935c4cb52b8d98ddc6eb
+  bytes: 3543
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/mongodb-test-matrix.yaml
+    id: MONGODB-28
+- source_path: tests/evidence/mongodb-sharding-faults-20261016.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/mongodb-sharding-faults-20261016.json
+  sha256: f101284d7c3bd36641f67a13777385500f72926c4f9fb93410858f968ceca7b3
+  bytes: 6077
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/mongodb-test-matrix.yaml
+    id: MONGODB-29
+- source_path: tests/evidence/mongodb-sharding-install-20261016.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/mongodb-sharding-install-20261016.json
+  sha256: 89f8de7e5c53d80deb2b8cb4cd26638825b1a87818641c6a4e3c4ec40b3afa99
+  bytes: 6014
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/mongodb-test-matrix.yaml
+    id: MONGODB-27
+- source_path: tests/evidence/mongodb-sharding-restore-20261016.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/mongodb-sharding-restore-20261016.json
+  sha256: 311fb54c4796c8118f1d039ce8842fc39cd7c00d960e7e3e08a62c84725984c4
+  bytes: 10181
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/mongodb-test-matrix.yaml
+    id: MONGODB-31
+- source_path: tests/evidence/mongodb-sharding-scale-20261016.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/mongodb-sharding-scale-20261016.json
+  sha256: 6135e65eacd8a1c9049958549588e2b196b711be0743b76eea552a5e49249d5e
+  bytes: 4700
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/mongodb-test-matrix.yaml
+    id: MONGODB-30
+- source_path: tests/evidence/mongodb-stability-20261018.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/mongodb-stability-20261018.json
+  sha256: 452c0687cc65474a5fee7a448d49f81362d0c1713d0f441fca0238a8894389c4
+  bytes: 13800
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/mongodb-test-matrix.yaml
+    id: MONGODB-36
+- source_path: tests/evidence/mongodb-static-20261015.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/mongodb-static-20261015.json
+  sha256: 0e38bae4eb7a174340f9f41df10dd5e9882370ce45fe7a7f889ea06213b4f9cb
+  bytes: 119534
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/mongodb-test-matrix.yaml
+    id: MONGODB-01
+  - matrix: tests/mongodb-test-matrix.yaml
+    id: MONGODB-02
+  - matrix: tests/mongodb-test-matrix.yaml
+    id: MONGODB-03
+- source_path: tests/evidence/mongodb-storage-20261015.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/mongodb-storage-20261015.json
+  sha256: 6518857b8571ce731bd1291ae271471d0a59731b0ba595f0b6517335d2e5cf22
+  bytes: 1896
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/mongodb-test-matrix.yaml
+    id: MONGODB-07
+- source_path: tests/evidence/mongodb-transactions-20261015.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/mongodb-transactions-20261015.json
+  sha256: fed34e12954b16c608f9005ad814e584079b2edd28d7a0b4bb82413336628cb8
+  bytes: 2081
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/mongodb-test-matrix.yaml
+    id: MONGODB-10
+- source_path: tests/evidence/mongodb-upgrade-20261017.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/mongodb-upgrade-20261017.json
+  sha256: f20d35a05832f85b04e2900c8beb688ea43dbbe7f8b7f0542b21924e9d53ea82
+  bytes: 13453
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/mongodb-test-matrix.yaml
+    id: MONGODB-37
+- source_path: tests/evidence/mysql-backup-20261108.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/mysql-backup-20261108.json
+  sha256: 21984113127b2fad1bbe52f5b1df69dfbdba369f25df77479e7178f3c54fa073
+  bytes: 24618
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/tools-test-matrix.yaml
+    id: TL-MBK-03
+  - matrix: tests/tools-test-matrix.yaml
+    id: TL-MBK-05
+  - matrix: tests/tools-test-matrix.yaml
+    id: TL-MLB-03
+  - matrix: tests/tools-test-matrix.yaml
+    id: TL-MLB-04
+  - matrix: tests/tools-test-matrix.yaml
+    id: TL-MLB-05
+  - matrix: tests/tools-test-matrix.yaml
+    id: TL-MLB-06
+  - matrix: tests/tools-test-matrix.yaml
+    id: TL-MLB-07
+  - matrix: tests/tools-test-matrix.yaml
+    id: TL-MLB-08
+  - matrix: tests/tools-test-matrix.yaml
+    id: TL-MLB-09
+  - matrix: tests/tools-test-matrix.yaml
+    id: TL-MLB-11
+  - matrix: tests/tools-test-matrix.yaml
+    id: TL-MLB-12
+  - matrix: tests/tools-test-matrix.yaml
+    id: TL-MBK-06
+  - matrix: tests/tools-test-matrix.yaml
+    id: TL-MLB-13
+  - matrix: tests/tools-test-matrix.yaml
+    id: TL-X-09
+- source_path: tests/evidence/mysql-migration-20261109.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/mysql-migration-20261109.json
+  sha256: 9c7b8a4af2e63a6fe3dfe65c29675c7d088efda187fde0c799ed15a25f1b1daa
+  bytes: 9851
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/tools-test-matrix.yaml
+    id: TL-MIG-01
+  - matrix: tests/tools-test-matrix.yaml
+    id: TL-MIG-02
+  - matrix: tests/tools-test-matrix.yaml
+    id: TL-MIG-03
+  - matrix: tests/tools-test-matrix.yaml
+    id: TL-MIG-04
+  - matrix: tests/tools-test-matrix.yaml
+    id: TL-MIG-05
+  - matrix: tests/tools-test-matrix.yaml
+    id: TL-MBK-01
+  - matrix: tests/tools-test-matrix.yaml
+    id: TL-MBK-02
+  - matrix: tests/tools-test-matrix.yaml
+    id: TL-MBK-04
+  - matrix: tests/tools-test-matrix.yaml
+    id: TL-MLB-01
+  - matrix: tests/tools-test-matrix.yaml
+    id: TL-MLB-02
+  - matrix: tests/tools-test-matrix.yaml
+    id: TL-MLB-10
+  - matrix: tests/tools-test-matrix.yaml
+    id: TL-X-01
+  - matrix: tests/tools-test-matrix.yaml
+    id: TL-X-02
+  - matrix: tests/tools-test-matrix.yaml
+    id: TL-X-03
+  - matrix: tests/tools-test-matrix.yaml
+    id: TL-X-04
+  - matrix: tests/tools-test-matrix.yaml
+    id: TL-X-05
+  - matrix: tests/tools-test-matrix.yaml
+    id: TL-X-06
+  - matrix: tests/tools-test-matrix.yaml
+    id: TL-X-07
+  - matrix: tests/tools-test-matrix.yaml
+    id: TL-X-08
+- source_path: tests/evidence/redis-full-20261013-164045.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/redis-full-20261013-164045.json
+  sha256: 51568d0f6f60e18c4d4ee697a9f0fac473513fcc09c72023b09ed48ed988e11f
+  bytes: 49488
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs:
+  - matrix: tests/redis-test-matrix.yaml
+    id: REDIS-01
+  - matrix: tests/redis-test-matrix.yaml
+    id: REDIS-02
+  - matrix: tests/redis-test-matrix.yaml
+    id: REDIS-03
+  - matrix: tests/redis-test-matrix.yaml
+    id: REDIS-04
+  - matrix: tests/redis-test-matrix.yaml
+    id: REDIS-05
+  - matrix: tests/redis-test-matrix.yaml
+    id: REDIS-06
+  - matrix: tests/redis-test-matrix.yaml
+    id: REDIS-07
+  - matrix: tests/redis-test-matrix.yaml
+    id: REDIS-08
+  - matrix: tests/redis-test-matrix.yaml
+    id: REDIS-09
+  - matrix: tests/redis-test-matrix.yaml
+    id: REDIS-10
+  - matrix: tests/redis-test-matrix.yaml
+    id: REDIS-11
+  - matrix: tests/redis-test-matrix.yaml
+    id: REDIS-12
+  - matrix: tests/redis-test-matrix.yaml
+    id: REDIS-13
+  - matrix: tests/redis-test-matrix.yaml
+    id: REDIS-14
+  - matrix: tests/redis-test-matrix.yaml
+    id: REDIS-15
+  - matrix: tests/redis-test-matrix.yaml
+    id: REDIS-16
+  - matrix: tests/redis-test-matrix.yaml
+    id: REDIS-17
+  - matrix: tests/redis-test-matrix.yaml
+    id: REDIS-18
+  - matrix: tests/redis-test-matrix.yaml
+    id: REDIS-19
+  - matrix: tests/redis-test-matrix.yaml
+    id: REDIS-20
+  - matrix: tests/redis-test-matrix.yaml
+    id: REDIS-21
+  - matrix: tests/redis-test-matrix.yaml
+    id: REDIS-22
+  - matrix: tests/redis-test-matrix.yaml
+    id: REDIS-23
+  - matrix: tests/redis-test-matrix.yaml
+    id: REDIS-24
+- source_path: tests/evidence/redis-ga-final-audit-20261013.json
+  copy_path: upgrade/v1.33.6/evidence/tests/evidence/redis-ga-final-audit-20261013.json
+  sha256: bffa7c1e2ab57a71d3b2aea36f96a9b4f8ec27c91af6adb0be988c4253134b77
+  bytes: 16775
+  kind: formal-record
+  copy_verified: true
+  original_claim_refs: []

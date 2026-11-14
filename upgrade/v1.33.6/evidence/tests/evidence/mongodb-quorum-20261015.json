@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "MONGODB-12"
+  ],
+  "runner": "bash tests/run_enterprise_regression.sh --mongodb-quorum",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "core_uid": "4ddd4664-de27-41af-a579-93ed34c6fb03",
+  "markers": [
+    "MONGODB_CORE_IDENTITY_PASS cluster_uid=4ddd4664-de27-41af-a579-93ed34c6fb03",
+    "MONGODB_QUORUM_BASELINE_PASS",
+    "MONGODB_QUORUM_CONNECTION_RESET_PASS pod=mongodb-gate-data-rs0-0 restart-count=1",
+    "MONGODB_QUORUM_CONNECTION_RESET_PASS pod=mongodb-gate-data-rs0-1 restart-count=1",
+    "MONGODB_QUORUM_REFUSAL_PASS majority-write=refused",
+    "MONGODB_QUORUM_RECOVERY_PASS",
+    "MONGODB_WORKLOAD_CLEAN_PASS",
+    "MONGODB_QUORUM_SCOPED_CLEAN_PASS",
+    "MONGODB_QUORUM_PASS",
+    "MONGODB_GATE_EXIT rc=0"
+  ],
+  "log_sha256": "94f4f62e3934bb1c7eb306331b3cc336f732f26e78b862fb082dfd68f2c57e9c",
+  "durable_status": "state=exited pid=80532 rc=0 bytes=2627 pass_markers=9 failure_markers=0 latest=MONGODB_GATE_EXIT rc=0",
+  "dependencies": {
+    "roles/cluster-addon/files/mongodb.py": "56ca2fe4ccd722e6ae65e51e08d88a55947bb065fe48a71eb5d96ccee822b46f",
+    "tests/helpers/mongodb-lab.py": "2366ef954d7ee9743035b7859a801375f8d1652fb0f5615610395713ed52c05f",
+    "tests/helpers/mongodb-scenarios.py": "68054489abfbbaf06d92cac4d4825c8b2c79ae44f281a6590867fdb14b0f339e",
+    "tests/helpers/mongodb-install-gate.sh": "cb0969529963b772ce84b48c4df3a626b073d16577953caadf30fbf64763c60a",
+    "tests/helpers/mongodb-runner.sh": "656dda54868bed25e1d24a2cdf3db6adb24bf1fbe660cc2a038465d111236020",
+    "tests/unit/test_mongodb_scenarios.py": "55384f4a6975592975265ce23011334bd9d0ca3e91a9f60593e9a214b781db87"
+  },
+  "cleanup": "original policy and member labels restored; deny policy and fault journal absent; acknowledged data and recovered majority write verified; run-ID collection and UID-owned client removed"
+}

@@ -1,0 +1,78 @@
+{
+  "schema": 1,
+  "case": "LONGHORN-11",
+  "date": "2026-10-19",
+  "status": "pass",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-expansion </dev/null",
+  "product_entry": "config.yml + kubecli setup longhorn-gate 09",
+  "rc": 0,
+  "durable_pid": 2308007,
+  "failure_markers": 0,
+  "success_marker": "LONGHORN_EXPANSION_PASS",
+  "scoped_clean_marker": "LONGHORN_EXPANSION_SCOPED_CLEAN_PASS",
+  "checks": {
+    "markers": [
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_ONLINE_EXPANSION_VERIFIED mode=Filesystem encrypted=false measurement={\"capacity_bytes\": 4152066048, \"offset\": 2148532224, \"sha256\": \"c8da9251e6139050d0a0c853c7a6f02c4fbca1cbf246dc75ac9cbdc2d5020faf\"}",
+      "LONGHORN_FSYNC_REMOUNT_VERIFIED bytes=9437184 sha256=1e7b1b785af645da5a6aad141c6eb8f7f238080431a85e08b0663e3f6f8a743a replica_nodes=longhorn-node-165,longhorn-node-212,longhorn-node-238",
+      "LONGHORN_BUSINESS_FIXTURES_CLEAN_PASS",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_EXPANSION_VARIANT_PASS",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_ONLINE_EXPANSION_VERIFIED mode=Block encrypted=false measurement={\"capacity_bytes\": 4294967296, \"offset\": 2148532224, \"sha256\": \"7a732156b944fbdc811e9319fc4b55b0efde559f87f858f3e1d1afbe283e8c69\"}",
+      "LONGHORN_FSYNC_REMOUNT_VERIFIED bytes=9437184 sha256=1e7b1b785af645da5a6aad141c6eb8f7f238080431a85e08b0663e3f6f8a743a replica_nodes=longhorn-node-165,longhorn-node-212,longhorn-node-238",
+      "LONGHORN_BUSINESS_FIXTURES_CLEAN_PASS",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_EXPANSION_VARIANT_PASS",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_ONLINE_EXPANSION_VERIFIED mode=Filesystem encrypted=true measurement={\"capacity_bytes\": 4152066048, \"offset\": 2148532224, \"sha256\": \"f407900e45fa2009d3dceac376c5e15fbba1be1ff7de22544dbd923a92ab6fed\"}",
+      "LONGHORN_FSYNC_REMOUNT_VERIFIED bytes=9437184 sha256=1e7b1b785af645da5a6aad141c6eb8f7f238080431a85e08b0663e3f6f8a743a replica_nodes=longhorn-node-165,longhorn-node-212,longhorn-node-238",
+      "LONGHORN_BUSINESS_FIXTURES_CLEAN_PASS",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_EXPANSION_VARIANT_PASS",
+      "LONGHORN_EXPANSION_BUSINESS_PASS",
+      "LONGHORN_REGISTRY_TRANSPORT_CLEAN_PASS",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_EXPANSION_SCOPED_CLEAN_PASS",
+      "LONGHORN_EXPANSION_PASS"
+    ],
+    "healthy_core_and_storage_retained": true,
+    "variants": [
+      {
+        "mode": "Filesystem",
+        "encrypted": false,
+        "capacity_bytes": 4152066048,
+        "offset": 2148532224,
+        "sha256": "c8da9251e6139050d0a0c853c7a6f02c4fbca1cbf246dc75ac9cbdc2d5020faf"
+      },
+      {
+        "mode": "Block",
+        "encrypted": false,
+        "capacity_bytes": 4294967296,
+        "offset": 2148532224,
+        "sha256": "7a732156b944fbdc811e9319fc4b55b0efde559f87f858f3e1d1afbe283e8c69"
+      },
+      {
+        "mode": "Filesystem",
+        "encrypted": true,
+        "capacity_bytes": 4152066048,
+        "offset": 2148532224,
+        "sha256": "f407900e45fa2009d3dceac376c5e15fbba1be1ff7de22544dbd923a92ab6fed"
+      }
+    ],
+    "source_bytes_each": 9437184,
+    "original_sha256": "1e7b1b785af645da5a6aad141c6eb8f7f238080431a85e08b0663e3f6f8a743a",
+    "online_original_pvc_pv_volume_pod_uids_retained": true,
+    "shrink_below_allocated_capacity_refused": true,
+    "encrypted_node_expand_secret_reference_verified": true,
+    "three_independent_replicas_each": true,
+    "cross_worker_remount_each": true
+  },
+  "boundary": "Focused expansion acceptance only; no other pending module or full delivery acceptance inferred. Frozen source records actual synchronized inputs.",
+  "files": {
+    "logs/longhorn-cases/expansion-20261019-113006/durable-status.txt": "0daccb1207f84fcdbb4a70026f216424675ad394a6e18fc36e7e81441754aba8",
+    "logs/longhorn-cases/expansion-20261019-113006/frozen-source.txt": "cefe618f230a215a20dd091f652cabbfc868415692ceaab32523a3fb3aeb1c5c",
+    "logs/longhorn-cases/expansion-20261019-113006/gate.log": "27f2304e2e8f33eaf1c8d3dd497785fb933c1202407b4a332a83abf325b50dbc"
+  }
+}

@@ -1,0 +1,64 @@
+schema_version: 1
+kind: accepted-source-baseline
+recorded_on: '2026-11-14'
+kubernetes: v1.33.6
+inventory: upgrade/v1.33.6/inventory.yaml
+customer_baseline:
+  product_release_tag: null
+  source_sha: null
+  configuration_identity: null
+  enabled_components: null
+  artifact_receipts: []
+  acceptance_evidence:
+  - upgrade/v1.33.6/evidence-manifest.yaml
+  identity_verified: false
+current_checkout:
+  branch: dev
+  head: 940c9020144a88b370cba36793a4d7fad6a347ab
+  product_default: v0.1.8
+  interpretation: 当前开发源码观察；不等于客户历史 release 或全部组件重新验收
+historical_references:
+- tests/enterprise-test-matrix.yaml
+- tests/ceph-test-matrix.yaml
+- tests/longhorn-test-matrix.yaml
+- tests/mysql-test-matrix.yaml
+- tests/kafka-test-matrix.yaml
+- tests/mongodb-test-matrix.yaml
+- tests/redis-test-matrix.yaml
+- tests/elasticsearch-test-matrix.yaml
+- tests/logging-test-matrix.yaml
+evidence_reuse_decisions: []
+lifecycle:
+  upstream_maintained: false
+  source_ids:
+  - K8S-LIFECYCLE
+  project_maintenance_policy: 保留原交付，安全例外按明确范围决策；不宣称上游继续维护
+source_patch_option:
+  candidate: v1.33.13
+  required: null
+  decision: investigate
+  source_ids:
+  - K8S-STABLE
+  - K8S-SKEW
+  condition: 官方建议源最新 patch；仅在具体修复/前置有依据时增加桥接，不默认新增维护分支
+open_gaps:
+- 真实客户交付身份尚未与当前源码快照关联
+- 旧证据的原始日志、输入与当前目标依赖尚未完成逐项复用核验
+- 官方支持范围缺口保留，不因旧项目实测而冒签新官方认证
+release_frozen: false
+product_acceptance:
+  state: ga-confirmed-by-delivery-owner
+  evidence: accepted_ga_baseline
+  new_live_execution: false
+customer_signoff: null
+accepted_ga_baseline:
+  kubernetes: v1.33.6
+  ga_confirmed: true
+  production_stable: true
+  coverage: 交付负责人确认全部既有功能、组件、中间件和存储均已GA
+  authority: 本次用户明确说明；不是本轮重新测试或代替客户签署
+  recorded_on: '2026-11-14'
+  requalification_required: false
+  identity_gap_effect: 仅限制相应目标证据适用性判断，不撤销源GA、不触发全量回归
+archival_manifest: upgrade/v1.33.6/evidence-manifest.yaml
+freeze_meaning: 此字段表示升级档案的精确身份尚未冻结；不是说既有交付未GA

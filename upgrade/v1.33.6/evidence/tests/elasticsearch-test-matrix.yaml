@@ -1,0 +1,1516 @@
+meta:
+  version: 1
+  updated: '2026-11-05'
+  component: elasticsearch
+  scope: 独立业务 Elasticsearch；默认关闭；与 EFK 共用唯一 ECK 而数据及凭据隔离
+  runner: bash tests/run_enterprise_regression.sh --elasticsearch-only
+  result: PASS
+  official:
+    eck: https://github.com/elastic/cloud-on-k8s/tree/386c7b14f2d1bbb7f2af1e7da997e64875f16e47
+    es: https://github.com/elastic/elasticsearch/tree/fd1e8011342a0988e432b999cea4bf884ca120ed
+    production: https://www.elastic.co/docs/deploy-manage/production-guidance
+    snapshot: https://www.elastic.co/docs/deploy-manage/tools/snapshot-and-restore
+    s3: https://www.elastic.co/docs/deploy-manage/tools/snapshot-and-restore/s3-repository
+    upgrade: https://www.elastic.co/docs/deploy-manage/upgrade
+    client: https://github.com/elastic/elasticsearch-py/tree/891a79aeeff105423915af652b53f09667cf996a
+    exporter: https://github.com/prometheus-community/elasticsearch_exporter/tree/v1.11.0
+    rally: https://esrally.readthedocs.io/en/2.13.0/
+versions:
+  operator: 3.5.0
+  operator_upgrade_source: 3.4.1
+  elasticsearch: 9.5.6
+  kibana: 9.5.6
+  stack_upgrade_source: 9.5.5
+  python_client: 9.5.1
+  exporter: v1.11.0
+  rally: 2.13.0
+  kubernetes: 1.33.6
+acceptance:
+  accepted: 59
+  applicable: 59
+  planned_stages: 18
+  evidence_policy: 官方 GA 只证明上游条件；项目 PASS 必须绑定当前产品入口、输入身份、原始日志、durable rc=0、业务 marker
+    与限定清理
+stages:
+- id: contract
+  cases:
+  - ES-01
+  - ES-02
+  - ES-03
+  - ES-04
+  depends_on: []
+- id: artifacts
+  cases:
+  - ES-05
+  - ES-06
+  depends_on:
+  - contract
+- id: platform
+  cases:
+  - ES-07
+  - ES-08
+  - ES-09
+  depends_on:
+  - artifacts
+- id: standard
+  cases:
+  - ES-10
+  - ES-11
+  - ES-12
+  depends_on:
+  - platform
+- id: compact
+  cases:
+  - ES-13
+  - ES-14
+  depends_on:
+  - platform
+- id: business
+  cases:
+  - ES-15
+  - ES-16
+  - ES-17
+  - ES-18
+  - ES-19
+  - ES-20
+  depends_on:
+  - standard
+  - compact
+- id: lifecycle
+  cases:
+  - ES-21
+  - ES-22
+  - ES-23
+  depends_on:
+  - business
+- id: security
+  cases:
+  - ES-24
+  - ES-25
+  - ES-26
+  - ES-27
+  - ES-28
+  - ES-29
+  depends_on:
+  - business
+- id: faults
+  cases:
+  - ES-30
+  - ES-31
+  - ES-32
+  - ES-33
+  - ES-34
+  depends_on:
+  - business
+- id: maintenance
+  cases:
+  - ES-35
+  - ES-36
+  - ES-37
+  - ES-38
+  depends_on:
+  - business
+- id: backup
+  cases:
+  - ES-39
+  - ES-40
+  - ES-41
+  - ES-42
+  depends_on:
+  - business
+- id: dr
+  cases:
+  - ES-43
+  - ES-44
+  - ES-45
+  depends_on:
+  - business
+- id: observability
+  cases:
+  - ES-46
+  - ES-47
+  depends_on:
+  - business
+- id: performance
+  cases:
+  - ES-48
+  - ES-49
+  depends_on:
+  - business
+- id: upgrade
+  cases:
+  - ES-50
+  - ES-51
+  - ES-52
+  depends_on:
+  - business
+- id: coexistence
+  cases:
+  - ES-53
+  - ES-54
+  - ES-55
+  depends_on:
+  - business
+- id: cleanup
+  cases:
+  - ES-56
+  - ES-57
+  depends_on:
+  - coexistence
+- id: delivery
+  cases:
+  - ES-58
+  - ES-59
+  depends_on:
+  - cleanup
+cases:
+- id: ES-01
+  group: contract
+  scenario: constants
+  desc: 版本、许可、六仓目录和固定来源；保留 EFK 版本
+  status: pass
+  official: https://github.com/elastic/elasticsearch/tree/fd1e8011342a0988e432b999cea4bf884ca120ed
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-contract
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-01
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-contract-20261105-162324-28428.json
+  - tests/evidence/elasticsearch-contract-20261105-171856-28078.json
+  - tests/evidence/elasticsearch-contract-20261105-173916-26406.json
+  - tests/evidence/elasticsearch-contract-20261105-181741-23368.json
+  - tests/evidence/elasticsearch-contract-20261105-184603-23530.json
+  - tests/evidence/elasticsearch-contract-20261105-191338-7482.json
+  - tests/evidence/elasticsearch-contract-20261105-192553-24542.json
+  - tests/evidence/elasticsearch-contract-20261105-195319-31059.json
+  - tests/evidence/elasticsearch-contract-20261105-201612-31496.json
+  - tests/evidence/elasticsearch-contract-20261105-202136-27538.json
+  - tests/evidence/elasticsearch-contract-20261105-210928-26085.json
+  - tests/evidence/elasticsearch-contract-20261105-221515-14636.json
+  - tests/evidence/elasticsearch-contract-20261105-230215-22104.json
+  - tests/evidence/elasticsearch-contract-20261105-230643-11807.json
+  - tests/evidence/elasticsearch-contract-20261105-231827-25634.json
+  - tests/evidence/elasticsearch-contract-20261106-082340-13325.json
+  - tests/evidence/elasticsearch-contract-20261106-121352-29278.json
+  - tests/evidence/elasticsearch-contract-20261106-201627-28080.json
+  - tests/evidence/elasticsearch-contract-20261106-225143-16529.json
+  - tests/evidence/elasticsearch-contract-20261107-005455-24831.json
+  - tests/evidence/elasticsearch-contract-20261107-052125-15623.json
+  - tests/evidence/elasticsearch-contract-20261107-115104-29153.json
+  - tests/evidence/elasticsearch-contract-20261108-003325-24433.json
+- id: ES-02
+  group: contract
+  scenario: disabled
+  desc: 默认关闭不创建任何 Elasticsearch/ECK 资源
+  status: pass
+  official: https://github.com/elastic/elasticsearch/tree/fd1e8011342a0988e432b999cea4bf884ca120ed
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-contract
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-02
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-contract-20261105-162324-28428.json
+  - tests/evidence/elasticsearch-contract-20261105-171856-28078.json
+  - tests/evidence/elasticsearch-contract-20261105-173916-26406.json
+  - tests/evidence/elasticsearch-contract-20261105-181741-23368.json
+  - tests/evidence/elasticsearch-contract-20261105-184603-23530.json
+  - tests/evidence/elasticsearch-contract-20261105-191338-7482.json
+  - tests/evidence/elasticsearch-contract-20261105-192553-24542.json
+  - tests/evidence/elasticsearch-contract-20261105-195319-31059.json
+  - tests/evidence/elasticsearch-contract-20261105-201612-31496.json
+  - tests/evidence/elasticsearch-contract-20261105-202136-27538.json
+  - tests/evidence/elasticsearch-contract-20261105-210928-26085.json
+  - tests/evidence/elasticsearch-contract-20261105-221515-14636.json
+  - tests/evidence/elasticsearch-contract-20261105-230215-22104.json
+  - tests/evidence/elasticsearch-contract-20261105-230643-11807.json
+  - tests/evidence/elasticsearch-contract-20261105-231827-25634.json
+  - tests/evidence/elasticsearch-contract-20261106-082340-13325.json
+  - tests/evidence/elasticsearch-contract-20261106-121352-29278.json
+  - tests/evidence/elasticsearch-contract-20261106-201627-28080.json
+  - tests/evidence/elasticsearch-contract-20261106-225143-16529.json
+  - tests/evidence/elasticsearch-contract-20261107-005455-24831.json
+  - tests/evidence/elasticsearch-contract-20261107-052125-15623.json
+  - tests/evidence/elasticsearch-contract-20261107-115104-29153.json
+  - tests/evidence/elasticsearch-contract-20261108-003325-24433.json
+- id: ES-03
+  group: contract
+  scenario: validation
+  desc: 拓扑、资源、名称、Secret 引用和版本降级静态拒绝
+  status: pass
+  official: https://github.com/elastic/elasticsearch/tree/fd1e8011342a0988e432b999cea4bf884ca120ed
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-contract
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-03
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-contract-20261105-162324-28428.json
+  - tests/evidence/elasticsearch-contract-20261105-171856-28078.json
+  - tests/evidence/elasticsearch-contract-20261105-173916-26406.json
+  - tests/evidence/elasticsearch-contract-20261105-181741-23368.json
+  - tests/evidence/elasticsearch-contract-20261105-184603-23530.json
+  - tests/evidence/elasticsearch-contract-20261105-191338-7482.json
+  - tests/evidence/elasticsearch-contract-20261105-192553-24542.json
+  - tests/evidence/elasticsearch-contract-20261105-195319-31059.json
+  - tests/evidence/elasticsearch-contract-20261105-201612-31496.json
+  - tests/evidence/elasticsearch-contract-20261105-202136-27538.json
+  - tests/evidence/elasticsearch-contract-20261105-210928-26085.json
+  - tests/evidence/elasticsearch-contract-20261105-221515-14636.json
+  - tests/evidence/elasticsearch-contract-20261105-230215-22104.json
+  - tests/evidence/elasticsearch-contract-20261105-230643-11807.json
+  - tests/evidence/elasticsearch-contract-20261105-231827-25634.json
+  - tests/evidence/elasticsearch-contract-20261106-082340-13325.json
+  - tests/evidence/elasticsearch-contract-20261106-121352-29278.json
+  - tests/evidence/elasticsearch-contract-20261106-201627-28080.json
+  - tests/evidence/elasticsearch-contract-20261106-225143-16529.json
+  - tests/evidence/elasticsearch-contract-20261107-005455-24831.json
+  - tests/evidence/elasticsearch-contract-20261107-052125-15623.json
+  - tests/evidence/elasticsearch-contract-20261107-115104-29153.json
+  - tests/evidence/elasticsearch-contract-20261108-003325-24433.json
+- id: ES-04
+  group: contract
+  scenario: ownership
+  desc: 外来 namespace、CR、PVC、Operator 和 watch 冲突在变更前拒绝
+  status: pass
+  official: https://github.com/elastic/elasticsearch/tree/fd1e8011342a0988e432b999cea4bf884ca120ed
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-contract
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-04
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-contract-20261105-162324-28428.json
+  - tests/evidence/elasticsearch-contract-20261105-171856-28078.json
+  - tests/evidence/elasticsearch-contract-20261105-173916-26406.json
+  - tests/evidence/elasticsearch-contract-20261105-181741-23368.json
+  - tests/evidence/elasticsearch-contract-20261105-184603-23530.json
+  - tests/evidence/elasticsearch-contract-20261105-191338-7482.json
+  - tests/evidence/elasticsearch-contract-20261105-192553-24542.json
+  - tests/evidence/elasticsearch-contract-20261105-195319-31059.json
+  - tests/evidence/elasticsearch-contract-20261105-201612-31496.json
+  - tests/evidence/elasticsearch-contract-20261105-202136-27538.json
+  - tests/evidence/elasticsearch-contract-20261105-210928-26085.json
+  - tests/evidence/elasticsearch-contract-20261105-221515-14636.json
+  - tests/evidence/elasticsearch-contract-20261105-230215-22104.json
+  - tests/evidence/elasticsearch-contract-20261105-230643-11807.json
+  - tests/evidence/elasticsearch-contract-20261105-231827-25634.json
+  - tests/evidence/elasticsearch-contract-20261106-082340-13325.json
+  - tests/evidence/elasticsearch-contract-20261106-121352-29278.json
+  - tests/evidence/elasticsearch-contract-20261106-201627-28080.json
+  - tests/evidence/elasticsearch-contract-20261106-225143-16529.json
+  - tests/evidence/elasticsearch-contract-20261107-005455-24831.json
+  - tests/evidence/elasticsearch-contract-20261107-052125-15623.json
+  - tests/evidence/elasticsearch-contract-20261107-115104-29153.json
+  - tests/evidence/elasticsearch-contract-20261108-003325-24433.json
+- id: ES-05
+  group: artifacts
+  scenario: manifests
+  desc: 运行、升级、恢复、客户端、压测及基础设施镜像双端双架构身份
+  status: pass
+  official: https://github.com/elastic/elasticsearch/tree/fd1e8011342a0988e432b999cea4bf884ca120ed
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-artifacts
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-05
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-artifacts-20261105-113947-10808.json
+  - tests/evidence/elasticsearch-artifacts-20261105-221643-3216.json
+  - tests/evidence/elasticsearch-artifacts-20261106-121528-24308.json
+  - tests/evidence/elasticsearch-artifacts-20261106-225328-11494.json
+  - tests/evidence/elasticsearch-artifacts-20261107-005638-6107.json
+  - tests/evidence/elasticsearch-artifacts-20261107-052301-31298.json
+  - tests/evidence/elasticsearch-artifacts-20261108-003514-4803.json
+- id: ES-06
+  group: artifacts
+  scenario: offline
+  desc: 离线校验、原子替换及 TalkEdu 优先和固定回退
+  status: pass
+  official: https://github.com/elastic/elasticsearch/tree/fd1e8011342a0988e432b999cea4bf884ca120ed
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-artifacts
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-06
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-artifacts-20261105-113947-10808.json
+  - tests/evidence/elasticsearch-artifacts-20261105-221643-3216.json
+  - tests/evidence/elasticsearch-artifacts-20261106-121528-24308.json
+  - tests/evidence/elasticsearch-artifacts-20261106-225328-11494.json
+  - tests/evidence/elasticsearch-artifacts-20261107-005638-6107.json
+  - tests/evidence/elasticsearch-artifacts-20261107-052301-31298.json
+  - tests/evidence/elasticsearch-artifacts-20261108-003514-4803.json
+- id: ES-07
+  group: platform
+  scenario: capacity
+  desc: 租约、清洁范围、实际内存/CPU、三故障域、时钟/DNS/网络
+  status: pass
+  official: https://github.com/elastic/elasticsearch/tree/fd1e8011342a0988e432b999cea4bf884ca120ed
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-csi-probe
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-07
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-csi-probe.json
+  - tests/evidence/elasticsearch-only-20261105-221703-435870c51bf749209902d2e2a7ce1bc0-child-csi-probe.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-csi-probe.json
+  - tests/evidence/elasticsearch-only-20261106-225403-0d9c32db1f994296ad0b4f4ee625c49e-child-csi-probe.json
+  - tests/evidence/elasticsearch-only-20261107-005711-81c983a8d5314295adba135c2a6624fa-child-csi-probe.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-csi-probe.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-csi-probe.json
+- id: ES-08
+  group: platform
+  scenario: mmap
+  desc: 选定节点 mmap 阈值 1048576、持久化 sysctl 与错误拒绝
+  status: pass
+  official: https://github.com/elastic/elasticsearch/tree/fd1e8011342a0988e432b999cea4bf884ca120ed
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-standard
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-08
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-standard-20261104-155118-d96df9ae16854da0937ee86c36a3310b.json
+- id: ES-09
+  group: platform
+  scenario: csi
+  desc: 固定 CSI 的 RWO/fsync、跨节点重挂与在线扩容
+  status: pass
+  official: https://github.com/elastic/elasticsearch/tree/fd1e8011342a0988e432b999cea4bf884ca120ed
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-csi-probe
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-09
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-csi-probe.json
+  - tests/evidence/elasticsearch-only-20261105-221703-435870c51bf749209902d2e2a7ce1bc0-child-csi-probe.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-csi-probe.json
+  - tests/evidence/elasticsearch-only-20261106-225403-0d9c32db1f994296ad0b4f4ee625c49e-child-csi-probe.json
+  - tests/evidence/elasticsearch-only-20261107-005711-81c983a8d5314295adba135c2a6624fa-child-csi-probe.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-csi-probe.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-csi-probe.json
+- id: ES-10
+  group: standard
+  scenario: install
+  desc: 三专用 master 和三 data/ingest 的 CR、PVC、TLS 与业务就绪
+  status: pass
+  official: https://github.com/elastic/cloud-on-k8s/tree/386c7b14f2d1bbb7f2af1e7da997e64875f16e47
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-standard
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-10
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-standard-20261104-155118-d96df9ae16854da0937ee86c36a3310b.json
+- id: ES-11
+  group: standard
+  scenario: idempotence
+  desc: 相同配置二次执行保持 UID、凭据、数据和无意外滚动
+  status: pass
+  official: https://github.com/elastic/cloud-on-k8s/tree/386c7b14f2d1bbb7f2af1e7da997e64875f16e47
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-standard
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-11
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-standard-20261104-155118-d96df9ae16854da0937ee86c36a3310b.json
+- id: ES-12
+  group: standard
+  scenario: routing
+  desc: 业务 Service 排除专用 master，Kibana 可选且启用时双副本
+  status: pass
+  official: https://github.com/elastic/cloud-on-k8s/tree/386c7b14f2d1bbb7f2af1e7da997e64875f16e47
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-standard
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-12
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-standard-20261104-155118-d96df9ae16854da0937ee86c36a3310b.json
+- id: ES-13
+  group: compact
+  scenario: install
+  desc: 三个混合角色实例的数据面、HTTPS 业务和分片副本就绪
+  status: pass
+  official: https://github.com/elastic/cloud-on-k8s/tree/386c7b14f2d1bbb7f2af1e7da997e64875f16e47
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-compact
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-13
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-compact.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-compact.json
+  - tests/evidence/elasticsearch-only-20261106-225403-0d9c32db1f994296ad0b4f4ee625c49e-child-compact.json
+  - tests/evidence/elasticsearch-only-20261107-005711-81c983a8d5314295adba135c2a6624fa-child-compact.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-compact.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-compact.json
+- id: ES-14
+  group: compact
+  scenario: idempotence
+  desc: 混合拓扑二次执行与 PVC/Secret/数据身份保持
+  status: pass
+  official: https://github.com/elastic/cloud-on-k8s/tree/386c7b14f2d1bbb7f2af1e7da997e64875f16e47
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-compact
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-14
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-compact.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-compact.json
+  - tests/evidence/elasticsearch-only-20261106-225403-0d9c32db1f994296ad0b4f4ee625c49e-child-compact.json
+  - tests/evidence/elasticsearch-only-20261107-005711-81c983a8d5314295adba135c2a6624fa-child-compact.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-compact.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-compact.json
+- id: ES-15
+  group: business
+  scenario: crud
+  desc: 显式 mapping、CRUD、稳定 ID、Bulk 每项及 _shards 检查
+  status: pass
+  official: https://github.com/elastic/elasticsearch/tree/fd1e8011342a0988e432b999cea4bf884ca120ed
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-business
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-15
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-business.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-business.json
+  - tests/evidence/elasticsearch-only-20261106-225403-0d9c32db1f994296ad0b4f4ee625c49e-child-business.json
+  - tests/evidence/elasticsearch-only-20261107-005711-81c983a8d5314295adba135c2a6624fa-child-business.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-business.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-business.json
+- id: ES-16
+  group: business
+  scenario: visibility
+  desc: refresh 前后搜索可见性与 request translog 确认边界
+  status: pass
+  official: https://github.com/elastic/elasticsearch/tree/fd1e8011342a0988e432b999cea4bf884ca120ed
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-business
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-16
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-business.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-business.json
+  - tests/evidence/elasticsearch-only-20261106-225403-0d9c32db1f994296ad0b4f4ee625c49e-child-business.json
+  - tests/evidence/elasticsearch-only-20261107-005711-81c983a8d5314295adba135c2a6624fa-child-business.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-business.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-business.json
+- id: ES-17
+  group: business
+  scenario: search
+  desc: 全文、过滤、排序、聚合和中文内置分析器结果
+  status: pass
+  official: https://github.com/elastic/elasticsearch/tree/fd1e8011342a0988e432b999cea4bf884ca120ed
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-business
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-17
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-business.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-business.json
+  - tests/evidence/elasticsearch-only-20261106-225403-0d9c32db1f994296ad0b4f4ee625c49e-child-business.json
+  - tests/evidence/elasticsearch-only-20261107-005711-81c983a8d5314295adba135c2a6624fa-child-business.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-business.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-business.json
+- id: ES-18
+  group: business
+  scenario: reindex
+  desc: alias 切换、reindex 与目标数量/hash 校验
+  status: pass
+  official: https://github.com/elastic/elasticsearch/tree/fd1e8011342a0988e432b999cea4bf884ca120ed
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-business
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-18
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-business.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-business.json
+  - tests/evidence/elasticsearch-only-20261106-225403-0d9c32db1f994296ad0b4f4ee625c49e-child-business.json
+  - tests/evidence/elasticsearch-only-20261107-005711-81c983a8d5314295adba135c2a6624fa-child-business.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-business.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-business.json
+- id: ES-19
+  group: business
+  scenario: occ
+  desc: if_seq_no/if_primary_term 乐观并发冲突与 create 重放拒绝
+  status: pass
+  official: https://github.com/elastic/elasticsearch/tree/fd1e8011342a0988e432b999cea4bf884ca120ed
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-business
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-19
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-business.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-business.json
+  - tests/evidence/elasticsearch-only-20261106-225403-0d9c32db1f994296ad0b4f4ee625c49e-child-business.json
+  - tests/evidence/elasticsearch-only-20261107-005711-81c983a8d5314295adba135c2a6624fa-child-business.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-business.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-business.json
+- id: ES-20
+  group: business
+  scenario: retry
+  desc: 429 有界退避、超时结果未知和确认写入账本
+  status: pass
+  official: https://github.com/elastic/elasticsearch/tree/fd1e8011342a0988e432b999cea4bf884ca120ed
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-business
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-20
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-business.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-business.json
+  - tests/evidence/elasticsearch-only-20261106-225403-0d9c32db1f994296ad0b4f4ee625c49e-child-business.json
+  - tests/evidence/elasticsearch-only-20261107-005711-81c983a8d5314295adba135c2a6624fa-child-business.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-business.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-business.json
+- id: ES-21
+  group: lifecycle
+  scenario: templates
+  desc: component/index template、ingest pipeline 与映射失败隔离
+  status: pass
+  official: https://github.com/elastic/elasticsearch/tree/fd1e8011342a0988e432b999cea4bf884ca120ed
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-lifecycle
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-21
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-lifecycle.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-lifecycle.json
+  - tests/evidence/elasticsearch-only-20261106-225403-0d9c32db1f994296ad0b4f4ee625c49e-child-lifecycle.json
+  - tests/evidence/elasticsearch-only-20261107-005711-81c983a8d5314295adba135c2a6624fa-child-lifecycle.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-lifecycle.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-lifecycle.json
+- id: ES-22
+  group: lifecycle
+  scenario: ilm
+  desc: data stream、rollover、ILM 状态与保留边界
+  status: pass
+  official: https://github.com/elastic/elasticsearch/tree/fd1e8011342a0988e432b999cea4bf884ca120ed
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-lifecycle
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-22
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-lifecycle.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-lifecycle.json
+  - tests/evidence/elasticsearch-only-20261106-225403-0d9c32db1f994296ad0b4f4ee625c49e-child-lifecycle.json
+  - tests/evidence/elasticsearch-only-20261107-005711-81c983a8d5314295adba135c2a6624fa-child-lifecycle.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-lifecycle.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-lifecycle.json
+- id: ES-23
+  group: lifecycle
+  scenario: smartcn
+  desc: 同版本固定 SmartCN 镜像与可选插件重入，无运行时下载
+  status: pass
+  official: https://github.com/elastic/elasticsearch/tree/fd1e8011342a0988e432b999cea4bf884ca120ed
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-lifecycle
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-23
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-lifecycle.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-lifecycle.json
+  - tests/evidence/elasticsearch-only-20261106-225403-0d9c32db1f994296ad0b4f4ee625c49e-child-lifecycle.json
+  - tests/evidence/elasticsearch-only-20261107-005711-81c983a8d5314295adba135c2a6624fa-child-lifecycle.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-lifecycle.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-lifecycle.json
+- id: ES-24
+  group: security
+  scenario: tls
+  desc: HTTPS 主机/CA 校验、transport TLS 和错误 CA/SAN 拒绝
+  status: pass
+  official: https://github.com/elastic/elasticsearch/tree/fd1e8011342a0988e432b999cea4bf884ca120ed
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-security-identity
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-24
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-security.json
+  - tests/evidence/elasticsearch-security-identity-20261105-234012-491183a33cd14a3c82ab51711e9f37d1.json
+- id: ES-25
+  group: security
+  scenario: rbac
+  desc: 最小权限角色/API key、跨索引越权和错误认证拒绝
+  status: pass
+  official: https://github.com/elastic/elasticsearch/tree/fd1e8011342a0988e432b999cea4bf884ca120ed
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-security-identity
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-25
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-security.json
+  - tests/evidence/elasticsearch-security-identity-20261105-234012-491183a33cd14a3c82ab51711e9f37d1.json
+- id: ES-26
+  group: security
+  scenario: certificate-rotation
+  desc: HTTP 证书与 CA 轮换的信任重叠、失败停止及恢复
+  status: pass
+  official: https://github.com/elastic/elasticsearch/tree/fd1e8011342a0988e432b999cea4bf884ca120ed
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-security-certificates
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-26
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-security-scoped.json
+  - tests/evidence/elasticsearch-security-certificates-20261104-184540-b119024474df482ebf69b01f839ec8fb.json
+  - tests/evidence/elasticsearch-security-certificates-20261105-234633-e5a222e7eb2a481fbcdd835d860d56b8.json
+  - tests/evidence/elasticsearch-security-certificates-20261107-001403-0378780e13304faaa1b893f555bd259c.json
+- id: ES-27
+  group: security
+  scenario: credential-rotation
+  desc: 密码/API key 新旧身份轮换与旧身份撤销
+  status: pass
+  official: https://github.com/elastic/elasticsearch/tree/fd1e8011342a0988e432b999cea4bf884ca120ed
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-security-identity
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-27
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-security.json
+  - tests/evidence/elasticsearch-security-identity-20261105-234012-491183a33cd14a3c82ab51711e9f37d1.json
+- id: ES-28
+  group: security
+  scenario: s3-rotation
+  desc: S3 凭据轮换、secureSettings reload 与失败恢复
+  status: pass
+  official: https://github.com/elastic/elasticsearch/tree/fd1e8011342a0988e432b999cea4bf884ca120ed
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-security-s3
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-28
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-security-scoped.json
+  - tests/evidence/elasticsearch-security-s3-20261104-191647-2d13b6b55b4c43b9ae8148020954e07c.json
+  - tests/evidence/elasticsearch-security-s3-20261106-000440-0f35053aab9342f5bb36fa6c9b689a3d.json
+  - tests/evidence/elasticsearch-security-s3-20261106-210508-50ba1ea59d83439a999944681dbce4a1.json
+- id: ES-29
+  group: security
+  scenario: network
+  desc: 业务入口网络策略允许/拒绝与诊断出口
+  status: pass
+  official: https://github.com/elastic/elasticsearch/tree/fd1e8011342a0988e432b999cea4bf884ca120ed
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-security-network
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-29
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-security-network-20261104-185936-418b93d9a5004303addd0a85dbb3fabc.json
+  - tests/evidence/elasticsearch-security-network-20261106-000153-a2e71f30d6db4f8d8333715615adc31d.json
+- id: ES-30
+  group: faults
+  scenario: primary
+  desc: 删除当前 primary Pod 后确认写入保留与副本恢复
+  status: pass
+  official: https://github.com/elastic/elasticsearch/tree/fd1e8011342a0988e432b999cea4bf884ca120ed
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-faults
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-30
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-faults.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-faults.json
+  - tests/evidence/elasticsearch-only-20261107-005711-81c983a8d5314295adba135c2a6624fa-child-faults.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-faults.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-faults.json
+- id: ES-31
+  group: faults
+  scenario: worker
+  desc: worker 故障、跨节点 PVC 重挂和恢复后账本一致
+  status: pass
+  official: https://github.com/elastic/elasticsearch/tree/fd1e8011342a0988e432b999cea4bf884ca120ed
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-faults
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-31
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-faults.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-faults.json
+  - tests/evidence/elasticsearch-only-20261107-005711-81c983a8d5314295adba135c2a6624fa-child-faults.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-faults.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-faults.json
+- id: ES-32
+  group: faults
+  scenario: operator
+  desc: Operator 中断时数据面继续及恢复协调
+  status: pass
+  official: https://github.com/elastic/elasticsearch/tree/fd1e8011342a0988e432b999cea4bf884ca120ed
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-faults
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-32
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-faults.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-faults.json
+  - tests/evidence/elasticsearch-only-20261107-005711-81c983a8d5314295adba135c2a6624fa-child-faults.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-faults.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-faults.json
+- id: ES-33
+  group: faults
+  scenario: quorum
+  desc: master 多数派丢失时不安全写入拒绝，恢复后账本校验
+  status: pass
+  official: https://github.com/elastic/elasticsearch/tree/fd1e8011342a0988e432b999cea4bf884ca120ed
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-faults
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-33
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-faults.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-faults.json
+  - tests/evidence/elasticsearch-only-20261107-005711-81c983a8d5314295adba135c2a6624fa-child-faults.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-faults.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-faults.json
+- id: ES-34
+  group: faults
+  scenario: shard-loss
+  desc: 所有分片副本不可用时安全拒绝，不做自动强制空 primary
+  status: pass
+  official: https://github.com/elastic/elasticsearch/tree/fd1e8011342a0988e432b999cea4bf884ca120ed
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-faults
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-34
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-faults.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-faults.json
+  - tests/evidence/elasticsearch-only-20261107-005711-81c983a8d5314295adba135c2a6624fa-child-faults.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-faults.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-faults.json
+- id: ES-35
+  group: maintenance
+  scenario: drain
+  desc: PDB、节点 drain、受控滚动与数据复验
+  status: pass
+  official: https://github.com/elastic/elasticsearch/tree/fd1e8011342a0988e432b999cea4bf884ca120ed
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-maintenance
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-35
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-maintenance.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-maintenance.json
+  - tests/evidence/elasticsearch-only-20261107-005711-81c983a8d5314295adba135c2a6624fa-child-maintenance.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-maintenance.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-maintenance.json
+- id: ES-36
+  group: maintenance
+  scenario: scale
+  desc: data 扩容、分片迁移及显式缩容/PVC 删除风险保护
+  status: pass
+  official: https://github.com/elastic/elasticsearch/tree/fd1e8011342a0988e432b999cea4bf884ca120ed
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-maintenance
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-36
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-maintenance.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-maintenance.json
+  - tests/evidence/elasticsearch-only-20261107-005711-81c983a8d5314295adba135c2a6624fa-child-maintenance.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-maintenance.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-maintenance.json
+- id: ES-37
+  group: maintenance
+  scenario: expansion
+  desc: 实际 PVC/文件系统扩容与不允许缩容
+  status: pass
+  official: https://github.com/elastic/elasticsearch/tree/fd1e8011342a0988e432b999cea4bf884ca120ed
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-maintenance
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-37
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-maintenance.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-maintenance.json
+  - tests/evidence/elasticsearch-only-20261107-005711-81c983a8d5314295adba135c2a6624fa-child-maintenance.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-maintenance.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-maintenance.json
+- id: ES-38
+  group: maintenance
+  scenario: watermarks
+  desc: low/high/flood 水位、只读保护、容量恢复和解除
+  status: pass
+  official: https://github.com/elastic/elasticsearch/tree/fd1e8011342a0988e432b999cea4bf884ca120ed
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-maintenance
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-38
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-maintenance.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-maintenance.json
+  - tests/evidence/elasticsearch-only-20261107-005711-81c983a8d5314295adba135c2a6624fa-child-maintenance.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-maintenance.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-maintenance.json
+- id: ES-39
+  group: backup
+  scenario: repository
+  desc: 独立 HTTPS S3 的 CA/JVM truststore、repository verify 和 analysis
+  status: pass
+  official: https://www.elastic.co/docs/deploy-manage/tools/snapshot-and-restore
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-backup-source
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-39
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-backup-source-20261104-220408-6f48daf57cb945dcaceafbc554021d85.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-backup-scoped.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-backup.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-backup.json
+- id: ES-40
+  group: backup
+  scenario: refusal
+  desc: 错误凭据/CA/后端能力拒绝，无静默 checksum 绕过
+  status: pass
+  official: https://www.elastic.co/docs/deploy-manage/tools/snapshot-and-restore
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-backup-refusal
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-40
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-backup-refusal-20261104-220828-f48e04421233408c8e853cf1877ddf55.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-backup.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-backup.json
+- id: ES-41
+  group: backup
+  scenario: snapshot
+  desc: SLM 计划、非零可读快照、保留与隔离恢复业务/hash
+  status: pass
+  official: https://www.elastic.co/docs/deploy-manage/tools/snapshot-and-restore
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-backup-restore
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-41
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-backup-restore-20261105-013339-23ac6e224c1f427ea2d870a3313ca0cd.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-backup-scoped.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-backup.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-backup.json
+- id: ES-42
+  group: backup
+  scenario: feature-states
+  desc: config/Secret/CA 清单保护与 security/Kibana feature states 恢复
+  status: pass
+  official: https://www.elastic.co/docs/deploy-manage/tools/snapshot-and-restore
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-backup-features
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-42
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-backup-features-20261105-011335-4c427bb6f488486bb942580891f202b6.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-backup-scoped.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-backup.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-backup.json
+- id: ES-43
+  group: dr
+  scenario: isolation
+  desc: 独立目标租约与源写隔离；repository 目标 readonly
+  status: pass
+  official: https://www.elastic.co/docs/deploy-manage/tools/snapshot-and-restore
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-dr
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-43
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-dr-20261105-021409-b752d811ae0f459c81b8d58b92f0ae3c.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-dr-scoped.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-dr.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-dr.json
+- id: ES-44
+  group: dr
+  scenario: cutover
+  desc: 独立恢复、hash/query、入口切换及目标新增写入
+  status: pass
+  official: https://www.elastic.co/docs/deploy-manage/tools/snapshot-and-restore
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-dr
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-44
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-dr-20261105-021409-b752d811ae0f459c81b8d58b92f0ae3c.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-dr-scoped.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-dr.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-dr.json
+- id: ES-45
+  group: dr
+  scenario: failback
+  desc: 测量 RPO/RTO、回切新写入处置且不宣称任意时间 PITR
+  status: pass
+  official: https://www.elastic.co/docs/deploy-manage/tools/snapshot-and-restore
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-dr
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-45
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-dr-20261105-021409-b752d811ae0f459c81b8d58b92f0ae3c.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-dr-scoped.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-dr.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-dr.json
+- id: ES-46
+  group: observability
+  scenario: metrics
+  desc: exporter 9.5.6 collector 最小权限与真实 Prometheus target
+  status: pass
+  official: https://github.com/prometheus-community/elasticsearch_exporter/tree/v1.11.0
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-observability
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-46
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-observability.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-observability-scoped.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-observability.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-observability.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-observability.json
+- id: ES-47
+  group: observability
+  scenario: alerts
+  desc: 规则加载、故障触发/恢复与缺失采样告警
+  status: pass
+  official: https://github.com/prometheus-community/elasticsearch_exporter/tree/v1.11.0
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-observability
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-47
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-observability.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-observability-scoped.json
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-observability.json
+  - tests/evidence/elasticsearch-only-20261107-052325-806857a0a8c2491dbe9b9a1f5acf4506-child-observability.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-observability.json
+- id: ES-48
+  group: performance
+  scenario: rally
+  desc: 固定离线 Rally track/corpus 的吞吐、P50/P99 和错误；独立稳态客户端的 P50/P95/P99、重试及资源，分别记录负载和统计序列
+  status: pass
+  official: https://esrally.readthedocs.io/en/2.13.0/
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-performance
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-48
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-only-20261105-114006-af5ad91bd98241ed956ee092a52fb117-child-performance.json
+  - tests/evidence/elasticsearch-performance-20261106-022238-c8aa5df891d84ab08f6799ea05cd9516.json
+- id: ES-49
+  group: performance
+  scenario: soak
+  desc: 至少 1800 秒稳态含故障，两拓扑确认账本和恢复
+  status: pass
+  official: https://esrally.readthedocs.io/en/2.13.0/
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-performance
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-49
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-soak-20261105-041458-4acb8797860843268ff6ab5208938a7f.json
+- id: ES-50
+  group: upgrade
+  scenario: eck
+  desc: 平台独立入口升级 ECK/CRD 3.4.1 到 3.5.0；准入、消费者恢复及中断重入
+  status: pass
+  official: https://www.elastic.co/docs/deploy-manage/upgrade
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-upgrade
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-50
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  subcases:
+  - id: ES-50-platform-admission
+    preconditions: 双方已有确认写入；平台维护尚未开始；保留旧版 ECK 3.4.1 身份
+    product_entry: config.yml + kubecli setup ${CLUSTER} 07 --tags eck-platform
+    operation: 分别注入未准入消费者、未健康消费者及相同 change ID 异参
+    code_guard: 'roles/cluster-addon/files/eck.py: upgrade_consumers / upgrade_record'
+    expected: 三类请求均在共享资源变更前拒绝；Operator/CRD/双方 CR、PVC、凭据及业务数据不变
+    cleanup_scope: 只恢复本轮消费者夹具及配置；不得删除共享 ECK、双方数据或备份
+    success_marker: ELASTICSEARCH_SUBCASE_PASS id=ES-50-platform-admission
+  - id: ES-50-platform-upgrade
+    preconditions: ECK 3.4.1；EFK 9.5.1 与业务 ES 9.5.5 均 green 且 observedGeneration 为当前代
+    product_entry: config.yml + kubecli setup ${CLUSTER} 07 --tags eck-platform
+    operation: 以独立平台 change ID 执行 ECK 3.4.1→3.5.0，再次执行同一请求
+    code_guard: 'roles/cluster-addon/files/eck.py: upgrade_record / wait_consumers'
+    expected: 唯一控制器与匹配 CRD 收敛；所有消费者当前代健康；双方 CR/PVC/凭据/cluster UUID 和确认数据保持；重复执行不产生第二次维护
+    cleanup_scope: 保留健康平台及双方数据；仅由 upgrade 模块回收其独立旧代夹具
+    success_marker: ELASTICSEARCH_SUBCASE_PASS id=ES-50-platform-upgrade
+  - id: ES-50-platform-recovery
+    preconditions: 平台维护日志已进入 running，双方哨兵及身份已绑定
+    product_entry: config.yml + kubecli setup ${CLUSTER} 07 --tags eck-platform
+    operation: 按 UID 删除归属已验证的 Operator Pod，再以原 change ID 重入
+    code_guard: 'roles/cluster-addon/files/eck.py: upgrade_record / wait_consumers'
+    expected: 真实新 Pod UID 且 owner 正确并 Ready；维护完成；EFK 与业务数据、凭据、PVC 均复验，不能仅凭 Operator
+      Ready 通过
+    cleanup_scope: 回收本轮故障，保留首失败记录；不得替换消费者 CR、PVC 或共享控制器身份
+    success_marker: ELASTICSEARCH_SUBCASE_PASS id=ES-50-platform-recovery
+  retained_evidence:
+  - tests/evidence/elasticsearch-upgrade-20261105-055359-527858c2428943c9b49ed1a9fff0ed1d.json
+  - tests/evidence/elasticsearch-upgrade-20261105-202421-3cfc9d43898340d882cf2e754004eaae.json
+  - tests/evidence/elasticsearch-upgrade-platform-20261105-212709-3aead8a6544d432fa2291416caeb0988.json
+- id: ES-51
+  group: upgrade
+  scenario: stack
+  desc: ES/Kibana 9.5.5 到 9.5.6 滚动与账本保留
+  status: pass
+  official: https://www.elastic.co/docs/deploy-manage/upgrade
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-upgrade
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-51
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-upgrade-scoped.json
+  - tests/evidence/elasticsearch-upgrade-20261105-055359-527858c2428943c9b49ed1a9fff0ed1d.json
+  - tests/evidence/elasticsearch-upgrade-20261105-202421-3cfc9d43898340d882cf2e754004eaae.json
+  - tests/evidence/elasticsearch-upgrade-20261106-054522-2f4e3b4f6fe54b4fb598183d4eac0799.json
+  - tests/evidence/elasticsearch-upgrade-20261107-222310-a84ee87098934fe0937a60cd1eee7172.json
+- id: ES-52
+  group: upgrade
+  scenario: rollback
+  desc: 原地降级拒绝；旧版空集群恢复升级前兼容快照
+  status: pass
+  official: https://www.elastic.co/docs/deploy-manage/upgrade
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-upgrade
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-52
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-only-20261106-121550-2b7f4c3f24bf49fbbe484831185caf90-child-upgrade-scoped.json
+  - tests/evidence/elasticsearch-upgrade-20261105-055359-527858c2428943c9b49ed1a9fff0ed1d.json
+  - tests/evidence/elasticsearch-upgrade-20261105-202421-3cfc9d43898340d882cf2e754004eaae.json
+  - tests/evidence/elasticsearch-upgrade-20261106-054522-2f4e3b4f6fe54b4fb598183d4eac0799.json
+  - tests/evidence/elasticsearch-upgrade-20261107-222310-a84ee87098934fe0937a60cd1eee7172.json
+- id: ES-53
+  group: coexistence
+  scenario: ordering
+  desc: 双向安装与重入、错误 namespace/凭据/备份路径及越权共享升级拒绝，ECK 故障后双方数据复验
+  status: pass
+  official: https://github.com/elastic/cloud-on-k8s/tree/386c7b14f2d1bbb7f2af1e7da997e64875f16e47
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-coexistence
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-53
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  subcases:
+  - id: ES-53-es-then-efk
+    preconditions: standard、compact 业务均健康，有持久化账本与凭据/PVC 身份
+    product_entry: config.yml + kubecli setup ${CLUSTER} 07 --tags logging
+    operation: 先保留业务 ES，再安装 EFK 9.5.1
+    code_guard: 'roles/cluster-addon/files/eck.py: consumer_preflight / preflight'
+    expected: 唯一 ECK 身份不变；EFK 真实确认写入和独立快照成功；双方业务、原有 CR/PVC/凭据及数据保持
+    cleanup_scope: 仅回收本轮 logging 夹具；保留业务与共享 ECK
+    success_marker: ELASTICSEARCH_SUBCASE_PASS id=ES-53-es-then-efk
+  - id: ES-53-efk-then-es
+    preconditions: EFK 哨兵、快照、PVC 和凭据已绑定；对应业务 CR 已退役，原业务卷保留
+    product_entry: config.yml + kubecli setup ${CLUSTER} 07 --tags elasticsearch
+    operation: 在 EFK 存活期间分别重新安装 standard、compact 业务 CR
+    code_guard: 'roles/cluster-addon/files/eck.py: consumer_preflight / preflight'
+    expected: 每种拓扑重建成功，读回原账本；EFK cluster UUID、哨兵、快照、PVC、凭据和 ECK 身份不变
+    cleanup_scope: 保留健康双方与原卷；不得清理对端数据或凭据
+    success_marker: ELASTICSEARCH_SUBCASE_PASS id=ES-53-efk-then-es
+  - id: ES-53-ownership-refusal
+    preconditions: 双方健康并记录资源身份与业务账本
+    product_entry: config.yml + kubecli setup ${CLUSTER} 07 --tags elasticsearch；config.yml
+      + kubecli setup ${CLUSTER} 07 --tags logging
+    operation: 业务配置携共享升级参数；EFK namespace 指向业务 namespace；外来共享控制器/资源所有权冲突
+    code_guard: 'roles/cluster-addon/files/eck.py: consumer_preflight / preflight；roles/cluster-addon/files/elasticsearch.py:
+      validate / preflight'
+    expected: 拒绝越权升级、跨 namespace 接管及外来资源；共享控制面与双方业务/数据/身份不变
+    cleanup_scope: 恢复配置并按绑定 UID 回收自有冲突夹具；外来对象不删除
+    success_marker: ELASTICSEARCH_SUBCASE_PASS id=ES-53-ownership-refusal
+  - id: ES-53-credential-refusal
+    preconditions: 双方使用不同实际 access key，原 Secret UID/数据摘要已绑定
+    product_entry: config.yml + kubecli setup ${CLUSTER} 07 --tags elasticsearch；config.yml
+      + kubecli setup ${CLUSTER} 07 --tags logging
+    operation: 双向复制对端实际 S3 凭据到不同名称 Secret，再让产品引用
+    code_guard: 'roles/cluster-addon/files/eck.py: consumer_preflight'
+    expected: 双向均因实际 access key 相同而在变更前拒绝；不能凭 Secret 名称不同绕过；双方原凭据和数据保持
+    cleanup_scope: 仅删除本轮复制的 Secret，校验 UID/resourceVersion 后回收；不记录凭据明文
+    success_marker: ELASTICSEARCH_SUBCASE_PASS id=ES-53-credential-refusal
+  - id: ES-53-repository-refusal
+    preconditions: 双方独立备份可读；业务 writer 归属已建立
+    product_entry: config.yml + kubecli setup ${CLUSTER} 07 --tags elasticsearch
+    operation: 请求 EFK 路径、其父/子路径及另一 writer 的同/父/子目录；伪造或重放恢复请求访问对端仓库
+    code_guard: 'roles/cluster-addon/files/elasticsearch.py: validate / reserve_repository
+      / verify_write_repository / verify_restore_repository'
+    expected: 仓库注册、快照、SLM、恢复及已完成请求重放均不得突破归属；reader 不取得写权；独立 S3 路径及实际仓库设置经过核验；双方快照与数据不变
+    cleanup_scope: 恢复配置并回收自有仓库别名/探针；不删除 writer 归属账本或对端备份
+    success_marker: ELASTICSEARCH_SUBCASE_PASS id=ES-53-repository-refusal
+  - id: ES-53-eck-recovery
+    preconditions: 双方健康且业务账本、EFK 快照与控制器 UID 已绑定
+    product_entry: config.yml + kubecli setup ${CLUSTER} 07 --tags elasticsearch；config.yml
+      + kubecli setup ${CLUSTER} 07 --tags logging
+    operation: 按 UID/resourceVersion 删除自有 Operator Pod，等待新实例后重入双方正常产品路径
+    code_guard: 'roles/cluster-addon/files/eck.py: preflight；tests/helpers/elasticsearch-coexistence.py:
+      shared_recovery'
+    expected: 新 Pod UID、正确 owner、Ready；双方 CR 当前代收敛，真实读写及原确认数据通过；PVC、凭据、EFK 快照和唯一 ECK
+      身份保持
+    cleanup_scope: 只回收本轮故障，保留健康双方和共享 ECK
+    success_marker: ELASTICSEARCH_SUBCASE_PASS id=ES-53-eck-recovery
+  retained_evidence:
+  - tests/evidence/elasticsearch-coexistence-20261106-062617-477372750fa84602b70a179bfce41546.json
+  - tests/evidence/elasticsearch-coexistence-20261107-230502-25665066eefd46fd89a0f4a929de0f71.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-coexistence.json
+- id: ES-54
+  group: coexistence
+  scenario: uninstall
+  desc: 单边业务升级、双方独立恢复及双向卸载，核对另一业务、PVC、Secret、快照和共享控制器
+  status: pass
+  official: https://github.com/elastic/cloud-on-k8s/tree/386c7b14f2d1bbb7f2af1e7da997e64875f16e47
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-coexistence
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-54
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  subcases:
+  - id: ES-54-business-upgrade
+    preconditions: EFK 9.5.1 与既有业务均健康，独立业务升级夹具为 9.5.5 并有副本确认哨兵
+    product_entry: config.yml + kubecli setup ${CLUSTER} 07 --tags elasticsearch
+    operation: 只升级独立业务 ES 9.5.5→9.5.6
+    code_guard: 'roles/cluster-addon/files/elasticsearch.py: preflight；roles/cluster-addon/files/eck.py:
+      consumer_preflight'
+    expected: 业务版本、哨兵与持久身份通过；EFK 版本/数据/凭据/PVC/独立快照及其它业务账本保持；不触发平台升级
+    cleanup_scope: 产品 absent 后精确回收本轮升级 namespace；保留双方原业务与备份
+    success_marker: ELASTICSEARCH_SUBCASE_PASS id=ES-54-business-upgrade
+  - id: ES-54-efk-upgrade-refusal
+    preconditions: 交付 EFK 只准入 9.5.1，双方已有哨兵与持久身份
+    product_entry: config.yml + kubecli setup ${CLUSTER} 07 --tags logging
+    operation: 仅将 EFK ES/Kibana 请求改为未准入版本 9.5.6
+    code_guard: 'roles/cluster-addon/tasks/logging.yml: ECK_SHARED_REFUSED 版本断言'
+    expected: 变更前明确拒绝；双方版本、数据和持久身份保持；本子项只证明安全拒绝，不签署 EFK 新版本升级能力
+    cleanup_scope: 恢复原 EFK 配置；不得为制造成功而原生命令修改版本
+    success_marker: ELASTICSEARCH_SUBCASE_PASS id=ES-54-efk-upgrade-refusal
+  - id: ES-54-business-restore
+    preconditions: EFK 与双方业务存活；源业务有独立快照，目标仓库为 readonly
+    product_entry: config.yml + kubecli setup ${CLUSTER} 07 --tags elasticsearch
+    operation: 产品快照后向隔离业务目标恢复新命名探针索引
+    code_guard: 'roles/cluster-addon/files/elasticsearch.py: operations / verify_restore_repository'
+    expected: 恢复分片成功，探针数量及正文等于快照；原业务账本和 EFK 哨兵、cluster UUID、凭据、PVC、快照不变
+    cleanup_scope: 仅删除本轮恢复探针、快照和临时仓库别名；原索引/快照/归属账本保留
+    success_marker: ELASTICSEARCH_SUBCASE_PASS id=ES-54-business-restore
+  - id: ES-54-efk-restore
+    preconditions: EFK 独立快照成功，双方业务及身份已绑定
+    product_entry: docs/middleware/efk/operations-manual.md §9.1：经 TLS/认证的原生 _snapshot
+      恢复 API
+    operation: 将 EFK 快照 rename 恢复到本轮新索引，不覆盖存活索引
+    code_guard: EFK 固定独立目录/凭据；恢复指定 indices、include_global_state=false、feature_states=none
+    expected: EFK 恢复分片、哨兵及数量通过；两种业务拓扑账本/身份及双方原快照、原数据均保持
+    cleanup_scope: 只删除经核验的本轮 EFK 恢复索引；不删业务索引、客户 Secret 或原快照
+    success_marker: ELASTICSEARCH_SUBCASE_PASS id=ES-54-efk-restore
+  - id: ES-54-business-uninstall
+    preconditions: EFK 存活且双方业务/PVC/凭据/快照身份已绑定
+    product_entry: config.yml + kubecli setup ${CLUSTER} 07 --tags elasticsearch，elasticsearch_state=absent
+    operation: 分别退役 standard、compact 业务 CR，再经产品重入
+    code_guard: 'roles/cluster-addon/files/elasticsearch.py: absent / delete_owned'
+    expected: 退役前核验全部目标身份；只删除自身业务资源，保留 PVC、客户凭据、仓库归属和外部快照；EFK 和共享 ECK 保持；重入读回原账本
+    cleanup_scope: 只回收当前业务辅助对象；禁止删除 namespace/PVC/客户 Secret/共享 ECK/对端备份
+    success_marker: ELASTICSEARCH_SUBCASE_PASS id=ES-54-business-uninstall
+  - id: ES-54-efk-uninstall
+    preconditions: 双方存活且 EFK CR 的 field manager/UID 与持久身份已绑定
+    product_entry: docs/middleware/efk/operations-manual.md：EFK 原生 CR 退役路径；config.yml
+      + kubecli setup ${CLUSTER} 07 --tags logging 重入
+    operation: 按 UID/resourceVersion 退役 EFK ES/Kibana CR，再经产品重入
+    code_guard: 'tests/helpers/elasticsearch-coexistence.py: unload_efk'
+    expected: EFK PVC/客户凭据/独立快照及共享 ECK 保留；两种业务拓扑真实账本及身份保持；EFK 重入后读回原哨兵和快照
+    cleanup_scope: 只回收 EFK 自有 CR；最终仅允许 runner 对绑定的自有 logging 测试 namespace 清理，不清理业务或共享平台
+    success_marker: ELASTICSEARCH_SUBCASE_PASS id=ES-54-efk-uninstall
+  retained_evidence:
+  - tests/evidence/elasticsearch-coexistence-20261106-062617-477372750fa84602b70a179bfce41546.json
+  - tests/evidence/elasticsearch-coexistence-20261107-230502-25665066eefd46fd89a0f4a929de0f71.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-coexistence.json
+- id: ES-55
+  group: coexistence
+  scenario: logging
+  desc: 共享 ECK 改动后的完整固定 logging 回归含 Loki
+  status: pass
+  official: https://github.com/elastic/cloud-on-k8s/tree/386c7b14f2d1bbb7f2af1e7da997e64875f16e47
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-logging
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-55
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-logging-20261105-095259-66aa8f3012bd4d36bedb1c97fba4b240.json
+  - tests/evidence/elasticsearch-logging-20261106-114216-e3955c8670f348a6af7f1e473086fc00.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-logging.json
+- id: ES-56
+  group: cleanup
+  scenario: scoped
+  desc: 正常、失败、中断只回收已租用/自有对象，恢复所有注入故障
+  status: pass
+  official: https://github.com/elastic/cloud-on-k8s/tree/386c7b14f2d1bbb7f2af1e7da997e64875f16e47
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-cleanup-probes
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-56
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-cleanup-probes-20261105-072517-580ce3f3f5bc4730ac476ebef79719c1.json
+  - tests/evidence/elasticsearch-cleanup-probes-20261106-072251-6650a4c92f3a4996a96ae4b086634f0e.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-cleanup-probes.json
+- id: ES-57
+  group: cleanup
+  scenario: retention
+  desc: 最后消费者检查及显式基础设施回收，保留客户数据默认值
+  status: pass
+  official: https://github.com/elastic/cloud-on-k8s/tree/386c7b14f2d1bbb7f2af1e7da997e64875f16e47
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-cleanup
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-57
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-cleanup-20261105-112120-81d0c5266e364f38bfa20e67ae57f1fa.json
+  - tests/evidence/elasticsearch-cleanup-20261105-214535-903c07a5469d4134ba8e38f9858d1a6d.json
+  - tests/evidence/elasticsearch-cleanup-20261106-220223-aaaa6ef6b84f48d7b8ca5ec28c04390e.json
+  - tests/evidence/elasticsearch-cleanup-20261107-003019-760fe57eee1e4ffeaf6a10b1d72e04d4.json
+  - tests/evidence/elasticsearch-cleanup-20261107-045619-9267e5bb88104eaea79fba3d0be27251.json
+  - tests/evidence/elasticsearch-cleanup-20261108-000217-0ba33901c442430f94a4f9054bb696f3.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-child-cleanup.json
+- id: ES-58
+  group: delivery
+  scenario: documentation
+  desc: 三份正式手册、版本/入口/图文和两类读者路径检查
+  status: pass
+  official: https://github.com/elastic/elasticsearch/tree/fd1e8011342a0988e432b999cea4bf884ca120ed
+  product_entry: 三份正式手册及作者检查 receipt；bash tests/run_enterprise_regression.sh --elasticsearch-documentation
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-documentation
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-58
+  fixture_boundary: 开发机本地只读核验三份正式手册及已完成作者检查的固定版本、摘要和结论；不操作实验室
+  cleanup_scope: 只读文档验收，无现场资源或凭据变更
+  evidence:
+  - tests/evidence/elasticsearch-documentation-20261108-162202-19758-documentation.json
+  retained_evidence:
+  - tests/evidence/elasticsearch-documentation-20261105-232057-654-documentation.json
+  - tests/evidence/elasticsearch-documentation-20261105-232057-654.json
+  - tests/evidence/elasticsearch-documentation-20261106-201910-19583-documentation.json
+  - tests/evidence/elasticsearch-documentation-20261106-220047-27691-documentation.json
+  - tests/evidence/elasticsearch-documentation-20261106-220047-27691.json
+  - tests/evidence/elasticsearch-documentation-20261107-001209-22054-documentation.json
+  - tests/evidence/elasticsearch-documentation-20261107-002946-17826-documentation.json
+  - tests/evidence/elasticsearch-documentation-20261107-002946-17826.json
+  - tests/evidence/elasticsearch-documentation-20261107-114828-15407.json
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5-documentation.json
+- id: ES-59
+  group: delivery
+  scenario: complete
+  desc: 一次完整干净专项回归 durable rc=0、零失败和最终清理
+  status: pass
+  official: https://github.com/elastic/elasticsearch/tree/fd1e8011342a0988e432b999cea4bf884ca120ed
+  product_entry: config.yml + kubecli download -E elasticsearch + kubecli setup ${CLUSTER}
+    07 --tags elasticsearch
+  disproof: bash tests/run_enterprise_regression.sh --elasticsearch-only
+  success_marker: ELASTICSEARCH_CASE_PASS id=ES-59
+  fixture_boundary: 固定 runner 持有源/目标租约；客户端、S3、CSI、监控与故障注入按 run ID 所有权隔离；不得复用未核验外来集群
+  cleanup_scope: 本场景所有临时对象与故障；保留已证明健康的 runner-owned 前置；最终全量回收租用现场并核验客户/EFK 保护
+  evidence:
+  - tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json

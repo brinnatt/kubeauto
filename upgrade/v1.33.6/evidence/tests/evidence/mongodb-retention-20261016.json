@@ -1,0 +1,871 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "MONGODB-25"
+  ],
+  "runner": "bash tests/run_enterprise_regression.sh --mongodb-retention",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "durable_status": "state=exited pid=308427 rc=0 bytes=29665 pass_markers=32 failure_markers=0 latest=MONGODB_GATE_EXIT rc=0",
+  "log_sha256": "651143705956dcec455b5135e78b708242faf008769ec8a65142f9bb3f5bf1a8",
+  "completed_at": "2026-10-15T22:25:30.479821+00:00",
+  "dependencies": {
+    "common/constants.py": "fbbda37a48043dfae5bffbadccef46715001eef46b827e5091a7584b9bbaaa68",
+    "conf/config.yml": "38632d891727a85fa401046ddf47a23cc8888477109a08b26e327d0caaf2aec8",
+    "roles/cluster-addon/files/mongodb.py": "168135e31ff7c44ab76341a3aff5c70f93b82bb22fec36319aded130a73f5ede",
+    "roles/cluster-addon/files/psmdb-operator-1.23.1.tgz": "08ce50b0cbd582694790d201c9573d61a0e0b89d460961d8590cd1ee82039ccd",
+    "roles/cluster-addon/files/psmdb-operator-1.23.1.tgz.sha256": "cb65bc2750af64b3003896430677687cf6f03def72175af4d386643315191f7d",
+    "roles/cluster-addon/files/psmdb-operator-1.23.2.tgz": "80e629dc31f8cfe2615a5efb8b0d1d2ed418f25e8c0b168f981412c8594a07e9",
+    "roles/cluster-addon/files/psmdb-operator-1.23.2.tgz.sha256": "86742d0a9301cff0dbeb3563255a543ca7382c16444e519513f07ec71f9511a6",
+    "roles/cluster-addon/tasks/main.yml": "8b1baa5582bf571c78bdd15a9eaf5870c460bd15158ec57937a080b5bfbb5787",
+    "roles/cluster-addon/tasks/mongodb.yml": "dc4d48a37250d6674ae0d39d3e41a954c5ff857345a977ac46f97cb11ad201a5",
+    "roles/cluster-addon/templates/mongodb/cluster.yaml.j2": "123c0887b7ec3ed7a1241e0c0fa30dc0f4b91b8f63407a7397acb44f58e9145b",
+    "roles/cluster-addon/templates/mongodb/monitoring.yaml.j2": "f162b9c6f9895336fb8edc286c2aa18a5664f81f841d3ec68b4466ff948597ec",
+    "roles/cluster-addon/templates/mongodb/network-policy.yaml.j2": "f87a24e157764c8e11158811c98fcb11feb1bec1ab486a9d9592e2aa355d5a0e",
+    "roles/cluster-addon/templates/mongodb/operator-values.yaml.j2": "9d640240dd40489cfedee0ce21d04850c60d123f44621f5b81a5b8f054f97d9a",
+    "service/cluster/manager.py": "ae88657bfa393f042d371210af7b941feda2e0894486fd27313c2048fb1f100a",
+    "tests/helpers/mongodb-lab-storage.py": "9d6f0fad96b2377b1123d537b1ab3b6dbdf1e71509dcf5158908a5f4b7a56b27",
+    "tests/helpers/mongodb-lab.py": "33f9fd36a6adbf49b67e53200353184dd978751769e0c44f12dd502aa7e0836f",
+    "tests/helpers/mongodb-platform.py": "69f215ab8980901021944b2a2b60b9ae684e10028093e69525cd98d915ad9004",
+    "tests/helpers/mongodb-registry-relay.py": "cf207bd8c45caffb244118a2757f7e4a4b66ed8727b6e1dc829085263b73ee1f",
+    "tests/helpers/mongodb-scenarios.py": "7e80cb5ce9cdd72d07bf750d500bcbad4cbfd51e4f50ef268b38c3d9ab7256e7",
+    "tests/helpers/mongodb-static.sh": "7bdaa6fdc7bab2408fa8583fb84f51028722b73fa47e704c984c694cbda88edb",
+    "tests/unit/test_mongodb_delivery.py": "ba49b581325174d8ed0b79c647af690a38cd29b6c5dabda3e98e439d0e663a5d",
+    "tests/unit/test_mongodb_lab.py": "afb20c7326164aa7d76521e1bf4dcab949b160dff5314490070f9495f412b4b2",
+    "tests/unit/test_mongodb_matrix.py": "3e744ac27bf960e5af452911b7ae015c4edcb17bbd5f4a6f1e3563b0ebed31dd",
+    "tests/unit/test_mongodb_platform.py": "62b580cf111e03f843e13bffe1ba72ac5b13d306448d5e6280c0585f21a6399e",
+    "tests/unit/test_mongodb_scenarios.py": "8c191eca52a7f2d23960928cd96bcd6d5cd9a837f7e96480906cbecd71ec2b9a",
+    "tests/unit/test_mongodb_storage.py": "708349da7fc1d5fbc767e3fb7372ff7a973d4bc4ed52049f3b77505da3cbbadf",
+    "tests/helpers/mongodb-install-gate.sh": "bbb6841759e82732489603744e601573f188830a0a398d65458488fc376537b5",
+    "tests/helpers/mongodb-runner.sh": "0458d5ecf5e6dedd19735a5f0389a70a0f48e9265e5de5d2b3325f6fd5aea40e",
+    "tests/helpers/mongodb-backups.py": "283ccf6443429252fadb3a5e77d00241b588931469bc79708e3af20db3acefb5",
+    "tests/unit/test_mongodb_backups.py": "f81cba1978ea7b5bebef64339b6370c6a42a359f4e714a273686c18bb81bf2ce",
+    "tests/helpers/mongodb-sharding.py": "97d7a9cef35b9f8c627d0daebbf8d873080f2040e4aa5616e2c09c4f741b302d",
+    "tests/unit/test_mongodb_sharding.py": "3a667d01f1c71631ccbcef74d1e3c65b34855d1d36b99326238c16b8eef31ad4",
+    "docs/middleware/mongodb/operations-manual.md": "fc239f9c552ac3abc3e4cd112bf7d842c2884411d77c01b0a91435a48723c2c2",
+    "docs/middleware/mongodb/technical-whitepaper.md": "decbcfbf49c9f639fb5cdb4987b2484bc1a47c2f70788364569351faaab713cb",
+    "docs/middleware/mongodb/development-manual.md": "4aea66e3669ab49199cf12c55798968975f56a24dd06c5bcaa36cf28150fd347"
+  },
+  "markers": [
+    "MONGODB_RETENTION_PRUNE_PASS schedule=real count-two=verified expired-cr-objects=absent",
+    "MONGODB_TARGET_RESTORE_DATA_PASS bson=true index=true user-restored=true boundary=true",
+    "MONGODB_RESTORE_TARGET_CLEAN_PASS source-pvc-and-secrets=preserved target-pv=absent",
+    "MONGODB_RETENTION_SCOPED_CLEAN_PASS scheduled-cr-objects=absent manual-backup=unchanged source=healthy",
+    "MONGODB_RETENTION_PASS",
+    "MONGODB_GATE_EXIT rc=0"
+  ],
+  "results": {
+    "run_id": "d5ea6173d3257ea7",
+    "cluster_uid": "4ddd4664-de27-41af-a579-93ed34c6fb03",
+    "source_uid": "64341da5-4ed2-411d-b219-3ff2dc2bbc0d",
+    "manual_objects": [
+      {
+        "key": "backup/2026-10-15T13:55:05Z.pbm.json",
+        "size": 2320,
+        "sha256": "0e774e75309ae1864a3d543174a7d64e8ade4d9c64cd4a6d36bba60fb0b037c2"
+      },
+      {
+        "key": "backup/2026-10-15T13:55:05Z/rs0/admin.pbmAgents.gz",
+        "size": 321,
+        "sha256": "6cb96868fe18213a1d1d3a9071eb0345f66c538992c8cdb0380f50073b752d9d"
+      },
+      {
+        "key": "backup/2026-10-15T13:55:05Z/rs0/admin.pbmBackups.gz",
+        "size": 804,
+        "sha256": "51f078ea73f14f71f917867db31eabe065397239592ea989e9c7a0cfa645ee35"
+      },
+      {
+        "key": "backup/2026-10-15T13:55:05Z/rs0/admin.pbmCmd.gz",
+        "size": 181,
+        "sha256": "b22d579e70680ae8fbebdda5bbc661ecbcabc112b3ec0cf3b38453446e5d251a"
+      },
+      {
+        "key": "backup/2026-10-15T13:55:05Z/rs0/admin.pbmConfig.gz",
+        "size": 428,
+        "sha256": "e16de613a5bc1b2ec841cdd94f1591007a04b052febd180a84998a14e5bee2dc"
+      },
+      {
+        "key": "backup/2026-10-15T13:55:05Z/rs0/admin.pbmLock.gz",
+        "size": 189,
+        "sha256": "635ed4755272f0422d8153839d6eda4e62e0d9f700a969f8ae86ad627387d117"
+      },
+      {
+        "key": "backup/2026-10-15T13:55:05Z/rs0/admin.pbmLog.gz",
+        "size": 2591,
+        "sha256": "99aea596ff2cc4b02702315e46a8d02356de555b3660f8f26f826fb10d06d3ba"
+      },
+      {
+        "key": "backup/2026-10-15T13:55:05Z/rs0/admin.pbmOpLog.gz",
+        "size": 214,
+        "sha256": "6f6739d5eef86a850b701684db15efabe23fcce71f34b13b3a92fe7dd63d66d8"
+      },
+      {
+        "key": "backup/2026-10-15T13:55:05Z/rs0/admin.pbmRRoles.gz",
+        "size": 314,
+        "sha256": "160c07db09d42e68f42a1f5d7ecd348e22ac3c358e6479b10dd03de8cb104eaa"
+      },
+      {
+        "key": "backup/2026-10-15T13:55:05Z/rs0/admin.pbmRUsers.gz",
+        "size": 1766,
+        "sha256": "af81ba78465bed4dbee2bd29d04b49bfbf358042337b7550138757de03b7021c"
+      },
+      {
+        "key": "backup/2026-10-15T13:55:05Z/rs0/admin.system.roles.gz",
+        "size": 314,
+        "sha256": "160c07db09d42e68f42a1f5d7ecd348e22ac3c358e6479b10dd03de8cb104eaa"
+      },
+      {
+        "key": "backup/2026-10-15T13:55:05Z/rs0/admin.system.users.gz",
+        "size": 1762,
+        "sha256": "905adcb0db14ad2db0f4fe1d461314c62fc3375020d9ba6c08e1e4cf3d454f3c"
+      },
+      {
+        "key": "backup/2026-10-15T13:55:05Z/rs0/admin.system.version.gz",
+        "size": 109,
+        "sha256": "9630c39ad730a3209adf63d35d8dafad47baddd06184adbc95dce25adf62c294"
+      },
+      {
+        "key": "backup/2026-10-15T13:55:05Z/rs0/appdb.mongodb_gate_c4c2091c6592bb84_documents.gz",
+        "size": 59,
+        "sha256": "5f3abd65f8c2187291196099dd4d5ef0ebd5275b206b4c36942f893299b95faf"
+      },
+      {
+        "key": "backup/2026-10-15T13:55:05Z/rs0/config.settings.gz",
+        "size": 163,
+        "sha256": "9607e9d7899e21ed56baf72aad598d251519f4fb16716528cb509f130aaf06d6"
+      },
+      {
+        "key": "backup/2026-10-15T13:55:05Z/rs0/meta.pbm",
+        "size": 4820,
+        "sha256": "6d026f1392ca4020157353b0447b2cfc7bace31cea48568746965e844e39cc2a"
+      },
+      {
+        "key": "backup/2026-10-15T13:55:05Z/rs0/metadata.json",
+        "size": 10453,
+        "sha256": "fde56613d48d564fa160026c4f4f3c99225a04a9d69a7aba3092c6a192cbdc60"
+      },
+      {
+        "key": "backup/2026-10-15T13:55:05Z/rs0/oplog/20261015135506-15.20261015135511-5.gz",
+        "size": 6082,
+        "sha256": "20b0f7f7ab79a2ae67b35feea51adb549c482711e322a6f9dea1a93ee9527f52"
+      }
+    ],
+    "retention": {
+      "started": "2026-10-15T22:07:27.618343+00:00",
+      "source_identity": {
+        "cr_uid": "64341da5-4ed2-411d-b219-3ff2dc2bbc0d",
+        "claims": {
+          "mongod-data-mongodb-gate-data-rs0-0": {
+            "uid": "64c693d9-7806-4d37-af33-951bdb3a8d27",
+            "volume": "pvc-64c693d9-7806-4d37-af33-951bdb3a8d27"
+          },
+          "mongod-data-mongodb-gate-data-rs0-1": {
+            "uid": "8e0854dd-493a-4443-a089-d217841e7e81",
+            "volume": "pvc-8e0854dd-493a-4443-a089-d217841e7e81"
+          },
+          "mongod-data-mongodb-gate-data-rs0-2": {
+            "uid": "d08045a8-7e92-4a66-97be-d2871fe8a5ca",
+            "volume": "pvc-d08045a8-7e92-4a66-97be-d2871fe8a5ca"
+          }
+        },
+        "secrets": {
+          "users": {
+            "uid": "a12a9d41-b413-4a2a-9a53-3df021d949f5",
+            "sha256": "78a9871de99772d691f462a2cb706297678c425732a9cf425d88b60c76ae0e69"
+          },
+          "app": {
+            "uid": "e9fa797d-aadd-4b7f-9d4e-492b4213f953",
+            "sha256": "bc46c4bcb2ac5f39e25adc01d23a7dc45f7aa4f9afdd14601a27d4e29d14815d"
+          },
+          "key": {
+            "uid": "e50bac58-df91-4b15-9a91-22f9cfd26c1f",
+            "sha256": "02852b3c9cfeaf00d27de40c41574cf6c462ee4b31896f977df1a2ee64932438"
+          },
+          "tls": {
+            "uid": "f3bdd72f-3a52-42eb-8c82-69f4bc688d51",
+            "sha256": "81c8ea826e5ad387dbde92d1002f7842839dbb38b74a6ebbde4ce472cfa2626c"
+          },
+          "tls-internal": {
+            "uid": "52847fd9-444a-4bb6-a092-eaa9b332549c",
+            "sha256": "c1baf601b09cd140b5d52c94e1f45aeb5758044f933f8b47c29a1f87b7b71195"
+          }
+        }
+      },
+      "records": {
+        "cron-mongodb-gate-dat-20261015221100-vm86z": {
+          "name": "cron-mongodb-gate-dat-20261015221100-vm86z",
+          "uid": "bfc8c043-72ff-4381-bf37-93911dc548ea",
+          "created": "2026-10-15T22:11:00Z",
+          "spec_sha256": "d7babf0b48fc2b3b3acde8d1aa02b787c3ca1e6b7e877409f3d1211c2ae1ecd5",
+          "state": "ready",
+          "backup": {
+            "uid": "bfc8c043-72ff-4381-bf37-93911dc548ea",
+            "destination": "s3://mongodb-backup-d5ea6173d3257ea7/backup/2026-10-15T22:11:00Z",
+            "metadata": {
+              "type": "logical",
+              "name": "2026-10-15T22:11:00Z",
+              "mongodb_version": "8.0.32-14",
+              "pbm_version": "2.15.0",
+              "fcv": "8.0",
+              "start_ts": 1792102260,
+              "last_write_ts": {
+                "T": 1792102265,
+                "I": 2
+              },
+              "size": 79306
+            },
+            "objects": [
+              {
+                "key": "backup/2026-10-15T22:11:00Z.pbm.json",
+                "size": 2321,
+                "sha256": "9c4aac75a8e133a73bad42b71603937c0c549d5b92bb8ba9ce6696bf55ae7504"
+              },
+              {
+                "key": "backup/2026-10-15T22:11:00Z/rs0/admin.pbmAgents.gz",
+                "size": 331,
+                "sha256": "41305f469eda7c335b6ef6c800494b52079d076e7bb7fce8056453b8efe417d0"
+              },
+              {
+                "key": "backup/2026-10-15T22:11:00Z/rs0/admin.pbmBackups.gz",
+                "size": 1819,
+                "sha256": "00d145de4d14cbc6637aafd742ab21ee86ed5c64346ad62bfe7dbc278e8f2bfc"
+              },
+              {
+                "key": "backup/2026-10-15T22:11:00Z/rs0/admin.pbmCmd.gz",
+                "size": 463,
+                "sha256": "2ebcde023fe80b16eb5d883e75a34874eb9bef12997945fe4de18165330da1a5"
+              },
+              {
+                "key": "backup/2026-10-15T22:11:00Z/rs0/admin.pbmConfig.gz",
+                "size": 429,
+                "sha256": "4c15875e9e3f1a0967ddf7dc39112791892bd21e54cef038539ec463ddab794e"
+              },
+              {
+                "key": "backup/2026-10-15T22:11:00Z/rs0/admin.pbmLock.gz",
+                "size": 187,
+                "sha256": "5c3e7034a621b7299072a446d1e40ea112cbc1b46c9f01304e30c664b500cfe3"
+              },
+              {
+                "key": "backup/2026-10-15T22:11:00Z/rs0/admin.pbmLockOp.gz",
+                "size": 164,
+                "sha256": "fe98469467ac340dab137f109fb2f111b3a95773451d309a2f2921282ce78663"
+              },
+              {
+                "key": "backup/2026-10-15T22:11:00Z/rs0/admin.pbmLog.gz",
+                "size": 24430,
+                "sha256": "7837517ee105c34c4e2b37e098efd3fb468fdc58a6f3a1a4b5a8e622a8b0e1a0"
+              },
+              {
+                "key": "backup/2026-10-15T22:11:00Z/rs0/admin.pbmOpLog.gz",
+                "size": 428,
+                "sha256": "62b4520257f413ea41f417ad1114ef97ddbdf39610f7963fe286d58fa460251b"
+              },
+              {
+                "key": "backup/2026-10-15T22:11:00Z/rs0/admin.pbmPITR.gz",
+                "size": 185,
+                "sha256": "a81407aa494fe34606399f4d67901d57af0af37890f04d9530302cece23e5950"
+              },
+              {
+                "key": "backup/2026-10-15T22:11:00Z/rs0/admin.pbmRRoles.gz",
+                "size": 314,
+                "sha256": "160c07db09d42e68f42a1f5d7ecd348e22ac3c358e6479b10dd03de8cb104eaa"
+              },
+              {
+                "key": "backup/2026-10-15T22:11:00Z/rs0/admin.pbmRUsers.gz",
+                "size": 1763,
+                "sha256": "d7a7b1efd8689ff91f0ddcf703536e3dd7dfaa89b8069134a4cbdf503cd011e4"
+              },
+              {
+                "key": "backup/2026-10-15T22:11:00Z/rs0/admin.system.roles.gz",
+                "size": 314,
+                "sha256": "160c07db09d42e68f42a1f5d7ecd348e22ac3c358e6479b10dd03de8cb104eaa"
+              },
+              {
+                "key": "backup/2026-10-15T22:11:00Z/rs0/admin.system.users.gz",
+                "size": 1763,
+                "sha256": "ec900de8998716a672af42afae6b2b14f5c49cbbe9de6b6d6b12146a218e295c"
+              },
+              {
+                "key": "backup/2026-10-15T22:11:00Z/rs0/admin.system.version.gz",
+                "size": 109,
+                "sha256": "9630c39ad730a3209adf63d35d8dafad47baddd06184adbc95dce25adf62c294"
+              },
+              {
+                "key": "backup/2026-10-15T22:11:00Z/rs0/appdb.mongodb_gate_c4c2091c6592bb84_documents.gz",
+                "size": 59,
+                "sha256": "5f3abd65f8c2187291196099dd4d5ef0ebd5275b206b4c36942f893299b95faf"
+              },
+              {
+                "key": "backup/2026-10-15T22:11:00Z/rs0/config.settings.gz",
+                "size": 161,
+                "sha256": "ec5cdb73a20740cf7c9bf055eadfb26b685c2ae496ede0016a9f8401add3aa00"
+              },
+              {
+                "key": "backup/2026-10-15T22:11:00Z/rs0/meta.pbm",
+                "size": 4820,
+                "sha256": "26647dc7d1f400cae6c3006b491f18ff8d5741d17ac2749603ad982afd682069"
+              },
+              {
+                "key": "backup/2026-10-15T22:11:00Z/rs0/metadata.json",
+                "size": 10498,
+                "sha256": "b3c45f71c503abf279b4df74d712946908cd4969b015e3ea7c3cac36787a68c6"
+              },
+              {
+                "key": "backup/2026-10-15T22:11:00Z/rs0/oplog/20261015221100-14.20261015221105-2.gz",
+                "size": 6411,
+                "sha256": "65976a888782a15efedb896d8f35278a9f336558ccd4f1d677b4ab10eec5aae4"
+              }
+            ],
+            "source_prefix": "mongodb_gate_c4c2091c6592bb84"
+          }
+        },
+        "cron-mongodb-gate-dat-20261015221200-7nbrc": {
+          "name": "cron-mongodb-gate-dat-20261015221200-7nbrc",
+          "uid": "36cac5c5-f3d8-43ec-a31a-b69e24459e83",
+          "created": "2026-10-15T22:12:00Z",
+          "spec_sha256": "d7babf0b48fc2b3b3acde8d1aa02b787c3ca1e6b7e877409f3d1211c2ae1ecd5",
+          "state": "ready",
+          "backup": {
+            "uid": "36cac5c5-f3d8-43ec-a31a-b69e24459e83",
+            "destination": "s3://mongodb-backup-d5ea6173d3257ea7/backup/2026-10-15T22:12:00Z",
+            "metadata": {
+              "type": "logical",
+              "name": "2026-10-15T22:12:00Z",
+              "mongodb_version": "8.0.32-14",
+              "pbm_version": "2.15.0",
+              "fcv": "8.0",
+              "start_ts": 1792102320,
+              "last_write_ts": {
+                "T": 1792102325,
+                "I": 2
+              },
+              "size": 79740
+            },
+            "objects": [
+              {
+                "key": "backup/2026-10-15T22:12:00Z.pbm.json",
+                "size": 2318,
+                "sha256": "18f6b8580c1fad34ac08260f9426ee1959d816a8bae37655dee43eb15ccfe1e1"
+              },
+              {
+                "key": "backup/2026-10-15T22:12:00Z/rs0/admin.pbmAgents.gz",
+                "size": 332,
+                "sha256": "e0956cb910fc28985c0d718b5d0a763387364b1694d652b4f28dcc0c8052a9d3"
+              },
+              {
+                "key": "backup/2026-10-15T22:12:00Z/rs0/admin.pbmBackups.gz",
+                "size": 1941,
+                "sha256": "3512a6793762c0de72a078fca2abf56016b0e3e34607e502a2b5130c7fe8eeb5"
+              },
+              {
+                "key": "backup/2026-10-15T22:12:00Z/rs0/admin.pbmCmd.gz",
+                "size": 476,
+                "sha256": "30b168aa6cd815ea557665ec0bbf51ec7de724e7951e18ac475d805cb8587617"
+              },
+              {
+                "key": "backup/2026-10-15T22:12:00Z/rs0/admin.pbmConfig.gz",
+                "size": 429,
+                "sha256": "4c15875e9e3f1a0967ddf7dc39112791892bd21e54cef038539ec463ddab794e"
+              },
+              {
+                "key": "backup/2026-10-15T22:12:00Z/rs0/admin.pbmLock.gz",
+                "size": 189,
+                "sha256": "20ce54bf3938463683a1e9d41e74439ddac26cc1477643b83ececd866f651506"
+              },
+              {
+                "key": "backup/2026-10-15T22:12:00Z/rs0/admin.pbmLockOp.gz",
+                "size": 164,
+                "sha256": "fe98469467ac340dab137f109fb2f111b3a95773451d309a2f2921282ce78663"
+              },
+              {
+                "key": "backup/2026-10-15T22:12:00Z/rs0/admin.pbmLog.gz",
+                "size": 26135,
+                "sha256": "b6e66cdd52b332017fab0a2756f91b7a46088a2ed22318c8d1effde1a8697879"
+              },
+              {
+                "key": "backup/2026-10-15T22:12:00Z/rs0/admin.pbmOpLog.gz",
+                "size": 441,
+                "sha256": "fc1fcb9315f0d0711fcd7436753961d3f5dd836646e669ae37cda3ce21fb780d"
+              },
+              {
+                "key": "backup/2026-10-15T22:12:00Z/rs0/admin.pbmPITR.gz",
+                "size": 185,
+                "sha256": "a81407aa494fe34606399f4d67901d57af0af37890f04d9530302cece23e5950"
+              },
+              {
+                "key": "backup/2026-10-15T22:12:00Z/rs0/admin.pbmRRoles.gz",
+                "size": 314,
+                "sha256": "160c07db09d42e68f42a1f5d7ecd348e22ac3c358e6479b10dd03de8cb104eaa"
+              },
+              {
+                "key": "backup/2026-10-15T22:12:00Z/rs0/admin.pbmRUsers.gz",
+                "size": 1763,
+                "sha256": "ec900de8998716a672af42afae6b2b14f5c49cbbe9de6b6d6b12146a218e295c"
+              },
+              {
+                "key": "backup/2026-10-15T22:12:00Z/rs0/admin.system.roles.gz",
+                "size": 314,
+                "sha256": "160c07db09d42e68f42a1f5d7ecd348e22ac3c358e6479b10dd03de8cb104eaa"
+              },
+              {
+                "key": "backup/2026-10-15T22:12:00Z/rs0/admin.system.users.gz",
+                "size": 1763,
+                "sha256": "ec900de8998716a672af42afae6b2b14f5c49cbbe9de6b6d6b12146a218e295c"
+              },
+              {
+                "key": "backup/2026-10-15T22:12:00Z/rs0/admin.system.version.gz",
+                "size": 109,
+                "sha256": "9630c39ad730a3209adf63d35d8dafad47baddd06184adbc95dce25adf62c294"
+              },
+              {
+                "key": "backup/2026-10-15T22:12:00Z/rs0/appdb.mongodb_gate_c4c2091c6592bb84_documents.gz",
+                "size": 59,
+                "sha256": "5f3abd65f8c2187291196099dd4d5ef0ebd5275b206b4c36942f893299b95faf"
+              },
+              {
+                "key": "backup/2026-10-15T22:12:00Z/rs0/config.settings.gz",
+                "size": 162,
+                "sha256": "3862b5dd8365e11f8456ce922408d173789f5c913886009cf99b36376ab17569"
+              },
+              {
+                "key": "backup/2026-10-15T22:12:00Z/rs0/meta.pbm",
+                "size": 4820,
+                "sha256": "62f21f37a8c611522cd0b920783ff9b814622119d5a45b7664386189da2fa4b4"
+              },
+              {
+                "key": "backup/2026-10-15T22:12:00Z/rs0/metadata.json",
+                "size": 10497,
+                "sha256": "ef89229e08adbd065ca2950d2e0066dbb8a2717d2fdada3861a5d6fc657764ce"
+              },
+              {
+                "key": "backup/2026-10-15T22:12:00Z/rs0/oplog/20261015221201-4.20261015221205-2.gz",
+                "size": 6220,
+                "sha256": "7888325641d2747e1eb81af30f4e39e8c549a91a698ccb2da90169bf053a1ce3"
+              }
+            ],
+            "source_prefix": "mongodb_gate_c4c2091c6592bb84"
+          }
+        },
+        "cron-mongodb-gate-dat-20261015221300-96277": {
+          "name": "cron-mongodb-gate-dat-20261015221300-96277",
+          "uid": "4429eca4-d2c6-4a9c-9b91-26945f96f368",
+          "created": "2026-10-15T22:13:00Z",
+          "spec_sha256": "d7babf0b48fc2b3b3acde8d1aa02b787c3ca1e6b7e877409f3d1211c2ae1ecd5",
+          "state": "ready",
+          "backup": {
+            "uid": "4429eca4-d2c6-4a9c-9b91-26945f96f368",
+            "destination": "s3://mongodb-backup-d5ea6173d3257ea7/backup/2026-10-15T22:13:00Z",
+            "metadata": {
+              "type": "logical",
+              "name": "2026-10-15T22:13:00Z",
+              "mongodb_version": "8.0.32-14",
+              "pbm_version": "2.15.0",
+              "fcv": "8.0",
+              "start_ts": 1792102381,
+              "last_write_ts": {
+                "T": 1792102385,
+                "I": 2
+              },
+              "size": 79229
+            },
+            "objects": [
+              {
+                "key": "backup/2026-10-15T22:13:00Z.pbm.json",
+                "size": 2320,
+                "sha256": "c0244fbfea97d56ffa8939567706762f41ef3ec0554542ebbdb4ba41b51768eb"
+              },
+              {
+                "key": "backup/2026-10-15T22:13:00Z/rs0/admin.pbmAgents.gz",
+                "size": 333,
+                "sha256": "0c6197e950266f1349d01b0a13a62459a42d7471da4fb7748d49a765708850fe"
+              },
+              {
+                "key": "backup/2026-10-15T22:13:00Z/rs0/admin.pbmBackups.gz",
+                "size": 2046,
+                "sha256": "5d3a773539cb4ecdcd0bca3f9793b8ddff2017cba3f06d3f267b232df0241507"
+              },
+              {
+                "key": "backup/2026-10-15T22:13:00Z/rs0/admin.pbmCmd.gz",
+                "size": 487,
+                "sha256": "76e2869f732034e366ecbb4b49590a6d11eaa934dd27e8b3f05520b6753f7cc4"
+              },
+              {
+                "key": "backup/2026-10-15T22:13:00Z/rs0/admin.pbmConfig.gz",
+                "size": 429,
+                "sha256": "4c15875e9e3f1a0967ddf7dc39112791892bd21e54cef038539ec463ddab794e"
+              },
+              {
+                "key": "backup/2026-10-15T22:13:00Z/rs0/admin.pbmLock.gz",
+                "size": 188,
+                "sha256": "aa5779209be2672c84a0e8f3ac8d7f195c512feb7e35020d8cec20d2ab46f108"
+              },
+              {
+                "key": "backup/2026-10-15T22:13:00Z/rs0/admin.pbmLockOp.gz",
+                "size": 164,
+                "sha256": "fe98469467ac340dab137f109fb2f111b3a95773451d309a2f2921282ce78663"
+              },
+              {
+                "key": "backup/2026-10-15T22:13:00Z/rs0/admin.pbmLog.gz",
+                "size": 27264,
+                "sha256": "022f6cdd4745c70409217cf708620812c069b4a1186f414b069346ab44a23454"
+              },
+              {
+                "key": "backup/2026-10-15T22:13:00Z/rs0/admin.pbmOpLog.gz",
+                "size": 455,
+                "sha256": "801f83e2909c8663b72b1aa28f28f5442302b7251ec56af41a28a6ec310cbf7f"
+              },
+              {
+                "key": "backup/2026-10-15T22:13:00Z/rs0/admin.pbmPITR.gz",
+                "size": 185,
+                "sha256": "a81407aa494fe34606399f4d67901d57af0af37890f04d9530302cece23e5950"
+              },
+              {
+                "key": "backup/2026-10-15T22:13:00Z/rs0/admin.pbmRRoles.gz",
+                "size": 314,
+                "sha256": "160c07db09d42e68f42a1f5d7ecd348e22ac3c358e6479b10dd03de8cb104eaa"
+              },
+              {
+                "key": "backup/2026-10-15T22:13:00Z/rs0/admin.pbmRUsers.gz",
+                "size": 1763,
+                "sha256": "ec900de8998716a672af42afae6b2b14f5c49cbbe9de6b6d6b12146a218e295c"
+              },
+              {
+                "key": "backup/2026-10-15T22:13:00Z/rs0/admin.system.roles.gz",
+                "size": 314,
+                "sha256": "160c07db09d42e68f42a1f5d7ecd348e22ac3c358e6479b10dd03de8cb104eaa"
+              },
+              {
+                "key": "backup/2026-10-15T22:13:00Z/rs0/admin.system.users.gz",
+                "size": 1763,
+                "sha256": "ec900de8998716a672af42afae6b2b14f5c49cbbe9de6b6d6b12146a218e295c"
+              },
+              {
+                "key": "backup/2026-10-15T22:13:00Z/rs0/admin.system.version.gz",
+                "size": 109,
+                "sha256": "9630c39ad730a3209adf63d35d8dafad47baddd06184adbc95dce25adf62c294"
+              },
+              {
+                "key": "backup/2026-10-15T22:13:00Z/rs0/appdb.mongodb_gate_c4c2091c6592bb84_documents.gz",
+                "size": 59,
+                "sha256": "5f3abd65f8c2187291196099dd4d5ef0ebd5275b206b4c36942f893299b95faf"
+              },
+              {
+                "key": "backup/2026-10-15T22:13:00Z/rs0/config.settings.gz",
+                "size": 163,
+                "sha256": "0bb1800b22b4366a853b5a60611936aee1dcf7202141042db2c4f6bdf7a8d9ea"
+              },
+              {
+                "key": "backup/2026-10-15T22:13:00Z/rs0/meta.pbm",
+                "size": 4820,
+                "sha256": "8bd8affbe461a9cb92227d6f7b1eebd4b78b047b6e4d22f1c99c12c0efe507a6"
+              },
+              {
+                "key": "backup/2026-10-15T22:13:00Z/rs0/metadata.json",
+                "size": 10493,
+                "sha256": "6060e12b69b7e13927c3912609534eb80078ef87dce1813230d8c686f28122d7"
+              },
+              {
+                "key": "backup/2026-10-15T22:13:00Z/rs0/oplog/20261015221301-14.20261015221305-2.gz",
+                "size": 5880,
+                "sha256": "98f32c196deb9e7dbd4efe05913e7d083afc1fffc2fa39988c254bb34d6d5366"
+              }
+            ],
+            "source_prefix": "mongodb_gate_c4c2091c6592bb84"
+          }
+        },
+        "cron-mongodb-gate-dat-20261015221400-27nfr": {
+          "name": "cron-mongodb-gate-dat-20261015221400-27nfr",
+          "uid": "7ce8d545-af4d-4447-9957-9344bd9ba841",
+          "created": "2026-10-15T22:14:00Z",
+          "spec_sha256": "d7babf0b48fc2b3b3acde8d1aa02b787c3ca1e6b7e877409f3d1211c2ae1ecd5",
+          "state": "ready",
+          "backup": {
+            "uid": "7ce8d545-af4d-4447-9957-9344bd9ba841",
+            "destination": "s3://mongodb-backup-d5ea6173d3257ea7/backup/2026-10-15T22:14:00Z",
+            "metadata": {
+              "type": "logical",
+              "name": "2026-10-15T22:14:00Z",
+              "mongodb_version": "8.0.32-14",
+              "pbm_version": "2.15.0",
+              "fcv": "8.0",
+              "start_ts": 1792102440,
+              "last_write_ts": {
+                "T": 1792102445,
+                "I": 2
+              },
+              "size": 81153
+            },
+            "objects": [
+              {
+                "key": "backup/2026-10-15T22:14:00Z.pbm.json",
+                "size": 2321,
+                "sha256": "72ee709d60fa0a1c65bd565f6e2291e5908bdbaed081b28059d0baeb57d7b86c"
+              },
+              {
+                "key": "backup/2026-10-15T22:14:00Z/rs0/admin.pbmAgents.gz",
+                "size": 331,
+                "sha256": "fd2b6e83d9012deb2ac65f9d0107b2447e3909441743c0d7042b0add5f25059b"
+              },
+              {
+                "key": "backup/2026-10-15T22:14:00Z/rs0/admin.pbmBackups.gz",
+                "size": 2064,
+                "sha256": "0a8cdf89fc2a20a3e7b5914983563b2d9744f90c5930a97b4ba6fadaba9eff96"
+              },
+              {
+                "key": "backup/2026-10-15T22:14:00Z/rs0/admin.pbmCmd.gz",
+                "size": 501,
+                "sha256": "b98f73e23dd307a5378baec5043a4489b3ac91ab013ac2c78d834a9ef2ee9c68"
+              },
+              {
+                "key": "backup/2026-10-15T22:14:00Z/rs0/admin.pbmConfig.gz",
+                "size": 429,
+                "sha256": "4c15875e9e3f1a0967ddf7dc39112791892bd21e54cef038539ec463ddab794e"
+              },
+              {
+                "key": "backup/2026-10-15T22:14:00Z/rs0/admin.pbmLock.gz",
+                "size": 189,
+                "sha256": "856622324fdcd0786501e36d823f26febc3c90b38977fa08ab842ed2f4d0b2b7"
+              },
+              {
+                "key": "backup/2026-10-15T22:14:00Z/rs0/admin.pbmLockOp.gz",
+                "size": 164,
+                "sha256": "fe98469467ac340dab137f109fb2f111b3a95773451d309a2f2921282ce78663"
+              },
+              {
+                "key": "backup/2026-10-15T22:14:00Z/rs0/admin.pbmLog.gz",
+                "size": 28471,
+                "sha256": "96101bbcfc13999668e96022c37cadd79b5765e7ec67ccc8fc89a1ec51ce60b1"
+              },
+              {
+                "key": "backup/2026-10-15T22:14:00Z/rs0/admin.pbmOpLog.gz",
+                "size": 482,
+                "sha256": "049697b5183bdba949618afd6b73ce7664e886365b93142ae7b4fd7e5c4c4ef1"
+              },
+              {
+                "key": "backup/2026-10-15T22:14:00Z/rs0/admin.pbmPITR.gz",
+                "size": 185,
+                "sha256": "a81407aa494fe34606399f4d67901d57af0af37890f04d9530302cece23e5950"
+              },
+              {
+                "key": "backup/2026-10-15T22:14:00Z/rs0/admin.pbmRRoles.gz",
+                "size": 314,
+                "sha256": "160c07db09d42e68f42a1f5d7ecd348e22ac3c358e6479b10dd03de8cb104eaa"
+              },
+              {
+                "key": "backup/2026-10-15T22:14:00Z/rs0/admin.pbmRUsers.gz",
+                "size": 1763,
+                "sha256": "d7a7b1efd8689ff91f0ddcf703536e3dd7dfaa89b8069134a4cbdf503cd011e4"
+              },
+              {
+                "key": "backup/2026-10-15T22:14:00Z/rs0/admin.system.roles.gz",
+                "size": 314,
+                "sha256": "160c07db09d42e68f42a1f5d7ecd348e22ac3c358e6479b10dd03de8cb104eaa"
+              },
+              {
+                "key": "backup/2026-10-15T22:14:00Z/rs0/admin.system.users.gz",
+                "size": 1763,
+                "sha256": "ec900de8998716a672af42afae6b2b14f5c49cbbe9de6b6d6b12146a218e295c"
+              },
+              {
+                "key": "backup/2026-10-15T22:14:00Z/rs0/admin.system.version.gz",
+                "size": 109,
+                "sha256": "9630c39ad730a3209adf63d35d8dafad47baddd06184adbc95dce25adf62c294"
+              },
+              {
+                "key": "backup/2026-10-15T22:14:00Z/rs0/appdb.mongodb_gate_c4c2091c6592bb84_documents.gz",
+                "size": 59,
+                "sha256": "5f3abd65f8c2187291196099dd4d5ef0ebd5275b206b4c36942f893299b95faf"
+              },
+              {
+                "key": "backup/2026-10-15T22:14:00Z/rs0/config.settings.gz",
+                "size": 163,
+                "sha256": "c9edd6332b4e4f5ca5f76a75e83600a9e01e183c8609d4d34a37d8019f02491d"
+              },
+              {
+                "key": "backup/2026-10-15T22:14:00Z/rs0/meta.pbm",
+                "size": 4820,
+                "sha256": "94e5ea5035d0f948a6158119dd80cf6145b7fd524e8356d311ada13d7593225b"
+              },
+              {
+                "key": "backup/2026-10-15T22:14:00Z/rs0/metadata.json",
+                "size": 10494,
+                "sha256": "b2972bb46a85dbd7d188993d5c6ca00e7648d40efc9e1723776dba74c52d9e2a"
+              },
+              {
+                "key": "backup/2026-10-15T22:14:00Z/rs0/oplog/20261015221400-19.20261015221405-2.gz",
+                "size": 5990,
+                "sha256": "ef12ef2ea145eac9407ddd93fdfb6771b53241335b75feb3d31ac1771e24771a"
+              }
+            ],
+            "source_prefix": "mongodb_gate_c4c2091c6592bb84"
+          }
+        }
+      },
+      "expired": "cron-mongodb-gate-dat-20261015221100-vm86z",
+      "pause_from": {
+        "mongodb_backup_enabled": true,
+        "mongodb_pitr_enabled": false,
+        "mongodb_backup_storage_type": "minio",
+        "mongodb_backup_bucket": "mongodb-backup-d5ea6173d3257ea7",
+        "mongodb_backup_prefix": "backup",
+        "mongodb_backup_endpoint": "mongodb-backup-d5ea6173d3257ea7.mongodb-gate.svc.cluster.local:9000",
+        "mongodb_backup_credentials_secret": "mongodb-backup-d5ea6173d3257ea7-credentials",
+        "mongodb_backup_ca_secret": "mongodb-backup-d5ea6173d3257ea7-tls",
+        "mongodb_backup_ca_key": "ca.crt",
+        "mongodb_backup_schedule_enabled": true,
+        "mongodb_request_timeout": 1800,
+        "mongodb_requests": [
+          {
+            "kind": "backup",
+            "name": "mongodb-gate-data-logical-d5ea6173d3257ea7",
+            "type": "logical"
+          }
+        ],
+        "mongodb_backup_schedule": "* * * * *",
+        "mongodb_backup_schedule_type": "logical",
+        "mongodb_backup_retention_count": 2
+      },
+      "retained": {
+        "name": "cron-mongodb-gate-dat-20261015221400-27nfr",
+        "backup": {
+          "uid": "7ce8d545-af4d-4447-9957-9344bd9ba841",
+          "destination": "s3://mongodb-backup-d5ea6173d3257ea7/backup/2026-10-15T22:14:00Z",
+          "metadata": {
+            "type": "logical",
+            "name": "2026-10-15T22:14:00Z",
+            "mongodb_version": "8.0.32-14",
+            "pbm_version": "2.15.0",
+            "fcv": "8.0",
+            "start_ts": 1792102440,
+            "last_write_ts": {
+              "T": 1792102445,
+              "I": 2
+            },
+            "size": 81153
+          },
+          "objects": [
+            {
+              "key": "backup/2026-10-15T22:14:00Z.pbm.json",
+              "size": 2321,
+              "sha256": "72ee709d60fa0a1c65bd565f6e2291e5908bdbaed081b28059d0baeb57d7b86c"
+            },
+            {
+              "key": "backup/2026-10-15T22:14:00Z/rs0/admin.pbmAgents.gz",
+              "size": 331,
+              "sha256": "fd2b6e83d9012deb2ac65f9d0107b2447e3909441743c0d7042b0add5f25059b"
+            },
+            {
+              "key": "backup/2026-10-15T22:14:00Z/rs0/admin.pbmBackups.gz",
+              "size": 2064,
+              "sha256": "0a8cdf89fc2a20a3e7b5914983563b2d9744f90c5930a97b4ba6fadaba9eff96"
+            },
+            {
+              "key": "backup/2026-10-15T22:14:00Z/rs0/admin.pbmCmd.gz",
+              "size": 501,
+              "sha256": "b98f73e23dd307a5378baec5043a4489b3ac91ab013ac2c78d834a9ef2ee9c68"
+            },
+            {
+              "key": "backup/2026-10-15T22:14:00Z/rs0/admin.pbmConfig.gz",
+              "size": 429,
+              "sha256": "4c15875e9e3f1a0967ddf7dc39112791892bd21e54cef038539ec463ddab794e"
+            },
+            {
+              "key": "backup/2026-10-15T22:14:00Z/rs0/admin.pbmLock.gz",
+              "size": 189,
+              "sha256": "856622324fdcd0786501e36d823f26febc3c90b38977fa08ab842ed2f4d0b2b7"
+            },
+            {
+              "key": "backup/2026-10-15T22:14:00Z/rs0/admin.pbmLockOp.gz",
+              "size": 164,
+              "sha256": "fe98469467ac340dab137f109fb2f111b3a95773451d309a2f2921282ce78663"
+            },
+            {
+              "key": "backup/2026-10-15T22:14:00Z/rs0/admin.pbmLog.gz",
+              "size": 28471,
+              "sha256": "96101bbcfc13999668e96022c37cadd79b5765e7ec67ccc8fc89a1ec51ce60b1"
+            },
+            {
+              "key": "backup/2026-10-15T22:14:00Z/rs0/admin.pbmOpLog.gz",
+              "size": 482,
+              "sha256": "049697b5183bdba949618afd6b73ce7664e886365b93142ae7b4fd7e5c4c4ef1"
+            },
+            {
+              "key": "backup/2026-10-15T22:14:00Z/rs0/admin.pbmPITR.gz",
+              "size": 185,
+              "sha256": "a81407aa494fe34606399f4d67901d57af0af37890f04d9530302cece23e5950"
+            },
+            {
+              "key": "backup/2026-10-15T22:14:00Z/rs0/admin.pbmRRoles.gz",
+              "size": 314,
+              "sha256": "160c07db09d42e68f42a1f5d7ecd348e22ac3c358e6479b10dd03de8cb104eaa"
+            },
+            {
+              "key": "backup/2026-10-15T22:14:00Z/rs0/admin.pbmRUsers.gz",
+              "size": 1763,
+              "sha256": "d7a7b1efd8689ff91f0ddcf703536e3dd7dfaa89b8069134a4cbdf503cd011e4"
+            },
+            {
+              "key": "backup/2026-10-15T22:14:00Z/rs0/admin.system.roles.gz",
+              "size": 314,
+              "sha256": "160c07db09d42e68f42a1f5d7ecd348e22ac3c358e6479b10dd03de8cb104eaa"
+            },
+            {
+              "key": "backup/2026-10-15T22:14:00Z/rs0/admin.system.users.gz",
+              "size": 1763,
+              "sha256": "ec900de8998716a672af42afae6b2b14f5c49cbbe9de6b6d6b12146a218e295c"
+            },
+            {
+              "key": "backup/2026-10-15T22:14:00Z/rs0/admin.system.version.gz",
+              "size": 109,
+              "sha256": "9630c39ad730a3209adf63d35d8dafad47baddd06184adbc95dce25adf62c294"
+            },
+            {
+              "key": "backup/2026-10-15T22:14:00Z/rs0/appdb.mongodb_gate_c4c2091c6592bb84_documents.gz",
+              "size": 59,
+              "sha256": "5f3abd65f8c2187291196099dd4d5ef0ebd5275b206b4c36942f893299b95faf"
+            },
+            {
+              "key": "backup/2026-10-15T22:14:00Z/rs0/config.settings.gz",
+              "size": 163,
+              "sha256": "c9edd6332b4e4f5ca5f76a75e83600a9e01e183c8609d4d34a37d8019f02491d"
+            },
+            {
+              "key": "backup/2026-10-15T22:14:00Z/rs0/meta.pbm",
+              "size": 4820,
+              "sha256": "94e5ea5035d0f948a6158119dd80cf6145b7fd524e8356d311ada13d7593225b"
+            },
+            {
+              "key": "backup/2026-10-15T22:14:00Z/rs0/metadata.json",
+              "size": 10494,
+              "sha256": "b2972bb46a85dbd7d188993d5c6ca00e7648d40efc9e1723776dba74c52d9e2a"
+            },
+            {
+              "key": "backup/2026-10-15T22:14:00Z/rs0/oplog/20261015221400-19.20261015221405-2.gz",
+              "size": 5990,
+              "sha256": "ef12ef2ea145eac9407ddd93fdfb6771b53241335b75feb3d31ac1771e24771a"
+            }
+          ],
+          "source_prefix": "mongodb_gate_c4c2091c6592bb84"
+        }
+      },
+      "cleaned": true
+    },
+    "source_config_restored": true,
+    "target_absent": true,
+    "fault_absent": true
+  },
+  "scope": "Real cron generated at least3 completed logical backups; every metadata/data object SHA256 recorded. count2 retention deleted expired CR, metadata and data. Retained scheduled backup independently restored BSON/Decimal128/index/user and excluded post-backup marker. Original manual18 objects unchanged. Source config, health and credential/volume boundary restored.",
+  "cleanup": "All scheduled CR/object files and target/client/target PV/fault journals absent; source and manual backup retained.",
+  "previous_failure": "tests/evidence/mongodb-retention-failure-20261016.json",
+  "impact_analysis": "Executed frozen v3 hashes are used, not later local M24 additions. Later independent-target refusal APIs, causal classification and optional fault recovery leave retention behavior unchanged when no refusal journal exists; current271 offline contracts cover both. Full clean delivery remains pending.",
+  "preserved_other_backups": {
+    "rc": 0,
+    "markers": [
+      "MONGODB_RETAINED_BASELINE_VERIFY_PASS kind=physical objects=103",
+      "MONGODB_RETAINED_BASELINE_VERIFY_PASS kind=pitr objects=18",
+      "MONGODB_RETAINED_PITR_VERIFY_PASS oplog=1 sha256=unchanged"
+    ],
+    "log_sha256": "f97407d37f25bf82eba563a0fa9e689990fef4149753c0d6d88b82bb2a3b7c95",
+    "scope": "After complete retention success, read every retained physical and PITR baseline object and PITR oplog, compare original journal SHA256; no product or Kubernetes mutation."
+  }
+}

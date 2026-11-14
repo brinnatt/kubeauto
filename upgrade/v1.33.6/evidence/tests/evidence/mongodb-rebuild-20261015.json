@@ -1,0 +1,45 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "MONGODB-13"
+  ],
+  "runner": "bash tests/run_enterprise_regression.sh --mongodb-rebuild",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "core_uid": "4ddd4664-de27-41af-a579-93ed34c6fb03",
+  "markers": [
+    "MONGODB_REBUILD_SEED_PASS",
+    "MONGODB_REBUILD_SELECTION_PASS",
+    "MONGODB_REBUILD_FAULT_INJECTED secondary=mongodb-gate-data-rs0-1",
+    "MONGODB_REBUILD_VOLUME_PASS new-pvc=true new-pv=true old-pv=absent",
+    "MONGODB_REBUILD_DATA_PASS",
+    "MONGODB_WORKLOAD_CLEAN_PASS",
+    "MONGODB_REBUILD_SCOPED_CLEAN_PASS",
+    "MONGODB_REBUILD_PASS",
+    "MONGODB_GATE_EXIT rc=0"
+  ],
+  "data": {
+    "documents": 512,
+    "payload_bytes_each": 2048,
+    "sha256": "ef99b06b2882d8633d3ac10910ed6dfcf14e83672724ac2df76f3dec95cc8d2c",
+    "member_reads": 3,
+    "checkpoints": [
+      "before-fault",
+      "after-rebuild",
+      "cleanup-revalidation"
+    ],
+    "unique_index": "rebuild_value"
+  },
+  "durable_status": "state=exited pid=104694 rc=0 bytes=2255 pass_markers=10 failure_markers=0 latest=MONGODB_GATE_EXIT rc=0",
+  "log_sha256": "4b8bd83327a753f117c45fb2cbd913d19d0fbb970060af55c9e313d70e68ddb6",
+  "dependencies": {
+    "roles/cluster-addon/files/mongodb.py": "56ca2fe4ccd722e6ae65e51e08d88a55947bb065fe48a71eb5d96ccee822b46f",
+    "tests/helpers/mongodb-scenarios.py": "3cd8b6a825dbc46f9ba135584279ac51180c2bbd977e7560d5261df406a87b05",
+    "tests/helpers/mongodb-lab.py": "3736b4d1ce5db875136999ae97f5ba3c14ae311b03e37913d0b7bff85d6e3f0a",
+    "tests/helpers/mongodb-install-gate.sh": "b1ae82b6436ccfe0aa65c718be294d2473f1d07f57eb00e81cb8411fa999f965",
+    "tests/helpers/mongodb-runner.sh": "813e49e9ce7b2c95957293df8ee14b10954bcee1fe150d6f7869aef1f2a79a02",
+    "tests/unit/test_mongodb_scenarios.py": "c1e64fdc203bfd7b510511bfbabb1c0fd0d7e45165fc83c366be98979c9984e2"
+  },
+  "scope": "Native per-member PVC then Pod deletion, selected authenticated healthy secondary; new dynamically provisioned disk and rebuilt member required before health/data acceptance.",
+  "cleanup": "Old PV absent; non-target PVCs, system/CA/key Secrets and CR spec/UID retained; all members healthy, fault journal and run collection/client absent."
+}

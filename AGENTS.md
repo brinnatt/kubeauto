@@ -4,6 +4,10 @@ These instructions apply to the entire repository.
 
 ## Start here
 
+既有组件版本维护、Kubernetes 逐 minor 升级与版本分支交付，从
+[`upgrade/AGENTS.md`](upgrade/AGENTS.md) 进入。升级专用方案、版本组合、矩阵、
+研究记录及后续自动化集中在 `upgrade/`；本入口不触发实现、构建或现场测试。
+
 Before changing code or running a lab test, read:
 
 1. `tests/README.md`

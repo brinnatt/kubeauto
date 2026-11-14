@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "MONGODB-07"
+  ],
+  "runner": "bash tests/run_enterprise_regression.sh --mongodb-storage",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "core_uid": "4ddd4664-de27-41af-a579-93ed34c6fb03",
+  "markers": [
+    "MONGODB_STORAGE_ASSERTIONS_PASS rwo=true expand=1Gi-to-2Gi remount=other-worker data=retained",
+    "MONGODB_STORAGE_SCOPED_CLEAN_PASS pod-pvc-pv=absent",
+    "MONGODB_STORAGE_BASELINE_REUSE_PASS workers=3 identity=verified",
+    "MONGODB_STORAGE_PASS",
+    "MONGODB_GATE_EXIT rc=0"
+  ],
+  "log_sha256": "244739a8f19d5800f7e8b235085a6b84a9f7d91668d5278f294c9e402c2762e3",
+  "durable_status": "state=exited pid=49202 rc=0 bytes=8727 pass_markers=7 failure_markers=0 latest=MONGODB_GATE_EXIT rc=0",
+  "dependencies": {
+    "tests/helpers/mongodb-lab-storage.py": "9d6f0fad96b2377b1123d537b1ab3b6dbdf1e71509dcf5158908a5f4b7a56b27",
+    "tests/unit/test_mongodb_storage.py": "708349da7fc1d5fbc767e3fb7372ff7a973d4bc4ed52049f3b77505da3cbbadf",
+    "tests/helpers/mongodb-install-gate.sh": "bc70f4c4e4393954db063f901d02b6a2802a13f5a2170204c2bbf8ee1e2d17fb",
+    "tests/helpers/mongodb-runner.sh": "d7cabd6510b924adf5b0c004fef5e1b4c72c3d07259087040dcaa5fe9c9ecfd4"
+  },
+  "cleanup": "run-owned probe Pod/PVC/PV absent; verified healthy dedicated CSI baseline retained",
+  "impact_review": {
+    "changed_paths": [
+      "roles/cluster-addon/files/mongodb.py",
+      "tests/helpers/mongodb-lab.py",
+      "tests/helpers/mongodb-install-gate.sh",
+      "tests/helpers/mongodb-runner.sh",
+      "tests/helpers/mongodb-static.sh"
+    ],
+    "conclusion": "CRD JSON parser and credential-stage recovery affect installation only; backup/restore dispatch and cleanup do not alter storage probe execution or its fixture implementation. Existing storage evidence remains applicable.",
+    "disproof": "bash tests/run_enterprise_regression.sh --mongodb-storage"
+  }
+}

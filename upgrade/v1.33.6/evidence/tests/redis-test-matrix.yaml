@@ -1,0 +1,50 @@
+meta:
+  version: 1
+  updated: "2026-10-13"
+  component: redis
+  scope: "Independent Redis middleware branch; default disabled and isolated from core, MySQL and Kafka"
+  runner: "bash tests/run_enterprise_regression.sh --redis-only"
+  result: PASS
+  official:
+    redis: "https://github.com/redis/redis/releases/tag/8.10.2"
+    operator: "https://github.com/OT-CONTAINER-KIT/redis-operator/releases/tag/v0.27.0"
+    sentinel: "https://redis.io/docs/latest/operate/oss_and_stack/management/sentinel/"
+    cluster: "https://redis.io/docs/latest/operate/oss_and_stack/reference/cluster-spec/"
+  supply_chain: "Chart SHA256 and fixed TalkEdu/Docker Hub manifest digests are required before live execution"
+versions:
+  operator: "0.27.0"
+  redis: "8.10.2"
+  exporter: "v1.93.0"
+  kubernetes: "1.33.6"
+cases:
+  - {id: REDIS-01, group: static, desc: "Version constants, Chart SHA256, six-repository catalog and image mapping", status: pass, evidence: "tests/evidence/redis-full-20261013-164045.json; current focused product gate, durable rc=0, zero failure markers and scoped-clean"}
+  - {id: REDIS-02, group: static, desc: "Default-disabled configuration creates no Redis resource", status: pass, evidence: "tests/evidence/redis-full-20261013-164045.json; current focused product gate, durable rc=0, zero failure markers and scoped-clean"}
+  - {id: REDIS-03, group: static, desc: "Sentinel and Cluster mode validation, namespaces and ownership labels", status: pass, evidence: "tests/evidence/redis-full-20261013-164045.json; current focused product gate, durable rc=0, zero failure markers and scoped-clean"}
+  # Impact: Cluster-only Redis 8.10.2-kubeauto.1 pin; disproof: --redis-cluster-artifacts
+  - {id: REDIS-04, group: supply-chain, desc: "Operator, Redis, Sentinel runtime and Exporter images have dual-registry manifest evidence", status: pass, evidence: "tests/evidence/redis-full-20261013-164045.json; current focused product gate, durable rc=0, zero failure markers and scoped-clean"}
+  - {id: REDIS-05, group: preflight, desc: "Clean namespace, three failure domains, StorageClass R/W/expand, DNS, time and capacity", status: pass, evidence: "tests/evidence/redis-full-20261013-164045.json; current focused product gate, durable rc=0, zero failure markers and scoped-clean"}
+  - {id: REDIS-06, group: install, desc: "Operator, CRD, RedisReplication, RedisSentinel, Services and PVC readiness", status: pass, evidence: "tests/evidence/redis-full-20261013-164045.json; current focused product gate, durable rc=0, zero failure markers and scoped-clean"}
+  - {id: REDIS-07, group: sentinel-data, desc: "TLS/authenticated Sentinel client write/read/TTL/reconnect and data digest", status: pass, evidence: "tests/evidence/redis-full-20261013-164045.json; current focused product gate, durable rc=0, zero failure markers and scoped-clean"}
+  - {id: REDIS-08, group: sentinel-failure, desc: "Single primary failure elects one new primary and replicas catch up", status: pass, evidence: "tests/evidence/redis-full-20261013-164045.json; current focused product gate, durable rc=0, zero failure markers and scoped-clean"}
+  - {id: REDIS-09, group: sentinel-quorum, desc: "Sentinel majority loss rejects unsafe failover and recovers after quorum returns", status: pass, evidence: "tests/evidence/redis-full-20261013-164045.json; current focused product gate, durable rc=0, zero failure markers and scoped-clean"}
+  - {id: REDIS-10, group: sentinel-security, desc: "Wrong CA, password, ACL command and key pattern are rejected", status: pass, evidence: "tests/evidence/redis-full-20261013-164045.json; current focused product gate, durable rc=0, zero failure markers and scoped-clean"}
+  - {id: REDIS-11, group: sentinel-maintenance, desc: "Node drain, PDB, rolling restart, password/TLS rotation and idempotent second run", status: pass, evidence: "tests/evidence/redis-full-20261013-164045.json; current focused product gate, durable rc=0, zero failure markers and scoped-clean"}
+  # Impact: migration-barrier configuration and independent fixture identity changed; see tests/evidence/redis-cluster-migration-defect-20261013.json; disproof: --redis-cluster-install
+  - {id: REDIS-12, group: cluster-install, desc: "Three primary shards and six replicas reach complete slot coverage", status: pass, evidence: "tests/evidence/redis-full-20261013-164045.json; current focused product gate, durable rc=0, zero failure markers and scoped-clean"}
+  # Impact: migration-barrier configuration and independent fixture identity changed; see tests/evidence/redis-cluster-migration-defect-20261013.json; disproof: --redis-cluster-data
+  - {id: REDIS-13, group: cluster-data, desc: "Cluster client handles MOVED/ASK, same-slot transaction and cross-slot rejection", status: pass, evidence: "tests/evidence/redis-full-20261013-164045.json; current focused product gate, durable rc=0, zero failure markers and scoped-clean"}
+  # Impact: migration-barrier configuration and independent fixture identity changed; see tests/evidence/redis-cluster-migration-defect-20261013.json; disproof: --redis-cluster-failure
+  - {id: REDIS-14, group: cluster-failure, desc: "Primary/replica failure, safe refusal and full replica recovery", status: pass, evidence: "tests/evidence/redis-full-20261013-164045.json; current focused product gate, durable rc=0, zero failure markers and scoped-clean"}
+  - {id: REDIS-15, group: cluster-rebalance, desc: "Scale, slot migration and scale-in preserve key digest and TTL boundary", status: pass, evidence: "tests/evidence/redis-full-20261013-164045.json; current focused product gate, durable rc=0, zero failure markers and scoped-clean"}
+  - {id: REDIS-16, group: persistence, desc: "AOF/RDB restart, PVC retention and data read-back", status: pass, evidence: "tests/evidence/redis-full-20261013-164045.json; current focused product gate, durable rc=0, zero failure markers and scoped-clean"}
+  # Current Sentinel restore, customer offline path and revised Cluster export are bound in the aggregate evidence.
+  - {id: REDIS-17, group: backup, desc: "Independent backup artifact is non-zero/readable and restores to an isolated target", status: pass, evidence: "tests/evidence/redis-full-20261013-164045.json; current focused product gate, durable rc=0, zero failure markers and scoped-clean"}
+  - {id: REDIS-18, group: capacity, desc: "Memory watermark, replication lag, bounded disk pressure and PVC expansion", status: pass, evidence: "tests/evidence/redis-full-20261013-164045.json; current focused product gate, durable rc=0, zero failure markers and scoped-clean"}
+  # Impact: current Pod UID/readiness-bound lifecycle assertion; disproof: --redis-observability
+  - {id: REDIS-19, group: observability, desc: "Exporter/Prometheus metrics, alerts, events and first-failure diagnostics", status: pass, evidence: "tests/evidence/redis-full-20261013-164045.json; current focused product gate, durable rc=0, zero failure markers and scoped-clean"}
+  - {id: REDIS-20, group: performance, desc: "Fixed workload throughput, P50/P95/P99, zero business errors and resource profile", status: pass, evidence: "tests/evidence/redis-full-20261013-164045.json; current focused product gate, durable rc=0, zero failure markers and scoped-clean"}
+  # Impact: fresh revised Cluster runtime requires current two-topology soak; disproof: --redis-stability
+  - {id: REDIS-21, group: stability, desc: "Long soak with controlled Pod, node and Operator restarts", status: pass, evidence: "tests/evidence/redis-full-20261013-164045.json; current focused product gate, durable rc=0, zero failure markers and scoped-clean"}
+  - {id: REDIS-22, group: upgrade, desc: "Operator/CRD and Redis rolling upgrade with data retention and supported rollback", status: pass, evidence: "tests/evidence/redis-full-20261013-164045.json; current focused product gate, durable rc=0, zero failure markers and scoped-clean"}
+  - {id: REDIS-23, group: cleanup, desc: "Normal, failed and interrupted cleanup removes only owned objects", status: pass, evidence: "tests/evidence/redis-full-20261013-164045.json; current focused product gate, durable rc=0, zero failure markers and scoped-clean"}
+  - {id: REDIS-24, group: delivery, desc: "Final clean Redis regression, durable rc=0, zero failure markers and REDIS_CLEAN_VERIFY_PASS", status: pass, evidence: "tests/evidence/redis-full-20261013-164045.json; current focused product gate, durable rc=0, zero failure markers and scoped-clean"}

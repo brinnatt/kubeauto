@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "case_ids": [
+    "MONGODB-39"
+  ],
+  "runner": "bash tests/run_enterprise_regression.sh --mongodb-idempotence",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "core_uid": "4ddd4664-de27-41af-a579-93ed34c6fb03",
+  "markers": [
+    "MONGODB_CORE_IDENTITY_PASS cluster_uid=4ddd4664-de27-41af-a579-93ed34c6fb03",
+    "MONGODB_IDEMPOTENCE_ASSERTIONS_PASS",
+    "MONGODB_IDEMPOTENCE_SCOPED_CLEAN_PASS",
+    "MONGODB_IDEMPOTENCE_PASS",
+    "MONGODB_GATE_EXIT rc=0"
+  ],
+  "log_sha256": "9899b37e8061e072f55068a3e3b66c3e5e17ab4f6fcbd9f7c016061170ce05ca",
+  "durable_status": "state=exited pid=76073 rc=0 bytes=3734 pass_markers=4 failure_markers=0 latest=MONGODB_GATE_EXIT rc=0",
+  "dependencies": {
+    "roles/cluster-addon/files/mongodb.py": "56ca2fe4ccd722e6ae65e51e08d88a55947bb065fe48a71eb5d96ccee822b46f",
+    "tests/helpers/mongodb-lab.py": "2366ef954d7ee9743035b7859a801375f8d1652fb0f5615610395713ed52c05f",
+    "tests/helpers/mongodb-scenarios.py": "d9e1ba98fab0a231023a2124936d34dd826cba28c379b4774e4fb94d4cf28ed9",
+    "tests/helpers/mongodb-install-gate.sh": "cb0969529963b772ce84b48c4df3a626b073d16577953caadf30fbf64763c60a",
+    "tests/helpers/mongodb-runner.sh": "656dda54868bed25e1d24a2cdf3db6adb24bf1fbe660cc2a038465d111236020",
+    "tests/unit/test_mongodb_scenarios.py": "6f4e5cb8bfcf48798567e54aeb656bf9f906b04a5a039895b13c8e090ca210e6"
+  },
+  "cleanup": "in-memory snapshots discarded; no probe, fault or workload fixture created; verified healthy database and CSI retained"
+}

@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "case": "LONGHORN-09",
+  "date": "2026-10-19",
+  "status": "pass",
+  "command": "bash tests/run_enterprise_regression.sh --longhorn-rwx </dev/null",
+  "product_entry": "config.yml + kubecli setup longhorn-gate 09",
+  "rc": 0,
+  "durable_pid": 2384628,
+  "failure_markers": 0,
+  "success_marker": "LONGHORN_RWX_PASS",
+  "scoped_clean_marker": "LONGHORN_RWX_SCOPED_CLEAN_PASS",
+  "checks": {
+    "markers": [
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_RWX_LOCKS_VERIFIED exclusion=two-clients release=verified",
+      "LONGHORN_RWX_CLIENT_RESULT {\"client\": \"writer\", \"confirmed\": 331, \"errors\": 0, \"max_latency_s\": 11.743204169993987}",
+      "LONGHORN_RWX_CLIENT_RESULT {\"client\": \"reader\", \"confirmed\": 331, \"errors\": 0, \"max_latency_s\": 11.75637287599966}",
+      "LONGHORN_RWX_RECOVERY_VERIFIED old_uid=63672b64-fb80-47d2-885f-7df329c38602 new_uid=5609114d-bc3d-42ad-a54a-9a42297788ae share_manager_ready_s=14.361 observation_s=176.657",
+      "LONGHORN_FSYNC_REMOUNT_VERIFIED bytes=9437184 sha256=1e7b1b785af645da5a6aad141c6eb8f7f238080431a85e08b0663e3f6f8a743a replica_nodes=longhorn-node-165,longhorn-node-212,longhorn-node-238",
+      "LONGHORN_BUSINESS_FIXTURES_CLEAN_PASS",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_RWX_BUSINESS_PASS",
+      "LONGHORN_REGISTRY_TRANSPORT_CLEAN_PASS",
+      "LONGHORN_CORE_IDENTITY_PASS nodes=6",
+      "LONGHORN_RWX_SCOPED_CLEAN_PASS",
+      "LONGHORN_RWX_PASS"
+    ],
+    "healthy_core_and_storage_retained": true
+  },
+  "boundary": "Focused rwx acceptance only; no other pending module or full delivery acceptance inferred. Frozen source records actual synchronized inputs.",
+  "files": {
+    "logs/longhorn-cases/rwx-20261019-133120/durable-status.txt": "5caff031ae802bbe3084a8ee1d562ea9b9fe1cd27f0525700d2fcfd4a61d6ef6",
+    "logs/longhorn-cases/rwx-20261019-133120/frozen-source.txt": "e7eac9e7dbe3970ef1b817e79bc469f246e57f3915c1336e4e49f499d00b22f4",
+    "logs/longhorn-cases/rwx-20261019-133120/gate.log": "d943789fbb7688f55294582a88d6162a3c7f27efa0f4e2c2ce2cb29e63edd49d"
+  }
+}

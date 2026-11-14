@@ -1,0 +1,390 @@
+schema_version: 1
+kind: target-plan
+recorded_on: '2026-11-14'
+source_kubernetes: v1.33.6
+target_kubernetes: v1.34.13
+source_release: upgrade/v1.33.6/release.yaml
+target_branch: v1.34.13
+branch_created: false
+candidate_observed_on: '2026-11-13'
+candidate_source_ids:
+- K8S-STABLE
+scope: 只准备第一跳方案，后续逐 minor 候选不在本次实现/发布/现场授权内
+review:
+  design_review: 已接受方案方向，具体文件待评审；无客户签收主张
+  implementation_authorized: false
+  release_frozen: false
+  product_acceptance: null
+  customer_signoff: null
+  author_document_check:
+    checked_on: '2026-11-14'
+    scope: 本轮升级方案文件的内容、引用一致性与两类维护者阅读路径；不是完整官方研究或产品验收
+    requirements:
+    - requirement: 首次维护者能够按顺序进入第一跳
+      location: upgrade/README.md + upgrade/workflow.md 第1至7节
+      finding: 入口、阶段输入/出口、停止与恢复边界明确；未知客户基线和目标pin分别保留GAP，未给虚假现场命令
+    - requirement: 熟练维护者能够定位选型、复用和异常处置
+      location: upgrade/policy.md + upgrade/acceptance.md + upgrade/v1.34.13/acceptance-plan.yaml
+      finding: 官方证据力度、迁移边、最小影响、原矩阵映射、失败分类和最终范围分别有主要归属
+    - requirement: 新文件独立且不改签原交付
+      location: upgrade/AGENTS.md + upgrade/data-contract.md + upgrade/v1.33.6/release.yaml
+      finding: 新资产集中upgrade；根AGENTS仅导航；源码观察与客户基线分开，旧代码/门禁/证据不迁移
+    - requirement: 版本与证据结论不超出已核实事实
+      location: upgrade/official-sources.yaml + upgrade/v1.34.13/research.yaml
+      finding: 保留观察日期、已读范围、来源冲突和未读目录；所有目标组件决策待查，未宣称全矩阵兼容
+    - requirement: 数据可追溯且无虚构PASS
+      location: upgrade/catalog.yaml + upgrade/v1.33.6/inventory.yaml + upgrade/v1.34.13/test-matrix.yaml
+      finding: 组件引用/原矩阵ID/依赖顺序/源码与Dockerfile摘要可本地核对；正式项全部pending，执行入口为空
+    - requirement: 已GA基线继承、实际复制与回归成本边界
+      location: upgrade/acceptance.md 第1–6节、源evidence-manifest与目标acceptance-plan
+      finding: 修正只引用不复制、全部路径现场化和源身份未知等同未GA的问题；实际归档143份文件，目标适用性与原始归档核验仍未冒签完成
+    local_checks:
+    - YAML解析及重复key检查
+    - 30组件域决策/研究/影响映射全覆盖，28镜像组均有归属
+    - 15父项唯一ID、原矩阵ID存在、依赖无环和最终项全部前置引用
+    - 快照源码与178条外部镜像Dockerfile SHA256核对
+    - Markdown本地链接/锚点、代码块与新旧文件空白检查
+    limitations:
+    - 没有升级专用正式validator或现场执行，静态检查不能解锁产品PASS
+    - 官方四类目录增量、目标组合和必要身份关联仍待完成；不撤销源GA，不自动扩大现场范围
+    - 无非作者评审、用户文件批准或客户签收主张
+lifecycle:
+  upstream_maintained: false
+  role: 必要迁移桥梁，非长期受维护落点
+  source_ids:
+  - K8S-LIFECYCLE
+target_product_release: null
+target_source_sha: null
+target_repo_bindings: []
+target_artifact_receipts: []
+current_upgrade_contract:
+  production_entry: config.yml + kubecli upgrade
+  source_paths:
+  - playbooks/93.upgrade.yml
+  - roles/kube-master/tasks/main.yml
+  - roles/kube-node/tasks/main.yml
+  existing_gate: tests/helpers/delivery-upgrade-smoke.sh
+  existing_contract: tests/unit/test_upgrade_gate.py
+  proven_gate_scope: v1.33.5 到 v1.33.6 的单节点 Docker 补丁迁移；此处未重新核验旧现场证据
+  design_gaps:
+  - 当前 playbook 只显式拒绝相同版本，未提供完整 minor/降级/组合准入。
+  - 按单台 master 组合执行控制面和节点角色，需证明全部实际可达 API 的偏差与组件顺序。
+  - worker 更新无显式滚动批次，节点升级路径没有 drain/PDB 流程。
+  - 旧门禁不能证明 HA 跨 minor、持续业务、受控疏散和中断续跑。
+  classification: 新升级能力的准入缺口；未复现并认定现有稳定基线存在生产故障
+component_decisions:
+- component_id: product
+  decision: investigate
+  source: upgrade/v1.33.6/inventory.yaml
+  target_pins: null
+  source_ids: []
+  rationale: 逐具体版本完成官方增量、依赖、配套与维护期检查，再决定保持或最小更新。
+  transition_edges: []
+  acceptance_refs: []
+- component_id: kubernetes
+  decision: investigate
+  source: upgrade/v1.33.6/inventory.yaml
+  target_pins: null
+  source_ids:
+  - K8S-STABLE
+  - K8S-SKEW
+  - K8S-LIFECYCLE
+  - K8S-DEPENDENCIES-13413
+  rationale: K8s 官方 stable 候选已观察；制品、源码差异、源 patch 选择与混合阶段尚未冻结。
+  transition_edges: []
+  acceptance_refs: []
+- component_id: binary-packs
+  decision: investigate
+  source: upgrade/v1.33.6/inventory.yaml
+  target_pins: null
+  source_ids: []
+  rationale: 逐具体版本完成官方增量、依赖、配套与维护期检查，再决定保持或最小更新。
+  transition_edges: []
+  acceptance_refs: []
+- component_id: runtime
+  decision: investigate
+  source: upgrade/v1.33.6/inventory.yaml
+  target_pins: null
+  source_ids:
+  - CONTAINERD
+  rationale: 现有2.1.4满足1.34所列下限但2.1已EOL；维护期和源/目标过渡选型需先闭合，不重跑全部OS。
+  transition_edges: []
+  acceptance_refs: []
+- component_id: calico
+  decision: investigate
+  source: upgrade/v1.33.6/inventory.yaml
+  target_pins: null
+  source_ids:
+  - CALICO-328
+  rationale: 3.28官方测试表未覆盖目标1.34，选型及etcdv3桥接需先闭合；不否定旧项目GA，不把缺矩阵改成全量测试。
+  transition_edges: []
+  acceptance_refs: []
+- component_id: flannel
+  decision: investigate
+  source: upgrade/v1.33.6/inventory.yaml
+  target_pins: null
+  source_ids: []
+  rationale: 逐具体版本完成官方增量、依赖、配套与维护期检查，再决定保持或最小更新。
+  transition_edges: []
+  acceptance_refs: []
+- component_id: cilium
+  decision: investigate
+  source: upgrade/v1.33.6/inventory.yaml
+  target_pins: null
+  source_ids:
+  - CILIUM-1195
+  rationale: 现有1.19.5官方已测试1.33和1.34；优先核对版本增量及项目模式，不以核心表替代Hubble/内核等边界。
+  transition_edges: []
+  acceptance_refs: []
+- component_id: kube-router
+  decision: investigate
+  source: upgrade/v1.33.6/inventory.yaml
+  target_pins: null
+  source_ids: []
+  rationale: 逐具体版本完成官方增量、依赖、配套与维护期检查，再决定保持或最小更新。
+  transition_edges: []
+  acceptance_refs: []
+- component_id: kube-ovn
+  decision: investigate
+  source: upgrade/v1.33.6/inventory.yaml
+  target_pins: null
+  source_ids: []
+  rationale: 逐具体版本完成官方增量、依赖、配套与维护期检查，再决定保持或最小更新。
+  transition_edges: []
+  acceptance_refs: []
+- component_id: dns
+  decision: investigate
+  source: upgrade/v1.33.6/inventory.yaml
+  target_pins: null
+  source_ids: []
+  rationale: 逐具体版本完成官方增量、依赖、配套与维护期检查，再决定保持或最小更新。
+  transition_edges: []
+  acceptance_refs: []
+- component_id: metrics
+  decision: investigate
+  source: upgrade/v1.33.6/inventory.yaml
+  target_pins: null
+  source_ids:
+  - METRICS-080
+  rationale: 现有0.8.x官方支持1.31+，不能因K8s minor变化默认重测全部指标；冻结前仍核对最新兼容patch与实际API/配置差异。
+  transition_edges: []
+  acceptance_refs: []
+- component_id: ingress
+  decision: investigate
+  source: upgrade/v1.33.6/inventory.yaml
+  target_pins: null
+  source_ids:
+  - INGRESS-LIFECYCLE
+  rationale: 退役公告与部署页观察冲突待解；未授权控制器替换，风险只阻断相关选型，不扩大至全部中间件。
+  transition_edges: []
+  acceptance_refs: []
+- component_id: dashboard
+  decision: investigate
+  source: upgrade/v1.33.6/inventory.yaml
+  target_pins: null
+  source_ids: []
+  rationale: 逐具体版本完成官方增量、依赖、配套与维护期检查，再决定保持或最小更新。
+  transition_edges: []
+  acceptance_refs: []
+- component_id: local-storage
+  decision: investigate
+  source: upgrade/v1.33.6/inventory.yaml
+  target_pins: null
+  source_ids: []
+  rationale: 逐具体版本完成官方增量、依赖、配套与维护期检查，再决定保持或最小更新。
+  transition_edges: []
+  acceptance_refs: []
+- component_id: ceph
+  decision: investigate
+  source: upgrade/v1.33.6/inventory.yaml
+  target_pins: null
+  source_ids:
+  - CEPHCSI-3171
+  rationale: 现有CSI3.17.1表列目标1.34–1.36；源1.33官方测试与ARM64边界单独保留，不触发Ceph数据面全量复测。
+  transition_edges: []
+  acceptance_refs: []
+- component_id: longhorn
+  decision: investigate
+  source: upgrade/v1.33.6/inventory.yaml
+  target_pins: null
+  source_ids:
+  - LONGHORN-1121
+  rationale: 现有1.12.1官方已测试1.33–1.36；先核对最新兼容patch与自有补丁。网络策略测试限定发行版/CNI，优先核验原网络策略证据的目标适用性。
+  transition_edges: []
+  acceptance_refs: []
+- component_id: monitoring
+  decision: investigate
+  source: upgrade/v1.33.6/inventory.yaml
+  target_pins: null
+  source_ids: []
+  rationale: 逐具体版本完成官方增量、依赖、配套与维护期检查，再决定保持或最小更新。
+  transition_edges: []
+  acceptance_refs: []
+- component_id: logging
+  decision: investigate
+  source: upgrade/v1.33.6/inventory.yaml
+  target_pins: null
+  source_ids: []
+  rationale: 逐具体版本完成官方增量、依赖、配套与维护期检查，再决定保持或最小更新。
+  transition_edges: []
+  acceptance_refs: []
+- component_id: elasticsearch
+  decision: investigate
+  source: upgrade/v1.33.6/inventory.yaml
+  target_pins: null
+  source_ids: []
+  rationale: 唯一共享 ECK 的版本/CRD/转换/准入必须覆盖业务 ES 与日志消费者，不自动升级引擎。
+  transition_edges: []
+  acceptance_refs: []
+- component_id: mysql
+  decision: investigate
+  source: upgrade/v1.33.6/inventory.yaml
+  target_pins: null
+  source_ids: []
+  rationale: 逐具体版本完成官方增量、依赖、配套与维护期检查，再决定保持或最小更新。
+  transition_edges: []
+  acceptance_refs: []
+- component_id: kafka
+  decision: investigate
+  source: upgrade/v1.33.6/inventory.yaml
+  target_pins: null
+  source_ids:
+  - STRIMZI-120
+  rationale: 现有Strimzi1.2.0支持K8s1.30–1.36且配套Kafka4.3.1；优先保留不变业务深测，核对CRD/Drain Cleaner等实际差异。
+  transition_edges: []
+  acceptance_refs: []
+- component_id: mongodb
+  decision: investigate
+  source: upgrade/v1.33.6/inventory.yaml
+  target_pins: null
+  source_ids: []
+  rationale: 逐具体版本完成官方增量、依赖、配套与维护期检查，再决定保持或最小更新。
+  transition_edges: []
+  acceptance_refs: []
+- component_id: redis
+  decision: investigate
+  source: upgrade/v1.33.6/inventory.yaml
+  target_pins: null
+  source_ids: []
+  rationale: 保持受保护 Operator 与 Cluster ASM 修订的修复语义；不能用原生镜像替换而丢补丁。
+  transition_edges: []
+  acceptance_refs: []
+- component_id: minio
+  decision: investigate
+  source: upgrade/v1.33.6/inventory.yaml
+  target_pins: null
+  source_ids: []
+  rationale: 逐具体版本完成官方增量、依赖、配套与维护期检查，再决定保持或最小更新。
+  transition_edges: []
+  acceptance_refs: []
+- component_id: nacos
+  decision: investigate
+  source: upgrade/v1.33.6/inventory.yaml
+  target_pins: null
+  source_ids: []
+  rationale: 逐具体版本完成官方增量、依赖、配套与维护期检查，再决定保持或最小更新。
+  transition_edges: []
+  acceptance_refs: []
+- component_id: rocketmq
+  decision: investigate
+  source: upgrade/v1.33.6/inventory.yaml
+  target_pins: null
+  source_ids: []
+  rationale: 当前 operator:latest 不能进入新冻结组合；需查固定官方版本与支持依据。
+  transition_edges: []
+  acceptance_refs: []
+- component_id: registry
+  decision: investigate
+  source: upgrade/v1.33.6/inventory.yaml
+  target_pins: null
+  source_ids: []
+  rationale: 逐具体版本完成官方增量、依赖、配套与维护期检查，再决定保持或最小更新。
+  transition_edges: []
+  acceptance_refs: []
+- component_id: control-client
+  decision: investigate
+  source: upgrade/v1.33.6/inventory.yaml
+  target_pins: null
+  source_ids: []
+  rationale: 逐具体版本完成官方增量、依赖、配套与维护期检查，再决定保持或最小更新。
+  transition_edges: []
+  acceptance_refs: []
+- component_id: test-infrastructure
+  decision: investigate
+  source: upgrade/v1.33.6/inventory.yaml
+  target_pins: null
+  source_ids: []
+  rationale: 逐具体版本完成官方增量、依赖、配套与维护期检查，再决定保持或最小更新。
+  transition_edges: []
+  acceptance_refs: []
+- component_id: tools
+  decision: investigate
+  source: upgrade/v1.33.6/inventory.yaml
+  target_pins: null
+  source_ids: []
+  rationale: 先查是否消费变化的 API/依赖；不启动独立 tools 全量，也不借用其旧 PASS。
+  transition_edges: []
+  acceptance_refs: []
+migration_edges: []
+recovery_plan:
+  verified: false
+  journal_identity: null
+  etcd_restore: null
+  business_restore: null
+  irreversible_boundaries: []
+  source_ids:
+  - K8S-SKEW
+gaps:
+- id: GAP-01
+  name: 客户源身份关联（不重开GA）
+  blocks_through: P0
+  exit: 已接受源全功能GA；关联精确tag/制品/配置用于目标复用，只阻断缺失身份所涉及的主张。
+- id: GAP-02
+  name: 完整依赖盘点
+  blocks_through: P1
+  exit: 展开 Chart/模板/fixture 隐式 pin 和每项用途，消除库存与实际消费的混淆。
+- id: GAP-03
+  name: 官方目录与组合
+  blocks_through: P2
+  exit: 补齐四类资料目录、已知问题、维护期及准确支持范围；逐组件冻结目标和桥接。
+- id: GAP-04
+  name: 源 patch 桥接
+  blocks_through: P2
+  exit: 决定是否确需 1.33.13；官方推荐与强制要求区分并记录依据。
+- id: GAP-05
+  name: Calico 过渡
+  blocks_through: P2
+  exit: 找到官方覆盖源/目标的稳定组合及升级链，保持本项目 etcdv3 路径。
+- id: GAP-06
+  name: 运行时维护与生态退役
+  blocks_through: P2
+  exit: containerd 维护期、Ingress NGINX 官方来源冲突和必要替换独立决策。
+- id: GAP-07
+  name: 产品升级准入与顺序
+  blocks_through: P4
+  exit: 证明跳 minor/降级拒绝、混合阶段偏差、逐节点 drain/PDB 和失败续跑。
+- id: GAP-08
+  name: 供应链范围与完整性
+  blocks_through: P5
+  exit: 精确选择 k8s-bin 构建，官方下载校验/原子落盘，双端双架构回读，拒绝范围越界。
+- id: GAP-09
+  name: 证据复用及矩阵映射
+  blocks_through: P3
+  exit: 正式副本已归档并映射；逐主张核对增量、必要原始归档与目标适用性，只冻结剩余最小补证及成本上界。
+- id: GAP-10
+  name: 独立升级执行入口
+  blocks_through: P4
+  exit: 新增专用 validator/runner/合同留在 upgrade；先证明真实 handoff、收证和前置拒绝。
+- id: GAP-11
+  name: 恢复与资源计划
+  blocks_through: P3
+  exit: 明确各不可逆点/数据窗口、精确恢复出口、主机租约和清理边界，现场前验证。
+- id: GAP-12
+  name: 发布身份与打包
+  blocks_through: P8
+  exit: 核验 root tag workflow/build.py 的 tools 副作用及升级目录是否需要随产品交付。
+baseline_inheritance:
+  source_ga_accepted: true
+  record: upgrade/v1.33.6/release.yaml
+  evidence_manifest: upgrade/v1.33.6/evidence-manifest.yaml
+  decision_semantics: investigate是目标选型/适用性待判断，不表示旧GA失效或每组件需现场全量回归

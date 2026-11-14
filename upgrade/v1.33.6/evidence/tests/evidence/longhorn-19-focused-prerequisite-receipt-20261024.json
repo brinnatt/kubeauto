@@ -1,0 +1,62 @@
+{
+  "schema": 1,
+  "date": "2026-10-24",
+  "case": "LONGHORN-19",
+  "status": "pass",
+  "rc": 0,
+  "failure_markers": 0,
+  "durable": {
+    "exit": 0,
+    "finalized": 0
+  },
+  "complete_matrix_item": true,
+  "version": "1.12.1",
+  "original_acceptance": {
+    "path": "tests/evidence/longhorn-replica-and-disk-failure-20261022.json",
+    "sha256": "04aebec975e03b33b2ed88e6a47340750509ae065ea1cd8ed5d3106179e0dec8"
+  },
+  "verified_owning_scopes": {
+    "native_replica_process": {
+      "evidence": {
+        "path": "tests/evidence/longhorn-replica-failure-20261022.json",
+        "sha256": "b80b54954379e8440dbbd9df376af41ff4e8b680290d4926589c733edf8a2c74"
+      },
+      "durable": {
+        "exit": 0,
+        "finalized": 0
+      },
+      "raw_files_verified": 22,
+      "clean_complete_module_logs": [
+        {
+          "path": "logs/longhorn-cases/replica-failure-current-20261022/process-final/raw/tmp/kubeauto-longhorn-live.log",
+          "sha256": "9619560c1a5d5e53bde4454519e9f9845776dc1f428b122cc26f81303827972a"
+        }
+      ],
+      "success_marker": "LONGHORN_REPLICA_FAILURE_PASS",
+      "scoped_clean_marker": "LONGHORN_REPLICA_FAILURE_SCOPED_CLEAN_PASS"
+    },
+    "physical_filesystem_disk": {
+      "evidence": {
+        "path": "tests/evidence/longhorn-disk-failure-20261022.json",
+        "sha256": "4a8298da7ac5296f95f2b5ba49986278325dd27d915f0096d80692e506885f7e"
+      },
+      "durable": {
+        "local_exit": 0,
+        "local_finalized": 0,
+        "remote_exit": 0,
+        "remote_finalized": 0
+      },
+      "raw_files_verified": 8,
+      "clean_complete_module_logs": [
+        {
+          "path": "logs/longhorn-cases/disk-business-retry-20261022/owning-gate.log",
+          "sha256": "70d57ba5ed68932794048bdc102f2c684812197d4d111c5be2576f594f2b5039"
+        }
+      ],
+      "success_marker": "LONGHORN_DISK_FAILURE_PASS",
+      "scoped_clean_marker": "LONGHORN_DISK_FAILURE_SCOPED_CLEAN_PASS"
+    }
+  },
+  "evidence_kind": "read-only-schema-normalization-of-existing-complete-focused-acceptance",
+  "boundary": "No live replay or new module success. Original records and all declared scopes retain version, data, resource, cleanup and extrapolation boundaries; final current full regression remains mandatory."
+}
