@@ -1,0 +1,251 @@
+{
+  "schema_version": 1,
+  "observed_on": "2026-11-15",
+  "matrix_ids": [
+    "UPG-03"
+  ],
+  "claim": "Original accepted GA build-input fingerprints and executable/rootfs continuity to current double-registry image identities; not identical index/config bytes or upstream exact K8s certification",
+  "original_evidence": "upgrade/v1.33.6/evidence/tests/evidence/ext-images-20261008.json",
+  "original_run_id": "37753406582",
+  "original_sha": "b8db20b3c1e1561136755a58abc15dd32770deb4",
+  "original_archives": {
+    "delivery-acceptance.json": {
+      "path": "upgrade/v1.34.13/evidence/raw/legacy-ga-publication/37753406582/delivery-acceptance.json",
+      "sha256": "07e6842ddb484f6464397e447d368cf75edb599ad28145aebbcef783a7a6b2ca",
+      "bytes": 2243
+    },
+    "37753406582-run.json": {
+      "path": "upgrade/v1.34.13/evidence/raw/legacy-ga-publication/37753406582/37753406582-run.json",
+      "sha256": "f878eb5dc1a35cce015beb6d91d92c52c2540b9f10693f85b5821db5b1e273a9",
+      "bytes": 15057
+    },
+    "37753406582-jobs-latest.json": {
+      "path": "upgrade/v1.34.13/evidence/raw/legacy-ga-publication/37753406582/37753406582-jobs-latest.json",
+      "sha256": "f5a32d117c7ad3af56095f35e998f2c22ed405b312402d57d308cbf9292740cf",
+      "bytes": 47568
+    },
+    "37753406582-artifacts.json": {
+      "path": "upgrade/v1.34.13/evidence/raw/legacy-ga-publication/37753406582/37753406582-artifacts.json",
+      "sha256": "15f6b57a2d0c44fb951e18ef89346a3b25b710cd81e361270e479a2398c1a9d2",
+      "bytes": 8019
+    },
+    "37753406582-verified-records.json": {
+      "path": "upgrade/v1.34.13/evidence/raw/legacy-ga-publication/37753406582/37753406582-verified-records.json",
+      "sha256": "2b803834c794a74b03a5b1dea0c503301c937d12f877fe18f1d7b1b02860f782",
+      "bytes": 89541
+    },
+    "37753406582-image-plan.zip": {
+      "path": "upgrade/v1.34.13/evidence/raw/legacy-ga-publication/37753406582/37753406582-image-plan.zip",
+      "sha256": "53c55e00a3427fc0267efa02075121e98bceb9ca4a93df87cd59b0a9dc036437",
+      "bytes": 8804
+    },
+    "37753406582-plan-evidence-1.zip": {
+      "path": "upgrade/v1.34.13/evidence/raw/legacy-ga-publication/37753406582/37753406582-plan-evidence-1.zip",
+      "sha256": "cdf0953925338d2ee8bafe84fd1667a638bdf73b95a417e46093e56a5a41f151",
+      "bytes": 298
+    },
+    "37753406582-release-evidence-0-1.zip": {
+      "path": "upgrade/v1.34.13/evidence/raw/legacy-ga-publication/37753406582/37753406582-release-evidence-0-1.zip",
+      "sha256": "120df983da05a809685e9d2f2675b578c05132c9526132eb7d2659430d2fb6c0",
+      "bytes": 33346
+    },
+    "37753406582-release-evidence-1-1.zip": {
+      "path": "upgrade/v1.34.13/evidence/raw/legacy-ga-publication/37753406582/37753406582-release-evidence-1-1.zip",
+      "sha256": "61395b53086e39dccd667f68edd61c5c7ca036c94743c1d585ca1f016889e079",
+      "bytes": 220482
+    },
+    "37753406582-release-evidence-2-1.zip": {
+      "path": "upgrade/v1.34.13/evidence/raw/legacy-ga-publication/37753406582/37753406582-release-evidence-2-1.zip",
+      "sha256": "a5266c8e3390e6eebecdcc81db936491a07b44c49eb4d74ca28fcdae48bac450",
+      "bytes": 29217
+    },
+    "37753406582-release-evidence-3-1.zip": {
+      "path": "upgrade/v1.34.13/evidence/raw/legacy-ga-publication/37753406582/37753406582-release-evidence-3-1.zip",
+      "sha256": "9c6d7484c4de8cf2d251e76fa5f07ec8c735a938bcc8db4ef9d11b8007b83735",
+      "bytes": 104238
+    },
+    "37753406582-release-evidence-4-1.zip": {
+      "path": "upgrade/v1.34.13/evidence/raw/legacy-ga-publication/37753406582/37753406582-release-evidence-4-1.zip",
+      "sha256": "581ad2858215cf805fb3ef7aa7210421069b654349b1505a4cfdda925a89a01d",
+      "bytes": 28170
+    },
+    "37753406582-release-evidence-5-1.zip": {
+      "path": "upgrade/v1.34.13/evidence/raw/legacy-ga-publication/37753406582/37753406582-release-evidence-5-1.zip",
+      "sha256": "9684e24fd6e5f485fd0d2f61ef25643f7b4cc26f9be30a05532474301599bca7",
+      "bytes": 22954
+    },
+    "37753406582-release-evidence-6-1.zip": {
+      "path": "upgrade/v1.34.13/evidence/raw/legacy-ga-publication/37753406582/37753406582-release-evidence-6-1.zip",
+      "sha256": "a352029c820e4df104fa868f6ea0420a7a4c4a5e43b3a485d87c0dc0e8401275",
+      "bytes": 5338
+    }
+  },
+  "current_readback_evidence": "upgrade/v1.34.13/evidence/legacy-manifest-readback.json",
+  "content_comparison": {
+    "path": "upgrade/v1.34.13/evidence/raw/legacy-ga-publication/content-comparison.json",
+    "sha256": "af24058e995cd93f8f754c5b12b944341baec45e82fefbffe4868b69a9654d0d",
+    "bytes": 16572
+  },
+  "records": [
+    {
+      "key": "brinnatt/registry:2",
+      "original_release": {
+        "digest": "sha256:34ce77b215ba91e23d20da26127ac4983967f96e534fc9d6d48c506e87c12b23",
+        "fingerprint": "a5ebf62b479fb9960769ea7db614036cf4b9923788d0d222e82009df5adb1da3",
+        "head": "b8db20b3c1e1561136755a58abc15dd32770deb4",
+        "key": "brinnatt/registry:2",
+        "platforms": {
+          "linux/amd64": "sha256:35e8772970efb8888339d1cbbdc6b6e1f49d48e97d0066db143d1e4c083e64fe",
+          "linux/arm64": "sha256:ca3cdfbbe3d4d3a19f337a5373e9e6c3de9098f0f8b42d8b76efc15c0e3c27e6"
+        },
+        "schema": 1,
+        "source_digest": "sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373",
+        "source_ref": "docker.io/library/registry:2"
+      },
+      "current_identity": {
+        "row": {
+          "dockerfile": "./platform/registry/registry/Dockerfile",
+          "image": "brinnatt/registry",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/registry",
+          "tag": "2",
+          "ctx": "./platform/registry/registry/"
+        },
+        "fingerprint": "a5ebf62b479fb9960769ea7db614036cf4b9923788d0d222e82009df5adb1da3",
+        "talkedu": {
+          "digest": "sha256:3ecb41811885031808684a16cd09cb5c4c0fbe29d9ca1c9e806eedffb0a9ca66",
+          "platforms": {
+            "linux/amd64": "sha256:08b32fac48cfc49b8dd040249a93b1697b194070708bc2476ec9134cfb9d1b3b",
+            "linux/arm64": "sha256:a38f12f4bb27eaa70f05321ff7216d4a2a9060e7aecd1a51e3e9bf535da634d8"
+          }
+        },
+        "dockerhub": {
+          "digest": "sha256:3ecb41811885031808684a16cd09cb5c4c0fbe29d9ca1c9e806eedffb0a9ca66",
+          "platforms": {
+            "linux/amd64": "sha256:08b32fac48cfc49b8dd040249a93b1697b194070708bc2476ec9134cfb9d1b3b",
+            "linux/arm64": "sha256:a38f12f4bb27eaa70f05321ff7216d4a2a9060e7aecd1a51e3e9bf535da634d8"
+          }
+        }
+      },
+      "unchanged_content": [
+        "AMD64/ARM64 layer descriptors",
+        "rootfs diff_ids",
+        "runtime configuration excluding image Labels"
+      ],
+      "different_content": [
+        "index digest",
+        "platform manifest digest",
+        "config digest; metadata is not identity-equivalent"
+      ],
+      "runtime_version_proven": "Image identity only; no new process execution"
+    },
+    {
+      "key": "brinnatt/registry:2.8.3",
+      "original_release": {
+        "digest": "sha256:942691ba15fec1568726bc84d734c802f34394b9e7fac64479253abe8a27af8b",
+        "fingerprint": "a93703c43d24fb0116cc845af776c0f70c950e62d24c77b92290483b97cb687b",
+        "head": "b8db20b3c1e1561136755a58abc15dd32770deb4",
+        "key": "brinnatt/registry:2.8.3",
+        "platforms": {
+          "linux/amd64": "sha256:dc9c304e5503975a99086365e88cb5741f00edd4097df6d7e1a9d92bb2497167",
+          "linux/arm64": "sha256:631df08d3d258f644d5264fa085f55aae6dd502131c6ef68d4d19abb40284bca"
+        },
+        "schema": 1,
+        "source_digest": "sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373",
+        "source_ref": "docker.io/library/registry:2.8.3"
+      },
+      "current_identity": {
+        "row": {
+          "dockerfile": "./tooling/test-infrastructure/registry-2.8.3/Dockerfile",
+          "image": "brinnatt/registry",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/registry",
+          "tag": "2.8.3",
+          "ctx": "./tooling/test-infrastructure/registry-2.8.3/"
+        },
+        "fingerprint": "a93703c43d24fb0116cc845af776c0f70c950e62d24c77b92290483b97cb687b",
+        "talkedu": {
+          "digest": "sha256:1f53ffdde2e358d3e880ed587e14c95bd1053af4feb093b0e9881f519ba4fb26",
+          "platforms": {
+            "linux/amd64": "sha256:7432dc16e997619674adf6e8c4dc47748404cb923031300bf5884b134032407b",
+            "linux/arm64": "sha256:22edab652a34f34c3e3485a38f46fc0cd608fc23b0fb9abfa4b9093e6694e1fa"
+          }
+        },
+        "dockerhub": {
+          "digest": "sha256:1f53ffdde2e358d3e880ed587e14c95bd1053af4feb093b0e9881f519ba4fb26",
+          "platforms": {
+            "linux/amd64": "sha256:7432dc16e997619674adf6e8c4dc47748404cb923031300bf5884b134032407b",
+            "linux/arm64": "sha256:22edab652a34f34c3e3485a38f46fc0cd608fc23b0fb9abfa4b9093e6694e1fa"
+          }
+        }
+      },
+      "unchanged_content": [
+        "AMD64/ARM64 layer descriptors",
+        "rootfs diff_ids",
+        "runtime configuration excluding image Labels"
+      ],
+      "different_content": [
+        "index digest",
+        "platform manifest digest",
+        "config digest; metadata is not identity-equivalent"
+      ],
+      "runtime_version_proven": "Image identity only; no new process execution"
+    },
+    {
+      "key": "brinnatt/rocketmq-operator:latest",
+      "original_release": {
+        "digest": "sha256:285d907f04e999ec8db76c330b506d9b77cfa5e5fd642bbf9bb903fb77c2a2ce",
+        "fingerprint": "b9e2992d7a1d691ac4b64464ba63d9351c9e4f61555f26389134111ff74a6c50",
+        "head": "b8db20b3c1e1561136755a58abc15dd32770deb4",
+        "key": "brinnatt/rocketmq-operator:latest",
+        "platforms": {
+          "linux/amd64": "sha256:f522dab2db0c6f1085f582416511fb720f1ad0c3a7d30740f3703a5919d184c0",
+          "linux/arm64": "sha256:11ba95bd82fcc47b1688bfdc7bd1a81b112aeb081c2e22231b2c132456fed66b"
+        },
+        "schema": 1,
+        "source_digest": "sha256:6a18551e1d790fa43ea295a175b3eb1a3e6b821f399fdaa6057be36e104003a4",
+        "source_ref": "docker.io/apache/rocketmq-operator:latest"
+      },
+      "current_identity": {
+        "row": {
+          "dockerfile": "./middleware/rocketmq/rocketmq-operator/Dockerfile",
+          "image": "brinnatt/rocketmq-operator",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/rocketmq-operator",
+          "tag": "latest",
+          "ctx": "./middleware/rocketmq/rocketmq-operator/"
+        },
+        "fingerprint": "b9e2992d7a1d691ac4b64464ba63d9351c9e4f61555f26389134111ff74a6c50",
+        "talkedu": {
+          "digest": "sha256:66516b068aa9b73bee2b218556f551111fc75721a32aa183f655106ef10bcfdf",
+          "platforms": {
+            "linux/amd64": "sha256:af59226058b6b62f2562cfbaba4f8e54b7fb6fee423875984e0ed5a20216acaa",
+            "linux/arm64": "sha256:3e4e448247064be99a4afb531052bcb2b11b1ab20b1729a19e5c53e5294bfb13"
+          }
+        },
+        "dockerhub": {
+          "digest": "sha256:66516b068aa9b73bee2b218556f551111fc75721a32aa183f655106ef10bcfdf",
+          "platforms": {
+            "linux/amd64": "sha256:af59226058b6b62f2562cfbaba4f8e54b7fb6fee423875984e0ed5a20216acaa",
+            "linux/arm64": "sha256:3e4e448247064be99a4afb531052bcb2b11b1ab20b1729a19e5c53e5294bfb13"
+          }
+        }
+      },
+      "unchanged_content": [
+        "AMD64/ARM64 layer descriptors",
+        "rootfs diff_ids",
+        "runtime configuration excluding image Labels"
+      ],
+      "different_content": [
+        "index digest",
+        "platform manifest digest",
+        "config digest; metadata is not identity-equivalent"
+      ],
+      "runtime_version_proven": false
+    }
+  ],
+  "rebuild_required_by_this_identity_check": false,
+  "remaining": [
+    "Freeze consumer references by immutable digest",
+    "RocketMQ actual binary/source identity and Kubernetes API applicability",
+    "Lifecycle decisions and owning project minimal integration evidence"
+  ],
+  "parent_acceptance": false
+}

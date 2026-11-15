@@ -1,0 +1,54 @@
+# Controller-side admission, before drain. The outer owner supplies per-arch
+# extracted, checksum-qualified bundles and the reviewed schema-3 configuration.
+- name: Require the exact reviewed containerd transition inputs
+  ansible.builtin.assert:
+    that:
+      - UPGRADE_PRECONDITIONS_VERIFIED | default(false) == true
+      - CONTAINER_RUNTIME | default('') == 'containerd'
+      - UPGRADE_CONTAINERD_BUNDLES | default({}) | list | sort == ['2.2.10', '2.3.7']
+      - UPGRADE_CONTAINERD_BUNDLES['2.2.10'].sha256.runc == UPGRADE_CONTAINERD_BUNDLES['2.3.7'].sha256.runc
+      - UPGRADE_CONTAINERD_CONFIG.path is match('^/[^\n\r]+$')
+      - UPGRADE_CONTAINERD_CONFIG.sha256 is match('^[0-9a-f]{64}$')
+      - UPGRADE_CONTAINERD_SOURCE_CONFIG_SHA256 is match('^[0-9a-f]{64}$')
+      - UPGRADE_CONTAINERD_UNIT_SHA256 is match('^[0-9a-f]{64}$')
+    fail_msg: Containerd migration needs the admitted two-edge bundles and reviewed configuration.
+
+- name: Require precisely the consumed binaries in each runtime bundle
+  ansible.builtin.assert:
+    that:
+      - item.value.directory is match('^/[^\n\r]+$')
+      - item.value.sha256 | list | sort == ['containerd', 'containerd-shim-runc-v2', 'ctr', 'runc']
+      - item.value.sha256.values() | select('match', '^[0-9a-f]{64}$') | list | length == 4
+  loop: "{{ UPGRADE_CONTAINERD_BUNDLES | dict2items }}"
+
+- name: Observe every consumed controller runtime file
+  ansible.builtin.stat:
+    path: "{{ UPGRADE_CONTAINERD_BUNDLES[item.0].directory }}/{{ item.1 }}"
+    checksum_algorithm: sha256
+    follow: false
+  loop: "{{ ['2.2.10', '2.3.7'] | product(['containerd', 'containerd-shim-runc-v2', 'ctr', 'runc']) | list }}"
+  register: upgrade_containerd_files
+  delegate_to: localhost
+
+- name: Reject missing symlink or changed controller runtime files
+  ansible.builtin.assert:
+    that:
+      - item.stat.isreg | default(false)
+      - not (item.stat.islnk | default(false))
+      - item.stat.checksum | default('') == UPGRADE_CONTAINERD_BUNDLES[item.item.0].sha256[item.item.1]
+  loop: "{{ upgrade_containerd_files.results }}"
+
+- name: Observe the reviewed controller containerd configuration
+  ansible.builtin.stat:
+    path: "{{ UPGRADE_CONTAINERD_CONFIG.path }}"
+    checksum_algorithm: sha256
+    follow: false
+  register: upgrade_containerd_config_file
+  delegate_to: localhost
+
+- name: Reject a missing symlink or changed reviewed configuration
+  ansible.builtin.assert:
+    that:
+      - upgrade_containerd_config_file.stat.isreg | default(false)
+      - not (upgrade_containerd_config_file.stat.islnk | default(false))
+      - upgrade_containerd_config_file.stat.checksum | default('') == UPGRADE_CONTAINERD_CONFIG.sha256

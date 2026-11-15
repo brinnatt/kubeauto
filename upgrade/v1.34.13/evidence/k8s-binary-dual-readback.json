@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "mode": "verify",
+  "built_images": [],
+  "published_images": [],
+  "pulled_layers": false,
+  "records": [
+    {
+      "image": "hub.talkedu.cn/kubeauto/kubeauto-k8s-bin:v1.34.13",
+      "digest": "sha256:102ab56b22ea78c726949ff18c6798f6d7a1a53dd7debc07384373985e153d35",
+      "platforms": {
+        "linux/amd64": "sha256:4e494547894ccd9009383a1acae091a4f4d9036bb57457450fe7d061d25b4813",
+        "linux/arm64": "sha256:56cf124d1c5e810eeb1b9d327cc1d59a7ac59b764fa06e3e728edf8aeccb0d1c"
+      }
+    },
+    {
+      "image": "docker.io/brinnatt/kubeauto-k8s-bin:v1.34.13",
+      "digest": "sha256:102ab56b22ea78c726949ff18c6798f6d7a1a53dd7debc07384373985e153d35",
+      "platforms": {
+        "linux/amd64": "sha256:4e494547894ccd9009383a1acae091a4f4d9036bb57457450fe7d061d25b4813",
+        "linux/arm64": "sha256:56cf124d1c5e810eeb1b9d327cc1d59a7ac59b764fa06e3e728edf8aeccb0d1c"
+      }
+    }
+  ],
+  "marker": "K8S_DUAL_REGISTRY_READBACK_PASS",
+  "run_id": 43608565612,
+  "run_url": "https://github.com/brinnatt/kubeauto-k8s-bin-dockerfile/actions/runs/43608565612",
+  "source_sha": "03e42a944a094d36f84981b293031d70cddabbd0",
+  "workflow_conclusion": "success",
+  "durable_status": "rc=0",
+  "artifact_sha256": "sha256:ca43345f1fa3a7cd82bf4e4a4b5d56683a9d887fff444f25fb3bcdea89cd7708",
+  "archive_reference": "upgrade/v1.34.13/evidence/raw/actions-43608565612-readback.zip",
+  "archive_bytes": 891,
+  "parent_acceptance": false
+}

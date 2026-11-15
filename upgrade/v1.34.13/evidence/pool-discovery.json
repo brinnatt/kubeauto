@@ -1,0 +1,645 @@
+{
+  "observed_on": "2026-11-14",
+  "command": "KUBEAUTO_MATRIX_WIP=1 bash tests/run_enterprise_regression.sh --startup-pool-inventory",
+  "rc": 1,
+  "mutation": "none",
+  "lease": "none",
+  "raw_log_sha256": "f587f5375fac6cb428807d71fb9ac5185a5325d52b37da76087b3d13bf140ff4",
+  "boundary": "只读资源观察，不是租约/干净资格/升级PASS；原日志本地私有保存，不提交",
+  "records": [
+    {
+      "target": "root@192.168.47.130",
+      "os": "OS=rocky VERSION=8.10 KERNEL=4.18.0-553.el8_10.x86_64",
+      "memory": "MemTotal:        3720884 kB",
+      "services": {
+        "kubelet": "inactive",
+        "etcd": "inactive",
+        "containerd": "inactive",
+        "docker": "active"
+      },
+      "ownership_observations": [],
+      "errors": []
+    },
+    {
+      "target": "root@192.168.47.131",
+      "os": "OS=rocky VERSION=8.10 KERNEL=4.18.0-553.el8_10.x86_64",
+      "memory": "MemTotal:        3720872 kB",
+      "services": {
+        "kubelet": "inactive",
+        "etcd": "inactive",
+        "containerd": "inactive",
+        "docker": "inactive"
+      },
+      "ownership_observations": [],
+      "errors": []
+    },
+    {
+      "target": "root@192.168.47.132",
+      "os": "OS=rocky VERSION=8.10 KERNEL=4.18.0-553.el8_10.x86_64",
+      "memory": "MemTotal:        3720868 kB",
+      "services": {
+        "kubelet": "inactive",
+        "etcd": "inactive",
+        "containerd": "inactive",
+        "docker": "inactive"
+      },
+      "ownership_observations": [],
+      "errors": []
+    },
+    {
+      "target": "root@192.168.47.133",
+      "os": "OS=rocky VERSION=8.10 KERNEL=4.18.0-553.el8_10.x86_64",
+      "memory": "MemTotal:        3720868 kB",
+      "services": {
+        "kubelet": "inactive",
+        "etcd": "inactive",
+        "containerd": "inactive",
+        "docker": "inactive"
+      },
+      "ownership_observations": [],
+      "errors": []
+    },
+    {
+      "target": "root@192.168.47.134",
+      "os": "OS=rocky VERSION=8.10 KERNEL=4.18.0-553.el8_10.x86_64",
+      "memory": "MemTotal:        3720848 kB",
+      "services": {
+        "kubelet": "inactive",
+        "etcd": "inactive",
+        "containerd": "inactive",
+        "docker": "inactive"
+      },
+      "ownership_observations": [],
+      "errors": []
+    },
+    {
+      "target": "root@192.168.47.135",
+      "os": "OS=rocky VERSION=8.10 KERNEL=4.18.0-553.el8_10.x86_64",
+      "memory": "MemTotal:        3720868 kB",
+      "services": {
+        "kubelet": "inactive",
+        "etcd": "inactive",
+        "containerd": "inactive",
+        "docker": "inactive"
+      },
+      "ownership_observations": [],
+      "errors": []
+    },
+    {
+      "target": "root@192.168.47.136",
+      "os": "OS=rocky VERSION=8.10 KERNEL=4.18.0-553.el8_10.x86_64",
+      "memory": "MemTotal:        3720844 kB",
+      "services": {
+        "kubelet": "inactive",
+        "etcd": "inactive",
+        "containerd": "inactive",
+        "docker": "inactive"
+      },
+      "ownership_observations": [],
+      "errors": []
+    },
+    {
+      "target": "root@192.168.47.137",
+      "os": "OS=rocky VERSION=8.10 KERNEL=4.18.0-553.el8_10.x86_64",
+      "memory": "MemTotal:        3720852 kB",
+      "services": {
+        "kubelet": "inactive",
+        "etcd": "inactive",
+        "containerd": "inactive",
+        "docker": "inactive"
+      },
+      "ownership_observations": [],
+      "errors": []
+    },
+    {
+      "target": "ubuntu@192.168.47.138",
+      "os": "OS=ubuntu VERSION=22.04 KERNEL=5.15.0-198-generic",
+      "memory": "MemTotal:        3968844 kB",
+      "services": {
+        "kubelet": "inactive",
+        "etcd": "inactive",
+        "containerd": "inactive",
+        "docker": "active"
+      },
+      "ownership_observations": [],
+      "errors": []
+    },
+    {
+      "target": "brinnatt@192.168.47.128",
+      "os": null,
+      "memory": null,
+      "services": {},
+      "ownership_observations": [],
+      "errors": [
+        "ssh: connect to host 192.168.47.128 port 22: No route to host"
+      ]
+    },
+    {
+      "target": "root@192.168.47.141",
+      "os": "OS=anolis VERSION=23.3 KERNEL=6.6.88-4.an23.x86_64",
+      "memory": "MemTotal:        3776568 kB",
+      "services": {
+        "kubelet": "inactive",
+        "etcd": "inactive",
+        "containerd": "inactive",
+        "docker": "inactive"
+      },
+      "ownership_observations": [],
+      "errors": []
+    },
+    {
+      "target": "root@192.168.47.142",
+      "os": "OS=openEuler VERSION=22.03 KERNEL=5.10.0-216.0.0.115.oe2203sp4.x86_64",
+      "memory": "MemTotal:        3457024 kB",
+      "services": {
+        "kubelet": "inactive",
+        "etcd": "inactive",
+        "containerd": "inactive",
+        "docker": "inactive"
+      },
+      "ownership_observations": [],
+      "errors": []
+    },
+    {
+      "target": "root@192.168.47.143",
+      "os": "OS=opensuse-leap VERSION=16.0 KERNEL=6.12.0-160000.5-default",
+      "memory": "MemTotal:        3926972 kB",
+      "services": {
+        "kubelet": "inactive",
+        "etcd": "inactive",
+        "containerd": "inactive",
+        "docker": "inactive"
+      },
+      "ownership_observations": [],
+      "errors": []
+    },
+    {
+      "target": "root@192.168.122.2",
+      "os": "OS=rocky VERSION=9.8 KERNEL=5.14.0-687.10.1.el9_8.0.1.x86_64",
+      "memory": "MemTotal:        8197128 kB",
+      "services": {
+        "kubelet": "active",
+        "etcd": "active",
+        "containerd": "active",
+        "docker": "active"
+      },
+      "ownership_observations": [],
+      "errors": []
+    },
+    {
+      "target": "root@192.168.122.217",
+      "os": "OS=rocky VERSION=9.8 KERNEL=5.14.0-687.10.1.el9_8.0.1.x86_64",
+      "memory": "MemTotal:       16259040 kB",
+      "services": {
+        "kubelet": "inactive",
+        "etcd": "inactive",
+        "containerd": "inactive",
+        "docker": "inactive"
+      },
+      "ownership_observations": [],
+      "errors": []
+    },
+    {
+      "target": "root@192.168.122.243",
+      "os": "OS=rocky VERSION=9.8 KERNEL=5.14.0-687.10.1.el9_8.0.1.x86_64",
+      "memory": "MemTotal:       16259048 kB",
+      "services": {
+        "kubelet": "inactive",
+        "etcd": "inactive",
+        "containerd": "inactive",
+        "docker": "inactive"
+      },
+      "ownership_observations": [],
+      "errors": []
+    },
+    {
+      "target": "root@192.168.122.246",
+      "os": "OS=rocky VERSION=9.8 KERNEL=5.14.0-687.10.1.el9_8.0.1.x86_64",
+      "memory": "MemTotal:       16259040 kB",
+      "services": {
+        "kubelet": "inactive",
+        "etcd": "inactive",
+        "containerd": "inactive",
+        "docker": "inactive"
+      },
+      "ownership_observations": [],
+      "errors": []
+    },
+    {
+      "target": "root@192.168.122.193",
+      "os": "OS=rocky VERSION=9.8 KERNEL=5.14.0-687.10.1.el9_8.0.1.x86_64",
+      "memory": "MemTotal:       16259044 kB",
+      "services": {
+        "kubelet": "inactive",
+        "etcd": "inactive",
+        "containerd": "inactive",
+        "docker": "inactive"
+      },
+      "ownership_observations": [],
+      "errors": []
+    },
+    {
+      "target": "root@192.168.122.210",
+      "os": "OS=rocky VERSION=9.8 KERNEL=5.14.0-687.10.1.el9_8.0.1.x86_64",
+      "memory": "MemTotal:       16259048 kB",
+      "services": {
+        "kubelet": "inactive",
+        "etcd": "inactive",
+        "containerd": "inactive",
+        "docker": "inactive"
+      },
+      "ownership_observations": [],
+      "errors": []
+    },
+    {
+      "target": "root@192.168.122.216",
+      "os": "OS=rocky VERSION=9.8 KERNEL=5.14.0-687.10.1.el9_8.0.1.x86_64",
+      "memory": "MemTotal:       16259044 kB",
+      "services": {
+        "kubelet": "inactive",
+        "etcd": "inactive",
+        "containerd": "inactive",
+        "docker": "inactive"
+      },
+      "ownership_observations": [],
+      "errors": []
+    },
+    {
+      "target": "root@192.168.122.135",
+      "os": "OS=rocky VERSION=9.8 KERNEL=5.14.0-687.10.1.el9_8.0.1.x86_64",
+      "memory": "MemTotal:       15976324 kB",
+      "services": {
+        "kubelet": "inactive",
+        "etcd": "inactive",
+        "containerd": "inactive",
+        "docker": "inactive"
+      },
+      "ownership_observations": [],
+      "errors": []
+    },
+    {
+      "target": "root@192.168.122.40",
+      "os": "OS=rocky VERSION=9.8 KERNEL=5.14.0-687.10.1.el9_8.0.1.x86_64",
+      "memory": "MemTotal:       15976344 kB",
+      "services": {
+        "kubelet": "inactive",
+        "etcd": "inactive",
+        "containerd": "inactive",
+        "docker": "inactive"
+      },
+      "ownership_observations": [],
+      "errors": []
+    },
+    {
+      "target": "root@192.168.122.72",
+      "os": "OS=rocky VERSION=9.8 KERNEL=5.14.0-687.10.1.el9_8.0.1.x86_64",
+      "memory": "MemTotal:       15976348 kB",
+      "services": {
+        "kubelet": "inactive",
+        "etcd": "inactive",
+        "containerd": "inactive",
+        "docker": "inactive"
+      },
+      "ownership_observations": [],
+      "errors": []
+    },
+    {
+      "target": "root@192.168.122.212",
+      "os": "OS=rocky VERSION=9.8 KERNEL=5.14.0-687.10.1.el9_8.0.1.x86_64",
+      "memory": "MemTotal:       15976348 kB",
+      "services": {
+        "kubelet": "inactive",
+        "etcd": "inactive",
+        "containerd": "inactive",
+        "docker": "inactive"
+      },
+      "ownership_observations": [],
+      "errors": []
+    },
+    {
+      "target": "root@192.168.122.165",
+      "os": "OS=rocky VERSION=9.8 KERNEL=5.14.0-687.10.1.el9_8.0.1.x86_64",
+      "memory": "MemTotal:       15976344 kB",
+      "services": {
+        "kubelet": "inactive",
+        "etcd": "inactive",
+        "containerd": "inactive",
+        "docker": "inactive"
+      },
+      "ownership_observations": [],
+      "errors": []
+    },
+    {
+      "target": "root@192.168.122.238",
+      "os": "OS=rocky VERSION=9.8 KERNEL=5.14.0-687.10.1.el9_8.0.1.x86_64",
+      "memory": "MemTotal:       15976344 kB",
+      "services": {
+        "kubelet": "inactive",
+        "etcd": "inactive",
+        "containerd": "inactive",
+        "docker": "inactive"
+      },
+      "ownership_observations": [],
+      "errors": []
+    }
+  ],
+  "followup": {
+    "observed_on": "2026-11-14",
+    "reason": "交付负责人确认.47.128恢复；通过同一固定入口复核",
+    "command": "KUBEAUTO_MATRIX_WIP=1 bash tests/run_enterprise_regression.sh --startup-pool-inventory",
+    "rc": 0,
+    "raw_log_sha256": "f84539d2fe61abcfe9d16789f84d0bea26b99dc40e62dfd2319d633f935070ba",
+    "reachable": 26,
+    "mutation": "none",
+    "lease": "none",
+    "records": [
+      {
+        "target": "root@192.168.47.130",
+        "os": "OS=rocky VERSION=8.10 KERNEL=4.18.0-553.el8_10.x86_64",
+        "memory": "MemTotal:        3720884 kB",
+        "services": {
+          "kubelet": "inactive",
+          "etcd": "inactive",
+          "containerd": "inactive",
+          "docker": "active"
+        }
+      },
+      {
+        "target": "root@192.168.47.131",
+        "os": "OS=rocky VERSION=8.10 KERNEL=4.18.0-553.el8_10.x86_64",
+        "memory": "MemTotal:        3720872 kB",
+        "services": {
+          "kubelet": "inactive",
+          "etcd": "inactive",
+          "containerd": "inactive",
+          "docker": "inactive"
+        }
+      },
+      {
+        "target": "root@192.168.47.132",
+        "os": "OS=rocky VERSION=8.10 KERNEL=4.18.0-553.el8_10.x86_64",
+        "memory": "MemTotal:        3720868 kB",
+        "services": {
+          "kubelet": "inactive",
+          "etcd": "inactive",
+          "containerd": "inactive",
+          "docker": "inactive"
+        }
+      },
+      {
+        "target": "root@192.168.47.133",
+        "os": "OS=rocky VERSION=8.10 KERNEL=4.18.0-553.el8_10.x86_64",
+        "memory": "MemTotal:        3720868 kB",
+        "services": {
+          "kubelet": "inactive",
+          "etcd": "inactive",
+          "containerd": "inactive",
+          "docker": "inactive"
+        }
+      },
+      {
+        "target": "root@192.168.47.134",
+        "os": "OS=rocky VERSION=8.10 KERNEL=4.18.0-553.el8_10.x86_64",
+        "memory": "MemTotal:        3720848 kB",
+        "services": {
+          "kubelet": "inactive",
+          "etcd": "inactive",
+          "containerd": "inactive",
+          "docker": "inactive"
+        }
+      },
+      {
+        "target": "root@192.168.47.135",
+        "os": "OS=rocky VERSION=8.10 KERNEL=4.18.0-553.el8_10.x86_64",
+        "memory": "MemTotal:        3720868 kB",
+        "services": {
+          "kubelet": "inactive",
+          "etcd": "inactive",
+          "containerd": "inactive",
+          "docker": "inactive"
+        }
+      },
+      {
+        "target": "root@192.168.47.136",
+        "os": "OS=rocky VERSION=8.10 KERNEL=4.18.0-553.el8_10.x86_64",
+        "memory": "MemTotal:        3720844 kB",
+        "services": {
+          "kubelet": "inactive",
+          "etcd": "inactive",
+          "containerd": "inactive",
+          "docker": "inactive"
+        }
+      },
+      {
+        "target": "root@192.168.47.137",
+        "os": "OS=rocky VERSION=8.10 KERNEL=4.18.0-553.el8_10.x86_64",
+        "memory": "MemTotal:        3720852 kB",
+        "services": {
+          "kubelet": "inactive",
+          "etcd": "inactive",
+          "containerd": "inactive",
+          "docker": "inactive"
+        }
+      },
+      {
+        "target": "ubuntu@192.168.47.138",
+        "os": "OS=ubuntu VERSION=22.04 KERNEL=5.15.0-198-generic",
+        "memory": "MemTotal:        3968844 kB",
+        "services": {
+          "kubelet": "inactive",
+          "etcd": "inactive",
+          "containerd": "inactive",
+          "docker": "active"
+        }
+      },
+      {
+        "target": "brinnatt@192.168.47.128",
+        "os": "OS=debian VERSION=13 KERNEL=6.12.86+deb13-amd64",
+        "memory": "MemTotal:        3977076 kB",
+        "services": {
+          "kubelet": "inactive",
+          "etcd": "inactive",
+          "containerd": "inactive",
+          "docker": "inactive"
+        }
+      },
+      {
+        "target": "root@192.168.47.141",
+        "os": "OS=anolis VERSION=23.3 KERNEL=6.6.88-4.an23.x86_64",
+        "memory": "MemTotal:        3776568 kB",
+        "services": {
+          "kubelet": "inactive",
+          "etcd": "inactive",
+          "containerd": "inactive",
+          "docker": "inactive"
+        }
+      },
+      {
+        "target": "root@192.168.47.142",
+        "os": "OS=openEuler VERSION=22.03 KERNEL=5.10.0-216.0.0.115.oe2203sp4.x86_64",
+        "memory": "MemTotal:        3457024 kB",
+        "services": {
+          "kubelet": "inactive",
+          "etcd": "inactive",
+          "containerd": "inactive",
+          "docker": "inactive"
+        }
+      },
+      {
+        "target": "root@192.168.47.143",
+        "os": "OS=opensuse-leap VERSION=16.0 KERNEL=6.12.0-160000.5-default",
+        "memory": "MemTotal:        3926972 kB",
+        "services": {
+          "kubelet": "inactive",
+          "etcd": "inactive",
+          "containerd": "inactive",
+          "docker": "inactive"
+        }
+      },
+      {
+        "target": "root@192.168.122.2",
+        "os": "OS=rocky VERSION=9.8 KERNEL=5.14.0-687.10.1.el9_8.0.1.x86_64",
+        "memory": "MemTotal:        8197128 kB",
+        "services": {
+          "kubelet": "active",
+          "etcd": "active",
+          "containerd": "active",
+          "docker": "active"
+        }
+      },
+      {
+        "target": "root@192.168.122.217",
+        "os": "OS=rocky VERSION=9.8 KERNEL=5.14.0-687.10.1.el9_8.0.1.x86_64",
+        "memory": "MemTotal:       16259040 kB",
+        "services": {
+          "kubelet": "inactive",
+          "etcd": "inactive",
+          "containerd": "inactive",
+          "docker": "inactive"
+        }
+      },
+      {
+        "target": "root@192.168.122.243",
+        "os": "OS=rocky VERSION=9.8 KERNEL=5.14.0-687.10.1.el9_8.0.1.x86_64",
+        "memory": "MemTotal:       16259048 kB",
+        "services": {
+          "kubelet": "inactive",
+          "etcd": "inactive",
+          "containerd": "inactive",
+          "docker": "inactive"
+        }
+      },
+      {
+        "target": "root@192.168.122.246",
+        "os": "OS=rocky VERSION=9.8 KERNEL=5.14.0-687.10.1.el9_8.0.1.x86_64",
+        "memory": "MemTotal:       16259040 kB",
+        "services": {
+          "kubelet": "inactive",
+          "etcd": "inactive",
+          "containerd": "inactive",
+          "docker": "inactive"
+        }
+      },
+      {
+        "target": "root@192.168.122.193",
+        "os": "OS=rocky VERSION=9.8 KERNEL=5.14.0-687.10.1.el9_8.0.1.x86_64",
+        "memory": "MemTotal:       16259044 kB",
+        "services": {
+          "kubelet": "inactive",
+          "etcd": "inactive",
+          "containerd": "inactive",
+          "docker": "inactive"
+        }
+      },
+      {
+        "target": "root@192.168.122.210",
+        "os": "OS=rocky VERSION=9.8 KERNEL=5.14.0-687.10.1.el9_8.0.1.x86_64",
+        "memory": "MemTotal:       16259048 kB",
+        "services": {
+          "kubelet": "inactive",
+          "etcd": "inactive",
+          "containerd": "inactive",
+          "docker": "inactive"
+        }
+      },
+      {
+        "target": "root@192.168.122.216",
+        "os": "OS=rocky VERSION=9.8 KERNEL=5.14.0-687.10.1.el9_8.0.1.x86_64",
+        "memory": "MemTotal:       16259044 kB",
+        "services": {
+          "kubelet": "inactive",
+          "etcd": "inactive",
+          "containerd": "inactive",
+          "docker": "inactive"
+        }
+      },
+      {
+        "target": "root@192.168.122.135",
+        "os": "OS=rocky VERSION=9.8 KERNEL=5.14.0-687.10.1.el9_8.0.1.x86_64",
+        "memory": "MemTotal:       15976324 kB",
+        "services": {
+          "kubelet": "inactive",
+          "etcd": "inactive",
+          "containerd": "inactive",
+          "docker": "inactive"
+        }
+      },
+      {
+        "target": "root@192.168.122.40",
+        "os": "OS=rocky VERSION=9.8 KERNEL=5.14.0-687.10.1.el9_8.0.1.x86_64",
+        "memory": "MemTotal:       15976344 kB",
+        "services": {
+          "kubelet": "inactive",
+          "etcd": "inactive",
+          "containerd": "inactive",
+          "docker": "inactive"
+        }
+      },
+      {
+        "target": "root@192.168.122.72",
+        "os": "OS=rocky VERSION=9.8 KERNEL=5.14.0-687.10.1.el9_8.0.1.x86_64",
+        "memory": "MemTotal:       15976348 kB",
+        "services": {
+          "kubelet": "inactive",
+          "etcd": "inactive",
+          "containerd": "inactive",
+          "docker": "inactive"
+        }
+      },
+      {
+        "target": "root@192.168.122.212",
+        "os": "OS=rocky VERSION=9.8 KERNEL=5.14.0-687.10.1.el9_8.0.1.x86_64",
+        "memory": "MemTotal:       15976348 kB",
+        "services": {
+          "kubelet": "inactive",
+          "etcd": "inactive",
+          "containerd": "inactive",
+          "docker": "inactive"
+        }
+      },
+      {
+        "target": "root@192.168.122.165",
+        "os": "OS=rocky VERSION=9.8 KERNEL=5.14.0-687.10.1.el9_8.0.1.x86_64",
+        "memory": "MemTotal:       15976344 kB",
+        "services": {
+          "kubelet": "inactive",
+          "etcd": "inactive",
+          "containerd": "inactive",
+          "docker": "inactive"
+        }
+      },
+      {
+        "target": "root@192.168.122.238",
+        "os": "OS=rocky VERSION=9.8 KERNEL=5.14.0-687.10.1.el9_8.0.1.x86_64",
+        "memory": "MemTotal:       15976344 kB",
+        "services": {
+          "kubelet": "inactive",
+          "etcd": "inactive",
+          "containerd": "inactive",
+          "docker": "inactive"
+        }
+      }
+    ],
+    "boundary": "先前rc=1首失败保留；本结果只证明只读盘点与连通性，不签租约/清理/升级资格"
+  }
+}

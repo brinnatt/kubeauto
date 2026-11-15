@@ -1,0 +1,339 @@
+package cmd
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"os"
+	"os/signal"
+	"sync"
+	"syscall"
+	"time"
+
+	"github.com/cloudnativelabs/kube-router/v2/pkg/controllers/lballoc"
+	"github.com/cloudnativelabs/kube-router/v2/pkg/controllers/netpol"
+	"github.com/cloudnativelabs/kube-router/v2/pkg/controllers/proxy"
+	"github.com/cloudnativelabs/kube-router/v2/pkg/controllers/routing"
+	"github.com/cloudnativelabs/kube-router/v2/pkg/healthcheck"
+	"github.com/cloudnativelabs/kube-router/v2/pkg/k8s/indexers"
+	"github.com/cloudnativelabs/kube-router/v2/pkg/metrics"
+	"github.com/cloudnativelabs/kube-router/v2/pkg/options"
+	"github.com/cloudnativelabs/kube-router/v2/pkg/svcip"
+	"github.com/cloudnativelabs/kube-router/v2/pkg/utils"
+	"github.com/cloudnativelabs/kube-router/v2/pkg/version"
+	"k8s.io/klog/v2"
+
+	v1core "k8s.io/api/core/v1"
+	"k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/clientcmd"
+)
+
+const (
+	healthControllerChannelLength = 10
+	nftablesInitTimeout           = 30 * time.Second
+)
+
+// KubeRouter holds the information needed to run server
+type KubeRouter struct {
+	Client kubernetes.Interface
+	Config *options.KubeRouterConfig
+}
+
+// sharedInformers bundles every informer we start so that we can hand a single value to each controller.
+// Each controller declares its own narrow interface over this (routing.Informers, proxy.Informers, and so on)
+// and therefore only ever sees the informers it actually watches.
+type sharedInformers struct {
+	services        cache.SharedIndexInformer
+	endpointSlices  cache.SharedIndexInformer
+	pods            cache.SharedIndexInformer
+	nodes           cache.SharedIndexInformer
+	namespaces      cache.SharedIndexInformer
+	networkPolicies cache.SharedIndexInformer
+}
+
+func (s *sharedInformers) Services() cache.SharedIndexInformer        { return s.services }
+func (s *sharedInformers) EndpointSlices() cache.SharedIndexInformer  { return s.endpointSlices }
+func (s *sharedInformers) Pods() cache.SharedIndexInformer            { return s.pods }
+func (s *sharedInformers) Nodes() cache.SharedIndexInformer           { return s.nodes }
+func (s *sharedInformers) Namespaces() cache.SharedIndexInformer      { return s.namespaces }
+func (s *sharedInformers) NetworkPolicies() cache.SharedIndexInformer { return s.networkPolicies }
+
+// NewKubeRouterDefault returns a KubeRouter object
+func NewKubeRouterDefault(config *options.KubeRouterConfig) (*KubeRouter, error) {
+
+	var clientconfig *rest.Config
+	var err error
+	version.PrintVersion(true)
+	version.PrintVersionMessages(true)
+	// Use out of cluster config if the kubeconfig has been specified. Otherwise use incluster config.
+	//nolint:gocritic // An if-elseif-else is more readable than a switch in this case.
+	if len(config.Kubeconfig) != 0 {
+		clientconfig, err = clientcmd.BuildConfigFromFlags(config.Master, config.Kubeconfig)
+		if err != nil {
+			return nil, fmt.Errorf("failed to build configuration from CLI: %w", err)
+		}
+	} else if len(config.Master) != 0 {
+		// InClusterConfig() fails with ErrNotInCluster if these are unset.
+		os.Setenv("KUBERNETES_SERVICE_HOST", " ")
+		os.Setenv("KUBERNETES_SERVICE_PORT", " ")
+
+		clientconfig, err = rest.InClusterConfig()
+		if err != nil {
+			return nil, fmt.Errorf("unable to initialize inclusterconfig: %w", err)
+		}
+
+		os.Setenv("KUBERNETES_SERVICE_HOST", "")
+		os.Setenv("KUBERNETES_SERVICE_PORT", "")
+
+		clientconfig.Host = config.Master
+	} else {
+		clientconfig, err = rest.InClusterConfig()
+		if err != nil {
+			return nil, fmt.Errorf("unable to initialize inclusterconfig: %w", err)
+		}
+	}
+
+	clientset, err := kubernetes.NewForConfig(clientconfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Kubernetes client: %w", err)
+	}
+
+	return &KubeRouter{Client: clientset, Config: config}, nil
+}
+
+// CleanupConfigAndExit performs Cleanup on all three controllers
+func CleanupConfigAndExit(config *options.KubeRouterConfig) {
+	if config != nil && config.UseNftablesForNetpol {
+		npc := netpol.NetworkPolicyControllerNftables{NetworkPolicyControllerBase: &netpol.NetworkPolicyControllerBase{}}
+		npc.Cleanup()
+	} else {
+		npc := netpol.NetworkPolicyControllerIptables{NetworkPolicyControllerBase: &netpol.NetworkPolicyControllerBase{}}
+		npc.Cleanup()
+	}
+
+	nsc := proxy.NetworkServicesController{}
+	nsc.Cleanup()
+
+	nrc := routing.NetworkRoutingController{}
+	nrc.Cleanup()
+}
+
+// Run starts the controllers and waits forever till we get SIGINT or SIGTERM
+func (kr *KubeRouter) Run() error {
+	var err error
+	var ipsetMutex sync.Mutex
+	var wg sync.WaitGroup
+
+	if !kr.Config.RunFirewall && !kr.Config.RunServiceProxy && !kr.Config.RunRouter {
+		klog.Info("Router, Firewall or Service proxy functionality must be specified. Exiting!")
+		os.Exit(0)
+	}
+
+	healthChan := make(chan *healthcheck.ControllerHeartbeat, healthControllerChannelLength)
+	defer close(healthChan)
+	stopCh := make(chan struct{})
+
+	// Verify the health address/port combo provided is listenable
+	if err := utils.TCPAddressBindable(kr.Config.HealthAddr, kr.Config.HealthPort); err != nil {
+		return fmt.Errorf("failed to listen on %s:%d for heath controller: %w",
+			kr.Config.HealthAddr,
+			int(kr.Config.HealthPort),
+			err)
+	}
+
+	hc, err := healthcheck.NewHealthController(kr.Config)
+	if err != nil {
+		return fmt.Errorf("failed to create health controller: %w", err)
+	}
+	wg.Add(1)
+	go hc.RunServer(stopCh, &wg)
+
+	// Setup factory and informers
+	informerFactory := informers.NewSharedInformerFactory(kr.Client, 0)
+	krInformers := &sharedInformers{
+		services:        informerFactory.Core().V1().Services().Informer(),
+		endpointSlices:  informerFactory.Discovery().V1().EndpointSlices().Informer(),
+		pods:            informerFactory.Core().V1().Pods().Informer(),
+		nodes:           informerFactory.Core().V1().Nodes().Informer(),
+		namespaces:      informerFactory.Core().V1().Namespaces().Informer(),
+		networkPolicies: informerFactory.Networking().V1().NetworkPolicies().Informer(),
+	}
+
+	// Add custom indexers
+	err = krInformers.EndpointSlices().AddIndexers(map[string]cache.IndexFunc{
+		indexers.ServiceNameIndex: indexers.ServiceNameIndexFunc,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to add indexers to endpoint slice informer: %w", err)
+	}
+
+	informerFactory.Start(stopCh)
+
+	err = kr.CacheSyncOrTimeout(informerFactory, stopCh)
+	if err != nil {
+		return fmt.Errorf("failed to synchronize cache: %w", err)
+	}
+
+	hc.SetAlive()
+	wg.Add(1)
+	go hc.RunCheck(healthChan, stopCh, &wg)
+
+	if kr.Config.MetricsPort > 0 && kr.Config.MetricsPort < 65535 {
+
+		// Verify the metrics address/port combo provided is listenable
+		if err := utils.TCPAddressBindable(kr.Config.MetricsAddr, kr.Config.MetricsPort); err != nil {
+			return fmt.Errorf("failed to listen on %s:%d for metrics: %w",
+				kr.Config.MetricsAddr,
+				int(kr.Config.MetricsPort),
+				err)
+		}
+
+		kr.Config.MetricsEnabled = true
+		mc, err := metrics.NewMetricsController(kr.Config)
+		if err != nil {
+			return fmt.Errorf("failed to create metrics controller: %w", err)
+		}
+		wg.Add(1)
+		go mc.Run(healthChan, stopCh, &wg)
+
+	} else {
+		klog.Infof("Metrics port must be over 0 and under 65535 in order to be enabled, given port: %d",
+			kr.Config.MetricsPort)
+		klog.Infof("Disabling metrics for kube-router, set --metrics-port properly in order to enable")
+		kr.Config.MetricsEnabled = false
+	}
+
+	if kr.Config.BGPGracefulRestart {
+		if kr.Config.BGPGracefulRestartTime > time.Second*4095 {
+			return errors.New("BGPGracefulRestartTime should be less than 4095 seconds")
+		}
+		if kr.Config.BGPGracefulRestartTime <= 0 {
+			return errors.New("BGPGracefulRestartTime must be positive")
+		}
+
+		if kr.Config.BGPGracefulRestartDeferralTime > time.Hour*18 {
+			return errors.New("BGPGracefulRestartDeferralTime should be less than 18 hours")
+		}
+		if kr.Config.BGPGracefulRestartDeferralTime <= 0 {
+			return errors.New("BGPGracefulRestartDeferralTime must be positive")
+		}
+	}
+
+	ipValidator, err := svcip.NewValidator(svcip.Config{
+		ExternalIPCIDRs:   kr.Config.ExternalIPCIDRs,
+		LoadBalancerCIDRs: kr.Config.LoadBalancerCIDRs,
+		ClusterIPCIDRs:    kr.Config.ClusterIPCIDRs,
+		StrictValidation:  kr.Config.StrictExternalIPValidation,
+		EnableIPv4:        kr.Config.EnableIPv4,
+		EnableIPv6:        kr.Config.EnableIPv6,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create service IP validator: %w", err)
+	}
+	ipValidator.LogStatus()
+
+	if kr.Config.RunRouter {
+		nrc, err := routing.NewNetworkRoutingController(kr.Client, kr.Config,
+			krInformers, &ipsetMutex, ipValidator)
+		if err != nil {
+			return fmt.Errorf("failed to create network routing controller: %w", err)
+		}
+
+		wg.Add(1)
+		go nrc.Run(healthChan, stopCh, &wg)
+
+		// wait for the pod networking related firewall rules to be setup before network policies
+		if kr.Config.RunFirewall {
+			nrc.CNIFirewallSetup.L.Lock()
+			nrc.CNIFirewallSetup.Wait()
+			nrc.CNIFirewallSetup.L.Unlock()
+		}
+	}
+
+	if kr.Config.RunServiceProxy {
+		nsc, err := proxy.NewNetworkServicesController(kr.Client, kr.Config,
+			krInformers, &ipsetMutex, ipValidator)
+		if err != nil {
+			return fmt.Errorf("failed to create network services controller: %w", err)
+		}
+
+		wg.Add(1)
+		go nsc.Run(healthChan, stopCh, &wg)
+
+		// wait for the proxy firewall rules to be setup before network policies
+		if kr.Config.RunFirewall {
+			nsc.ProxyFirewallSetup.L.Lock()
+			nsc.ProxyFirewallSetup.Wait()
+			nsc.ProxyFirewallSetup.L.Unlock()
+		}
+	}
+
+	if kr.Config.RunFirewall {
+		var iptablesCmdHandlers map[v1core.IPFamily]utils.IPTablesHandler
+		var ipSetHandlers map[v1core.IPFamily]utils.IPSetHandler
+		if !kr.Config.UseNftablesForNetpol {
+			var err error
+			iptablesCmdHandlers, ipSetHandlers, err = netpol.NewIPTablesHandlers(kr.Config)
+			if err != nil {
+				return fmt.Errorf("failed to create iptables handlers: %w", err)
+			}
+		}
+		nftCtx, nftCancel := context.WithTimeout(context.Background(), nftablesInitTimeout)
+		knftablesInterfaces, err := netpol.NewKnftablesInterfaces(nftCtx, kr.Config)
+		nftCancel()
+		if err != nil {
+			return fmt.Errorf("failed to create nftables interfaces: %v", err)
+		}
+		npc, err := netpol.NewNetworkPolicyController(kr.Client,
+			kr.Config, krInformers, &ipsetMutex, nil,
+			iptablesCmdHandlers, ipSetHandlers, ipValidator, knftablesInterfaces)
+		if err != nil {
+			return fmt.Errorf("failed to create network policy controller: %w", err)
+		}
+
+		wg.Add(1)
+		go npc.Run(healthChan, stopCh, &wg)
+	}
+
+	if kr.Config.RunLoadBalancer {
+		klog.V(0).Info("running load balancer allocator controller")
+		lbc, err := lballoc.NewLoadBalancerController(kr.Client, kr.Config, krInformers, ipValidator)
+		if err != nil {
+			return fmt.Errorf("failed to create load balancer allocator: %w", err)
+		}
+
+		wg.Add(1)
+		go lbc.Run(healthChan, stopCh, &wg)
+	}
+
+	// Handle SIGINT and SIGTERM
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
+	<-ch
+
+	klog.Infof("Shutting down the controllers")
+	close(stopCh)
+
+	wg.Wait()
+	return nil
+}
+
+// CacheSyncOrTimeout performs cache synchronization under timeout limit
+func (kr *KubeRouter) CacheSyncOrTimeout(informerFactory informers.SharedInformerFactory,
+	stopCh <-chan struct{}) error {
+	syncOverCh := make(chan struct{})
+	go func() {
+		informerFactory.WaitForCacheSync(stopCh)
+		close(syncOverCh)
+	}()
+
+	select {
+	case <-time.After(kr.Config.CacheSyncTimeout):
+		return fmt.Errorf("%s timeout", kr.Config.CacheSyncTimeout.String())
+	case <-syncOverCh:
+		return nil
+	}
+}

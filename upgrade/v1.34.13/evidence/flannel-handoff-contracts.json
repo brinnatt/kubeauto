@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-11-14T21:38:50.380800+00:00",
+  "matrix_ids": [
+    "UPG-04",
+    "UPG-08",
+    "UPG-12"
+  ],
+  "classification": "product internal stage + offline test-gate",
+  "product_entry": "config.yml + kubecli upgrade; outer CLI/journal/artifact/lease/recovery admission remains to be connected",
+  "official_source_ids": [
+    "FLANNEL-02810-FIRST-HOP",
+    "FLANNEL-02810-MANIFEST",
+    "FLANNEL-02810-INSTALL-CONF",
+    "FLANNEL-02810-HEALTH",
+    "K8S134-JSON-PATCH",
+    "K8S134-API-CONCURRENCY"
+  ],
+  "inputs_sha256": {
+    "upgrade/product/flannel_stage.py": "a090a488a991c57e030905cd8dcaeb0e27957ed2ce598b15be5f6a048e8f9e86",
+    "upgrade/tests/test_flannel_stage.py": "ed5b43adbc35dc0babc5520f1f951b831660d4d01c04438bb1b5467f260d3e0d",
+    "roles/flannel/templates/kube-flannel.yaml.j2": "9841eb60176021c16e1f457b767975869d260f3943ee90a2d3aad61d202bf931",
+    "upgrade/tests/test_flannel.py": "d763dfcd9bdc5768a6cfe013837c834ffca7f7770497d5ba08ab39766411bd0f"
+  },
+  "command": ".venv/bin/python -B -m unittest upgrade.tests.test_flannel_stage upgrade.tests.test_flannel upgrade.tests.test_records upgrade.tests.test_product_release_scope -v",
+  "rc": 0,
+  "tests": 19,
+  "flannel_handoff_tests": 11,
+  "logs": {
+    "first-attempt": {
+      "path": "upgrade/v1.34.13/evidence/raw/flannel-handoff/first-attempt.log",
+      "sha256": "6d54c61001a1306bae64cb450e4ac3ce6aa8db2d1c135d08b6ff50771fed4d8b",
+      "bytes": 4800,
+      "rc": 1
+    },
+    "focused-repair": {
+      "path": "upgrade/v1.34.13/evidence/raw/flannel-handoff/focused-repair.log",
+      "sha256": "d59c645f1308c1a3cd658b3ac815a586dd322983c62d72e64b8737ef2bfd6dd3",
+      "bytes": 506,
+      "rc": 0
+    },
+    "qualified": {
+      "path": "upgrade/v1.34.13/evidence/raw/flannel-handoff/qualified.log",
+      "sha256": "51764cef3c5c2ba4bfb80f0e933d8e9c939018522f88f141ff51717151bff34d",
+      "bytes": 4704,
+      "rc": 0
+    }
+  },
+  "scope": [
+    "Real kubectl subprocess JSON Patch with UID/resourceVersion and original spec/data tests, conflict retains rc and prevents dependent write",
+    "Target delta equals real product-rendered v0.28.10/CNIv1.9.1-flannel3 manifest across vxlan/direct routing/host-gw; preserve original net-conf, selectors, namespace, RBAC and all admitted unknown/defaulted live fields",
+    "Complete saved source objects and full actual API/node cluster identities required before any write; source all-node health and complete DaemonSet coverage required",
+    "Host/CNI/module/owned-port qualification and real traffic callbacks mandatory; not replaced with HTTP readiness",
+    "ConfigMap first, actual traffic boundary, then DaemonSet; each write reobserves identity/content; source/target resume is reverified and never replayed; no automatic rollback/delete/reinstall",
+    "Unhealthy source, unknown pairing/installer/probe, cluster/node replacement, API advancement, RBAC/config drift, first business failure and rollout timeout refuse affected continuation"
+  ],
+  "first_failure": {
+    "classification": "test-gate expected status and clock fixture",
+    "rc": 1,
+    "cause": "Expected observedGeneration stayed at source after simulated target rollout; timeout fixture supplied two clock reads but successful ConfigMap wait consumes a third overall read.",
+    "fix": "Expect real target observedGeneration and supply exact clock calls; two failing contracts passed before complete related nineteen-test run.",
+    "product_change_for_failure": false,
+    "live_lab_consumed": false
+  },
+  "completed_ladder": 2,
+  "live_execution": false,
+  "parent_acceptance": false,
+  "cleanup": "TemporaryDirectory-only subprocess fixtures, no remote host or cluster mutation",
+  "remaining": [
+    "Actual outer product CLI and matching journal ownership",
+    "Real per-host CNI/module/8081 qualification and immutable image admission",
+    "Live source traffic ledger across the affected migration boundary"
+  ]
+}

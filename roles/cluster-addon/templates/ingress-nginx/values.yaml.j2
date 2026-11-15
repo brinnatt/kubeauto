@@ -5,7 +5,7 @@ global:
 controller:
   image:
     image: brinnatt/ingress-nginx-controller
-    tag: "v1.13.0"
+    tag: "{{ {'4.13.0': 'v1.13.0', '4.15.1': 'v1.15.1'}[ingress_nginx_ver] }}"
     digest: ''
   dnsPolicy: ClusterFirst
   publishService:
@@ -36,7 +36,7 @@ controller:
       enabled: true
       image:
         image: brinnatt/kube-webhook-certgen
-        tag: v1.6.0
+        tag: "{{ {'4.13.0': 'v1.6.0', '4.15.1': 'v1.6.9'}[ingress_nginx_ver] }}"
         digest: ''
     certManager:
       enabled: false

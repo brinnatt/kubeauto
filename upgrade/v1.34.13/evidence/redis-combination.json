@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "observed_on": "2026-11-15",
+  "matrix_ids": [
+    "UPG-02",
+    "UPG-10"
+  ],
+  "method": "Official minimum support plus pinned operator/API and unchanged protected-image dependency review",
+  "pins": {
+    "v_redis_operator": "0.27.0",
+    "v_redis_operator_image": "0.27.0-kubeauto.2",
+    "v_redis": "8.10.2",
+    "v_redis_cluster_image": "8.10.2-kubeauto.1",
+    "v_redis_exporter": "v1.93.0",
+    "v_redis_operator_chart_sha256": "4eabe2cde88657f8b7b21c2ec5ddafa3a305d35c9877021f9be89ac3beeb0f7f"
+  },
+  "official_source_ids": [
+    "REDIS-027-CI-SCOPE",
+    "REDIS-027-CHART-CI",
+    "REDIS-027-CLIENT-DEPENDENCIES",
+    "REDIS-027-README",
+    "REDIS-027-CHART",
+    "REDIS-INSTALLATION-MINIMUM",
+    "REDIS-027-RBAC-API"
+  ],
+  "inputs": {
+    "roles/cluster-addon/tasks/redis.yml": "ad61af86c41322567d87ad22eb69ecb42800274b1d5c26e34c22d57ebe925b49",
+    "roles/cluster-addon/templates/redis/instances.yaml.j2": "19a0410b2d6c1e290c155cdda21f6103eff4972a30ee9cd2ed1422ab6757801b",
+    "roles/cluster-addon/files/redis-health.py": "13d63f9a5d58bd67b743dd0468665a4d3910c7e27311937a03414b8f35ca693a",
+    "roles/cluster-addon/files/redis-crd.py": "33849d7a46d7159b1e77ef3cd85960add194af144a0fa588e536453fa4e20e8c",
+    "../kubeauto-ext-images-dockerfile/middleware/redis/protected-operator/Dockerfile": "b0c03af1b342124f849b8189589d20e5187943f2512c371e974cd18478b2cd3a",
+    "../kubeauto-ext-images-dockerfile/middleware/redis/protected-operator/controller.patch": "71a71997584b05f80bd3d3c4807a5fc594363d9876d0cbb97a512d99d8ead4a6",
+    "../kubeauto-ext-images-dockerfile/middleware/redis/state-refresh-redis/Dockerfile": "4f54417b13a262e8028425df699879800074e164bc73491bad95db790dd350de",
+    "../kubeauto-ext-images-dockerfile/middleware/redis/state-refresh-redis/state-refresh.patch": "f62acf54309635d19f8f4230e537b14ca928b35bb177469a14169e8dd8daa195"
+  },
+  "upstream_evidence_level": "minimum + api-contract + source-pin; no exact target upstream e2e claim",
+  "result": "component-retention-decision",
+  "parent_acceptance": false,
+  "live_execution": false,
+  "supply_chain_acceptance": false,
+  "remaining": "Current dual-registry artifact reuse receipts and focused target-platform business/reconciliation evidence"
+}

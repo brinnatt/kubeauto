@@ -1,0 +1,3133 @@
+{
+  "event_keys": [],
+  "head": "9cec0229fd9850c44a88e742998192f1cd606db4",
+  "items": [],
+  "mode": "readback",
+  "mutation": "none",
+  "observed": [
+    {
+      "dockerhub": {
+        "digest": "sha256:7c099e039ff10762719986b8c4e35f78f59e139ac59d6a834aa327f1dff8d47a",
+        "platforms": {
+          "linux/amd64": "sha256:5dd39d5300d1a056e481c3a135167a60e700f0875f8c583ecab7d1986a205adf",
+          "linux/arm64": "sha256:9d75456eabfe8c1ccd08ec64d9394a9ec092b2716ad4975e3819dbf1b3cf8e0a"
+        }
+      },
+      "fingerprint": "2bdc2035e61a2a7d136043e6d5ae11dda2a5773eec189255357ef3251541a30b",
+      "row": {
+        "ctx": "./tooling/ansible/python314/",
+        "dockerfile": "./tooling/ansible/python314/Dockerfile",
+        "image": "brinnatt/ansible",
+        "tag": "2.20.9",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/ansible"
+      },
+      "talkedu": {
+        "digest": "sha256:7c099e039ff10762719986b8c4e35f78f59e139ac59d6a834aa327f1dff8d47a",
+        "platforms": {
+          "linux/amd64": "sha256:5dd39d5300d1a056e481c3a135167a60e700f0875f8c583ecab7d1986a205adf",
+          "linux/arm64": "sha256:9d75456eabfe8c1ccd08ec64d9394a9ec092b2716ad4975e3819dbf1b3cf8e0a"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:93223e497c0bcd63468d54027ae4a95f15254a7836114f1b3985eb536ccb515e",
+        "platforms": {
+          "linux/amd64": "sha256:5e3db7f856686910af5280396d1173eddbf817fede0c9d4a5d06342d21f47a4e",
+          "linux/arm64": "sha256:54135a5df272a09bc44d9d87948db5a868054442f4d33447759f41df14e16b42"
+        }
+      },
+      "fingerprint": "7c894d42acfa9ba2d7ca3563c8cac4b7b397696dbf811bdc04e8935250afce96",
+      "row": {
+        "ctx": "./middleware/ceph/ceph/",
+        "dockerfile": "./middleware/ceph/ceph/Dockerfile",
+        "image": "brinnatt/ceph",
+        "tag": "v20.2.4",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/ceph"
+      },
+      "talkedu": {
+        "digest": "sha256:93223e497c0bcd63468d54027ae4a95f15254a7836114f1b3985eb536ccb515e",
+        "platforms": {
+          "linux/amd64": "sha256:5e3db7f856686910af5280396d1173eddbf817fede0c9d4a5d06342d21f47a4e",
+          "linux/arm64": "sha256:54135a5df272a09bc44d9d87948db5a868054442f4d33447759f41df14e16b42"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:a08f8aa12812330c1561a5a90c8660620135773ce743e445b2c4e25e8e3cff43",
+        "platforms": {
+          "linux/amd64": "sha256:17a947035cc3cf52639eb1bf242b658f24218038121425334f9ebc344816edc0",
+          "linux/arm64": "sha256:219b24ce9d3d8df1bb5b424f581f2b060926ba08106a04fa66e7a70a7a437de2"
+        }
+      },
+      "fingerprint": "74977752bd7dd7206bf31f502776cb1d342a5ee08b65b2f1af46d398cd5325e6",
+      "row": {
+        "ctx": "./middleware/ceph/ceph-20.2.3/",
+        "dockerfile": "./middleware/ceph/ceph-20.2.3/Dockerfile",
+        "image": "brinnatt/ceph",
+        "tag": "v20.2.3",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/ceph"
+      },
+      "talkedu": {
+        "digest": "sha256:a08f8aa12812330c1561a5a90c8660620135773ce743e445b2c4e25e8e3cff43",
+        "platforms": {
+          "linux/amd64": "sha256:17a947035cc3cf52639eb1bf242b658f24218038121425334f9ebc344816edc0",
+          "linux/arm64": "sha256:219b24ce9d3d8df1bb5b424f581f2b060926ba08106a04fa66e7a70a7a437de2"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:3e80e86d7ddf2ecda0aa59766ff04735107e97a33ec77302bca31bc47e39e105",
+        "platforms": {
+          "linux/amd64": "sha256:38343fed124e4de376cec996a0b3296188276a389eb37d9e776602a12e9212e0",
+          "linux/arm64": "sha256:516df295b3ff766eb83807d1095c8ba9e49eff7fd0beba8d689fa327fb0859be"
+        }
+      },
+      "fingerprint": "812f39e1fe2705767ec1b950c9128463348a72c9f8e88e6d0bfdaa0b2b9ea305",
+      "row": {
+        "ctx": "./middleware/ceph/ceph-csi-3.17.2/",
+        "dockerfile": "./middleware/ceph/ceph-csi-3.17.2/Dockerfile",
+        "image": "brinnatt/cephcsi",
+        "tag": "v3.17.2",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/cephcsi"
+      },
+      "talkedu": {
+        "digest": "sha256:3e80e86d7ddf2ecda0aa59766ff04735107e97a33ec77302bca31bc47e39e105",
+        "platforms": {
+          "linux/amd64": "sha256:38343fed124e4de376cec996a0b3296188276a389eb37d9e776602a12e9212e0",
+          "linux/arm64": "sha256:516df295b3ff766eb83807d1095c8ba9e49eff7fd0beba8d689fa327fb0859be"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:d294fbe15f8e06f97574770dc977a354327c3f5a190b78b479144b667aa632a0",
+        "platforms": {
+          "linux/amd64": "sha256:ebcec08b6ce1b5d250c10f3800a2518cd9b1727135692fa4f09b5b289f767c3c",
+          "linux/arm64": "sha256:c484bd50dd8c259d0e839995ac15dcb3935e2190f6fdcf63f271127a4f501fe8"
+        }
+      },
+      "fingerprint": "a5db8deeffd5c1cd768bae2b67c8db67af8194b6b5706f72b24d1eb38f82a5ec",
+      "row": {
+        "ctx": "./middleware/ceph/ceph-csi-node-driver-registrar/",
+        "dockerfile": "./middleware/ceph/ceph-csi-node-driver-registrar/Dockerfile",
+        "image": "brinnatt/csi-node-driver-registrar",
+        "tag": "v2.16.0",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/csi-node-driver-registrar"
+      },
+      "talkedu": {
+        "digest": "sha256:d294fbe15f8e06f97574770dc977a354327c3f5a190b78b479144b667aa632a0",
+        "platforms": {
+          "linux/amd64": "sha256:ebcec08b6ce1b5d250c10f3800a2518cd9b1727135692fa4f09b5b289f767c3c",
+          "linux/arm64": "sha256:c484bd50dd8c259d0e839995ac15dcb3935e2190f6fdcf63f271127a4f501fe8"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:66f6b255521b71f79571767d8ea22a76445ee457e1915c157e0b477e62152f51",
+        "platforms": {
+          "linux/amd64": "sha256:e482826e64f7c56ea842c1342e70181c6f867e6b03bab706d8fd123ae2670b5e",
+          "linux/arm64": "sha256:eda3fed5379d112f8877eb2ebee37c1ffaf83caa07e8b6e543e9d3a932f7b72f"
+        }
+      },
+      "fingerprint": "c46019f97fdd23f664b01c00b3f70297136a635b14186588ab1d5ec9998f8853",
+      "row": {
+        "ctx": "./middleware/ceph/ceph-csi-provisioner/",
+        "dockerfile": "./middleware/ceph/ceph-csi-provisioner/Dockerfile",
+        "image": "brinnatt/csi-provisioner",
+        "tag": "v6.2.0",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/csi-provisioner"
+      },
+      "talkedu": {
+        "digest": "sha256:66f6b255521b71f79571767d8ea22a76445ee457e1915c157e0b477e62152f51",
+        "platforms": {
+          "linux/amd64": "sha256:e482826e64f7c56ea842c1342e70181c6f867e6b03bab706d8fd123ae2670b5e",
+          "linux/arm64": "sha256:eda3fed5379d112f8877eb2ebee37c1ffaf83caa07e8b6e543e9d3a932f7b72f"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:6d6aa1c8a1946876817483c3011e3f8820190f9b18f9e53f0a69288752618423",
+        "platforms": {
+          "linux/amd64": "sha256:d936c5cb0836511a818a8526ca908f6a7266bd01c2b0ba8097f760e2fd1c4f7b",
+          "linux/arm64": "sha256:37ef651a50d3049758b4a4c51177d364bfbeae8475f0ce3bc256870e285bcba8"
+        }
+      },
+      "fingerprint": "cd6df81abb7c987727dade5e36a2a60d30740e53e34232ac6a2a31aa7ededb33",
+      "row": {
+        "ctx": "./middleware/ceph/ceph-csi-attacher/",
+        "dockerfile": "./middleware/ceph/ceph-csi-attacher/Dockerfile",
+        "image": "brinnatt/csi-attacher",
+        "tag": "v4.11.0",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/csi-attacher"
+      },
+      "talkedu": {
+        "digest": "sha256:6d6aa1c8a1946876817483c3011e3f8820190f9b18f9e53f0a69288752618423",
+        "platforms": {
+          "linux/amd64": "sha256:d936c5cb0836511a818a8526ca908f6a7266bd01c2b0ba8097f760e2fd1c4f7b",
+          "linux/arm64": "sha256:37ef651a50d3049758b4a4c51177d364bfbeae8475f0ce3bc256870e285bcba8"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:fb64e00d2211b358fea11bc9b8e35c8b329cac64c11298ca600180f8a6032dee",
+        "platforms": {
+          "linux/amd64": "sha256:2b446ea94f35bbd3f35ebe1c1a82cc54228d432e761d2fb0ac27713d69045739",
+          "linux/arm64": "sha256:b1eb2d5065360dea5a4dfa621a2f3d4e52b0f98957a35aee5277cd70779593e4"
+        }
+      },
+      "fingerprint": "03ea21d3594617e1ec4e80fc41d371fa533a2b3f1b28fc4cf99b48b579db03ba",
+      "row": {
+        "ctx": "./middleware/ceph/ceph-csi-resizer/",
+        "dockerfile": "./middleware/ceph/ceph-csi-resizer/Dockerfile",
+        "image": "brinnatt/csi-resizer",
+        "tag": "v2.1.0",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/csi-resizer"
+      },
+      "talkedu": {
+        "digest": "sha256:fb64e00d2211b358fea11bc9b8e35c8b329cac64c11298ca600180f8a6032dee",
+        "platforms": {
+          "linux/amd64": "sha256:2b446ea94f35bbd3f35ebe1c1a82cc54228d432e761d2fb0ac27713d69045739",
+          "linux/arm64": "sha256:b1eb2d5065360dea5a4dfa621a2f3d4e52b0f98957a35aee5277cd70779593e4"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:7da4ae14dd3e9d0ee769f301c556a990acd72ea749b77e8ef9d19947b56a2130",
+        "platforms": {
+          "linux/amd64": "sha256:cda21ece4274ca0233dd3109cd70ae01ccccd2bb0d2d494a0aa24b57cf031384",
+          "linux/arm64": "sha256:d8acb4cdf35ee1417bbbf8b6dff9ed3bf6f2f300a7da0b6616d6316b63391873"
+        }
+      },
+      "fingerprint": "51c95a0ea0c3e1b6355b323303448d01b4e7ea21b05a36b600b89dc84d504e3a",
+      "row": {
+        "ctx": "./middleware/ceph/ceph-csi-snapshotter/",
+        "dockerfile": "./middleware/ceph/ceph-csi-snapshotter/Dockerfile",
+        "image": "brinnatt/csi-snapshotter",
+        "tag": "v8.5.0",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/csi-snapshotter"
+      },
+      "talkedu": {
+        "digest": "sha256:7da4ae14dd3e9d0ee769f301c556a990acd72ea749b77e8ef9d19947b56a2130",
+        "platforms": {
+          "linux/amd64": "sha256:cda21ece4274ca0233dd3109cd70ae01ccccd2bb0d2d494a0aa24b57cf031384",
+          "linux/arm64": "sha256:d8acb4cdf35ee1417bbbf8b6dff9ed3bf6f2f300a7da0b6616d6316b63391873"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:82517a4f40abcabaa26330dda7177b4693121f007e23e7151bd7cdd8ef4183bc",
+        "platforms": {
+          "linux/amd64": "sha256:64a4b70afc6abf58142061a7b9a8d4ce1a741a7f7da07043216aa0638bfdd1bb",
+          "linux/arm64": "sha256:89251c14b9a81f5e25c3e6165d754325870d16e382b00772719084f281ca9816"
+        }
+      },
+      "fingerprint": "59fabcfffcbe7040e98dbe77519926bad2b14d18fc92f8f42fc4e6a6f866984c",
+      "row": {
+        "ctx": "./middleware/ceph/ceph-prometheus/",
+        "dockerfile": "./middleware/ceph/ceph-prometheus/Dockerfile",
+        "image": "brinnatt/ceph-prometheus",
+        "tag": "v3.6.0",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/ceph-prometheus"
+      },
+      "talkedu": {
+        "digest": "sha256:82517a4f40abcabaa26330dda7177b4693121f007e23e7151bd7cdd8ef4183bc",
+        "platforms": {
+          "linux/amd64": "sha256:64a4b70afc6abf58142061a7b9a8d4ce1a741a7f7da07043216aa0638bfdd1bb",
+          "linux/arm64": "sha256:89251c14b9a81f5e25c3e6165d754325870d16e382b00772719084f281ca9816"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:e4fd6c4ad19c9caa6b0978d278dd5991241cd3813e5fd4b56237cde91f4dc76d",
+        "platforms": {
+          "linux/amd64": "sha256:e6f01723d3c1895e021c064cd0d3ceafd87a108ec02fc8b706c0905d6c45312b",
+          "linux/arm64": "sha256:22e711648e2abd237b68c9c774ff2db9ba6f238f6f115a7b0f3151e7eda0145b"
+        }
+      },
+      "fingerprint": "c93848cb021a271ca5cb1e3ab85814ac7d80ad7f9161415de05234ed0a17691e",
+      "row": {
+        "ctx": "./middleware/ceph/ceph-alertmanager/",
+        "dockerfile": "./middleware/ceph/ceph-alertmanager/Dockerfile",
+        "image": "brinnatt/ceph-alertmanager",
+        "tag": "v0.28.1",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/ceph-alertmanager"
+      },
+      "talkedu": {
+        "digest": "sha256:e4fd6c4ad19c9caa6b0978d278dd5991241cd3813e5fd4b56237cde91f4dc76d",
+        "platforms": {
+          "linux/amd64": "sha256:e6f01723d3c1895e021c064cd0d3ceafd87a108ec02fc8b706c0905d6c45312b",
+          "linux/arm64": "sha256:22e711648e2abd237b68c9c774ff2db9ba6f238f6f115a7b0f3151e7eda0145b"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:be895a96b3096eb538c510f7b353a938c5f3f7be042b9426ac6d0234493dee66",
+        "platforms": {
+          "linux/amd64": "sha256:56a31b153399ad8b97b0eedaab01369097fea9d6205cbea4f75a4d931bd21e81",
+          "linux/arm64": "sha256:940bd20b8d675c7a059d5079829288fc38277c1cf46ecad9931d5c2daa78f556"
+        }
+      },
+      "fingerprint": "424307df3eeadccdc863c3dc47c1983d884f80f9916df1a93682a74cf21ecb04",
+      "row": {
+        "ctx": "./middleware/ceph/ceph-node-exporter/",
+        "dockerfile": "./middleware/ceph/ceph-node-exporter/Dockerfile",
+        "image": "brinnatt/ceph-node-exporter",
+        "tag": "v1.9.1",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/ceph-node-exporter"
+      },
+      "talkedu": {
+        "digest": "sha256:be895a96b3096eb538c510f7b353a938c5f3f7be042b9426ac6d0234493dee66",
+        "platforms": {
+          "linux/amd64": "sha256:56a31b153399ad8b97b0eedaab01369097fea9d6205cbea4f75a4d931bd21e81",
+          "linux/arm64": "sha256:940bd20b8d675c7a059d5079829288fc38277c1cf46ecad9931d5c2daa78f556"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:15a96fa53c6c6a9b46f3f2d57c96b44fa4ac195a48b2771fc6c452645e3edd11",
+        "platforms": {
+          "linux/amd64": "sha256:720bfafc5e4a736c71eb03f94f4ce3baa1ab9f972ad9fb13b5ef5430b87ebd7d",
+          "linux/arm64": "sha256:c8740e8af0a436e3a9261af85361d5581def6e44535325e19d37088bafd99bd4"
+        }
+      },
+      "fingerprint": "cfb90dfb9493d4a70ece6ec9f1060a5c22e5be8ef7a36d431e16f2fcd518e910",
+      "row": {
+        "ctx": "./middleware/ceph/ceph-grafana/",
+        "dockerfile": "./middleware/ceph/ceph-grafana/Dockerfile",
+        "image": "brinnatt/ceph-grafana",
+        "tag": "12.3.1",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/ceph-grafana"
+      },
+      "talkedu": {
+        "digest": "sha256:15a96fa53c6c6a9b46f3f2d57c96b44fa4ac195a48b2771fc6c452645e3edd11",
+        "platforms": {
+          "linux/amd64": "sha256:720bfafc5e4a736c71eb03f94f4ce3baa1ab9f972ad9fb13b5ef5430b87ebd7d",
+          "linux/arm64": "sha256:c8740e8af0a436e3a9261af85361d5581def6e44535325e19d37088bafd99bd4"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:c35583532664662690154b66a89193c2deca5085e3735c1bb9296593eb3030b9",
+        "platforms": {
+          "linux/amd64": "sha256:94b743db8a7016837cf705713fa31e9b9eed90c7cf2f8279470a597672d242b8",
+          "linux/arm64": "sha256:b80de409cd65ae18dbbcd80db117c2af31500206a1c0fdb81e1dbe17e312ee2d"
+        }
+      },
+      "fingerprint": "7530d5a033059d2b2e23ffa2def1b8aaa5dd83bbd8a9433b53ae49e9f91129b4",
+      "row": {
+        "ctx": "./platform/bootstrap/pause/",
+        "dockerfile": "./platform/bootstrap/pause/Dockerfile",
+        "image": "brinnatt/pause",
+        "tag": "3.10",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/pause"
+      },
+      "talkedu": {
+        "digest": "sha256:c35583532664662690154b66a89193c2deca5085e3735c1bb9296593eb3030b9",
+        "platforms": {
+          "linux/amd64": "sha256:94b743db8a7016837cf705713fa31e9b9eed90c7cf2f8279470a597672d242b8",
+          "linux/arm64": "sha256:b80de409cd65ae18dbbcd80db117c2af31500206a1c0fdb81e1dbe17e312ee2d"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:ad08eef1128e8d287f0e4150f740bcf74175b7826597cd9244e2dc6a42779508",
+        "platforms": {
+          "linux/amd64": "sha256:4664338906d8529a0d8d3dabb9ed605a38bd6c9616a05f2f31ef1b127b43d554",
+          "linux/arm64": "sha256:e84cd890b79ae9e3c1cb8417e314fc803f4309a2905bd86cbeaf90158a814f51"
+        }
+      },
+      "fingerprint": "4d5133b52e6affb052d1c9e02581c1abbc284ab593575acb541192b4ceae54ad",
+      "row": {
+        "ctx": "./tooling/ansible/alpine-ansible/",
+        "dockerfile": "./tooling/ansible/alpine-ansible/Dockerfile",
+        "image": "brinnatt/ansible",
+        "tag": "2.18.6",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/ansible"
+      },
+      "talkedu": {
+        "digest": "sha256:ad08eef1128e8d287f0e4150f740bcf74175b7826597cd9244e2dc6a42779508",
+        "platforms": {
+          "linux/amd64": "sha256:4664338906d8529a0d8d3dabb9ed605a38bd6c9616a05f2f31ef1b127b43d554",
+          "linux/arm64": "sha256:e84cd890b79ae9e3c1cb8417e314fc803f4309a2905bd86cbeaf90158a814f51"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:deb9407a314295d30f945ec31fb29e36218de3a7c9d363805416078a081d7109",
+        "platforms": {
+          "linux/amd64": "sha256:740f7c89e4c475fa37c8e3decb054797d0be011aad830a0ba75881fc3219bd9a",
+          "linux/arm64": "sha256:685ebf3e6aa7308665ed9843ea8bfefe2eeafc1c11976729f66a3af1efb86fc4"
+        }
+      },
+      "fingerprint": "b2914b2e188b92fc723d09a48f1f78118cb1e359176e69a094c12a2aa585452b",
+      "row": {
+        "ctx": "./tooling/ansible/ansible-runner/",
+        "dockerfile": "./tooling/ansible/ansible-runner/Dockerfile",
+        "image": "brinnatt/ansible-runner",
+        "tag": "0.9.1",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/ansible-runner"
+      },
+      "talkedu": {
+        "digest": "sha256:deb9407a314295d30f945ec31fb29e36218de3a7c9d363805416078a081d7109",
+        "platforms": {
+          "linux/amd64": "sha256:740f7c89e4c475fa37c8e3decb054797d0be011aad830a0ba75881fc3219bd9a",
+          "linux/arm64": "sha256:685ebf3e6aa7308665ed9843ea8bfefe2eeafc1c11976729f66a3af1efb86fc4"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:f9ee09087b57997292beba430415b2dd9739a9bce1ef3448b417c5bb5600222b",
+        "platforms": {
+          "linux/amd64": "sha256:3398a29e7845d67ea40f03989547cd9862ad2b94d80134c4d5d08a7759858cc4",
+          "linux/arm64": "sha256:a0e999c5daf96c3a79152850b9fa361ef9c48c96c4e2497611db9fcfe9fa0083"
+        }
+      },
+      "fingerprint": "4f3ccb1d8bf6aab19042e2e04c75c31d7c84af19b7e92e596437bfecfb6aeac4",
+      "row": {
+        "ctx": "./tooling/build/rockylinux-8.10/",
+        "dockerfile": "./tooling/build/rockylinux-8.10/Dockerfile",
+        "image": "brinnatt/rockylinux",
+        "tag": "8.10",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/rockylinux"
+      },
+      "talkedu": {
+        "digest": "sha256:f9ee09087b57997292beba430415b2dd9739a9bce1ef3448b417c5bb5600222b",
+        "platforms": {
+          "linux/amd64": "sha256:3398a29e7845d67ea40f03989547cd9862ad2b94d80134c4d5d08a7759858cc4",
+          "linux/arm64": "sha256:a0e999c5daf96c3a79152850b9fa361ef9c48c96c4e2497611db9fcfe9fa0083"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:1f145fa9bcaad0c91f78c3c08749fa64c2db3c2e89b4f917c1e2f2658f9c0401",
+        "platforms": {
+          "linux/amd64": "sha256:05d12d3cefe138862a650096c1b9f208c63ce90f1dc79c7b6d666473c6f0de84",
+          "linux/arm64": "sha256:5bb8ae1b053e511211f558589e271576eddfaae9db14c99f5196e3d93afd8949"
+        }
+      },
+      "fingerprint": "a6baba4ae4ccb7a07ec15da953a06e9e644f4b010413f6389c6db6fe01ac38a4",
+      "row": {
+        "ctx": "./tooling/test-support/mysql-8.4.4/",
+        "dockerfile": "./tooling/test-support/mysql-8.4.4/Dockerfile",
+        "image": "brinnatt/mysql-8.4",
+        "tag": "8.4.4",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/mysql-8.4"
+      },
+      "talkedu": {
+        "digest": "sha256:1f145fa9bcaad0c91f78c3c08749fa64c2db3c2e89b4f917c1e2f2658f9c0401",
+        "platforms": {
+          "linux/amd64": "sha256:05d12d3cefe138862a650096c1b9f208c63ce90f1dc79c7b6d666473c6f0de84",
+          "linux/arm64": "sha256:5bb8ae1b053e511211f558589e271576eddfaae9db14c99f5196e3d93afd8949"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:b0dc9fed8edc024707fe9d9af6e32b6626670cba33e57bc1ce9f3b12c6f1f516",
+        "platforms": {
+          "linux/amd64": "sha256:b405c4959f5558eab9fe80b12b03008ba2ce5ee364121c51baf69a6d0f2c4dae",
+          "linux/arm64": "sha256:bc982fd865eb0a521517717c666a85fb57dba91c02a682d3a17bb11b1f076b4a"
+        }
+      },
+      "fingerprint": "e7dc8c46c89fae8aa65680705c4f622a31f21edd0c791d51e10abe3fb57a4c67",
+      "row": {
+        "ctx": "./tooling/test-support/mysql-9.2.0/",
+        "dockerfile": "./tooling/test-support/mysql-9.2.0/Dockerfile",
+        "image": "brinnatt/mysql-9.2",
+        "tag": "9.2.0",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/mysql-9.2"
+      },
+      "talkedu": {
+        "digest": "sha256:b0dc9fed8edc024707fe9d9af6e32b6626670cba33e57bc1ce9f3b12c6f1f516",
+        "platforms": {
+          "linux/amd64": "sha256:b405c4959f5558eab9fe80b12b03008ba2ce5ee364121c51baf69a6d0f2c4dae",
+          "linux/arm64": "sha256:bc982fd865eb0a521517717c666a85fb57dba91c02a682d3a17bb11b1f076b4a"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:edd6275507f9f47c00b7e2c7e183d1355a7305f0996769ec1ec7fb60ec426f76",
+        "platforms": {
+          "linux/amd64": "sha256:b45a1711adcd5cf8457005f6595cf4fe6a7aceeba57a64d66b1f9f9c7f21bbde",
+          "linux/arm64": "sha256:2a5ece51eb33634ed6434aeae1c8e0f3e56d77c184ec3977eab36f48501f3691"
+        }
+      },
+      "fingerprint": "e5040d9afd1ac484da98bfd0d40af2d242e1969189d0622541f5d0be18baa92e",
+      "row": {
+        "ctx": "./platform/registry/harbor-offline/",
+        "dockerfile": "./platform/registry/harbor-offline/Dockerfile",
+        "image": "brinnatt/harbor-offline",
+        "tag": "v2.13.0",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/harbor-offline"
+      },
+      "talkedu": {
+        "digest": "sha256:edd6275507f9f47c00b7e2c7e183d1355a7305f0996769ec1ec7fb60ec426f76",
+        "platforms": {
+          "linux/amd64": "sha256:b45a1711adcd5cf8457005f6595cf4fe6a7aceeba57a64d66b1f9f9c7f21bbde",
+          "linux/arm64": "sha256:2a5ece51eb33634ed6434aeae1c8e0f3e56d77c184ec3977eab36f48501f3691"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:6c6adc1cabe4f147e4a3c2db7b7f835b26c1a59e20e913424f47f585ddda4463",
+        "platforms": {
+          "linux/amd64": "sha256:42ba035a2a78608ba797797e8e78394877fe769ef3adfca2176ab32fc1932ba6",
+          "linux/arm64": "sha256:5f67c00936e9951c696d694ea0f6731f147ecf527692ad8689913012f43c000c"
+        }
+      },
+      "fingerprint": "b022691af23fdb92f05389b90bbe18fa934de5c539aa2d613edd9438064c337b",
+      "row": {
+        "ctx": "./platform/observability/kube-state-metrics/",
+        "dockerfile": "./platform/observability/kube-state-metrics/Dockerfile",
+        "image": "brinnatt/kube-state-metrics",
+        "tag": "v2.18.0",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/kube-state-metrics"
+      },
+      "talkedu": {
+        "digest": "sha256:6c6adc1cabe4f147e4a3c2db7b7f835b26c1a59e20e913424f47f585ddda4463",
+        "platforms": {
+          "linux/amd64": "sha256:42ba035a2a78608ba797797e8e78394877fe769ef3adfca2176ab32fc1932ba6",
+          "linux/arm64": "sha256:5f67c00936e9951c696d694ea0f6731f147ecf527692ad8689913012f43c000c"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:ca58c3a8b45c09ba1de78c2a7bee2327a253936ecc1fa21f87233018087aaa90",
+        "platforms": {
+          "linux/amd64": "sha256:e73f57c1eb0034d57f4cdd9ce8a3863016984176fc805ab2e7c824d7962335ba",
+          "linux/arm64": "sha256:993af50bb536f59ea7aea90a6fcf1ab2d23729ca180f43402fa83a84f0efadb3"
+        }
+      },
+      "fingerprint": "df5be3b2cd509928505a1013e290b2d004b7d46c68e97823eb971def99d20be8",
+      "row": {
+        "ctx": "./platform/storage/provisioners/nfs-subdir-external-provisioner/",
+        "dockerfile": "./platform/storage/provisioners/nfs-subdir-external-provisioner/Dockerfile",
+        "image": "brinnatt/nfs-subdir-external-provisioner",
+        "tag": "v4.0.2",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/nfs-subdir-external-provisioner"
+      },
+      "talkedu": {
+        "digest": "sha256:ca58c3a8b45c09ba1de78c2a7bee2327a253936ecc1fa21f87233018087aaa90",
+        "platforms": {
+          "linux/amd64": "sha256:e73f57c1eb0034d57f4cdd9ce8a3863016984176fc805ab2e7c824d7962335ba",
+          "linux/arm64": "sha256:993af50bb536f59ea7aea90a6fcf1ab2d23729ca180f43402fa83a84f0efadb3"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:7bc7b57a6103959e2c7be3959eabcb13ad0e80a08e5b78538a9437f0faec7adb",
+        "platforms": {
+          "linux/amd64": "sha256:394616dc647ffb780c1325aea9f24833d6fbace8561280b5b30fb10acb301611",
+          "linux/arm64": "sha256:6068519101be231b8933d2c67a1441870e35d4cb87714642798e07b05db675db"
+        }
+      },
+      "fingerprint": "fb1b94be1466a6c4b1fc88ced6d86093d0e790ba63b3857f922fb73e769c3e8a",
+      "row": {
+        "ctx": "./tooling/test-support/json-mock/",
+        "dockerfile": "./tooling/test-support/json-mock/Dockerfile",
+        "image": "brinnatt/json-mock",
+        "tag": "v1.3.1",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/json-mock"
+      },
+      "talkedu": {
+        "digest": "sha256:7bc7b57a6103959e2c7be3959eabcb13ad0e80a08e5b78538a9437f0faec7adb",
+        "platforms": {
+          "linux/amd64": "sha256:394616dc647ffb780c1325aea9f24833d6fbace8561280b5b30fb10acb301611",
+          "linux/arm64": "sha256:6068519101be231b8933d2c67a1441870e35d4cb87714642798e07b05db675db"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:86d9bd83b68cc6b53f072272645d0c4f6a95c2b581e88be87380fb150ce06790",
+        "platforms": {
+          "linux/amd64": "sha256:08b256f4e24b7ee829dc5a82a6e85bc7b7233acfc6436ed9ca52aa04e5b130f2",
+          "linux/arm64": "sha256:61c3bd1c98c2e88fd36f6744e84633d7963b446dc5967602468029a1a4ec437a"
+        }
+      },
+      "fingerprint": "0ca986d60d92eec911a506ca2ba16b210e6d349f2f3579cbe3812afa935f6317",
+      "row": {
+        "ctx": "./tooling/download/alpine-curl/",
+        "dockerfile": "./tooling/download/alpine-curl/Dockerfile",
+        "image": "brinnatt/alpine-curl",
+        "tag": "v7.85.0",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/alpine-curl"
+      },
+      "talkedu": {
+        "digest": "sha256:86d9bd83b68cc6b53f072272645d0c4f6a95c2b581e88be87380fb150ce06790",
+        "platforms": {
+          "linux/amd64": "sha256:08b256f4e24b7ee829dc5a82a6e85bc7b7233acfc6436ed9ca52aa04e5b130f2",
+          "linux/arm64": "sha256:61c3bd1c98c2e88fd36f6744e84633d7963b446dc5967602468029a1a4ec437a"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:647e1c11b3758ad1108847a88593ee3efb22d0e8ad81e7d9a421607c37edc278",
+        "platforms": {
+          "linux/amd64": "sha256:4208467f4c73a7f3ac7135d91ec389cef61b841cbabb1aff3b1e8807ad031a25",
+          "linux/arm64": "sha256:89f02bf577aefdfc2340fee8eb030eb63f761aef9e53d6c9e4a3a987298d281d"
+        }
+      },
+      "fingerprint": "5df68fb8b5d6c466280c7d18885d67439a3bf9fe528cfb2047b68d923981d605",
+      "row": {
+        "ctx": "./platform/control-plane/kube-apiserver/",
+        "dockerfile": "./platform/control-plane/kube-apiserver/Dockerfile",
+        "image": "brinnatt/kube-apiserver",
+        "tag": "v1.33.6",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/kube-apiserver"
+      },
+      "talkedu": {
+        "digest": "sha256:647e1c11b3758ad1108847a88593ee3efb22d0e8ad81e7d9a421607c37edc278",
+        "platforms": {
+          "linux/amd64": "sha256:4208467f4c73a7f3ac7135d91ec389cef61b841cbabb1aff3b1e8807ad031a25",
+          "linux/arm64": "sha256:89f02bf577aefdfc2340fee8eb030eb63f761aef9e53d6c9e4a3a987298d281d"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:d86ae23926e8bf9a286167ed14991d141380f1eb7301bed421a5a4b088577b92",
+        "platforms": {
+          "linux/amd64": "sha256:f0bfeef59725181b6497c243ffce2e7880a4ed6da5ba70a3e002f48d789d524d",
+          "linux/arm64": "sha256:36847bbe794b12c1faa3f2a3aad48aba7016568cb8897f683f486dc84ad66637"
+        }
+      },
+      "fingerprint": "1461666de04ae2accaabe2a2ed073afce047c1e00d7cfad6a38b1a214c488cc0",
+      "row": {
+        "ctx": "./platform/control-plane/kube-controller-manager/",
+        "dockerfile": "./platform/control-plane/kube-controller-manager/Dockerfile",
+        "image": "brinnatt/kube-controller-manager",
+        "tag": "v1.33.6",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/kube-controller-manager"
+      },
+      "talkedu": {
+        "digest": "sha256:d86ae23926e8bf9a286167ed14991d141380f1eb7301bed421a5a4b088577b92",
+        "platforms": {
+          "linux/amd64": "sha256:f0bfeef59725181b6497c243ffce2e7880a4ed6da5ba70a3e002f48d789d524d",
+          "linux/arm64": "sha256:36847bbe794b12c1faa3f2a3aad48aba7016568cb8897f683f486dc84ad66637"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:d89c3599cac0608cbbe0cfa7aa70a4c2f6d5c741b003c9b816c13101f00b2e99",
+        "platforms": {
+          "linux/amd64": "sha256:371267b5d8d176ff80e7987e904201565472b2f16aec8ab954c6b159465ec46f",
+          "linux/arm64": "sha256:35211d7f2f71a2c94f25aca07af38fad2db5d99762a542434c46ca10416c1819"
+        }
+      },
+      "fingerprint": "8fd26d233c6883ad6af021391cb8fabc141bc68025d00c0c845e740329d60ea8",
+      "row": {
+        "ctx": "./platform/control-plane/kube-scheduler/",
+        "dockerfile": "./platform/control-plane/kube-scheduler/Dockerfile",
+        "image": "brinnatt/kube-scheduler",
+        "tag": "v1.33.6",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/kube-scheduler"
+      },
+      "talkedu": {
+        "digest": "sha256:d89c3599cac0608cbbe0cfa7aa70a4c2f6d5c741b003c9b816c13101f00b2e99",
+        "platforms": {
+          "linux/amd64": "sha256:371267b5d8d176ff80e7987e904201565472b2f16aec8ab954c6b159465ec46f",
+          "linux/arm64": "sha256:35211d7f2f71a2c94f25aca07af38fad2db5d99762a542434c46ca10416c1819"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:bc1453f68ac8082699eb65c12dc884954dafa8f808bf899008ac27379a0e6740",
+        "platforms": {
+          "linux/amd64": "sha256:4a874d2dc1e89dfaa730d79589bd2c29afff2c3183d6220dca1b236bd9d33d34",
+          "linux/arm64": "sha256:fd382525e2d1e88435a6f47965711faa2a9bf0a1801ff602a0efadfbf6afa79e"
+        }
+      },
+      "fingerprint": "6cbb107c2154f757e7a675d767db96755332ec329298246e0b8c453d4afbba38",
+      "row": {
+        "ctx": "./platform/control-plane/kube-proxy/",
+        "dockerfile": "./platform/control-plane/kube-proxy/Dockerfile",
+        "image": "brinnatt/kube-proxy",
+        "tag": "v1.33.6",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/kube-proxy"
+      },
+      "talkedu": {
+        "digest": "sha256:bc1453f68ac8082699eb65c12dc884954dafa8f808bf899008ac27379a0e6740",
+        "platforms": {
+          "linux/amd64": "sha256:4a874d2dc1e89dfaa730d79589bd2c29afff2c3183d6220dca1b236bd9d33d34",
+          "linux/arm64": "sha256:fd382525e2d1e88435a6f47965711faa2a9bf0a1801ff602a0efadfbf6afa79e"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:a9b14a90637b0728644470f8dbafd0ba72eb995629aef6d2439fdc53c7e51233",
+        "platforms": {
+          "linux/amd64": "sha256:6dfd6f22dc2a019c16c51bfc71e0e0e14b5abc93d0563754ec2f79002e377ff5",
+          "linux/arm64": "sha256:e119f1a44d341609bb139e620fbef345f88146b1f3b8fc98ad69d55da5204026"
+        }
+      },
+      "fingerprint": "2077e69284404a660551bae912f6b9ea75294ffdab0cb5e575a3ec89ebc5b11c",
+      "row": {
+        "ctx": "./platform/storage/csi/snapshot-controller/",
+        "dockerfile": "./platform/storage/csi/snapshot-controller/Dockerfile",
+        "image": "brinnatt/snapshot-controller",
+        "tag": "v8.3.0",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/snapshot-controller"
+      },
+      "talkedu": {
+        "digest": "sha256:a9b14a90637b0728644470f8dbafd0ba72eb995629aef6d2439fdc53c7e51233",
+        "platforms": {
+          "linux/amd64": "sha256:6dfd6f22dc2a019c16c51bfc71e0e0e14b5abc93d0563754ec2f79002e377ff5",
+          "linux/arm64": "sha256:e119f1a44d341609bb139e620fbef345f88146b1f3b8fc98ad69d55da5204026"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:e45c28af7432f7b0f3e678c307370cf34ba40c6beeaa2ed309780505b56c5738",
+        "platforms": {
+          "linux/amd64": "sha256:13502f1c0c81ee0a9a69493bf0556a4fdbe08a75c71a6cf50ce8fdee71f07517",
+          "linux/arm64": "sha256:148a0c5dace1f36e539317411b92044d755e87cc49976b49ff6c1d26eb7aa06c"
+        }
+      },
+      "fingerprint": "eb336c2ed2a0eb7892e5566f7d6958b14eadd7580c78bd65cfba213760206c2a",
+      "row": {
+        "ctx": "./platform/storage/csi/csi-node-driver-registrar/",
+        "dockerfile": "./platform/storage/csi/csi-node-driver-registrar/Dockerfile",
+        "image": "brinnatt/csi-node-driver-registrar",
+        "tag": "v2.13.0",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/csi-node-driver-registrar"
+      },
+      "talkedu": {
+        "digest": "sha256:e45c28af7432f7b0f3e678c307370cf34ba40c6beeaa2ed309780505b56c5738",
+        "platforms": {
+          "linux/amd64": "sha256:13502f1c0c81ee0a9a69493bf0556a4fdbe08a75c71a6cf50ce8fdee71f07517",
+          "linux/arm64": "sha256:148a0c5dace1f36e539317411b92044d755e87cc49976b49ff6c1d26eb7aa06c"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:ab64874cf1dccbe68de8a73d7cdda3481c8544c0aaf2e84db503abd6572838b4",
+        "platforms": {
+          "linux/amd64": "sha256:735259dc5a4532e3bf425fe1dd660b70c74f0723c08d468252498726e960829b",
+          "linux/arm64": "sha256:e4ff486054677b949ca9e2aa51c03fde2040808d79300c790fbe0e9c9deb3e13"
+        }
+      },
+      "fingerprint": "9d13ba564cecc72e55eb832799db1fff254c2b69bdf24b800247e95dc16c3344",
+      "row": {
+        "ctx": "./platform/storage/csi/csi-provisioner/",
+        "dockerfile": "./platform/storage/csi/csi-provisioner/Dockerfile",
+        "image": "brinnatt/csi-provisioner",
+        "tag": "v5.2.0",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/csi-provisioner"
+      },
+      "talkedu": {
+        "digest": "sha256:ab64874cf1dccbe68de8a73d7cdda3481c8544c0aaf2e84db503abd6572838b4",
+        "platforms": {
+          "linux/amd64": "sha256:735259dc5a4532e3bf425fe1dd660b70c74f0723c08d468252498726e960829b",
+          "linux/arm64": "sha256:e4ff486054677b949ca9e2aa51c03fde2040808d79300c790fbe0e9c9deb3e13"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:fcf593ca044cc68113a2d8e60d9e2baaa9eed80198a93adf2fc59fddc61dd2de",
+        "platforms": {
+          "linux/amd64": "sha256:00a183438724ab4a6812842c1a333dbc488fce3ac0c2d1d6698940a8762f2d10",
+          "linux/arm64": "sha256:15bece5aa2fd83b6a6f9e2930478b1d5fd6c667b381eab60b5eda6174b98ed26"
+        }
+      },
+      "fingerprint": "5ec68ed799ece71fc620711acb0628f2174abfbfb5b8f0fa55feae48162affbe",
+      "row": {
+        "ctx": "./platform/storage/csi/csi-resizer/",
+        "dockerfile": "./platform/storage/csi/csi-resizer/Dockerfile",
+        "image": "brinnatt/csi-resizer",
+        "tag": "v1.11.2",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/csi-resizer"
+      },
+      "talkedu": {
+        "digest": "sha256:fcf593ca044cc68113a2d8e60d9e2baaa9eed80198a93adf2fc59fddc61dd2de",
+        "platforms": {
+          "linux/amd64": "sha256:00a183438724ab4a6812842c1a333dbc488fce3ac0c2d1d6698940a8762f2d10",
+          "linux/arm64": "sha256:15bece5aa2fd83b6a6f9e2930478b1d5fd6c667b381eab60b5eda6174b98ed26"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:c179d576c63ab3fa09e102d5a9599b52ac1eca8f5e04c03d95f02e406b869be4",
+        "platforms": {
+          "linux/amd64": "sha256:ae9abd31e193e1c90316e6f526e579947219a50beb373fbd41d6c2135ac1d3fb",
+          "linux/arm64": "sha256:8de1ad83012026501a4a22c33190dbb5bef1919a001a96d87f418f6299670455"
+        }
+      },
+      "fingerprint": "ad208fcb86e7cbc3e7d5e4579592493dcb6661eb27e81a90fa65e6f56e45398a",
+      "row": {
+        "ctx": "./platform/storage/csi/csi-snapshotter/",
+        "dockerfile": "./platform/storage/csi/csi-snapshotter/Dockerfile",
+        "image": "brinnatt/csi-snapshotter",
+        "tag": "v7.0.0",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/csi-snapshotter"
+      },
+      "talkedu": {
+        "digest": "sha256:c179d576c63ab3fa09e102d5a9599b52ac1eca8f5e04c03d95f02e406b869be4",
+        "platforms": {
+          "linux/amd64": "sha256:ae9abd31e193e1c90316e6f526e579947219a50beb373fbd41d6c2135ac1d3fb",
+          "linux/arm64": "sha256:8de1ad83012026501a4a22c33190dbb5bef1919a001a96d87f418f6299670455"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:3ecb41811885031808684a16cd09cb5c4c0fbe29d9ca1c9e806eedffb0a9ca66",
+        "platforms": {
+          "linux/amd64": "sha256:08b32fac48cfc49b8dd040249a93b1697b194070708bc2476ec9134cfb9d1b3b",
+          "linux/arm64": "sha256:a38f12f4bb27eaa70f05321ff7216d4a2a9060e7aecd1a51e3e9bf535da634d8"
+        }
+      },
+      "fingerprint": "a5ebf62b479fb9960769ea7db614036cf4b9923788d0d222e82009df5adb1da3",
+      "row": {
+        "ctx": "./platform/registry/registry/",
+        "dockerfile": "./platform/registry/registry/Dockerfile",
+        "image": "brinnatt/registry",
+        "tag": "2",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/registry"
+      },
+      "talkedu": {
+        "digest": "sha256:3ecb41811885031808684a16cd09cb5c4c0fbe29d9ca1c9e806eedffb0a9ca66",
+        "platforms": {
+          "linux/amd64": "sha256:08b32fac48cfc49b8dd040249a93b1697b194070708bc2476ec9134cfb9d1b3b",
+          "linux/arm64": "sha256:a38f12f4bb27eaa70f05321ff7216d4a2a9060e7aecd1a51e3e9bf535da634d8"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:1f53ffdde2e358d3e880ed587e14c95bd1053af4feb093b0e9881f519ba4fb26",
+        "platforms": {
+          "linux/amd64": "sha256:7432dc16e997619674adf6e8c4dc47748404cb923031300bf5884b134032407b",
+          "linux/arm64": "sha256:22edab652a34f34c3e3485a38f46fc0cd608fc23b0fb9abfa4b9093e6694e1fa"
+        }
+      },
+      "fingerprint": "a93703c43d24fb0116cc845af776c0f70c950e62d24c77b92290483b97cb687b",
+      "row": {
+        "ctx": "./tooling/test-infrastructure/registry-2.8.3/",
+        "dockerfile": "./tooling/test-infrastructure/registry-2.8.3/Dockerfile",
+        "image": "brinnatt/registry",
+        "tag": "2.8.3",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/registry"
+      },
+      "talkedu": {
+        "digest": "sha256:1f53ffdde2e358d3e880ed587e14c95bd1053af4feb093b0e9881f519ba4fb26",
+        "platforms": {
+          "linux/amd64": "sha256:7432dc16e997619674adf6e8c4dc47748404cb923031300bf5884b134032407b",
+          "linux/arm64": "sha256:22edab652a34f34c3e3485a38f46fc0cd608fc23b0fb9abfa4b9093e6694e1fa"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:cd5f94c5602a0ca1417fd51a87d1b0f1a334f380c10de1b4e01fc2a25be89c7c",
+        "platforms": {
+          "linux/amd64": "sha256:3196ea94133ddc33cbdb2446430901b64de2af575f6f06c2704947a64530d366",
+          "linux/arm64": "sha256:cfc3d3cc37a1ae70670e805de4adae52daa0df94fafc6a184dd3f8f00943c560"
+        }
+      },
+      "fingerprint": "a5781317f9784740ab0f9dad1fc7bd9e49cbf41039b54cef9642e6a153c53268",
+      "row": {
+        "ctx": "./platform/dashboard/dashboard-api/",
+        "dockerfile": "./platform/dashboard/dashboard-api/Dockerfile",
+        "image": "brinnatt/dashboard-api",
+        "tag": "1.14.0",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/dashboard-api"
+      },
+      "talkedu": {
+        "digest": "sha256:cd5f94c5602a0ca1417fd51a87d1b0f1a334f380c10de1b4e01fc2a25be89c7c",
+        "platforms": {
+          "linux/amd64": "sha256:3196ea94133ddc33cbdb2446430901b64de2af575f6f06c2704947a64530d366",
+          "linux/arm64": "sha256:cfc3d3cc37a1ae70670e805de4adae52daa0df94fafc6a184dd3f8f00943c560"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:c1254ad66186072abd402c275a268c8d0813c91aacf0cf41ee36d733fff9186f",
+        "platforms": {
+          "linux/amd64": "sha256:b51e5ff2a9ff9eb54ccec9e33721d099a276c76193603f3a370b7174ef44569a",
+          "linux/arm64": "sha256:e8392c7a0df95111a08bf2203faee13028fbd78e6c3883b2b4b16b4f2c04b90d"
+        }
+      },
+      "fingerprint": "4153b0969c1f9b73a0313a4b3c702e79f68faed26176a33da473c17940109a1e",
+      "row": {
+        "ctx": "./platform/dashboard/dashboard-auth/",
+        "dockerfile": "./platform/dashboard/dashboard-auth/Dockerfile",
+        "image": "brinnatt/dashboard-auth",
+        "tag": "1.4.0",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/dashboard-auth"
+      },
+      "talkedu": {
+        "digest": "sha256:c1254ad66186072abd402c275a268c8d0813c91aacf0cf41ee36d733fff9186f",
+        "platforms": {
+          "linux/amd64": "sha256:b51e5ff2a9ff9eb54ccec9e33721d099a276c76193603f3a370b7174ef44569a",
+          "linux/arm64": "sha256:e8392c7a0df95111a08bf2203faee13028fbd78e6c3883b2b4b16b4f2c04b90d"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:04527c90da6a73bc56152b5c7549e0c92fec7fa2589105828d5a60157e8633d5",
+        "platforms": {
+          "linux/amd64": "sha256:1c43fed26a65e142ea061da8f5655cabd0760b9bc712fcb8bea93d386fe14584",
+          "linux/arm64": "sha256:652bc9f4ca96f636756fd6f028e73f9fae8a8faa6a617c900cfde4322da279d2"
+        }
+      },
+      "fingerprint": "dfadbfe6f8d2e55088de682982dbbcd1f9ed21a2f8488226147a474936aa1732",
+      "row": {
+        "ctx": "./platform/dashboard/dashboard-metrics-scraper/",
+        "dockerfile": "./platform/dashboard/dashboard-metrics-scraper/Dockerfile",
+        "image": "brinnatt/dashboard-metrics-scraper",
+        "tag": "1.2.2",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/dashboard-metrics-scraper"
+      },
+      "talkedu": {
+        "digest": "sha256:04527c90da6a73bc56152b5c7549e0c92fec7fa2589105828d5a60157e8633d5",
+        "platforms": {
+          "linux/amd64": "sha256:1c43fed26a65e142ea061da8f5655cabd0760b9bc712fcb8bea93d386fe14584",
+          "linux/arm64": "sha256:652bc9f4ca96f636756fd6f028e73f9fae8a8faa6a617c900cfde4322da279d2"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:2af58981766102af1cc059e1cee6d4cfe214c1590fc168df9156cb6739ce05ec",
+        "platforms": {
+          "linux/amd64": "sha256:2d893d016ba9fbfa8327c3cca5952b79d024a1a4bcff56566b600f2882e74412",
+          "linux/arm64": "sha256:eb8ba177bb2bcca54e6de3678ccf96342d820cfda79fcafb3c08f53d8054f0b7"
+        }
+      },
+      "fingerprint": "f91837fd623a6a1221434042d97069c97e87c19cb26c7779a9cf2ee73d2a12b7",
+      "row": {
+        "ctx": "./platform/dashboard/dashboard-web/",
+        "dockerfile": "./platform/dashboard/dashboard-web/Dockerfile",
+        "image": "brinnatt/dashboard-web",
+        "tag": "1.7.0",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/dashboard-web"
+      },
+      "talkedu": {
+        "digest": "sha256:2af58981766102af1cc059e1cee6d4cfe214c1590fc168df9156cb6739ce05ec",
+        "platforms": {
+          "linux/amd64": "sha256:2d893d016ba9fbfa8327c3cca5952b79d024a1a4bcff56566b600f2882e74412",
+          "linux/arm64": "sha256:eb8ba177bb2bcca54e6de3678ccf96342d820cfda79fcafb3c08f53d8054f0b7"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:48a4f75aeb47d643c2b9ab098e8c52fab51e1ff6e39945a98f8f782f7a5959a0",
+        "platforms": {
+          "linux/amd64": "sha256:e299dfca25bf1390fe0b9e053ca36233034132aa7d72c0ef038cf31d6b22461c",
+          "linux/arm64": "sha256:b80e54516531bac96ef22ac9b6032ad3ffa13829e359f6b95657386326280b43"
+        }
+      },
+      "fingerprint": "9a65f455265f0e982b3bb7b2a4ec7b2e83d99859fdaedeae5c969697cd82d8fd",
+      "row": {
+        "ctx": "./platform/dashboard/kong/",
+        "dockerfile": "./platform/dashboard/kong/Dockerfile",
+        "image": "brinnatt/kong",
+        "tag": "3.9",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/kong"
+      },
+      "talkedu": {
+        "digest": "sha256:48a4f75aeb47d643c2b9ab098e8c52fab51e1ff6e39945a98f8f782f7a5959a0",
+        "platforms": {
+          "linux/amd64": "sha256:e299dfca25bf1390fe0b9e053ca36233034132aa7d72c0ef038cf31d6b22461c",
+          "linux/arm64": "sha256:b80e54516531bac96ef22ac9b6032ad3ffa13829e359f6b95657386326280b43"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:b4fb9c0e40d97a257b572474b6fa7a35e1fecaccab47a994238ca71cfe67f138",
+        "platforms": {
+          "linux/amd64": "sha256:3d278807f90eb42a52d6a3d5fd31b38faf41ee9974afc903d80ebfd36037b968",
+          "linux/arm64": "sha256:a3d567f271e18dcaae029ebdb494aa3982f49bd656b01216a5d218b792b1d567"
+        }
+      },
+      "fingerprint": "169d1fdcb980b894bb9283707886caaa321a90986686e4b335cf8f14667ba0f9",
+      "row": {
+        "ctx": "./middleware/minio/minio-operator/",
+        "dockerfile": "./middleware/minio/minio-operator/Dockerfile",
+        "image": "brinnatt/minio-operator",
+        "tag": "v7.1.1",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/minio-operator"
+      },
+      "talkedu": {
+        "digest": "sha256:b4fb9c0e40d97a257b572474b6fa7a35e1fecaccab47a994238ca71cfe67f138",
+        "platforms": {
+          "linux/amd64": "sha256:3d278807f90eb42a52d6a3d5fd31b38faf41ee9974afc903d80ebfd36037b968",
+          "linux/arm64": "sha256:a3d567f271e18dcaae029ebdb494aa3982f49bd656b01216a5d218b792b1d567"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:12c34ca0d21730d4683bc1ea92c66ac4ac9256d6032184886cee4bf5a4ab723f",
+        "platforms": {
+          "linux/amd64": "sha256:e20946bdfa3148203ab239d9ba87a8a8aec60a401bd956b19ccfe7d955997590",
+          "linux/arm64": "sha256:5d952eb6886da12ef0179d9e6aada9c61a3fec86781379a1c0a114a5cb97d430"
+        }
+      },
+      "fingerprint": "0c513973344444ad5b699cae75b613e59aca263e1558492befd462b5876fdf77",
+      "row": {
+        "ctx": "./middleware/minio/minio-operator-sidecar/",
+        "dockerfile": "./middleware/minio/minio-operator-sidecar/Dockerfile",
+        "image": "brinnatt/minio-operator-sidecar",
+        "tag": "v7.0.1",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/minio-operator-sidecar"
+      },
+      "talkedu": {
+        "digest": "sha256:12c34ca0d21730d4683bc1ea92c66ac4ac9256d6032184886cee4bf5a4ab723f",
+        "platforms": {
+          "linux/amd64": "sha256:e20946bdfa3148203ab239d9ba87a8a8aec60a401bd956b19ccfe7d955997590",
+          "linux/arm64": "sha256:5d952eb6886da12ef0179d9e6aada9c61a3fec86781379a1c0a114a5cb97d430"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:dfb7435e6cba55c2910f3ae878f2b8711bb592630ba2e70db7820b91357e8225",
+        "platforms": {
+          "linux/amd64": "sha256:ecbba50336c71d80497ce5838c2469f2405f0635baa341a3b63d4bd849578c39",
+          "linux/arm64": "sha256:9bcd420cb87fc7feb67ad367a98e8c257d7a8753f5f2cd74bfb2ec51fd81c23a"
+        }
+      },
+      "fingerprint": "8818d2a12020595391b5510d327d97223e33e72ede5747f1caf8e88d3bb65ad7",
+      "row": {
+        "ctx": "./middleware/minio/minio/",
+        "dockerfile": "./middleware/minio/minio/Dockerfile",
+        "image": "brinnatt/minio",
+        "tag": "RELEASE.2025-04-08T15-41-24Z",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/minio"
+      },
+      "talkedu": {
+        "digest": "sha256:dfb7435e6cba55c2910f3ae878f2b8711bb592630ba2e70db7820b91357e8225",
+        "platforms": {
+          "linux/amd64": "sha256:ecbba50336c71d80497ce5838c2469f2405f0635baa341a3b63d4bd849578c39",
+          "linux/arm64": "sha256:9bcd420cb87fc7feb67ad367a98e8c257d7a8753f5f2cd74bfb2ec51fd81c23a"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:5aec56fbeeb56d4aaf5be82393b03dd55bc41439f3293fe7974d32dc7b294f99",
+        "platforms": {
+          "linux/amd64": "sha256:a339afd5ce0a215be0eee5aa70b1fc1a80e9513b20a854e4fe74608b28aea6ab",
+          "linux/arm64": "sha256:3e7fc2e66ba6bf8c3d7aed8cd99d014b459ee313443576c996dc576de3b25e16"
+        }
+      },
+      "fingerprint": "e1aaa5afbaa97f363f750f96fb4bc849d858e97d7d9a7150839ac1db2fedab58",
+      "row": {
+        "ctx": "./middleware/nacos/nacos-server/",
+        "dockerfile": "./middleware/nacos/nacos-server/Dockerfile",
+        "image": "brinnatt/nacos-server",
+        "tag": "v2.4.3",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/nacos-server"
+      },
+      "talkedu": {
+        "digest": "sha256:5aec56fbeeb56d4aaf5be82393b03dd55bc41439f3293fe7974d32dc7b294f99",
+        "platforms": {
+          "linux/amd64": "sha256:a339afd5ce0a215be0eee5aa70b1fc1a80e9513b20a854e4fe74608b28aea6ab",
+          "linux/arm64": "sha256:3e7fc2e66ba6bf8c3d7aed8cd99d014b459ee313443576c996dc576de3b25e16"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:0c80880edbd32f8206c9eaa239063d3b50333882e8bbac5950ed0d059e22e48a",
+        "platforms": {
+          "linux/amd64": "sha256:1032ca2cd00531f635f3cd865524f3983e178542c56ceb626f44a9cd8522ad27",
+          "linux/arm64": "sha256:3758b934645ba8b8e28b0ddeca6b3e6ae4c0e9e84bb92c6a7cfede0c32b96d19"
+        }
+      },
+      "fingerprint": "3564be63eb4b8fc773a8f3746815c8d739f6f23c8613787ad78cc8da7fc68b63",
+      "row": {
+        "ctx": "./middleware/nacos/nacos-peer-finder-plugin/",
+        "dockerfile": "./middleware/nacos/nacos-peer-finder-plugin/Dockerfile",
+        "image": "brinnatt/nacos-peer-finder-plugin",
+        "tag": "1.1",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/nacos-peer-finder-plugin"
+      },
+      "talkedu": {
+        "digest": "sha256:0c80880edbd32f8206c9eaa239063d3b50333882e8bbac5950ed0d059e22e48a",
+        "platforms": {
+          "linux/amd64": "sha256:1032ca2cd00531f635f3cd865524f3983e178542c56ceb626f44a9cd8522ad27",
+          "linux/arm64": "sha256:3758b934645ba8b8e28b0ddeca6b3e6ae4c0e9e84bb92c6a7cfede0c32b96d19"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:84db1032233c5df43651021420de2389c125b0627b5710b1af0ebcb5a48a7deb",
+        "platforms": {
+          "linux/amd64": "sha256:aa1e112c5037b180dd840d2e868f1cf8692251958d4cab073ef150924fb19538",
+          "linux/arm64": "sha256:8e654bb5031f59a1ea57ddc7f35234d9775843489a3a5fcb4719c0f98ec040b8"
+        }
+      },
+      "fingerprint": "404b737120117c9321f688373abe9492c7037c5d9a2b768fdbef174c77ea9c87",
+      "row": {
+        "ctx": "./middleware/nacos/test-support/mysql/",
+        "dockerfile": "./middleware/nacos/test-support/mysql/Dockerfile",
+        "image": "brinnatt/mysql",
+        "tag": "8.0.46",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/mysql"
+      },
+      "talkedu": {
+        "digest": "sha256:84db1032233c5df43651021420de2389c125b0627b5710b1af0ebcb5a48a7deb",
+        "platforms": {
+          "linux/amd64": "sha256:aa1e112c5037b180dd840d2e868f1cf8692251958d4cab073ef150924fb19538",
+          "linux/arm64": "sha256:8e654bb5031f59a1ea57ddc7f35234d9775843489a3a5fcb4719c0f98ec040b8"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:1c97d17688234022eccf8fb80e8eb3c678fb47b764ad67d44dd011dfe02ebdd0",
+        "platforms": {
+          "linux/amd64": "sha256:fec933e4b40e317877ab83b226c0b5a8ef846c663df48653ecc9e700d9bd6665",
+          "linux/arm64": "sha256:092a94eb9a83d94fb54c17ac5ca5d64ec1c51257166354ce8f5dd35435359d95"
+        }
+      },
+      "fingerprint": "16792015b4d059a4b8871e8aa45daf1c87742bf554a739c3512b5cc478e7e449",
+      "row": {
+        "ctx": "./platform/storage/openebs/openebs-kubectl/",
+        "dockerfile": "./platform/storage/openebs/openebs-kubectl/Dockerfile",
+        "image": "brinnatt/openebs-kubectl",
+        "tag": "1.33.6",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/openebs-kubectl"
+      },
+      "talkedu": {
+        "digest": "sha256:1c97d17688234022eccf8fb80e8eb3c678fb47b764ad67d44dd011dfe02ebdd0",
+        "platforms": {
+          "linux/amd64": "sha256:fec933e4b40e317877ab83b226c0b5a8ef846c663df48653ecc9e700d9bd6665",
+          "linux/arm64": "sha256:092a94eb9a83d94fb54c17ac5ca5d64ec1c51257166354ce8f5dd35435359d95"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:216d09687a0f0a2e1497cce0fc95406639520c4b5a57989369a5e78ade1e3d52",
+        "platforms": {
+          "linux/amd64": "sha256:f01d5a12be0432814e5ddb7359371b8ed5ca8b1dd396f86298592ca903a82f2b",
+          "linux/arm64": "sha256:9975a90afafe6a46ee60b2644e1e697047a8a2bb77f9aa38e85dba88c001e846"
+        }
+      },
+      "fingerprint": "8afc25665397fbdcd2e9fa6117c12e92e0a2b3bee50ba3ea2d36d13f87730e32",
+      "row": {
+        "ctx": "./platform/storage/openebs/provisioner-localpv/",
+        "dockerfile": "./platform/storage/openebs/provisioner-localpv/Dockerfile",
+        "image": "brinnatt/provisioner-localpv",
+        "tag": "4.3.0",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/provisioner-localpv"
+      },
+      "talkedu": {
+        "digest": "sha256:216d09687a0f0a2e1497cce0fc95406639520c4b5a57989369a5e78ade1e3d52",
+        "platforms": {
+          "linux/amd64": "sha256:f01d5a12be0432814e5ddb7359371b8ed5ca8b1dd396f86298592ca903a82f2b",
+          "linux/arm64": "sha256:9975a90afafe6a46ee60b2644e1e697047a8a2bb77f9aa38e85dba88c001e846"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:f3b724a8a816421a4f941764be649989fd278781cac79898ad6016f13191bd3b",
+        "platforms": {
+          "linux/amd64": "sha256:5a89ecf8698ea6add36f83949c38ab354c93ca383b5a784e917dbb5d75abdf38",
+          "linux/arm64": "sha256:303f34b8860887081e26439a670c29c58eb1e9d68da2261302beb9dd112e2892"
+        }
+      },
+      "fingerprint": "4bf70ec828411780dd9109c54ae09ba1af924d35d975a2c7b22cd2629647b07a",
+      "row": {
+        "ctx": "./platform/storage/openebs/linux-utils/",
+        "dockerfile": "./platform/storage/openebs/linux-utils/Dockerfile",
+        "image": "brinnatt/linux-utils",
+        "tag": "4.2.0",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/linux-utils"
+      },
+      "talkedu": {
+        "digest": "sha256:f3b724a8a816421a4f941764be649989fd278781cac79898ad6016f13191bd3b",
+        "platforms": {
+          "linux/amd64": "sha256:5a89ecf8698ea6add36f83949c38ab354c93ca383b5a784e917dbb5d75abdf38",
+          "linux/arm64": "sha256:303f34b8860887081e26439a670c29c58eb1e9d68da2261302beb9dd112e2892"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:add8a66177e497bd669a05e44a8ca8d47caa94142e4ca1e6dabef21184f1fef5",
+        "platforms": {
+          "linux/amd64": "sha256:d796b4ecb467993cfae052ecf43f71935bfd2d2647690dee68f9c15b4a97e08a",
+          "linux/arm64": "sha256:397a151d5db7447e0f67ac461da009b14d1a6610e2b92b1af280fe3c70b3d90b"
+        }
+      },
+      "fingerprint": "29bcceb410a2a6b162054dd4fce42d1e86618b139aa7da93db1d9c2095b7d8e5",
+      "row": {
+        "ctx": "./platform/storage/openebs/lvm-driver/",
+        "dockerfile": "./platform/storage/openebs/lvm-driver/Dockerfile",
+        "image": "brinnatt/lvm-driver",
+        "tag": "1.7.0",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/lvm-driver"
+      },
+      "talkedu": {
+        "digest": "sha256:add8a66177e497bd669a05e44a8ca8d47caa94142e4ca1e6dabef21184f1fef5",
+        "platforms": {
+          "linux/amd64": "sha256:d796b4ecb467993cfae052ecf43f71935bfd2d2647690dee68f9c15b4a97e08a",
+          "linux/arm64": "sha256:397a151d5db7447e0f67ac461da009b14d1a6610e2b92b1af280fe3c70b3d90b"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:66516b068aa9b73bee2b218556f551111fc75721a32aa183f655106ef10bcfdf",
+        "platforms": {
+          "linux/amd64": "sha256:af59226058b6b62f2562cfbaba4f8e54b7fb6fee423875984e0ed5a20216acaa",
+          "linux/arm64": "sha256:3e4e448247064be99a4afb531052bcb2b11b1ab20b1729a19e5c53e5294bfb13"
+        }
+      },
+      "fingerprint": "b9e2992d7a1d691ac4b64464ba63d9351c9e4f61555f26389134111ff74a6c50",
+      "row": {
+        "ctx": "./middleware/rocketmq/rocketmq-operator/",
+        "dockerfile": "./middleware/rocketmq/rocketmq-operator/Dockerfile",
+        "image": "brinnatt/rocketmq-operator",
+        "tag": "latest",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/rocketmq-operator"
+      },
+      "talkedu": {
+        "digest": "sha256:66516b068aa9b73bee2b218556f551111fc75721a32aa183f655106ef10bcfdf",
+        "platforms": {
+          "linux/amd64": "sha256:af59226058b6b62f2562cfbaba4f8e54b7fb6fee423875984e0ed5a20216acaa",
+          "linux/arm64": "sha256:3e4e448247064be99a4afb531052bcb2b11b1ab20b1729a19e5c53e5294bfb13"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:9f8bcf2409b0604b02712a4fe1c6b58c09eda58aef2446570c3bfa31f31eae16",
+        "platforms": {
+          "linux/amd64": "sha256:2eedb4f0dab8532d26803c0bafb4ce76aff43f27ee2647131f915f90ef69f522",
+          "linux/arm64": "sha256:b6f2d6cf032445aad407c94899d15a52f423cd14919bbfd5a3c79470bdfef963"
+        }
+      },
+      "fingerprint": "a896005ce868bfd8c9e1fe24d7ab2c568b2bb31e8f86a00fbc88f0188be038a5",
+      "row": {
+        "ctx": "./middleware/rocketmq/rocketmq-broker/",
+        "dockerfile": "./middleware/rocketmq/rocketmq-broker/Dockerfile",
+        "image": "brinnatt/rocketmq-broker",
+        "tag": "4.5.0-alpine-operator-0.3.0",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/rocketmq-broker"
+      },
+      "talkedu": {
+        "digest": "sha256:9f8bcf2409b0604b02712a4fe1c6b58c09eda58aef2446570c3bfa31f31eae16",
+        "platforms": {
+          "linux/amd64": "sha256:2eedb4f0dab8532d26803c0bafb4ce76aff43f27ee2647131f915f90ef69f522",
+          "linux/arm64": "sha256:b6f2d6cf032445aad407c94899d15a52f423cd14919bbfd5a3c79470bdfef963"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:b2f03d0d4a5ce621d253a9fa35bc9467891959c0699323bb9d4f9ecbd8376bde",
+        "platforms": {
+          "linux/amd64": "sha256:335a00065e49c792ed9f5f930bcfc0675e0f512dc38d863b1e4de5f5b51ecda6",
+          "linux/arm64": "sha256:05d248a3c35533e8af9407ec87225fd8d6c178f7dfc117ca0635c4aa65d07412"
+        }
+      },
+      "fingerprint": "8aea9c9782577e44706ecd3e529ee6dc614494e3cf68be0df6b3aed34e739312",
+      "row": {
+        "ctx": "./middleware/rocketmq/rocketmq-nameserver/",
+        "dockerfile": "./middleware/rocketmq/rocketmq-nameserver/Dockerfile",
+        "image": "brinnatt/rocketmq-nameserver",
+        "tag": "4.5.0-alpine-operator-0.3.0",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/rocketmq-nameserver"
+      },
+      "talkedu": {
+        "digest": "sha256:b2f03d0d4a5ce621d253a9fa35bc9467891959c0699323bb9d4f9ecbd8376bde",
+        "platforms": {
+          "linux/amd64": "sha256:335a00065e49c792ed9f5f930bcfc0675e0f512dc38d863b1e4de5f5b51ecda6",
+          "linux/arm64": "sha256:05d248a3c35533e8af9407ec87225fd8d6c178f7dfc117ca0635c4aa65d07412"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:c880e4702727c7d5235f54cd6f79b6163832203a11c6c105730f772b450961f2",
+        "platforms": {
+          "linux/amd64": "sha256:60a0110057eebd22e8700164c57ad4f1754984a4f1ab6e4f0823a61ff0985675",
+          "linux/arm64": "sha256:30bcd5b5cea7d1b015e9f103a92fc3060f025c28a64666de9fd633de8022a34c"
+        }
+      },
+      "fingerprint": "932a2e62ccb0b81d8209223ded2b4f9b268d67399a9bca0982b1aaf56636c6ee",
+      "row": {
+        "ctx": "./middleware/rocketmq/rocketmq-console/",
+        "dockerfile": "./middleware/rocketmq/rocketmq-console/Dockerfile",
+        "image": "brinnatt/rocketmq-console",
+        "tag": "2.0.0",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/rocketmq-console"
+      },
+      "talkedu": {
+        "digest": "sha256:c880e4702727c7d5235f54cd6f79b6163832203a11c6c105730f772b450961f2",
+        "platforms": {
+          "linux/amd64": "sha256:60a0110057eebd22e8700164c57ad4f1754984a4f1ab6e4f0823a61ff0985675",
+          "linux/arm64": "sha256:30bcd5b5cea7d1b015e9f103a92fc3060f025c28a64666de9fd633de8022a34c"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:bfde3b416951cd0149613b1ee7bf1e061cc14f862133b5d0026742e1e4200fc4",
+        "platforms": {
+          "linux/amd64": "sha256:ce829f00582078e2e3408474baf8ae0ced7e3fdfd94469ad6621a5fc93ae3333",
+          "linux/arm64": "sha256:34d62e809a6c9d2c008572e9878c25e6f7fab13f7d58e9b8872b973c05b9e022"
+        }
+      },
+      "fingerprint": "f94d959ccb464662597a2dff5ebaf56e7ae56047abfb8837f8281d8b25383946",
+      "row": {
+        "ctx": "./platform/network/kube-ovn/kube-ovn/",
+        "dockerfile": "./platform/network/kube-ovn/kube-ovn/Dockerfile",
+        "image": "brinnatt/kube-ovn",
+        "tag": "v1.11.5",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/kube-ovn"
+      },
+      "talkedu": {
+        "digest": "sha256:bfde3b416951cd0149613b1ee7bf1e061cc14f862133b5d0026742e1e4200fc4",
+        "platforms": {
+          "linux/amd64": "sha256:ce829f00582078e2e3408474baf8ae0ced7e3fdfd94469ad6621a5fc93ae3333",
+          "linux/arm64": "sha256:34d62e809a6c9d2c008572e9878c25e6f7fab13f7d58e9b8872b973c05b9e022"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:eedc83bfcfd9cc38631320f98e9e337345ed79c20a00c1992eee6dc4cfc58252",
+        "platforms": {
+          "linux/amd64": "sha256:139da1c1556ffe20c4cfbb564135efb9d6b777ca21929a974921ec9b1f4e7683",
+          "linux/arm64": "sha256:2ca2a6b9fa62f8b978c4a315bd5c806a7a7bcd15ee89edbe20275b7e9d9f16ff"
+        }
+      },
+      "fingerprint": "a9c607f025465dcb8c68966da6a1f7f16cc31048e7a137f885d4b898cd36880d",
+      "row": {
+        "ctx": "./platform/network/kube-router/kube-router/",
+        "dockerfile": "./platform/network/kube-router/kube-router/Dockerfile",
+        "image": "brinnatt/kube-router",
+        "tag": "v1.5.4",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/kube-router"
+      },
+      "talkedu": {
+        "digest": "sha256:eedc83bfcfd9cc38631320f98e9e337345ed79c20a00c1992eee6dc4cfc58252",
+        "platforms": {
+          "linux/amd64": "sha256:139da1c1556ffe20c4cfbb564135efb9d6b777ca21929a974921ec9b1f4e7683",
+          "linux/arm64": "sha256:2ca2a6b9fa62f8b978c4a315bd5c806a7a7bcd15ee89edbe20275b7e9d9f16ff"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:20bfb365aceab6fa8018ec1a61e85056ef51dfc3f17d84ba4089d1ea0b08d24e",
+        "platforms": {
+          "linux/amd64": "sha256:d3d502b388d1cdd3cb1fd1053e32f31c2844ee04587307e6392c986495356ee3",
+          "linux/arm64": "sha256:82d4677867423a913ee5360a431918c573d55bd43e61b22f13d1e0dcd0201490"
+        }
+      },
+      "fingerprint": "0fd6020cf230b2adc75450cd42fcc87f479bf17892993d6a49a77161798d0a76",
+      "row": {
+        "ctx": "./platform/observability/prometheus/grafana/",
+        "dockerfile": "./platform/observability/prometheus/grafana/Dockerfile",
+        "image": "brinnatt/grafana",
+        "tag": "13.1.1",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/grafana"
+      },
+      "talkedu": {
+        "digest": "sha256:20bfb365aceab6fa8018ec1a61e85056ef51dfc3f17d84ba4089d1ea0b08d24e",
+        "platforms": {
+          "linux/amd64": "sha256:d3d502b388d1cdd3cb1fd1053e32f31c2844ee04587307e6392c986495356ee3",
+          "linux/arm64": "sha256:82d4677867423a913ee5360a431918c573d55bd43e61b22f13d1e0dcd0201490"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:bf223bcfd477154f8616aa956e1cd1b62f72dcf8d6ef426c745b9bcabbe9043a",
+        "platforms": {
+          "linux/amd64": "sha256:91f1e8e9dd461f16a9a7625de0ea9568e6054f27896961234766bf36c0399f71",
+          "linux/arm64": "sha256:78b95a36a0de69bd1ba934493fa293442a7d0d8b468e1bc85ac1d87df6207bb7"
+        }
+      },
+      "fingerprint": "0406f7f7f27884927166e4fab5adc06e221de07cdcb00724293aebf9ee3c921a",
+      "row": {
+        "ctx": "./platform/observability/prometheus/busybox/",
+        "dockerfile": "./platform/observability/prometheus/busybox/Dockerfile",
+        "image": "brinnatt/busybox",
+        "tag": "1.37",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/busybox"
+      },
+      "talkedu": {
+        "digest": "sha256:bf223bcfd477154f8616aa956e1cd1b62f72dcf8d6ef426c745b9bcabbe9043a",
+        "platforms": {
+          "linux/amd64": "sha256:91f1e8e9dd461f16a9a7625de0ea9568e6054f27896961234766bf36c0399f71",
+          "linux/arm64": "sha256:78b95a36a0de69bd1ba934493fa293442a7d0d8b468e1bc85ac1d87df6207bb7"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:dc208c96c5a03e578fbf29a732da941df969f884236d382967ba5c732d207d4e",
+        "platforms": {
+          "linux/amd64": "sha256:3c7a6e15cefac338a73729d1228770ca02a46f90b7996117fbde67fc26808481",
+          "linux/arm64": "sha256:37877481e9c8534602972d86bcb8fc9a3aade7c080e80f2683c4e84927629ef1"
+        }
+      },
+      "fingerprint": "978aaec2455b08548e1ea28f19848e7968f8d6ac72c546519dd30cd4cccc3aa9",
+      "row": {
+        "ctx": "./platform/observability/prometheus/k8s-sidecar/",
+        "dockerfile": "./platform/observability/prometheus/k8s-sidecar/Dockerfile",
+        "image": "brinnatt/k8s-sidecar",
+        "tag": "1.30.5",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/k8s-sidecar"
+      },
+      "talkedu": {
+        "digest": "sha256:dc208c96c5a03e578fbf29a732da941df969f884236d382967ba5c732d207d4e",
+        "platforms": {
+          "linux/amd64": "sha256:3c7a6e15cefac338a73729d1228770ca02a46f90b7996117fbde67fc26808481",
+          "linux/arm64": "sha256:37877481e9c8534602972d86bcb8fc9a3aade7c080e80f2683c4e84927629ef1"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:26970df2e82b2397ca668730084246754ca1dc08610fb1a97bbdd8250c42bb3a",
+        "platforms": {
+          "linux/amd64": "sha256:d47211642c13366d01b9eb32447f41896927599a0a6db879c3c770df04b29554",
+          "linux/arm64": "sha256:075f762a401465faef35f27b7fdddfd58a29592d6c39a4d85693b200520027ca"
+        }
+      },
+      "fingerprint": "00b701773b92a9d7659d45c2b5e4fecbab1799c187f82f7c20c24409b0fc8edd",
+      "row": {
+        "ctx": "./platform/observability/prometheus/prometheus-config-reloader/",
+        "dockerfile": "./platform/observability/prometheus/prometheus-config-reloader/Dockerfile",
+        "image": "brinnatt/prometheus-config-reloader",
+        "tag": "v0.93.0",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/prometheus-config-reloader"
+      },
+      "talkedu": {
+        "digest": "sha256:26970df2e82b2397ca668730084246754ca1dc08610fb1a97bbdd8250c42bb3a",
+        "platforms": {
+          "linux/amd64": "sha256:d47211642c13366d01b9eb32447f41896927599a0a6db879c3c770df04b29554",
+          "linux/arm64": "sha256:075f762a401465faef35f27b7fdddfd58a29592d6c39a4d85693b200520027ca"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:46a55ebe9aa8e5b3c34dcdefcc98bb13f511802837c257ca1004ab729649e31b",
+        "platforms": {
+          "linux/amd64": "sha256:4be67dfa8a79f21486c109b314ea58a1d259ae7d98dfb47de6c9b3acd971d775",
+          "linux/arm64": "sha256:e2705391a83ea045e550bfe118bfafc372fdefff715e7255632f96272ac18943"
+        }
+      },
+      "fingerprint": "ca5462876b93f5b5f23f83b637d001357f6e5ecd9adfc5f6b57439eb8a436853",
+      "row": {
+        "ctx": "./platform/observability/prometheus/prometheus-operator/",
+        "dockerfile": "./platform/observability/prometheus/prometheus-operator/Dockerfile",
+        "image": "brinnatt/prometheus-operator",
+        "tag": "v0.93.0",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/prometheus-operator"
+      },
+      "talkedu": {
+        "digest": "sha256:46a55ebe9aa8e5b3c34dcdefcc98bb13f511802837c257ca1004ab729649e31b",
+        "platforms": {
+          "linux/amd64": "sha256:4be67dfa8a79f21486c109b314ea58a1d259ae7d98dfb47de6c9b3acd971d775",
+          "linux/arm64": "sha256:e2705391a83ea045e550bfe118bfafc372fdefff715e7255632f96272ac18943"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:15dfd553012137742c284a01cfcc052083d73298c3ba8e2cb061b02791f70d03",
+        "platforms": {
+          "linux/amd64": "sha256:d6b486421349e75232b1becac79b855753692c0eccd078bdfd5b77a5c9cb99e0",
+          "linux/arm64": "sha256:e6d0df7ce8f499d1dbf3f206203c1eb439e9f90fcaf8db893e1c9a972adb6ea9"
+        }
+      },
+      "fingerprint": "1ecc9ea81e85682e96b0b0d8e3108ca490c76d3315060fbb5209ad4d24a4a0e6",
+      "row": {
+        "ctx": "./platform/observability/prometheus/prometheus-admission-webhook/",
+        "dockerfile": "./platform/observability/prometheus/prometheus-admission-webhook/Dockerfile",
+        "image": "brinnatt/prometheus-admission-webhook",
+        "tag": "v0.93.0",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/prometheus-admission-webhook"
+      },
+      "talkedu": {
+        "digest": "sha256:15dfd553012137742c284a01cfcc052083d73298c3ba8e2cb061b02791f70d03",
+        "platforms": {
+          "linux/amd64": "sha256:d6b486421349e75232b1becac79b855753692c0eccd078bdfd5b77a5c9cb99e0",
+          "linux/arm64": "sha256:e6d0df7ce8f499d1dbf3f206203c1eb439e9f90fcaf8db893e1c9a972adb6ea9"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:63578cbf34dcb0b63cd4db151263556a27ab05a35aa298854f59b436f7870241",
+        "platforms": {
+          "linux/amd64": "sha256:1fec653ccddac48ccc7d47270c324775bb20f995a66034682fbcd4a9844a58fb",
+          "linux/arm64": "sha256:9c00a8e6dd6f274984cc804025d5b727d4cb84e26fba99d1308a58066944cc0e"
+        }
+      },
+      "fingerprint": "e2ec671c83d6542f48737cfafcd1a05a2ed5b23d6adb04da377420330f804dcc",
+      "row": {
+        "ctx": "./platform/observability/prometheus/prometheus-webhook-certgen/",
+        "dockerfile": "./platform/observability/prometheus/prometheus-webhook-certgen/Dockerfile",
+        "image": "brinnatt/prometheus-webhook-certgen",
+        "tag": "1.8.5",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/prometheus-webhook-certgen"
+      },
+      "talkedu": {
+        "digest": "sha256:63578cbf34dcb0b63cd4db151263556a27ab05a35aa298854f59b436f7870241",
+        "platforms": {
+          "linux/amd64": "sha256:1fec653ccddac48ccc7d47270c324775bb20f995a66034682fbcd4a9844a58fb",
+          "linux/arm64": "sha256:9c00a8e6dd6f274984cc804025d5b727d4cb84e26fba99d1308a58066944cc0e"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:7ddb3cd4e951b370232f42b93568a15a848550b6633cb86dbbed40b7576bcbbb",
+        "platforms": {
+          "linux/amd64": "sha256:3d13b6a35fe96888bb626872ac05ee90ce776dafdf1561601943131c8c4852a6",
+          "linux/arm64": "sha256:65761e66ced89c39b0d0d4d0197db0ef850b0db8475f105b0f9273d3b6af52df"
+        }
+      },
+      "fingerprint": "394cc6244935322673af0162850613742918f4b58d02fda3183ab91ac0ce0b05",
+      "row": {
+        "ctx": "./platform/observability/prometheus/alertmanager/",
+        "dockerfile": "./platform/observability/prometheus/alertmanager/Dockerfile",
+        "image": "brinnatt/alertmanager",
+        "tag": "v0.33.1",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/alertmanager"
+      },
+      "talkedu": {
+        "digest": "sha256:7ddb3cd4e951b370232f42b93568a15a848550b6633cb86dbbed40b7576bcbbb",
+        "platforms": {
+          "linux/amd64": "sha256:3d13b6a35fe96888bb626872ac05ee90ce776dafdf1561601943131c8c4852a6",
+          "linux/arm64": "sha256:65761e66ced89c39b0d0d4d0197db0ef850b0db8475f105b0f9273d3b6af52df"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:d5b20d154d27657922facb92fdeb617111ea36dca881d91437c7961edeb31f64",
+        "platforms": {
+          "linux/amd64": "sha256:0d4ae7b34c48be2d2f3db6f3b22693b9fac4b6991fa5f6ba4da7be645c0da6f4",
+          "linux/arm64": "sha256:aaa5c3c8f1606b352678b5ef64aca64e3823aa016e7d3f4bce589b3f7483bf7a"
+        }
+      },
+      "fingerprint": "187f9bf096c1665d7e466c05ad266d7d652c9dd2a656d01772989e9590d732f2",
+      "row": {
+        "ctx": "./platform/observability/prometheus/node-exporter/",
+        "dockerfile": "./platform/observability/prometheus/node-exporter/Dockerfile",
+        "image": "brinnatt/node-exporter",
+        "tag": "v1.12.1",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/node-exporter"
+      },
+      "talkedu": {
+        "digest": "sha256:d5b20d154d27657922facb92fdeb617111ea36dca881d91437c7961edeb31f64",
+        "platforms": {
+          "linux/amd64": "sha256:0d4ae7b34c48be2d2f3db6f3b22693b9fac4b6991fa5f6ba4da7be645c0da6f4",
+          "linux/arm64": "sha256:aaa5c3c8f1606b352678b5ef64aca64e3823aa016e7d3f4bce589b3f7483bf7a"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:a881ea82204fdfe5e08c2b4e4d5993a8b3a3a5a8bf191072c08796c64a479423",
+        "platforms": {
+          "linux/amd64": "sha256:e48495ae114d2af8bd59173919c57898db1234a44532b7b43b5615bb234fd19e",
+          "linux/arm64": "sha256:e36a6f65ae732014888259b232f3db1afdb6a61ecc0893de3d132551906dbb2f"
+        }
+      },
+      "fingerprint": "d7e496c8615700a460781fef65b49dde1ee8ac063f05a09a8c3b2bf216120b3b",
+      "row": {
+        "ctx": "./platform/observability/prometheus/prometheus/",
+        "dockerfile": "./platform/observability/prometheus/prometheus/Dockerfile",
+        "image": "brinnatt/prometheus",
+        "tag": "v3.13.1-distroless",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/prometheus"
+      },
+      "talkedu": {
+        "digest": "sha256:a881ea82204fdfe5e08c2b4e4d5993a8b3a3a5a8bf191072c08796c64a479423",
+        "platforms": {
+          "linux/amd64": "sha256:e48495ae114d2af8bd59173919c57898db1234a44532b7b43b5615bb234fd19e",
+          "linux/arm64": "sha256:e36a6f65ae732014888259b232f3db1afdb6a61ecc0893de3d132551906dbb2f"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:6914d514fab88207434d6c46cabd5a94a5fd02acd239929d081037cfa8429613",
+        "platforms": {
+          "linux/amd64": "sha256:9799843c076e90a4364258b4c16e3901097f0e644342d0b63ec3c4496577151d",
+          "linux/arm64": "sha256:cc6f063c591f212b63b3d549ed96b9f9a7e9df60dad195d47074e6370c78b98d"
+        }
+      },
+      "fingerprint": "dba6a359db40165312eab0b869e1ca80c59c37de9e1e41af451c18ca0d691a0a",
+      "row": {
+        "ctx": "./platform/observability/prometheus/prometheus-webhook-dingtalk/",
+        "dockerfile": "./platform/observability/prometheus/prometheus-webhook-dingtalk/Dockerfile",
+        "image": "brinnatt/prometheus-webhook-dingtalk",
+        "tag": "v2.1.0",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/prometheus-webhook-dingtalk"
+      },
+      "talkedu": {
+        "digest": "sha256:6914d514fab88207434d6c46cabd5a94a5fd02acd239929d081037cfa8429613",
+        "platforms": {
+          "linux/amd64": "sha256:9799843c076e90a4364258b4c16e3901097f0e644342d0b63ec3c4496577151d",
+          "linux/arm64": "sha256:cc6f063c591f212b63b3d549ed96b9f9a7e9df60dad195d47074e6370c78b98d"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:3fe37aae3d2b45d36b74971e996bf00156685c98b95e14b900e9791437349759",
+        "platforms": {
+          "linux/amd64": "sha256:499017170969fea21bdb186037b66c6148d709a2380eab5d922be607052539b2",
+          "linux/arm64": "sha256:69b291c158618531a11ec2078c472f4a790199bbd45fc5773c131f4f0e56c6fc"
+        }
+      },
+      "fingerprint": "a9435f333df15de1d94f6188bfc229292d688ef0f323ec1d6214709395da9d7a",
+      "row": {
+        "ctx": "./platform/observability/prometheus/thanos/",
+        "dockerfile": "./platform/observability/prometheus/thanos/Dockerfile",
+        "image": "brinnatt/thanos",
+        "tag": "v0.41.0",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/thanos"
+      },
+      "talkedu": {
+        "digest": "sha256:3fe37aae3d2b45d36b74971e996bf00156685c98b95e14b900e9791437349759",
+        "platforms": {
+          "linux/amd64": "sha256:499017170969fea21bdb186037b66c6148d709a2380eab5d922be607052539b2",
+          "linux/arm64": "sha256:69b291c158618531a11ec2078c472f4a790199bbd45fc5773c131f4f0e56c6fc"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:2df9a0e620cebd2b839e1b1e42dd026d9ae14449f13446415aafc178c3dfcf60",
+        "platforms": {
+          "linux/amd64": "sha256:9f75360c4ef27d4f5a8a8f61a0a4d2cde23903fe8d00892381dc035c29f7d2b6",
+          "linux/arm64": "sha256:152a91bbe4ee78e16aba5b622a6eae22ee5bcd43b4e840ebde4b3be8d925f11a"
+        }
+      },
+      "fingerprint": "f9db7fd66354aa9920726f7b95db1dbcdb120de10811b8c12b6c39aa9307fbba",
+      "row": {
+        "ctx": "./platform/observability/prometheus/prometheus-adapter/",
+        "dockerfile": "./platform/observability/prometheus/prometheus-adapter/Dockerfile",
+        "image": "brinnatt/prometheus-adapter",
+        "tag": "v0.12.0",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/prometheus-adapter"
+      },
+      "talkedu": {
+        "digest": "sha256:2df9a0e620cebd2b839e1b1e42dd026d9ae14449f13446415aafc178c3dfcf60",
+        "platforms": {
+          "linux/amd64": "sha256:9f75360c4ef27d4f5a8a8f61a0a4d2cde23903fe8d00892381dc035c29f7d2b6",
+          "linux/arm64": "sha256:152a91bbe4ee78e16aba5b622a6eae22ee5bcd43b4e840ebde4b3be8d925f11a"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:04cbcc8a02a457a0e94da6f7fa4cdf9bf6c11d1a26045798f1c6008fa43c2a7b",
+        "platforms": {
+          "linux/amd64": "sha256:e835318dfdb503fac0ae60e80169e334de44e01f28c6b1f885bdf1fbef5468fa",
+          "linux/arm64": "sha256:8b03075ae8d9557a862e154df8f6ee2abeabd179709d6be5f7a7a8262a87ff5a"
+        }
+      },
+      "fingerprint": "55a5bd85e601e2382c9c7655aab337cad0fbcc13f0aaf9cf81487ceebc2a64fe",
+      "row": {
+        "ctx": "./platform/observability/prometheus/blackbox-exporter/",
+        "dockerfile": "./platform/observability/prometheus/blackbox-exporter/Dockerfile",
+        "image": "brinnatt/blackbox-exporter",
+        "tag": "v0.27.0",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/blackbox-exporter"
+      },
+      "talkedu": {
+        "digest": "sha256:04cbcc8a02a457a0e94da6f7fa4cdf9bf6c11d1a26045798f1c6008fa43c2a7b",
+        "platforms": {
+          "linux/amd64": "sha256:e835318dfdb503fac0ae60e80169e334de44e01f28c6b1f885bdf1fbef5468fa",
+          "linux/arm64": "sha256:8b03075ae8d9557a862e154df8f6ee2abeabd179709d6be5f7a7a8262a87ff5a"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:72b433da0e300bdbb22a4cf798a0ea2ab5e797b777579b9446ab770af2847729",
+        "platforms": {
+          "linux/amd64": "sha256:5990090d7591b104b4493b491449f93d1e53454e5a130d4debfbe547549cc12b",
+          "linux/arm64": "sha256:b0bc8a880634d164760b6d51b8ce0865e13644f747e0e2c8250e7b61977a9b8d"
+        }
+      },
+      "fingerprint": "3463858ea0617238f99bba36252fe02403b0a1a00ccec69b20e3d10dd7a8db0e",
+      "row": {
+        "ctx": "./middleware/percona-pxc/percona-xtradb-cluster-operator/",
+        "dockerfile": "./middleware/percona-pxc/percona-xtradb-cluster-operator/Dockerfile",
+        "image": "brinnatt/percona-xtradb-cluster-operator",
+        "tag": "1.20.0",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/percona-xtradb-cluster-operator"
+      },
+      "talkedu": {
+        "digest": "sha256:72b433da0e300bdbb22a4cf798a0ea2ab5e797b777579b9446ab770af2847729",
+        "platforms": {
+          "linux/amd64": "sha256:5990090d7591b104b4493b491449f93d1e53454e5a130d4debfbe547549cc12b",
+          "linux/arm64": "sha256:b0bc8a880634d164760b6d51b8ce0865e13644f747e0e2c8250e7b61977a9b8d"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:e44f059b07d46713f7b90e05e9833195136a9a765d8b1d1bf3b361a8a4cd6810",
+        "platforms": {
+          "linux/amd64": "sha256:a0fe94b3cdbaefe4f51c13a6651276d0e3229133454df0e78e8fa607ee45b370",
+          "linux/arm64": "sha256:4d0bfe254ad7fd24c8fd800e4eb438aa1c0746fae536c184e1735bae24712cee"
+        }
+      },
+      "fingerprint": "7ecd004cd42e5fdd4e631d01bfae7de3cb70dd6e95e507801e21b5d02dc51155",
+      "row": {
+        "ctx": "./middleware/percona-pxc/percona-xtradb-cluster/",
+        "dockerfile": "./middleware/percona-pxc/percona-xtradb-cluster/Dockerfile",
+        "image": "brinnatt/percona-xtradb-cluster",
+        "tag": "8.4.8-8.1",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/percona-xtradb-cluster"
+      },
+      "talkedu": {
+        "digest": "sha256:e44f059b07d46713f7b90e05e9833195136a9a765d8b1d1bf3b361a8a4cd6810",
+        "platforms": {
+          "linux/amd64": "sha256:a0fe94b3cdbaefe4f51c13a6651276d0e3229133454df0e78e8fa607ee45b370",
+          "linux/arm64": "sha256:4d0bfe254ad7fd24c8fd800e4eb438aa1c0746fae536c184e1735bae24712cee"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:0330c136ad87fa1873cabfa6e60445975a3a613ac714c98a2b45da0b4ec3753a",
+        "platforms": {
+          "linux/amd64": "sha256:9c50c12aa9c540b29857301dd91383225b869c7d7ebcd7feedb250583494dd0c",
+          "linux/arm64": "sha256:19c32b6ae90f0c7467352fb9201ae80193d12a3cac44df851a26d3a485f5fefd"
+        }
+      },
+      "fingerprint": "6363fbc5af3364e78648d4992a43d8eb51829feb7bb57c40f2c727f423264c68",
+      "row": {
+        "ctx": "./middleware/percona-pxc/percona-xtrabackup/",
+        "dockerfile": "./middleware/percona-pxc/percona-xtrabackup/Dockerfile",
+        "image": "brinnatt/percona-xtrabackup",
+        "tag": "8.4.0-5.1",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/percona-xtrabackup"
+      },
+      "talkedu": {
+        "digest": "sha256:0330c136ad87fa1873cabfa6e60445975a3a613ac714c98a2b45da0b4ec3753a",
+        "platforms": {
+          "linux/amd64": "sha256:9c50c12aa9c540b29857301dd91383225b869c7d7ebcd7feedb250583494dd0c",
+          "linux/arm64": "sha256:19c32b6ae90f0c7467352fb9201ae80193d12a3cac44df851a26d3a485f5fefd"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:629da2c330d1cd73a4020c02c150d8ac345bbfa537a1266f61df956cabe6e822",
+        "platforms": {
+          "linux/amd64": "sha256:6b2f6d396d99689bcf53e84188fc745a9c68a27234c0db36e6ebb800891cc151",
+          "linux/arm64": "sha256:0191ee9ac1e6ebc0f9d8a9f98d69506395abd5c0591a48eaabb13e625a8ea36d"
+        }
+      },
+      "fingerprint": "94e989ba6d7f56a5cbde58e15e77084d52aedc220bb2e92ae0210a4b8d7a7778",
+      "row": {
+        "ctx": "./middleware/percona-pxc/percona-haproxy/",
+        "dockerfile": "./middleware/percona-pxc/percona-haproxy/Dockerfile",
+        "image": "brinnatt/percona-haproxy",
+        "tag": "2.8.18-1",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/percona-haproxy"
+      },
+      "talkedu": {
+        "digest": "sha256:629da2c330d1cd73a4020c02c150d8ac345bbfa537a1266f61df956cabe6e822",
+        "platforms": {
+          "linux/amd64": "sha256:6b2f6d396d99689bcf53e84188fc745a9c68a27234c0db36e6ebb800891cc151",
+          "linux/arm64": "sha256:0191ee9ac1e6ebc0f9d8a9f98d69506395abd5c0591a48eaabb13e625a8ea36d"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:187bf06d66aeebf7d083528b5ab5d0db679ddff65c2896994430973f8eee319f",
+        "platforms": {
+          "linux/amd64": "sha256:fff2bbd6d8dd6a2e41818c5086d262562eb672e203c4d0da8e691103e700cda6",
+          "linux/arm64": "sha256:34d5796d4264980c916c8518c1668144b6a6928bc9d7203c219922decbfa2c67"
+        }
+      },
+      "fingerprint": "214220bd1362c1485eabcaf16798195424d122df302d21d91d2fdc5d1d2e548e",
+      "row": {
+        "ctx": "./middleware/percona-pxc/percona-fluentbit/",
+        "dockerfile": "./middleware/percona-pxc/percona-fluentbit/Dockerfile",
+        "image": "brinnatt/percona-fluentbit",
+        "tag": "5.0.6-1",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/percona-fluentbit"
+      },
+      "talkedu": {
+        "digest": "sha256:187bf06d66aeebf7d083528b5ab5d0db679ddff65c2896994430973f8eee319f",
+        "platforms": {
+          "linux/amd64": "sha256:fff2bbd6d8dd6a2e41818c5086d262562eb672e203c4d0da8e691103e700cda6",
+          "linux/arm64": "sha256:34d5796d4264980c916c8518c1668144b6a6928bc9d7203c219922decbfa2c67"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:2cf00b96c5fc0db453a1d507b5e5d7b4c428a592a8dafcb2b1202a17dfabbed2",
+        "platforms": {
+          "linux/amd64": "sha256:1f8b1ca149a1306bf595dec77b6f96f0160c176ec8a2d903b04a95004fe68906",
+          "linux/arm64": "sha256:d5dc9b52c2bd2b3170d4d49a21a0210703d6d5106fe0139b9d2602edb4ad5643"
+        }
+      },
+      "fingerprint": "b9475a4b2038d960e350ce700d70fe6f4b02b2ccfc9071e3564cfe338def37a1",
+      "row": {
+        "ctx": "./middleware/percona-pxc/test-support/minio-mc/",
+        "dockerfile": "./middleware/percona-pxc/test-support/minio-mc/Dockerfile",
+        "image": "brinnatt/minio-mc",
+        "tag": "RELEASE.2025-04-08T15-39-49Z",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/minio-mc"
+      },
+      "talkedu": {
+        "digest": "sha256:2cf00b96c5fc0db453a1d507b5e5d7b4c428a592a8dafcb2b1202a17dfabbed2",
+        "platforms": {
+          "linux/amd64": "sha256:1f8b1ca149a1306bf595dec77b6f96f0160c176ec8a2d903b04a95004fe68906",
+          "linux/arm64": "sha256:d5dc9b52c2bd2b3170d4d49a21a0210703d6d5106fe0139b9d2602edb4ad5643"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:b52103d118f3ec591c74c8e0a52a4d0585dfca18a1a95cc8f52123df72bf68a7",
+        "platforms": {
+          "linux/amd64": "sha256:7e898184c30abc9c0b8f595851d24b375100b0a90f5f10f82a9810e76f72258f",
+          "linux/arm64": "sha256:417f34c908c511ed4fdd9aca43ba5d28be6d0e75ffa4b02bb22e501809d63953"
+        }
+      },
+      "fingerprint": "c141fe63d02ae1395e478d46ef79b20070dc34a54bfcbd7f8bf70e4f066fde61",
+      "row": {
+        "ctx": "./middleware/percona-pxc/test-support/percona-sysbench/",
+        "dockerfile": "./middleware/percona-pxc/test-support/percona-sysbench/Dockerfile",
+        "image": "brinnatt/percona-sysbench",
+        "tag": "1.1",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/percona-sysbench"
+      },
+      "talkedu": {
+        "digest": "sha256:b52103d118f3ec591c74c8e0a52a4d0585dfca18a1a95cc8f52123df72bf68a7",
+        "platforms": {
+          "linux/amd64": "sha256:7e898184c30abc9c0b8f595851d24b375100b0a90f5f10f82a9810e76f72258f",
+          "linux/arm64": "sha256:417f34c908c511ed4fdd9aca43ba5d28be6d0e75ffa4b02bb22e501809d63953"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:829cb1112c14f946947a541ef45642fa30c9f25de4e44a647de171eb7f9809d9",
+        "platforms": {
+          "linux/amd64": "sha256:ef9e8b38a2221dec7f727b36a27fb10034c8e5a1917a3e0e8eea8ae6ec3ca11f",
+          "linux/arm64": "sha256:8656549c398de33967ec14fd8df8f3bfe8fa72e5bec3ae18f9aea2a415def0ed"
+        }
+      },
+      "fingerprint": "b466d9caf4f16113480052203e4f069d78c61b363a79e8df59076ae3e2aedd28",
+      "row": {
+        "ctx": "./middleware/kafka/strimzi/strimzi-operator/",
+        "dockerfile": "./middleware/kafka/strimzi/strimzi-operator/Dockerfile",
+        "image": "brinnatt/strimzi-operator",
+        "tag": "1.2.0",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/strimzi-operator"
+      },
+      "talkedu": {
+        "digest": "sha256:829cb1112c14f946947a541ef45642fa30c9f25de4e44a647de171eb7f9809d9",
+        "platforms": {
+          "linux/amd64": "sha256:ef9e8b38a2221dec7f727b36a27fb10034c8e5a1917a3e0e8eea8ae6ec3ca11f",
+          "linux/arm64": "sha256:8656549c398de33967ec14fd8df8f3bfe8fa72e5bec3ae18f9aea2a415def0ed"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:db47f58ad0ed712ad2ac43aad6b89f4d3360ed6e7804cf9ebb2a5782f2292736",
+        "platforms": {
+          "linux/amd64": "sha256:6b1eb0116a75dc23b6b462e6f2a8db4289f862023c6226e4c89fe8cba3bbb86d",
+          "linux/arm64": "sha256:ecd91247287f4bf314a2502b2642a3311ca86a02fe72f3b6b54a0bf65cbad351"
+        }
+      },
+      "fingerprint": "8d5f65e75ed110a8bbdd115a23419ff0606d91a4c41bb049fccc5b95ed20c473",
+      "row": {
+        "ctx": "./middleware/kafka/strimzi/strimzi-kafka/",
+        "dockerfile": "./middleware/kafka/strimzi/strimzi-kafka/Dockerfile",
+        "image": "brinnatt/strimzi-kafka",
+        "tag": "1.2.0-kafka-4.3.1",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/strimzi-kafka"
+      },
+      "talkedu": {
+        "digest": "sha256:db47f58ad0ed712ad2ac43aad6b89f4d3360ed6e7804cf9ebb2a5782f2292736",
+        "platforms": {
+          "linux/amd64": "sha256:6b1eb0116a75dc23b6b462e6f2a8db4289f862023c6226e4c89fe8cba3bbb86d",
+          "linux/arm64": "sha256:ecd91247287f4bf314a2502b2642a3311ca86a02fe72f3b6b54a0bf65cbad351"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:548644953ae21b87a78adf10f563cdb3c02d34d879aee2f59be0b2e5c0046b3b",
+        "platforms": {
+          "linux/amd64": "sha256:009639f9f8f4c3323f17d2b7b83460d984a63030c5405df5e3a90f5e13d5cbe0",
+          "linux/arm64": "sha256:6eeb48e184cfc15ad2f2dc7736892669d387039f885fe96dc31668ac5c9c45bc"
+        }
+      },
+      "fingerprint": "f501e4da19a1ce37dc32c604c5b5bb371f5881a39ede7eb5b26acee2b008db24",
+      "row": {
+        "ctx": "./middleware/kafka/strimzi/strimzi-drain-cleaner/",
+        "dockerfile": "./middleware/kafka/strimzi/strimzi-drain-cleaner/Dockerfile",
+        "image": "brinnatt/strimzi-drain-cleaner",
+        "tag": "1.6.1",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/strimzi-drain-cleaner"
+      },
+      "talkedu": {
+        "digest": "sha256:548644953ae21b87a78adf10f563cdb3c02d34d879aee2f59be0b2e5c0046b3b",
+        "platforms": {
+          "linux/amd64": "sha256:009639f9f8f4c3323f17d2b7b83460d984a63030c5405df5e3a90f5e13d5cbe0",
+          "linux/arm64": "sha256:6eeb48e184cfc15ad2f2dc7736892669d387039f885fe96dc31668ac5c9c45bc"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:04c6173e78736bce50c9810535ec28f29f29b930c8036c8685f533d8641b29a6",
+        "platforms": {
+          "linux/amd64": "sha256:f1dcfc302ffec6445ce8c73c77b9ccfb57a5f9efbdd8ffbc342db50a13db4607",
+          "linux/arm64": "sha256:c86449cef3a9472ad3564fff64872a2ba41f8966b13c5a2b31c050a203ab51cd"
+        }
+      },
+      "fingerprint": "3d6c955e81c9c4d2a8a88035bbfe23841f3639b9eea1a77c7ecadc82eb3b1359",
+      "row": {
+        "ctx": "./middleware/kafka/test-support/strimzi-kafka-4.3.0/",
+        "dockerfile": "./middleware/kafka/test-support/strimzi-kafka-4.3.0/Dockerfile",
+        "image": "brinnatt/strimzi-kafka",
+        "tag": "1.2.0-kafka-4.3.0",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/strimzi-kafka"
+      },
+      "talkedu": {
+        "digest": "sha256:04c6173e78736bce50c9810535ec28f29f29b930c8036c8685f533d8641b29a6",
+        "platforms": {
+          "linux/amd64": "sha256:f1dcfc302ffec6445ce8c73c77b9ccfb57a5f9efbdd8ffbc342db50a13db4607",
+          "linux/arm64": "sha256:c86449cef3a9472ad3564fff64872a2ba41f8966b13c5a2b31c050a203ab51cd"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:a7e6d6bb828d03da071d4b730acee7eca05a39e47be14961ee895e4d589f6485",
+        "platforms": {
+          "linux/amd64": "sha256:ac2e09db514c9c47c15d10d83255522e146802a648d82fbf8857c979c5773322",
+          "linux/arm64": "sha256:c1b0b9161e32a95f5ea7d18ef62f0b1d3f4611bbfa0a5d117a60f7f704fd483d"
+        }
+      },
+      "fingerprint": "ca6394692229a4da2688e3af222038ab98ecb90fa1a0e668519b8dc539c641bf",
+      "row": {
+        "ctx": "./platform/observability/logging/eck-operator/",
+        "dockerfile": "./platform/observability/logging/eck-operator/Dockerfile",
+        "image": "brinnatt/eck-operator",
+        "tag": "3.5.0",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/eck-operator"
+      },
+      "talkedu": {
+        "digest": "sha256:a7e6d6bb828d03da071d4b730acee7eca05a39e47be14961ee895e4d589f6485",
+        "platforms": {
+          "linux/amd64": "sha256:ac2e09db514c9c47c15d10d83255522e146802a648d82fbf8857c979c5773322",
+          "linux/arm64": "sha256:c1b0b9161e32a95f5ea7d18ef62f0b1d3f4611bbfa0a5d117a60f7f704fd483d"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:7e3c5d4133ab93758a3036c350b25f312f9d25062a1f94c01842780c9b4ea067",
+        "platforms": {
+          "linux/amd64": "sha256:50fe888d18821430857d123b7722a1f9a6b5add5e27c1acf7b88f5bb071aeb15",
+          "linux/arm64": "sha256:7defe378c22d4fea41b67b06e9baceb2e34abb2d85590d4f9338422442d648c7"
+        }
+      },
+      "fingerprint": "0eb420bfeb2deeeb5257d4b68b0a9a725d5de5dfcb9f71d83a028d1c956fd960",
+      "row": {
+        "ctx": "./platform/observability/logging/elasticsearch/",
+        "dockerfile": "./platform/observability/logging/elasticsearch/Dockerfile",
+        "image": "brinnatt/elasticsearch",
+        "tag": "9.5.1",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/elasticsearch"
+      },
+      "talkedu": {
+        "digest": "sha256:7e3c5d4133ab93758a3036c350b25f312f9d25062a1f94c01842780c9b4ea067",
+        "platforms": {
+          "linux/amd64": "sha256:50fe888d18821430857d123b7722a1f9a6b5add5e27c1acf7b88f5bb071aeb15",
+          "linux/arm64": "sha256:7defe378c22d4fea41b67b06e9baceb2e34abb2d85590d4f9338422442d648c7"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:bbdfd6026aa35737c49df84c493da879d611f2095af3ee9a1ae403db780bf5c8",
+        "platforms": {
+          "linux/amd64": "sha256:86654cfa3c0f117814879c088dabc38d1aad25f0713eb02a6c0d1a3a2d0884f8",
+          "linux/arm64": "sha256:0310be7ec382b585b1182c4cdd8a9aedd18405d3dd5e6503f0ebe8f40f025989"
+        }
+      },
+      "fingerprint": "3d788067648b51fefa6c702a3748b3a31c7b3da6e757383a3bc0d410eecbbcb4",
+      "row": {
+        "ctx": "./platform/observability/logging/kibana/",
+        "dockerfile": "./platform/observability/logging/kibana/Dockerfile",
+        "image": "brinnatt/kibana",
+        "tag": "9.5.1",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/kibana"
+      },
+      "talkedu": {
+        "digest": "sha256:bbdfd6026aa35737c49df84c493da879d611f2095af3ee9a1ae403db780bf5c8",
+        "platforms": {
+          "linux/amd64": "sha256:86654cfa3c0f117814879c088dabc38d1aad25f0713eb02a6c0d1a3a2d0884f8",
+          "linux/arm64": "sha256:0310be7ec382b585b1182c4cdd8a9aedd18405d3dd5e6503f0ebe8f40f025989"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:5b5e543a4965d75c1aadeaa05f069e1e0abde97edccdfb0b73d10a17968ed8c2",
+        "platforms": {
+          "linux/amd64": "sha256:092a37fa354bf2736f88b8f3981fce5e53d3e2904d671ea120062a4d9e305a25",
+          "linux/arm64": "sha256:224f5dac0e768fc962e017e226b66ebfc042fe710a906359981eb0a2ee8f1b57"
+        }
+      },
+      "fingerprint": "c80b5743f779aeab21890ab74ba2908cc51a454900765fa4af075339cef8a281",
+      "row": {
+        "ctx": "./platform/observability/logging/fluent-bit/",
+        "dockerfile": "./platform/observability/logging/fluent-bit/Dockerfile",
+        "image": "brinnatt/fluent-bit",
+        "tag": "5.1.1",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/fluent-bit"
+      },
+      "talkedu": {
+        "digest": "sha256:5b5e543a4965d75c1aadeaa05f069e1e0abde97edccdfb0b73d10a17968ed8c2",
+        "platforms": {
+          "linux/amd64": "sha256:092a37fa354bf2736f88b8f3981fce5e53d3e2904d671ea120062a4d9e305a25",
+          "linux/arm64": "sha256:224f5dac0e768fc962e017e226b66ebfc042fe710a906359981eb0a2ee8f1b57"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:a4827c0bd9ce58b670a5aa3958533f44352376774db733f75b7dad7e7761bfc5",
+        "platforms": {
+          "linux/amd64": "sha256:c48cb19e8267bdf4604f624415223695d39a39f8f12b576500c18bd335c743ee",
+          "linux/arm64": "sha256:ba88b70522ee58be863716dfd8352f8d5d0bdec75f15364ab9f0ae571a3ddcf8"
+        }
+      },
+      "fingerprint": "d0cd5b17124383dede9d7896dcb9a5cfb6e8d3902fa39956b3cc34f96d8b5e5d",
+      "row": {
+        "ctx": "./platform/observability/logging/logstash/",
+        "dockerfile": "./platform/observability/logging/logstash/Dockerfile",
+        "image": "brinnatt/logstash",
+        "tag": "9.5.1",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/logstash"
+      },
+      "talkedu": {
+        "digest": "sha256:a4827c0bd9ce58b670a5aa3958533f44352376774db733f75b7dad7e7761bfc5",
+        "platforms": {
+          "linux/amd64": "sha256:c48cb19e8267bdf4604f624415223695d39a39f8f12b576500c18bd335c743ee",
+          "linux/arm64": "sha256:ba88b70522ee58be863716dfd8352f8d5d0bdec75f15364ab9f0ae571a3ddcf8"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:fb1c0fccc45d39aefc3017ed6311e39be9488ca585b8621903adbdc3ce29a941",
+        "platforms": {
+          "linux/amd64": "sha256:e2de1ab057e04e802b7a010dfb2fd1fa98c7052b47859219907904b8ba09902c",
+          "linux/arm64": "sha256:4d243c95ec76705ffe9561f5c6db3460ed1fa07ed4bcf7840a33999a13a519e6"
+        }
+      },
+      "fingerprint": "90d4330034a2717022b65d1325f74282ae6bc36425b170a19dfd6abae0e954cb",
+      "row": {
+        "ctx": "./platform/observability/logging/loki/",
+        "dockerfile": "./platform/observability/logging/loki/Dockerfile",
+        "image": "brinnatt/loki",
+        "tag": "3.7.6",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/loki"
+      },
+      "talkedu": {
+        "digest": "sha256:fb1c0fccc45d39aefc3017ed6311e39be9488ca585b8621903adbdc3ce29a941",
+        "platforms": {
+          "linux/amd64": "sha256:e2de1ab057e04e802b7a010dfb2fd1fa98c7052b47859219907904b8ba09902c",
+          "linux/arm64": "sha256:4d243c95ec76705ffe9561f5c6db3460ed1fa07ed4bcf7840a33999a13a519e6"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:543b75c841ddb419b6db943c8d8c5d77bc2b1d27b8c8380f4b7cc2441085226b",
+        "platforms": {
+          "linux/amd64": "sha256:d77b1a7d54fc23636156a6b95865e8a9190f4d88571e07d648ee4a7c45efca86",
+          "linux/arm64": "sha256:ac21cd6555185cde84c3e68a5a7d49c1a1656c044dc73c2919715c91cf37b0f3"
+        }
+      },
+      "fingerprint": "abdc45420bd0b8627967adb1260229b518edd89c5778b7b34c78567312f46abc",
+      "row": {
+        "ctx": "./platform/observability/logging/alloy/",
+        "dockerfile": "./platform/observability/logging/alloy/Dockerfile",
+        "image": "brinnatt/alloy",
+        "tag": "1.18.1",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/alloy"
+      },
+      "talkedu": {
+        "digest": "sha256:543b75c841ddb419b6db943c8d8c5d77bc2b1d27b8c8380f4b7cc2441085226b",
+        "platforms": {
+          "linux/amd64": "sha256:d77b1a7d54fc23636156a6b95865e8a9190f4d88571e07d648ee4a7c45efca86",
+          "linux/arm64": "sha256:ac21cd6555185cde84c3e68a5a7d49c1a1656c044dc73c2919715c91cf37b0f3"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:8a60ecb1ebc17008cb0e55422a75d51f66ab1a9dc768700a7feb917125c8e032",
+        "platforms": {
+          "linux/amd64": "sha256:7f44dd94b79fee4d8d3988aaf3a6a309edda633106d1de54d94d18f2b48779c3",
+          "linux/arm64": "sha256:157892558159ec36a9318c5ed187d18453397b2dc9a1cb365319609ea5f716b7"
+        }
+      },
+      "fingerprint": "7998f23f62fd7199f3f2029a171262f2df4af8422c8e19c40be6e6a3b9e1f23f",
+      "row": {
+        "ctx": "./platform/observability/logging/loki-gateway/",
+        "dockerfile": "./platform/observability/logging/loki-gateway/Dockerfile",
+        "image": "brinnatt/loki-gateway",
+        "tag": "1.31-alpine",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/loki-gateway"
+      },
+      "talkedu": {
+        "digest": "sha256:8a60ecb1ebc17008cb0e55422a75d51f66ab1a9dc768700a7feb917125c8e032",
+        "platforms": {
+          "linux/amd64": "sha256:7f44dd94b79fee4d8d3988aaf3a6a309edda633106d1de54d94d18f2b48779c3",
+          "linux/arm64": "sha256:157892558159ec36a9318c5ed187d18453397b2dc9a1cb365319609ea5f716b7"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:0ffd7eb40af2df14daecb3bdb8302aa6d1d3d6b3bbfa9475effcb0a93e181ba8",
+        "platforms": {
+          "linux/amd64": "sha256:249b47c4ca3e9b411721cc6dd59ac0d135efd687f9f5ca74a49936577bdf040f",
+          "linux/arm64": "sha256:9d78e41789bcb65f0473fc324c4c10df3af841ac27c5b050700fe4795f01c103"
+        }
+      },
+      "fingerprint": "073d6ac48bd98738649ab3fa9e54e7118c7181cedb8c606c30c467dfa95007cd",
+      "row": {
+        "ctx": "./platform/observability/logging/access-log-exporter/",
+        "dockerfile": "./platform/observability/logging/access-log-exporter/Dockerfile",
+        "image": "brinnatt/access-log-exporter",
+        "tag": "0.4.11",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/access-log-exporter"
+      },
+      "talkedu": {
+        "digest": "sha256:0ffd7eb40af2df14daecb3bdb8302aa6d1d3d6b3bbfa9475effcb0a93e181ba8",
+        "platforms": {
+          "linux/amd64": "sha256:249b47c4ca3e9b411721cc6dd59ac0d135efd687f9f5ca74a49936577bdf040f",
+          "linux/arm64": "sha256:9d78e41789bcb65f0473fc324c4c10df3af841ac27c5b050700fe4795f01c103"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:dacc98598d631567612067e5398acb13fcfc296dcd4a2036c2b4433860730d46",
+        "platforms": {
+          "linux/amd64": "sha256:0815a61e793b58c075abd2eba05931c31e88ac3ff8252a230b074868800847b5",
+          "linux/arm64": "sha256:b0768aa0a815f99b16f0bc13ab19c3c29fdca9cd12539589d1cff52afd29d2da"
+        }
+      },
+      "fingerprint": "5bd24baa1d4b3bd400909205e73af390c5c5a57b0ee183b62fea6c76d317a629",
+      "row": {
+        "ctx": "./platform/observability/logging/loki-canary/",
+        "dockerfile": "./platform/observability/logging/loki-canary/Dockerfile",
+        "image": "brinnatt/loki-canary",
+        "tag": "3.7.6",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/loki-canary"
+      },
+      "talkedu": {
+        "digest": "sha256:dacc98598d631567612067e5398acb13fcfc296dcd4a2036c2b4433860730d46",
+        "platforms": {
+          "linux/amd64": "sha256:0815a61e793b58c075abd2eba05931c31e88ac3ff8252a230b074868800847b5",
+          "linux/arm64": "sha256:b0768aa0a815f99b16f0bc13ab19c3c29fdca9cd12539589d1cff52afd29d2da"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:0a637aa695323980ab474d1060dab5e8a2c810d81f042e706eccf7aa30569e42",
+        "platforms": {
+          "linux/amd64": "sha256:3eb94410452b1afc2e0b1a645da70a162584026c695b89b4f63e2f0651cd9165",
+          "linux/arm64": "sha256:b73c56e7f22fb2fcfc334b53cc3a3aa4e751151159bbee1b71e60d68e4707021"
+        }
+      },
+      "fingerprint": "49af776a14db9d07cdd1b826c7635a3b16146490fa44bae4c9f555febc320459",
+      "row": {
+        "ctx": "./platform/observability/logging/memcached/",
+        "dockerfile": "./platform/observability/logging/memcached/Dockerfile",
+        "image": "brinnatt/memcached",
+        "tag": "1.6.45-alpine",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/memcached"
+      },
+      "talkedu": {
+        "digest": "sha256:0a637aa695323980ab474d1060dab5e8a2c810d81f042e706eccf7aa30569e42",
+        "platforms": {
+          "linux/amd64": "sha256:3eb94410452b1afc2e0b1a645da70a162584026c695b89b4f63e2f0651cd9165",
+          "linux/arm64": "sha256:b73c56e7f22fb2fcfc334b53cc3a3aa4e751151159bbee1b71e60d68e4707021"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:74eb2876b915249c84e16ea242a40164cac7d2b9fc6d2f7f55eea12f99e2dd1f",
+        "platforms": {
+          "linux/amd64": "sha256:0a255c46a512f912ad6df691a88abb169d7d8ac87c5ddaae0bbc6b541dc7b4c1",
+          "linux/arm64": "sha256:9e3f7747e23971ce331f3a354d4869c7d8a1792dc5ab7122bb1ee24583ba80da"
+        }
+      },
+      "fingerprint": "3424d205d2d8e31d37bfba6d93d79f9889f452d96934fe1088d01097cf73b52b",
+      "row": {
+        "ctx": "./platform/observability/logging/memcached-exporter/",
+        "dockerfile": "./platform/observability/logging/memcached-exporter/Dockerfile",
+        "image": "brinnatt/memcached-exporter",
+        "tag": "v0.17.0",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/memcached-exporter"
+      },
+      "talkedu": {
+        "digest": "sha256:74eb2876b915249c84e16ea242a40164cac7d2b9fc6d2f7f55eea12f99e2dd1f",
+        "platforms": {
+          "linux/amd64": "sha256:0a255c46a512f912ad6df691a88abb169d7d8ac87c5ddaae0bbc6b541dc7b4c1",
+          "linux/arm64": "sha256:9e3f7747e23971ce331f3a354d4869c7d8a1792dc5ab7122bb1ee24583ba80da"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:21120058e0f253b6362855fb3dcc60b14172308d3818fad472a52638c3e03ad0",
+        "platforms": {
+          "linux/amd64": "sha256:45314008ded502ca84c0142802897b6774da1e5600aed3f4214869413ba0571e",
+          "linux/arm64": "sha256:bd24207b36e08eb331ea3007c71cf2365a23a8ded65b82b8f46bcf9855c0c8c7"
+        }
+      },
+      "fingerprint": "3b28c68232cbacd1a6b1ea6fcaac3bdc3d4aed17776c25c56330885abea9319e",
+      "row": {
+        "ctx": "./platform/observability/logging/k8s-sidecar/",
+        "dockerfile": "./platform/observability/logging/k8s-sidecar/Dockerfile",
+        "image": "brinnatt/k8s-sidecar",
+        "tag": "2.10.1",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/k8s-sidecar"
+      },
+      "talkedu": {
+        "digest": "sha256:21120058e0f253b6362855fb3dcc60b14172308d3818fad472a52638c3e03ad0",
+        "platforms": {
+          "linux/amd64": "sha256:45314008ded502ca84c0142802897b6774da1e5600aed3f4214869413ba0571e",
+          "linux/arm64": "sha256:bd24207b36e08eb331ea3007c71cf2365a23a8ded65b82b8f46bcf9855c0c8c7"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:318cf324d952b11b6d92a728a9b57283ee7158757a80218414cd119f832b9204",
+        "platforms": {
+          "linux/amd64": "sha256:09a3ab55a0cf4795cdd186a017b2835d04465972f5ce392c5451e18f17a58659",
+          "linux/arm64": "sha256:f6b7083bd249856da5a8f0eb93d524f1d142a015982e0bb9d0a3f0f157732b67"
+        }
+      },
+      "fingerprint": "c6eb6c52b86737e279484f3732077812694e8ae7fa2a38ad8ed4860a6ac6a82c",
+      "row": {
+        "ctx": "./platform/observability/logging/prometheus-config-reloader/",
+        "dockerfile": "./platform/observability/logging/prometheus-config-reloader/Dockerfile",
+        "image": "brinnatt/prometheus-config-reloader",
+        "tag": "v0.91.0",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/prometheus-config-reloader"
+      },
+      "talkedu": {
+        "digest": "sha256:318cf324d952b11b6d92a728a9b57283ee7158757a80218414cd119f832b9204",
+        "platforms": {
+          "linux/amd64": "sha256:09a3ab55a0cf4795cdd186a017b2835d04465972f5ce392c5451e18f17a58659",
+          "linux/arm64": "sha256:f6b7083bd249856da5a8f0eb93d524f1d142a015982e0bb9d0a3f0f157732b67"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:d5212727b82b87a35270b23508b2139c04a0f5cb981908224b70be540d2623eb",
+        "platforms": {
+          "linux/amd64": "sha256:599a8f59e02e5fb9140ca4451b627e3c85236ae3d02d83abf97e76ced17dc5fc",
+          "linux/arm64": "sha256:fcfc77e810d43343b6fc0461379f47aadff4626d1c7d8d8d4745e38bf72eb1f8"
+        }
+      },
+      "fingerprint": "052436e4e74f15dc5d532d41a5b63d11e5214cdea720d659ff794127d6814612",
+      "row": {
+        "ctx": "platform/storage/longhorn/longhorn-engine/v1.12.2",
+        "dockerfile": "platform/storage/longhorn/longhorn-engine/v1.12.2/Dockerfile",
+        "image": "brinnatt/longhorn-engine",
+        "tag": "v1.12.2",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/longhorn-engine"
+      },
+      "talkedu": {
+        "digest": "sha256:d5212727b82b87a35270b23508b2139c04a0f5cb981908224b70be540d2623eb",
+        "platforms": {
+          "linux/amd64": "sha256:599a8f59e02e5fb9140ca4451b627e3c85236ae3d02d83abf97e76ced17dc5fc",
+          "linux/arm64": "sha256:fcfc77e810d43343b6fc0461379f47aadff4626d1c7d8d8d4745e38bf72eb1f8"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:75e082e3c1837bfaaef95f217f84c92ad8ec1935fe0ed2770f22c084b940410b",
+        "platforms": {
+          "linux/amd64": "sha256:bf0f42e30eaaa7ce9dfc8785dc048a79b805e1f20a72d41e991b38352f616c44",
+          "linux/arm64": "sha256:8ff5c8c3659ff53545570bcf89ce4517e1cbb8c6593f58f07b7cbbb2e5f845fb"
+        }
+      },
+      "fingerprint": "2a10b19256800bc6c67def9568f96718ac4fb8643ad8fb87c876cc376d033f8c",
+      "row": {
+        "ctx": "platform/storage/longhorn/longhorn-manager/v1.12.2-kubeauto.1",
+        "dockerfile": "platform/storage/longhorn/longhorn-manager/v1.12.2-kubeauto.1/Dockerfile",
+        "image": "brinnatt/longhorn-manager",
+        "tag": "v1.12.2-kubeauto.1",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/longhorn-manager"
+      },
+      "talkedu": {
+        "digest": "sha256:75e082e3c1837bfaaef95f217f84c92ad8ec1935fe0ed2770f22c084b940410b",
+        "platforms": {
+          "linux/amd64": "sha256:bf0f42e30eaaa7ce9dfc8785dc048a79b805e1f20a72d41e991b38352f616c44",
+          "linux/arm64": "sha256:8ff5c8c3659ff53545570bcf89ce4517e1cbb8c6593f58f07b7cbbb2e5f845fb"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:60c288e5f76041c49e9892f8e3b22c8569eab567fb785ca2335feb08d7883300",
+        "platforms": {
+          "linux/amd64": "sha256:cca5b5dea38fb51e10b50ea0b796f5c19b7b419746c85f4496d16ef672f7913a",
+          "linux/arm64": "sha256:8d4311d6e99b6bc6ffae326b306b0f57db0c87467e31f60534df430bff8eee49"
+        }
+      },
+      "fingerprint": "9fe818fbdf8d2f9be9cf4bda7febaf783650c908e1e45964a25437ea3768dcb2",
+      "row": {
+        "ctx": "platform/storage/longhorn/longhorn-ui/v1.12.2",
+        "dockerfile": "platform/storage/longhorn/longhorn-ui/v1.12.2/Dockerfile",
+        "image": "brinnatt/longhorn-ui",
+        "tag": "v1.12.2",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/longhorn-ui"
+      },
+      "talkedu": {
+        "digest": "sha256:60c288e5f76041c49e9892f8e3b22c8569eab567fb785ca2335feb08d7883300",
+        "platforms": {
+          "linux/amd64": "sha256:cca5b5dea38fb51e10b50ea0b796f5c19b7b419746c85f4496d16ef672f7913a",
+          "linux/arm64": "sha256:8d4311d6e99b6bc6ffae326b306b0f57db0c87467e31f60534df430bff8eee49"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:86bef542e37c11cdfc6c9147ef9378c7bb6e5d05a2ad77afacdc6f3bde70b661",
+        "platforms": {
+          "linux/amd64": "sha256:df0609cdc334ee0cd1048f0d0ca9d3a5a72996a0b43ba3d46e1031e4c7793b95",
+          "linux/arm64": "sha256:36cbf48378370dd3b1144d5405aa489b009b3e8a162f3fe796332cd042dab857"
+        }
+      },
+      "fingerprint": "1f738fedea45fbf4bc58e9f31d2f1cef5e009bbb502358d4c6d840de98720d8c",
+      "row": {
+        "ctx": "platform/storage/longhorn/longhorn-instance-manager/v1.12.2-kubeauto.1",
+        "dockerfile": "platform/storage/longhorn/longhorn-instance-manager/v1.12.2-kubeauto.1/Dockerfile",
+        "image": "brinnatt/longhorn-instance-manager",
+        "tag": "v1.12.2-kubeauto.1",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/longhorn-instance-manager"
+      },
+      "talkedu": {
+        "digest": "sha256:86bef542e37c11cdfc6c9147ef9378c7bb6e5d05a2ad77afacdc6f3bde70b661",
+        "platforms": {
+          "linux/amd64": "sha256:df0609cdc334ee0cd1048f0d0ca9d3a5a72996a0b43ba3d46e1031e4c7793b95",
+          "linux/arm64": "sha256:36cbf48378370dd3b1144d5405aa489b009b3e8a162f3fe796332cd042dab857"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:b861088cde02030f932d84ba0b7a9818c902b0b5e5b61d6a862fa09fcc80397a",
+        "platforms": {
+          "linux/amd64": "sha256:cab882837cbe68b6cc27e9f4fade06056a44d734d179f4db98ad025a8948ead2",
+          "linux/arm64": "sha256:49cf8e58811e1755b6fd780fa6b0d2d82bf1293b0e9bf2142e61da9c90728d6b"
+        }
+      },
+      "fingerprint": "3a8811dea7d1008692de9d8a5289260db76ce6afb8abf1fd9d803a405f2805ef",
+      "row": {
+        "ctx": "platform/storage/longhorn/longhorn-share-manager/v1.12.2",
+        "dockerfile": "platform/storage/longhorn/longhorn-share-manager/v1.12.2/Dockerfile",
+        "image": "brinnatt/longhorn-share-manager",
+        "tag": "v1.12.2",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/longhorn-share-manager"
+      },
+      "talkedu": {
+        "digest": "sha256:b861088cde02030f932d84ba0b7a9818c902b0b5e5b61d6a862fa09fcc80397a",
+        "platforms": {
+          "linux/amd64": "sha256:cab882837cbe68b6cc27e9f4fade06056a44d734d179f4db98ad025a8948ead2",
+          "linux/arm64": "sha256:49cf8e58811e1755b6fd780fa6b0d2d82bf1293b0e9bf2142e61da9c90728d6b"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:2d30984b5d84b5bb0e420a856cbe92f833c18f6f7ff8d66db13e49111e8265f1",
+        "platforms": {
+          "linux/amd64": "sha256:6d7074bcc4905bb1d5381edea21a015866163567f60d1c7edace16b423314ccf",
+          "linux/arm64": "sha256:0a32cb7ac965d874f4579bab80414731f327d8897a9aabe51be1f4b4b63478a6"
+        }
+      },
+      "fingerprint": "4c7f24cbf36de44857826089b4478a00d3f9c16d748e30fcadb937b3ee7b85f2",
+      "row": {
+        "ctx": "platform/storage/longhorn/longhorn-backing-image-manager/v1.12.2",
+        "dockerfile": "platform/storage/longhorn/longhorn-backing-image-manager/v1.12.2/Dockerfile",
+        "image": "brinnatt/longhorn-backing-image-manager",
+        "tag": "v1.12.2",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/longhorn-backing-image-manager"
+      },
+      "talkedu": {
+        "digest": "sha256:2d30984b5d84b5bb0e420a856cbe92f833c18f6f7ff8d66db13e49111e8265f1",
+        "platforms": {
+          "linux/amd64": "sha256:6d7074bcc4905bb1d5381edea21a015866163567f60d1c7edace16b423314ccf",
+          "linux/arm64": "sha256:0a32cb7ac965d874f4579bab80414731f327d8897a9aabe51be1f4b4b63478a6"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:be156c2dc7fb5e0680696a7fe44e35405526ab5160fe6b2a0e40e8ca502f9de1",
+        "platforms": {
+          "linux/amd64": "sha256:4eb1d42e863b49063b8a553799a0ba506cf61fe4f147d9dec2dd9b0dbadcacfe",
+          "linux/arm64": "sha256:52e76fd419ec53134a6a01d23ffa6a7a78b0f9f4673c9f1a706ed3528892638a"
+        }
+      },
+      "fingerprint": "82b652db5ea93eafb5f571709879a036a9e6f764d714c907878fca339245b09d",
+      "row": {
+        "ctx": "platform/storage/longhorn/longhorn-support-bundle-kit/v1.0.5",
+        "dockerfile": "platform/storage/longhorn/longhorn-support-bundle-kit/v1.0.5/Dockerfile",
+        "image": "brinnatt/longhorn-support-bundle-kit",
+        "tag": "v1.0.5",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/longhorn-support-bundle-kit"
+      },
+      "talkedu": {
+        "digest": "sha256:be156c2dc7fb5e0680696a7fe44e35405526ab5160fe6b2a0e40e8ca502f9de1",
+        "platforms": {
+          "linux/amd64": "sha256:4eb1d42e863b49063b8a553799a0ba506cf61fe4f147d9dec2dd9b0dbadcacfe",
+          "linux/arm64": "sha256:52e76fd419ec53134a6a01d23ffa6a7a78b0f9f4673c9f1a706ed3528892638a"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:ae4781673cb7f1c92656263f2c365ac318307c20e303f523cbbd7ca9a11cf03e",
+        "platforms": {
+          "linux/amd64": "sha256:29a8b4bd84c1552d295d9fbde5a52184b62a1a63cb8b237f7e2b5829b1a36966",
+          "linux/arm64": "sha256:dbb0dbd472ea861ba93f090ad13827426afe7e06d8590828d6d631c568d84f10"
+        }
+      },
+      "fingerprint": "6b4d273bab1836c1cca6e7786c9b1b29c38739111d3fa00c882e86a9544fb6b2",
+      "row": {
+        "ctx": "platform/storage/longhorn/longhorn-csi-attacher/v4.13.0-20261028",
+        "dockerfile": "platform/storage/longhorn/longhorn-csi-attacher/v4.13.0-20261028/Dockerfile",
+        "image": "brinnatt/longhorn-csi-attacher",
+        "tag": "v4.13.0-20261028",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/longhorn-csi-attacher"
+      },
+      "talkedu": {
+        "digest": "sha256:ae4781673cb7f1c92656263f2c365ac318307c20e303f523cbbd7ca9a11cf03e",
+        "platforms": {
+          "linux/amd64": "sha256:29a8b4bd84c1552d295d9fbde5a52184b62a1a63cb8b237f7e2b5829b1a36966",
+          "linux/arm64": "sha256:dbb0dbd472ea861ba93f090ad13827426afe7e06d8590828d6d631c568d84f10"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:1e25f8aa8ae418bff5ac2afab254774bbc9c42b1e0889b3dccf765f65706541d",
+        "platforms": {
+          "linux/amd64": "sha256:441d79c4112f3dd4fd7ea11411828faaabf1bb9b076d6d2bb0a0a2fa739e0f0c",
+          "linux/arm64": "sha256:77411fb49278d126d9b83a5af16eacefedd167c49576cf2a8bb08acafe7e33d6"
+        }
+      },
+      "fingerprint": "c42e4f1174e74b960964b9819bafaa8adcc52fddfaabc51b2176b87c303b44d7",
+      "row": {
+        "ctx": "platform/storage/longhorn/longhorn-csi-provisioner/v5.3.0-20261028",
+        "dockerfile": "platform/storage/longhorn/longhorn-csi-provisioner/v5.3.0-20261028/Dockerfile",
+        "image": "brinnatt/longhorn-csi-provisioner",
+        "tag": "v5.3.0-20261028",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/longhorn-csi-provisioner"
+      },
+      "talkedu": {
+        "digest": "sha256:1e25f8aa8ae418bff5ac2afab254774bbc9c42b1e0889b3dccf765f65706541d",
+        "platforms": {
+          "linux/amd64": "sha256:441d79c4112f3dd4fd7ea11411828faaabf1bb9b076d6d2bb0a0a2fa739e0f0c",
+          "linux/arm64": "sha256:77411fb49278d126d9b83a5af16eacefedd167c49576cf2a8bb08acafe7e33d6"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:aec788f29f920f7765bc264dd6695056e8fdc5bcc1600dddfce8f743adb9d257",
+        "platforms": {
+          "linux/amd64": "sha256:56c0ceb2a4189f46da789e66e7d16a1b6778a0df9eb7eb46df136c1957dbddb3",
+          "linux/arm64": "sha256:05fd3f40ef76b987099ff2e88ac8ad8d8d0b863bd7aad0ffd56d33a2b4397f17"
+        }
+      },
+      "fingerprint": "02267f494d47a0c8cacbf8ea6d1889d85e27f9f9d8cb7098ff1cf3603ca28b0a",
+      "row": {
+        "ctx": "platform/storage/longhorn/longhorn-csi-node-driver-registrar/v2.18.0-20261028",
+        "dockerfile": "platform/storage/longhorn/longhorn-csi-node-driver-registrar/v2.18.0-20261028/Dockerfile",
+        "image": "brinnatt/longhorn-csi-node-driver-registrar",
+        "tag": "v2.18.0-20261028",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/longhorn-csi-node-driver-registrar"
+      },
+      "talkedu": {
+        "digest": "sha256:aec788f29f920f7765bc264dd6695056e8fdc5bcc1600dddfce8f743adb9d257",
+        "platforms": {
+          "linux/amd64": "sha256:56c0ceb2a4189f46da789e66e7d16a1b6778a0df9eb7eb46df136c1957dbddb3",
+          "linux/arm64": "sha256:05fd3f40ef76b987099ff2e88ac8ad8d8d0b863bd7aad0ffd56d33a2b4397f17"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:e446c9343e4a682dc73099a0813ab73f484f5f6a66c0a7a8d961e26a3a470af8",
+        "platforms": {
+          "linux/amd64": "sha256:7b38ada2561afd4d089e9bf534500a89c58034290c43c9ec6af46a353fbcc6e1",
+          "linux/arm64": "sha256:4752ee9151d58a210832c4b2c99b53e37b14beffd3cb752ea6a43a25f2666e85"
+        }
+      },
+      "fingerprint": "f70413759998f0286271e942ca424148e41fb2b64a66e4a6a065625833e4dc52",
+      "row": {
+        "ctx": "platform/storage/longhorn/longhorn-csi-resizer/v2.3.0-20261028",
+        "dockerfile": "platform/storage/longhorn/longhorn-csi-resizer/v2.3.0-20261028/Dockerfile",
+        "image": "brinnatt/longhorn-csi-resizer",
+        "tag": "v2.3.0-20261028",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/longhorn-csi-resizer"
+      },
+      "talkedu": {
+        "digest": "sha256:e446c9343e4a682dc73099a0813ab73f484f5f6a66c0a7a8d961e26a3a470af8",
+        "platforms": {
+          "linux/amd64": "sha256:7b38ada2561afd4d089e9bf534500a89c58034290c43c9ec6af46a353fbcc6e1",
+          "linux/arm64": "sha256:4752ee9151d58a210832c4b2c99b53e37b14beffd3cb752ea6a43a25f2666e85"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:174ba07ef5e3e32556502b492dba66bd524f5cf98068a384eb23b333e15a9c99",
+        "platforms": {
+          "linux/amd64": "sha256:9431e62578cf45e06742c8dcd725fb6c35e4605daf0c1f530f62563b30df6c36",
+          "linux/arm64": "sha256:38b77326b0c4b942e4b7d96af4d98bdf427e9c288b4704e8fa930bd27e7c2daf"
+        }
+      },
+      "fingerprint": "e55a25159d76da84ca9ca12ef42f5f910b4c1b7a9c1b2df7dfe3348b09da967f",
+      "row": {
+        "ctx": "platform/storage/longhorn/longhorn-csi-snapshotter/v8.7.0-20261028",
+        "dockerfile": "platform/storage/longhorn/longhorn-csi-snapshotter/v8.7.0-20261028/Dockerfile",
+        "image": "brinnatt/longhorn-csi-snapshotter",
+        "tag": "v8.7.0-20261028",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/longhorn-csi-snapshotter"
+      },
+      "talkedu": {
+        "digest": "sha256:174ba07ef5e3e32556502b492dba66bd524f5cf98068a384eb23b333e15a9c99",
+        "platforms": {
+          "linux/amd64": "sha256:9431e62578cf45e06742c8dcd725fb6c35e4605daf0c1f530f62563b30df6c36",
+          "linux/arm64": "sha256:38b77326b0c4b942e4b7d96af4d98bdf427e9c288b4704e8fa930bd27e7c2daf"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:9edccbc767effc93abebea420bd384c2c34321af62428daf31e4771a8a33cdda",
+        "platforms": {
+          "linux/amd64": "sha256:c9f904fb20d8831145f7e1ae54ec1c22e2ffb42cd701e91f7b88a1a9c6e21b43",
+          "linux/arm64": "sha256:a74dda21d6c8ecbca553a50334459aee12668bb38a20d7e5220f9fcb9a07a27f"
+        }
+      },
+      "fingerprint": "2e6b30e1c4d3414a0a4b448f4e3bb34360fe2c34aeef635126491db0d6329929",
+      "row": {
+        "ctx": "platform/storage/longhorn/longhorn-livenessprobe/v2.20.0-20261028",
+        "dockerfile": "platform/storage/longhorn/longhorn-livenessprobe/v2.20.0-20261028/Dockerfile",
+        "image": "brinnatt/longhorn-livenessprobe",
+        "tag": "v2.20.0-20261028",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/longhorn-livenessprobe"
+      },
+      "talkedu": {
+        "digest": "sha256:9edccbc767effc93abebea420bd384c2c34321af62428daf31e4771a8a33cdda",
+        "platforms": {
+          "linux/amd64": "sha256:c9f904fb20d8831145f7e1ae54ec1c22e2ffb42cd701e91f7b88a1a9c6e21b43",
+          "linux/arm64": "sha256:a74dda21d6c8ecbca553a50334459aee12668bb38a20d7e5220f9fcb9a07a27f"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:7ef62dd9a20ae585ef0ca042b548e837809546e2d654b1b7b135f43e6ef17aa3",
+        "platforms": {
+          "linux/amd64": "sha256:6eda25f012aced8450fa9a081c1a316f8d9c9780a9ac69fcb9d078d2770ec212",
+          "linux/arm64": "sha256:84fca1703c6e9ad964f5e8544fbb6d170650266d7ec8535b154f576e60f39a21"
+        }
+      },
+      "fingerprint": "8f357f8f284dbd8f7a614e6a5362856a2a56ea5a7c38e817a56f68865781ffca",
+      "row": {
+        "ctx": "./platform/ingress/ingress-nginx-controller-1.15.1/",
+        "dockerfile": "./platform/ingress/ingress-nginx-controller-1.15.1/Dockerfile",
+        "image": "brinnatt/ingress-nginx-controller",
+        "tag": "v1.15.1",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/ingress-nginx-controller"
+      },
+      "talkedu": {
+        "digest": "sha256:7ef62dd9a20ae585ef0ca042b548e837809546e2d654b1b7b135f43e6ef17aa3",
+        "platforms": {
+          "linux/amd64": "sha256:6eda25f012aced8450fa9a081c1a316f8d9c9780a9ac69fcb9d078d2770ec212",
+          "linux/arm64": "sha256:84fca1703c6e9ad964f5e8544fbb6d170650266d7ec8535b154f576e60f39a21"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:dde6a97bafe6e8b3c5b8142daf6e96f78ac6a66ba3ce47fed5177c336235e8ff",
+        "platforms": {
+          "linux/amd64": "sha256:ff31947ffcac13fbf2c1b1749cfc9dfc92b3ac94f46ee7dd598aeaf5e82a79ff",
+          "linux/arm64": "sha256:9fca6fcdd097c1f4ce2b54d9ad1994adfe0a94b4d8240ba2349c3dcf7e33b618"
+        }
+      },
+      "fingerprint": "511f1ea8ece2adba87bcb7db758081adcdc692df35adeab79e6ae8fdc2c76247",
+      "row": {
+        "ctx": "./platform/ingress/kube-webhook-certgen-1.6.9/",
+        "dockerfile": "./platform/ingress/kube-webhook-certgen-1.6.9/Dockerfile",
+        "image": "brinnatt/kube-webhook-certgen",
+        "tag": "v1.6.9",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/kube-webhook-certgen"
+      },
+      "talkedu": {
+        "digest": "sha256:dde6a97bafe6e8b3c5b8142daf6e96f78ac6a66ba3ce47fed5177c336235e8ff",
+        "platforms": {
+          "linux/amd64": "sha256:ff31947ffcac13fbf2c1b1749cfc9dfc92b3ac94f46ee7dd598aeaf5e82a79ff",
+          "linux/arm64": "sha256:9fca6fcdd097c1f4ce2b54d9ad1994adfe0a94b4d8240ba2349c3dcf7e33b618"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:7f401955a2bd5227ca2e38ec8dea6be1db776251ceb86ba8667029430fa0b4ff",
+        "platforms": {
+          "linux/amd64": "sha256:1511aeb58712931a9a57ade9205d394a1df5b1f7f86ffeedb9fc9a09fe2a17f0",
+          "linux/arm64": "sha256:673064c7e472aab2deeb4ba6637f053b0d152c74607422aecb1237c80bb97249"
+        }
+      },
+      "fingerprint": "7c35544bb88ec80c03e8ec4839f9c73f5465bbf0544b8b9d634c962ba245bcfd",
+      "row": {
+        "ctx": "./platform/network/cilium/cilium-1.19.10/",
+        "dockerfile": "./platform/network/cilium/cilium-1.19.10/Dockerfile",
+        "image": "brinnatt/cilium",
+        "tag": "v1.19.10",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/cilium"
+      },
+      "talkedu": {
+        "digest": "sha256:7f401955a2bd5227ca2e38ec8dea6be1db776251ceb86ba8667029430fa0b4ff",
+        "platforms": {
+          "linux/amd64": "sha256:1511aeb58712931a9a57ade9205d394a1df5b1f7f86ffeedb9fc9a09fe2a17f0",
+          "linux/arm64": "sha256:673064c7e472aab2deeb4ba6637f053b0d152c74607422aecb1237c80bb97249"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:81345b41209701c71f7f0be9fee949afe357ad1a3a426f839c28f7f5226a94b1",
+        "platforms": {
+          "linux/amd64": "sha256:ec0fcb3665b120fc7ad9c8abc65081c0416bfb2df0d7951ae26bb62b0cb43c83",
+          "linux/arm64": "sha256:6f1de509e7f2dbf60c17513f7dcbdd37a9669b1e6aac5d582003a5e577657aab"
+        }
+      },
+      "fingerprint": "0b089f83c9a2b13d0b52a3945ed9b9c3a6636291ae2d9afabeeb95bd2e8510a1",
+      "row": {
+        "ctx": "./platform/network/cilium/cilium-operator-generic-1.19.10/",
+        "dockerfile": "./platform/network/cilium/cilium-operator-generic-1.19.10/Dockerfile",
+        "image": "brinnatt/cilium-operator-generic",
+        "tag": "v1.19.10",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/cilium-operator-generic"
+      },
+      "talkedu": {
+        "digest": "sha256:81345b41209701c71f7f0be9fee949afe357ad1a3a426f839c28f7f5226a94b1",
+        "platforms": {
+          "linux/amd64": "sha256:ec0fcb3665b120fc7ad9c8abc65081c0416bfb2df0d7951ae26bb62b0cb43c83",
+          "linux/arm64": "sha256:6f1de509e7f2dbf60c17513f7dcbdd37a9669b1e6aac5d582003a5e577657aab"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:4db1b7093c957e1b7537f04006b0d14729b0ee2d523ff40718397cdcc0e443cb",
+        "platforms": {
+          "linux/amd64": "sha256:bcc76f6bc34082587fa55c839140dd9ec775f34913654723881d3628ce7292df",
+          "linux/arm64": "sha256:87b0e0aaa3eb5d0754fe93a9202b5697b8aab17740aba40bb7e5e7f914bf279a"
+        }
+      },
+      "fingerprint": "44489e2036fd12967b20a62df53e65811dde8c8885e8eae7abb83522dca218e2",
+      "row": {
+        "ctx": "./platform/network/cilium/hubble-relay-1.19.10/",
+        "dockerfile": "./platform/network/cilium/hubble-relay-1.19.10/Dockerfile",
+        "image": "brinnatt/hubble-relay",
+        "tag": "v1.19.10",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/hubble-relay"
+      },
+      "talkedu": {
+        "digest": "sha256:4db1b7093c957e1b7537f04006b0d14729b0ee2d523ff40718397cdcc0e443cb",
+        "platforms": {
+          "linux/amd64": "sha256:bcc76f6bc34082587fa55c839140dd9ec775f34913654723881d3628ce7292df",
+          "linux/arm64": "sha256:87b0e0aaa3eb5d0754fe93a9202b5697b8aab17740aba40bb7e5e7f914bf279a"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:96e1af11e9ff90b9f97d09e910b410c5bc03649a1803533c39d2616df362365a",
+        "platforms": {
+          "linux/amd64": "sha256:f69252154e336495d7a0ace52e8171df36cfde6c2c3ba16e911134469972cf14",
+          "linux/arm64": "sha256:7e2d0e4cd1aab8ce970b15deca7d2deba05ffdf01544b64d9a54c227cb876992"
+        }
+      },
+      "fingerprint": "be6d7d27bad6342af01bb175bfac6d2b91052318570d595ca12770da2d3e2542",
+      "row": {
+        "ctx": "./platform/network/cilium/cilium-1.20.4/",
+        "dockerfile": "./platform/network/cilium/cilium-1.20.4/Dockerfile",
+        "image": "brinnatt/cilium",
+        "tag": "v1.20.4",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/cilium"
+      },
+      "talkedu": {
+        "digest": "sha256:96e1af11e9ff90b9f97d09e910b410c5bc03649a1803533c39d2616df362365a",
+        "platforms": {
+          "linux/amd64": "sha256:f69252154e336495d7a0ace52e8171df36cfde6c2c3ba16e911134469972cf14",
+          "linux/arm64": "sha256:7e2d0e4cd1aab8ce970b15deca7d2deba05ffdf01544b64d9a54c227cb876992"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:cd7bdbba9ff681f91ab0b015b55e0df0b68d9433bd44014829f6c0f2a01ee7c7",
+        "platforms": {
+          "linux/amd64": "sha256:2771f09a9144087512051dcaac6fe431936e073c8c23caaf577609d555dbd09c",
+          "linux/arm64": "sha256:9325b06e7202e07d7522f47fa29a88df59e9cc86fb0f739a91d1e920e39d6c89"
+        }
+      },
+      "fingerprint": "79664a6e8d8ce0d1aede339dd8f90d62b145c53f3277cb49bc5e4ee4d35b4ae6",
+      "row": {
+        "ctx": "./platform/network/cilium/cilium-operator-generic-1.20.4/",
+        "dockerfile": "./platform/network/cilium/cilium-operator-generic-1.20.4/Dockerfile",
+        "image": "brinnatt/cilium-operator-generic",
+        "tag": "v1.20.4",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/cilium-operator-generic"
+      },
+      "talkedu": {
+        "digest": "sha256:cd7bdbba9ff681f91ab0b015b55e0df0b68d9433bd44014829f6c0f2a01ee7c7",
+        "platforms": {
+          "linux/amd64": "sha256:2771f09a9144087512051dcaac6fe431936e073c8c23caaf577609d555dbd09c",
+          "linux/arm64": "sha256:9325b06e7202e07d7522f47fa29a88df59e9cc86fb0f739a91d1e920e39d6c89"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:30ea02a386d4ce4e6373f0ccd874c5d66de0ee6316598f157401f5cb431936ac",
+        "platforms": {
+          "linux/amd64": "sha256:6e1f6fd9c8100612515828be1e70da89da64956698589fa7cab55cc69fb1f1b1",
+          "linux/arm64": "sha256:47ee533b5027eddc79327c0ff7c333c8c8aa3fded4e08caeafed1f623d421f38"
+        }
+      },
+      "fingerprint": "17c9b52b85cc9e887afd86dab785b94aedef61cdf134ddaabab49d3f28820b7a",
+      "row": {
+        "ctx": "./platform/network/cilium/hubble-relay-1.20.4/",
+        "dockerfile": "./platform/network/cilium/hubble-relay-1.20.4/Dockerfile",
+        "image": "brinnatt/hubble-relay",
+        "tag": "v1.20.4",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/hubble-relay"
+      },
+      "talkedu": {
+        "digest": "sha256:30ea02a386d4ce4e6373f0ccd874c5d66de0ee6316598f157401f5cb431936ac",
+        "platforms": {
+          "linux/amd64": "sha256:6e1f6fd9c8100612515828be1e70da89da64956698589fa7cab55cc69fb1f1b1",
+          "linux/arm64": "sha256:47ee533b5027eddc79327c0ff7c333c8c8aa3fded4e08caeafed1f623d421f38"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:4ada8c6452b371b2579585647be9225dfb8a3b02fd123c50d97be25c5928e883",
+        "platforms": {
+          "linux/amd64": "sha256:76059e3d7522a50deeca359bb7d39c66416731ad52060026f03e09573daf9de2",
+          "linux/arm64": "sha256:0617984dea146dfd7cdf812b4b6195a4443ed5de0ac6a51ae87663fcfdaa3e03"
+        }
+      },
+      "fingerprint": "f58629a282d82ad4a3ec0a73148902476e4e79e5bec4247d30ce0860c0cbd621",
+      "row": {
+        "ctx": "./platform/network/cilium/hubble-ui-0.13.6/",
+        "dockerfile": "./platform/network/cilium/hubble-ui-0.13.6/Dockerfile",
+        "image": "brinnatt/hubble-ui",
+        "tag": "v0.13.6",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/hubble-ui"
+      },
+      "talkedu": {
+        "digest": "sha256:4ada8c6452b371b2579585647be9225dfb8a3b02fd123c50d97be25c5928e883",
+        "platforms": {
+          "linux/amd64": "sha256:76059e3d7522a50deeca359bb7d39c66416731ad52060026f03e09573daf9de2",
+          "linux/arm64": "sha256:0617984dea146dfd7cdf812b4b6195a4443ed5de0ac6a51ae87663fcfdaa3e03"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:7498699addd200afc867b6f674ce00671db20c695ea279c75ae64b223546eb70",
+        "platforms": {
+          "linux/amd64": "sha256:0f0e76793cd59e51d9db1761eba1a59b364217a97ac8ec32c1e1ec882eafa370",
+          "linux/arm64": "sha256:5c6ec35809ea3deefe098409d145f459126dc800e8ea7d374e85327c55f37842"
+        }
+      },
+      "fingerprint": "8bee52e8991a25624d4c610cae8660082418d2a1a5c09a861e4241377937e9f7",
+      "row": {
+        "ctx": "./platform/network/cilium/hubble-ui-backend-0.13.6/",
+        "dockerfile": "./platform/network/cilium/hubble-ui-backend-0.13.6/Dockerfile",
+        "image": "brinnatt/hubble-ui-backend",
+        "tag": "v0.13.6",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/hubble-ui-backend"
+      },
+      "talkedu": {
+        "digest": "sha256:7498699addd200afc867b6f674ce00671db20c695ea279c75ae64b223546eb70",
+        "platforms": {
+          "linux/amd64": "sha256:0f0e76793cd59e51d9db1761eba1a59b364217a97ac8ec32c1e1ec882eafa370",
+          "linux/arm64": "sha256:5c6ec35809ea3deefe098409d145f459126dc800e8ea7d374e85327c55f37842"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:28f26782e0ed4de6ea93cc9916eca2246eddbddb36600883939afc5264df1580",
+        "platforms": {
+          "linux/amd64": "sha256:0d3f2a6b150a50e97dd999a38c378187650529e45250cd43a7f1988151bb5440",
+          "linux/arm64": "sha256:391f3a6b99e3d014a6af8ddf6091ae64c0ae2bb2bbabf373d9fdfcda00948a48"
+        }
+      },
+      "fingerprint": "be43479e07cb0ef761f34e129f3016972d55a49e95a81d594bde9505b1885cfc",
+      "row": {
+        "ctx": "./platform/network/flannel/flannel-0.28.10/",
+        "dockerfile": "./platform/network/flannel/flannel-0.28.10/Dockerfile",
+        "image": "brinnatt/flannel",
+        "tag": "v0.28.10",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/flannel"
+      },
+      "talkedu": {
+        "digest": "sha256:28f26782e0ed4de6ea93cc9916eca2246eddbddb36600883939afc5264df1580",
+        "platforms": {
+          "linux/amd64": "sha256:0d3f2a6b150a50e97dd999a38c378187650529e45250cd43a7f1988151bb5440",
+          "linux/arm64": "sha256:391f3a6b99e3d014a6af8ddf6091ae64c0ae2bb2bbabf373d9fdfcda00948a48"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:d9f9591e08b60fda059475661dacc76b41436393a784a177bf3c64ea58145d17",
+        "platforms": {
+          "linux/amd64": "sha256:2b0f319175d3c85e3806a56e1d4af7200efbc5ec93b944a7cf7fbc4e08065964",
+          "linux/arm64": "sha256:df8bde645da42535e6ad147b37f28da9459192a3fc40e2d5067863669619a37b"
+        }
+      },
+      "fingerprint": "46e3b5076de6bce62bcdb00d894d74dfa5135ee27c5174a055719bc16e5e6d87",
+      "row": {
+        "ctx": "./platform/network/flannel/flannel-cni-plugin-1.9.1-flannel3/",
+        "dockerfile": "./platform/network/flannel/flannel-cni-plugin-1.9.1-flannel3/Dockerfile",
+        "image": "brinnatt/flannel-cni-plugin",
+        "tag": "v1.9.1-flannel3",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/flannel-cni-plugin"
+      },
+      "talkedu": {
+        "digest": "sha256:d9f9591e08b60fda059475661dacc76b41436393a784a177bf3c64ea58145d17",
+        "platforms": {
+          "linux/amd64": "sha256:2b0f319175d3c85e3806a56e1d4af7200efbc5ec93b944a7cf7fbc4e08065964",
+          "linux/arm64": "sha256:df8bde645da42535e6ad147b37f28da9459192a3fc40e2d5067863669619a37b"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:6c9f59cfb5acd6cc8a5c9a30e260227b3cf203f8e002519e933007f3de881341",
+        "platforms": {
+          "linux/amd64": "sha256:418bea67884ddd0ecbca0b4a9dbbbb62538320afa49f52373923ab02ffb1623f",
+          "linux/arm64": "sha256:218f03568bb86a2b7928e294f5a5bdc41c0b351df07ea3dc963ea908a6f3692b"
+        }
+      },
+      "fingerprint": "b8f7f403d1e04dfacc0168bf9a65612a32dbdeba4c91be9c3216710e692aab13",
+      "row": {
+        "ctx": "platform/dns/coredns-1.15.0",
+        "dockerfile": "platform/dns/coredns-1.15.0/Dockerfile",
+        "image": "brinnatt/coredns",
+        "tag": "1.15.0",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/coredns"
+      },
+      "talkedu": {
+        "digest": "sha256:6c9f59cfb5acd6cc8a5c9a30e260227b3cf203f8e002519e933007f3de881341",
+        "platforms": {
+          "linux/amd64": "sha256:418bea67884ddd0ecbca0b4a9dbbbb62538320afa49f52373923ab02ffb1623f",
+          "linux/arm64": "sha256:218f03568bb86a2b7928e294f5a5bdc41c0b351df07ea3dc963ea908a6f3692b"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:340d650853acee687423964eafd9a4bf04557d1befd7313578d501c31d1d7b7e",
+        "platforms": {
+          "linux/amd64": "sha256:c392f1f91987742c2479270e91e8bccf3e90986d1b5da13b96465b9628cf39a9",
+          "linux/arm64": "sha256:7b7b0477848d55f295ceb3981970d4a99284286e978ea98f8fa8277a05e67f35"
+        }
+      },
+      "fingerprint": "fb8238bb671c7f67addf98aa55a93a012416e7fd058754e719876eff112ab6d6",
+      "row": {
+        "ctx": "platform/dns/k8s-dns-node-cache-1.26.8",
+        "dockerfile": "platform/dns/k8s-dns-node-cache-1.26.8/Dockerfile",
+        "image": "brinnatt/k8s-dns-node-cache",
+        "tag": "1.26.8",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/k8s-dns-node-cache"
+      },
+      "talkedu": {
+        "digest": "sha256:340d650853acee687423964eafd9a4bf04557d1befd7313578d501c31d1d7b7e",
+        "platforms": {
+          "linux/amd64": "sha256:c392f1f91987742c2479270e91e8bccf3e90986d1b5da13b96465b9628cf39a9",
+          "linux/arm64": "sha256:7b7b0477848d55f295ceb3981970d4a99284286e978ea98f8fa8277a05e67f35"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:18a005f3584d9604d1574dcbe6322ab89e3cc7052ae6efbbd97e6a3691b2558e",
+        "platforms": {
+          "linux/amd64": "sha256:93054e1e9e501311669c31e9b0a4502db7bafe09885120baa1453b30b2988310",
+          "linux/arm64": "sha256:876f796e52be15dfd8401bd509a2290c19f2a04e9b2b3f03924db3d79304a521"
+        }
+      },
+      "fingerprint": "412a96b2ec5cdfe6f1dc41832a7c7fe6caee9e4e42b96be53c5e2daa34f681de",
+      "row": {
+        "ctx": "platform/network/calico/v3.31.7/calico-cni",
+        "dockerfile": "platform/network/calico/v3.31.7/calico-cni/Dockerfile",
+        "image": "brinnatt/calico-cni",
+        "tag": "v3.31.7",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/calico-cni"
+      },
+      "talkedu": {
+        "digest": "sha256:18a005f3584d9604d1574dcbe6322ab89e3cc7052ae6efbbd97e6a3691b2558e",
+        "platforms": {
+          "linux/amd64": "sha256:93054e1e9e501311669c31e9b0a4502db7bafe09885120baa1453b30b2988310",
+          "linux/arm64": "sha256:876f796e52be15dfd8401bd509a2290c19f2a04e9b2b3f03924db3d79304a521"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:c8caf38dd43f2658ae94778cee2b2b14c36db7988824ccfc530d117a7e4f21ff",
+        "platforms": {
+          "linux/amd64": "sha256:313d1f7602f56446042d3d8487ad2dc34e670d071852a924751d11bc57488e28",
+          "linux/arm64": "sha256:3fdbd7b9e51821fb6e8927e6c1285f0b3413a075f9ce5a12ba46441c6addd0af"
+        }
+      },
+      "fingerprint": "c2d1b0eeb2f3f426da9d66b72fae793ca25123d90c195afd641f2abbcdfca957",
+      "row": {
+        "ctx": "platform/network/calico/v3.31.7/calico-node",
+        "dockerfile": "platform/network/calico/v3.31.7/calico-node/Dockerfile",
+        "image": "brinnatt/calico-node",
+        "tag": "v3.31.7",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/calico-node"
+      },
+      "talkedu": {
+        "digest": "sha256:c8caf38dd43f2658ae94778cee2b2b14c36db7988824ccfc530d117a7e4f21ff",
+        "platforms": {
+          "linux/amd64": "sha256:313d1f7602f56446042d3d8487ad2dc34e670d071852a924751d11bc57488e28",
+          "linux/arm64": "sha256:3fdbd7b9e51821fb6e8927e6c1285f0b3413a075f9ce5a12ba46441c6addd0af"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:c9f6a2254f6dcb0bf65b1e95cae226fbeba802a93eb077da7bf4ddc0557084aa",
+        "platforms": {
+          "linux/amd64": "sha256:24f611b37e3361fad2d9b63c0ad7d04cd05c5aadbf5a74da81b4bb572d218429",
+          "linux/arm64": "sha256:fdb7fd842657d4a204d17c1087a82b5fda1b7e041136cff8659fe3e8d6aac204"
+        }
+      },
+      "fingerprint": "1575af081f7008f1171423c30bac62dcc25f81944c3cf9127babc39d5791b6e1",
+      "row": {
+        "ctx": "platform/network/calico/v3.31.7/calico-kube-controllers",
+        "dockerfile": "platform/network/calico/v3.31.7/calico-kube-controllers/Dockerfile",
+        "image": "brinnatt/calico-kube-controllers",
+        "tag": "v3.31.7",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/calico-kube-controllers"
+      },
+      "talkedu": {
+        "digest": "sha256:c9f6a2254f6dcb0bf65b1e95cae226fbeba802a93eb077da7bf4ddc0557084aa",
+        "platforms": {
+          "linux/amd64": "sha256:24f611b37e3361fad2d9b63c0ad7d04cd05c5aadbf5a74da81b4bb572d218429",
+          "linux/arm64": "sha256:fdb7fd842657d4a204d17c1087a82b5fda1b7e041136cff8659fe3e8d6aac204"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:66939aeca5dafb5f6e4ec391f361b17233929e2d92270c3792cf1018c430651b",
+        "platforms": {
+          "linux/amd64": "sha256:3c288beff038cd960bb685cd7240faa4c310aecbc8936d318fa664650d2485c2",
+          "linux/arm64": "sha256:36d4e49f18bc8ade5b3cfc721e2397a981bbb81f92af13ce5d5ebf12b299ce9d"
+        }
+      },
+      "fingerprint": "4c588db5f6f493f51d5e7663e5444a64e054deda3c9cfcb5cc81ace3d750176e",
+      "row": {
+        "ctx": "platform/network/calico/v3.32.4/calico-cni",
+        "dockerfile": "platform/network/calico/v3.32.4/calico-cni/Dockerfile",
+        "image": "brinnatt/calico-cni",
+        "tag": "v3.32.4",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/calico-cni"
+      },
+      "talkedu": {
+        "digest": "sha256:66939aeca5dafb5f6e4ec391f361b17233929e2d92270c3792cf1018c430651b",
+        "platforms": {
+          "linux/amd64": "sha256:3c288beff038cd960bb685cd7240faa4c310aecbc8936d318fa664650d2485c2",
+          "linux/arm64": "sha256:36d4e49f18bc8ade5b3cfc721e2397a981bbb81f92af13ce5d5ebf12b299ce9d"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:2a3b6ae7dfce526e9bb830b94b18b1901d76dfb3d65a7f0862eff8942790552b",
+        "platforms": {
+          "linux/amd64": "sha256:de0253a3a3eeb5d3179e0d55dd1b590efd8e51b3c5231dfd7e2bdeb1f6d498bf",
+          "linux/arm64": "sha256:edc7b3eb81477910f4fb6330e9b3b6ae46d0dea2d38f4f5d1b34f556fe985d93"
+        }
+      },
+      "fingerprint": "30bf2b584c7543b5371690a62aaa7b97a0a0234b9dd67b7782a80faccf24850e",
+      "row": {
+        "ctx": "platform/network/calico/v3.32.4/calico-node",
+        "dockerfile": "platform/network/calico/v3.32.4/calico-node/Dockerfile",
+        "image": "brinnatt/calico-node",
+        "tag": "v3.32.4",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/calico-node"
+      },
+      "talkedu": {
+        "digest": "sha256:2a3b6ae7dfce526e9bb830b94b18b1901d76dfb3d65a7f0862eff8942790552b",
+        "platforms": {
+          "linux/amd64": "sha256:de0253a3a3eeb5d3179e0d55dd1b590efd8e51b3c5231dfd7e2bdeb1f6d498bf",
+          "linux/arm64": "sha256:edc7b3eb81477910f4fb6330e9b3b6ae46d0dea2d38f4f5d1b34f556fe985d93"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:88de17f0f4e3e15405337131d317c144b41a01140e474c77738268b25bd3dc7c",
+        "platforms": {
+          "linux/amd64": "sha256:27dc7c6e418aa96a79fe4ae3e542002d4a90525b6d67aa811a356f4cbdda1fd3",
+          "linux/arm64": "sha256:9a6fc98ba48faf2951ee10d99124de3fac490368fe0eaf97ebfc2027bb501732"
+        }
+      },
+      "fingerprint": "4883dc58339af188ac270f8dabd72e0c5dea9be953ce29071b492243a364679d",
+      "row": {
+        "ctx": "platform/network/calico/v3.32.4/calico-kube-controllers",
+        "dockerfile": "platform/network/calico/v3.32.4/calico-kube-controllers/Dockerfile",
+        "image": "brinnatt/calico-kube-controllers",
+        "tag": "v3.32.4",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/calico-kube-controllers"
+      },
+      "talkedu": {
+        "digest": "sha256:88de17f0f4e3e15405337131d317c144b41a01140e474c77738268b25bd3dc7c",
+        "platforms": {
+          "linux/amd64": "sha256:27dc7c6e418aa96a79fe4ae3e542002d4a90525b6d67aa811a356f4cbdda1fd3",
+          "linux/arm64": "sha256:9a6fc98ba48faf2951ee10d99124de3fac490368fe0eaf97ebfc2027bb501732"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:c26ee5a58173282c820c36d0caebe3d1cdd650da532c94e3eec4436223e48b9a",
+        "platforms": {
+          "linux/amd64": "sha256:85668af2a63a90a493f8f83e6281367c075a2d5e9a575c818e92af554d7e40d7",
+          "linux/arm64": "sha256:74b86cbf7131818128a796f30101d75f6ac8f84aee32fdb9a01c3f5f9bf06d15"
+        }
+      },
+      "fingerprint": "d150349d029044052ee6d3bf421a76405e4d625cfe4ed7d9044f3f2b23bf94e6",
+      "row": {
+        "ctx": "platform/observability/metrics-server-0.9.1",
+        "dockerfile": "platform/observability/metrics-server-0.9.1/Dockerfile",
+        "image": "brinnatt/metrics-server",
+        "tag": "v0.9.1",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/metrics-server"
+      },
+      "talkedu": {
+        "digest": "sha256:c26ee5a58173282c820c36d0caebe3d1cdd650da532c94e3eec4436223e48b9a",
+        "platforms": {
+          "linux/amd64": "sha256:85668af2a63a90a493f8f83e6281367c075a2d5e9a575c818e92af554d7e40d7",
+          "linux/arm64": "sha256:74b86cbf7131818128a796f30101d75f6ac8f84aee32fdb9a01c3f5f9bf06d15"
+        }
+      }
+    },
+    {
+      "dockerhub": {
+        "digest": "sha256:e85b4b19384dd3905bd0440c34571e575d2cef53abdd837317484a3d379a301c",
+        "platforms": {
+          "linux/amd64": "sha256:13612ca9ffb4d1cccde1585fc0548642cbbce68547883a846775e95c44a505b3",
+          "linux/arm64": "sha256:153c84808f14c404db6991e505bd8dfcd9e71211cb1ae6719dafbfded2d2c9c9"
+        }
+      },
+      "fingerprint": "5fc6795041a9f0ee1089249ebedde4c2c1d6f9fb5014fa7caeca6a8154f735dd",
+      "row": {
+        "ctx": "platform/storage/provisioners/local-path-provisioner-0.0.37",
+        "dockerfile": "platform/storage/provisioners/local-path-provisioner-0.0.37/Dockerfile",
+        "image": "brinnatt/local-path-provisioner",
+        "tag": "v0.0.37",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/local-path-provisioner"
+      },
+      "talkedu": {
+        "digest": "sha256:e85b4b19384dd3905bd0440c34571e575d2cef53abdd837317484a3d379a301c",
+        "platforms": {
+          "linux/amd64": "sha256:13612ca9ffb4d1cccde1585fc0548642cbbce68547883a846775e95c44a505b3",
+          "linux/arm64": "sha256:153c84808f14c404db6991e505bd8dfcd9e71211cb1ae6719dafbfded2d2c9c9"
+        }
+      }
+    }
+  ],
+  "schema": 1,
+  "scope": "current-dual-registry-manifest-identity-only",
+  "shard_size": 20,
+  "shards": 0
+}

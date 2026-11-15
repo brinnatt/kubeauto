@@ -1,0 +1,1186 @@
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="generator" content="Hugo 0.88.1" />
+
+<META NAME="ROBOTS" CONTENT="NOINDEX, NOFOLLOW">
+
+<link rel="alternate" type="application/rss&#43;xml" href="/docs/installation/index.xml">
+
+
+<link rel="shortcut icon" href="/favicons/favicon.ico?v=1" >
+<link rel="apple-touch-icon" href="/favicons/favicon.ico?v=1" sizes="180x180">
+<link rel="icon" type="image/png" href="/favicons/favicon.ico?v=1" sizes="16x16">
+<link rel="icon" type="image/png" href="/favicons/favicon.ico?v=1" sizes="32x32">
+<link rel="apple-touch-icon" href="/favicons/favicon.ico?v=1" sizes="180x180">
+<title>Installation | Redis Operator</title><meta property="og:title" content="Installation" />
+<meta property="og:description" content="Instructions for installation of Kubernetes cluster and Redis Operator
+" />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="/docs/installation/" /><meta property="og:site_name" content="Redis Operator" />
+
+<meta itemprop="name" content="Installation">
+<meta itemprop="description" content="Instructions for installation of Kubernetes cluster and Redis Operator
+"><meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="Installation"/>
+<meta name="twitter:description" content="Instructions for installation of Kubernetes cluster and Redis Operator
+"/>
+
+
+
+<link rel="stylesheet" href="/css/prism.css"/>
+
+
+
+
+
+<link rel="preload" href="/scss/main.min.e3c7704a36e32463d3a41e516e4637d36bfcdb4fd9f728b24ef24fa198738d11.css" as="style">
+<link href="/scss/main.min.e3c7704a36e32463d3a41e516e4637d36bfcdb4fd9f728b24ef24fa198738d11.css" rel="stylesheet" integrity="">
+
+
+<link rel="stylesheet" type="text/css" href=/css/asciinema-player.css />
+<script
+  src="https://code.jquery.com/jquery-3.3.1.min.js"
+  integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
+  crossorigin="anonymous"></script>
+
+  </head>
+  <body class="td-section">
+    <header>
+      
+<nav class="js-navbar-scroll navbar navbar-expand navbar-light  nav-shadow flex-column flex-md-row td-navbar">
+
+	<a id="agones-top"  class="navbar-brand" href="/">
+		<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="64" height="64" viewBox="0 0 64 64"><g id="surface1"><path style="stroke:none;fill-rule:nonzero;fill:#3970e4;fill-opacity:1" d="M28.3125.964844c1.511719-.75 3.28125-.75 4.792969.0l19.160156 9.460937c1.46875.726562999999999 2.53125 2.078125 2.886719 3.679688l4.78125 21.488281C60.285156 37.167969 59.914062 38.816406 58.921875 40.09375L45.585938 57.246094C44.5625 58.5625 42.984375 59.335938 41.3125 59.335938H20.105469c-1.671875.0-3.25-.773437999999999-4.273438-2.089844L2.496094 40.09375c-.992188-1.277344-1.363282-2.925781-1.011719-4.5l4.78125-21.488281c.355469-1.601563 1.417969-2.953125 2.886719-3.679688zm0 0"/><path style="stroke:none;fill-rule:nonzero;fill:#fff;fill-opacity:1" d="M20.03125 17.519531S17.417969 17.808594 15.675781 18C15.519531 18.019531 15.378906 18.125 15.328125 18.285156S15.328125 18.609375 15.445312 18.714844c1.292969 1.183594 3.238282 2.953125 3.238282 2.953125S18.152344 24.242188 17.796875 25.957031C17.765625 26.113281 17.824219 26.277344 17.957031 26.378906 18.09375 26.476562 18.265625 26.476562 18.402344 26.402344 19.929688 25.535156 22.210938 24.230469 22.210938 24.230469s2.285156 1.304687 3.808593 2.171875C26.160156 26.476562 26.332031 26.476562 26.46875 26.378906 26.601562 26.277344 26.660156 26.113281 26.628906 25.960938 26.273438 24.242188 25.742188 21.667969 25.742188 21.667969s1.945312-1.769531 3.242187-2.949219C29.097656 18.609375 29.152344 18.445312 29.097656 18.285156 29.046875 18.125 28.910156 18.019531 28.753906 18.003906 27.007812 17.808594 24.394531 17.519531 24.394531 17.519531s-1.082031-2.398437-1.804687-3.996093C22.523438 13.382812 22.378906 13.28125 22.210938 13.28125 22.046875 13.28125 21.902344 13.382812 21.839844 13.523438 21.117188 15.121094 20.03125 17.519531 20.03125 17.519531zm0 0"/><path style="stroke:none;fill-rule:nonzero;fill:#fff;fill-opacity:1" d="M35.113281 14.746094H46.824219V26.453125H35.113281zm0 0"/><path style="stroke:none;fill-rule:nonzero;fill:#fff;fill-opacity:1" d="M29.121094 38.957031c0 3.765625-3.054688 6.816407-6.816406 6.816407-3.765626.0-6.816407-3.050782-6.816407-6.816407.0-3.761719 3.050781-6.8125 6.816407-6.8125 3.761718.0 6.816406 3.050781 6.816406 6.8125zm0 0"/><path style="stroke:none;fill-rule:nonzero;fill:#fff;fill-opacity:1" d="M46.363281 44.078125H34.386719C34.226562 44.078125 34.074219 43.992188 33.992188 43.851562 33.910156 43.714844 33.90625 43.542969 33.984375 43.398438L39.972656 32.34375C40.050781 32.195312 40.207031 32.101562 40.375 32.101562S40.699219 32.195312 40.78125 32.34375l5.988281 11.054688C46.847656 43.542969 46.84375 43.714844 46.757812 43.851562 46.675781 43.992188 46.527344 44.078125 46.363281 44.078125zm0 0"/></g></svg> <span class="text-uppercase font-weight-bold">Redis Operator</span>
+	</a>
+
+	<div class="td-navbar-nav-scroll ml-md-auto" id="main_navbar">
+		<ul class="navbar-nav mt-2 mt-lg-0">
+			
+			
+			<li class="nav-item mr-4 mb-2 mb-lg-0">
+				
+				
+				
+				
+				<a class="nav-link active" href="/docs/"><span class="active">Documentation</span></a>
+			</li>
+			
+			<li class="nav-item mr-4 mb-2 mb-lg-0">
+				
+				
+				
+				
+				<a class="nav-link" href="/community/"><span>Community</span></a>
+			</li>
+			
+			<li class="nav-item mr-4 mb-2 mb-lg-0">
+				<a class="nav-link" href="https://github.com/ot-container-kit/redis-operator">GitHub</a>
+			</li>
+			
+		</ul>
+	</div>
+	<div class="navbar-nav mx-lg-2 d-none d-lg-block">
+ <input id="agones-search" type="search" class="form-control td-search-input" placeholder="&#xf002 Search this site…" aria-label="Search this site…" autocomplete="off">
+</div>
+</nav>
+
+    </header>
+    <div class="container-fluid td-outer">
+      <div class="td-main">
+        <div class="row flex-xl-nowrap">
+          <div class="col-12 col-md-3 col-xl-2 td-sidebar d-print-none">
+            
+
+
+
+
+  
+
+
+<div id="td-sidebar-menu" class="td-sidebar__inner">
+  
+  <form class="td-sidebar__search d-flex align-items-center">
+    
+ <input id="agones-search" type="search" class="form-control td-search-input" placeholder="&#xf002 Search this site…" aria-label="Search this site…" autocomplete="off">
+
+    <button class="btn btn-link td-sidebar__toggle d-md-none p-0 ml-3 fas fa-bars" type="button" data-toggle="collapse" data-target="#td-section-nav" aria-controls="td-docs-nav" aria-expanded="false" aria-label="Toggle section navigation">
+    </button>
+  </form>
+  
+  <nav class="collapse td-sidebar-nav" id="td-section-nav">
+    
+    
+    
+    
+    
+    <ul class="td-sidebar-nav__section pr-md-3 ul-0">
+      
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  <li class="td-sidebar-nav__section-title td-sidebar-nav__section with-child active-path" id="m-docs-li">
+    <a href="/docs/" title="Redis Operator" class="align-left pl-0 pr-2 td-sidebar-link td-sidebar-link__section tree-root" id="m-docs"><span class="">Documentation</span></a>
+    
+      
+      <ul class="pr-md-3 ul-1">
+        
+          
+            
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  <li class="td-sidebar-nav__section-title td-sidebar-nav__section without-child" id="m-docsoverview-li">
+    <a href="/docs/overview/" class="align-left pl-0 pr-2 td-sidebar-link td-sidebar-link__section" id="m-docsoverview"><span class="">Overview</span></a>
+    
+  </li>
+
+          
+        
+          
+            
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  <li class="td-sidebar-nav__section-title td-sidebar-nav__section without-child" id="m-docsredis-overview-li">
+    <a href="/docs/redis-overview/" class="align-left pl-0 pr-2 td-sidebar-link td-sidebar-link__section" id="m-docsredis-overview"><span class="">Redis Overview</span></a>
+    
+  </li>
+
+          
+        
+          
+            
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  <li class="td-sidebar-nav__section-title td-sidebar-nav__section with-child active-path" id="m-docsinstallation-li">
+    <a href="/docs/installation/" class="align-left pl-0 pr-2 active td-sidebar-link td-sidebar-link__section" id="m-docsinstallation"><span class="td-sidebar-nav-active-item">Installation</span></a>
+    
+      
+      <ul class="pr-md-3 ul-2">
+        
+          
+            
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  <li class="td-sidebar-nav__section-title td-sidebar-nav__section without-child" id="m-docsinstallationcreate-cluster-li">
+    <a href="/docs/installation/create-cluster/" class="align-left pl-0 pr-2 td-sidebar-link td-sidebar-link__section" id="m-docsinstallationcreate-cluster"><span class="">Create Cluster</span></a>
+    
+  </li>
+
+          
+        
+          
+            
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  <li class="td-sidebar-nav__section-title td-sidebar-nav__section without-child" id="m-docsinstallationinstallation-li">
+    <a href="/docs/installation/installation/" class="align-left pl-0 pr-2 td-sidebar-link td-sidebar-link__section" id="m-docsinstallationinstallation"><span class="">Installation</span></a>
+    
+  </li>
+
+          
+        
+          
+            
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  <li class="td-sidebar-nav__section-title td-sidebar-nav__section without-child" id="m-docsinstallationvalidation-li">
+    <a href="/docs/installation/validation/" class="align-left pl-0 pr-2 td-sidebar-link td-sidebar-link__section" id="m-docsinstallationvalidation"><span class="">Installation Validation</span></a>
+    
+  </li>
+
+          
+        
+          
+            
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  <li class="td-sidebar-nav__section-title td-sidebar-nav__section without-child" id="m-docsinstallationupgradation-li">
+    <a href="/docs/installation/upgradation/" class="align-left pl-0 pr-2 td-sidebar-link td-sidebar-link__section" id="m-docsinstallationupgradation"><span class="">Upgrade</span></a>
+    
+  </li>
+
+          
+        
+      </ul>
+    
+  </li>
+
+          
+        
+          
+            
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  <li class="td-sidebar-nav__section-title td-sidebar-nav__section with-child" id="m-docsgetting-started-li">
+    <a href="/docs/getting-started/" class="align-left pl-0 pr-2 td-sidebar-link td-sidebar-link__section" id="m-docsgetting-started"><span class="">Getting Started</span></a>
+    
+      
+      <ul class="pr-md-3 ul-2">
+        
+          
+            
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  <li class="td-sidebar-nav__section-title td-sidebar-nav__section without-child" id="m-docsgetting-startedreplication-li">
+    <a href="/docs/getting-started/replication/" class="align-left pl-0 pr-2 td-sidebar-link td-sidebar-link__section" id="m-docsgetting-startedreplication"><span class="">Replication</span></a>
+    
+  </li>
+
+          
+        
+          
+            
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  <li class="td-sidebar-nav__section-title td-sidebar-nav__section without-child" id="m-docsgetting-startedstandalone-li">
+    <a href="/docs/getting-started/standalone/" class="align-left pl-0 pr-2 td-sidebar-link td-sidebar-link__section" id="m-docsgetting-startedstandalone"><span class="">Standalone</span></a>
+    
+  </li>
+
+          
+        
+          
+            
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  <li class="td-sidebar-nav__section-title td-sidebar-nav__section without-child" id="m-docsgetting-startedsentinel-li">
+    <a href="/docs/getting-started/sentinel/" class="align-left pl-0 pr-2 td-sidebar-link td-sidebar-link__section" id="m-docsgetting-startedsentinel"><span class="">Sentinel</span></a>
+    
+  </li>
+
+          
+        
+          
+            
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  <li class="td-sidebar-nav__section-title td-sidebar-nav__section without-child" id="m-docsgetting-startedcluster-li">
+    <a href="/docs/getting-started/cluster/" class="align-left pl-0 pr-2 td-sidebar-link td-sidebar-link__section" id="m-docsgetting-startedcluster"><span class="">Cluster</span></a>
+    
+  </li>
+
+          
+        
+          
+            
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  <li class="td-sidebar-nav__section-title td-sidebar-nav__section without-child" id="m-docsgetting-startedfailover-testing-li">
+    <a href="/docs/getting-started/failover-testing/" class="align-left pl-0 pr-2 td-sidebar-link td-sidebar-link__section" id="m-docsgetting-startedfailover-testing"><span class="">Failover Testing</span></a>
+    
+  </li>
+
+          
+        
+      </ul>
+    
+  </li>
+
+          
+        
+          
+            
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  <li class="td-sidebar-nav__section-title td-sidebar-nav__section with-child" id="m-docsconfiguration-li">
+    <a href="/docs/configuration/" class="align-left pl-0 pr-2 td-sidebar-link td-sidebar-link__section" id="m-docsconfiguration"><span class="">Configuration</span></a>
+    
+      
+      <ul class="pr-md-3 ul-2">
+        
+          
+            
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  <li class="td-sidebar-nav__section-title td-sidebar-nav__section without-child" id="m-docsconfigurationredisreplication-li">
+    <a href="/docs/configuration/redisreplication/" class="align-left pl-0 pr-2 td-sidebar-link td-sidebar-link__section" id="m-docsconfigurationredisreplication"><span class="">RedisReplication</span></a>
+    
+  </li>
+
+          
+        
+          
+            
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  <li class="td-sidebar-nav__section-title td-sidebar-nav__section without-child" id="m-docsconfigurationredis-li">
+    <a href="/docs/configuration/redis/" class="align-left pl-0 pr-2 td-sidebar-link td-sidebar-link__section" id="m-docsconfigurationredis"><span class="">Redis</span></a>
+    
+  </li>
+
+          
+        
+          
+            
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  <li class="td-sidebar-nav__section-title td-sidebar-nav__section without-child" id="m-docsconfigurationrediscluster-li">
+    <a href="/docs/configuration/rediscluster/" class="align-left pl-0 pr-2 td-sidebar-link td-sidebar-link__section" id="m-docsconfigurationrediscluster"><span class="">RedisCluster</span></a>
+    
+  </li>
+
+          
+        
+      </ul>
+    
+  </li>
+
+          
+        
+          
+            
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  <li class="td-sidebar-nav__section-title td-sidebar-nav__section with-child" id="m-docscrd-reference-li">
+    <a href="/docs/crd-reference/" class="align-left pl-0 pr-2 td-sidebar-link td-sidebar-link__section" id="m-docscrd-reference"><span class="">CRD Reference</span></a>
+    
+      
+      <ul class="pr-md-3 ul-2">
+        
+          
+            
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  <li class="td-sidebar-nav__section-title td-sidebar-nav__section without-child" id="m-docscrd-referenceapi-reference-li">
+    <a href="/docs/crd-reference/api-reference/" title="API Reference Documentation" class="align-left pl-0 pr-2 td-sidebar-link td-sidebar-link__section" id="m-docscrd-referenceapi-reference"><span class="">API Docs</span></a>
+    
+  </li>
+
+          
+        
+      </ul>
+    
+  </li>
+
+          
+        
+          
+            
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  <li class="td-sidebar-nav__section-title td-sidebar-nav__section with-child" id="m-docsadvance-configuration-li">
+    <a href="/docs/advance-configuration/" class="align-left pl-0 pr-2 td-sidebar-link td-sidebar-link__section" id="m-docsadvance-configuration"><span class="">Advance Configuration</span></a>
+    
+      
+      <ul class="pr-md-3 ul-2">
+        
+          
+            
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  <li class="td-sidebar-nav__section-title td-sidebar-nav__section without-child" id="m-docsadvance-configurationexposing-redis-li">
+    <a href="/docs/advance-configuration/exposing-redis/" class="align-left pl-0 pr-2 td-sidebar-link td-sidebar-link__section" id="m-docsadvance-configurationexposing-redis"><span class="">Exposing Redis Service</span></a>
+    
+  </li>
+
+          
+        
+          
+            
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  <li class="td-sidebar-nav__section-title td-sidebar-nav__section without-child" id="m-docsadvance-configurationupgrading-li">
+    <a href="/docs/advance-configuration/upgrading/" class="align-left pl-0 pr-2 td-sidebar-link td-sidebar-link__section" id="m-docsadvance-configurationupgrading"><span class="">Upgrading Redis and RedisCluster</span></a>
+    
+  </li>
+
+          
+        
+          
+            
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  <li class="td-sidebar-nav__section-title td-sidebar-nav__section without-child" id="m-docsadvance-configurationtls-and-security-li">
+    <a href="/docs/advance-configuration/tls-and-security/" class="align-left pl-0 pr-2 td-sidebar-link td-sidebar-link__section" id="m-docsadvance-configurationtls-and-security"><span class="">TLS and Security</span></a>
+    
+  </li>
+
+          
+        
+          
+            
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  <li class="td-sidebar-nav__section-title td-sidebar-nav__section without-child" id="m-docsadvance-configurationfeature-gates-li">
+    <a href="/docs/advance-configuration/feature-gates/" class="align-left pl-0 pr-2 td-sidebar-link td-sidebar-link__section" id="m-docsadvance-configurationfeature-gates"><span class="">Feature Gates</span></a>
+    
+  </li>
+
+          
+        
+      </ul>
+    
+  </li>
+
+          
+        
+          
+            
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  <li class="td-sidebar-nav__section-title td-sidebar-nav__section with-child" id="m-docsmonitoring-li">
+    <a href="/docs/monitoring/" class="align-left pl-0 pr-2 td-sidebar-link td-sidebar-link__section" id="m-docsmonitoring"><span class="">Monitoring</span></a>
+    
+      
+      <ul class="pr-md-3 ul-2">
+        
+          
+            
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  <li class="td-sidebar-nav__section-title td-sidebar-nav__section without-child" id="m-docsmonitoringmetrics-li">
+    <a href="/docs/monitoring/metrics/" class="align-left pl-0 pr-2 td-sidebar-link td-sidebar-link__page" id="m-docsmonitoringmetrics"><span class=""></span></a>
+    
+  </li>
+
+          
+        
+      </ul>
+    
+  </li>
+
+          
+        
+          
+            
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  <li class="td-sidebar-nav__section-title td-sidebar-nav__section without-child" id="m-docscontribute-li">
+    <a href="/docs/contribute/" class="align-left pl-0 pr-2 td-sidebar-link td-sidebar-link__section" id="m-docscontribute"><span class="">Contribute</span></a>
+    
+  </li>
+
+          
+        
+          
+            
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  <li class="td-sidebar-nav__section-title td-sidebar-nav__section without-child" id="m-docsrelease-history-li">
+    <a href="/docs/release-history/" class="align-left pl-0 pr-2 td-sidebar-link td-sidebar-link__section" id="m-docsrelease-history"><span class="">Release History</span></a>
+    
+  </li>
+
+          
+        
+      </ul>
+    
+  </li>
+
+    </ul>
+  </nav>
+</div>
+
+
+
+
+          </div>
+          <div class="d-none d-xl-block col-xl-2 td-toc d-print-none">
+            
+
+
+<div class="td-page-meta ml-2 pb-1 pt-2 mb-0">
+
+
+<a href="https://github.com/ot-container-kit/redis-operator/edit/main/docs/content/en/docs/Installation/_index.md" data-proofer-ignore target="_blank"><i class="fa fa-edit fa-fw"></i> Edit this page</a>
+<a href="https://github.com/ot-container-kit/redis-operator/issues/new?title=Installation" target="_blank"><i class="fab fa-github fa-fw"></i> Create documentation issue</a>
+</div>
+
+
+
+
+
+
+<nav id="TableOfContents">
+  <ul>
+    <li><a href="#usage-requirements">Usage Requirements</a></li>
+    <li><a href="#supported-container-architectures">Supported Container Architectures</a></li>
+  </ul>
+</nav>
+
+
+
+          </div>
+          <main class="col-12 col-md-9 col-xl-8 pl-md-5" role="main">
+            
+  
+
+            <nav aria-label="breadcrumb" class="d-none d-md-block d-print-none">
+	<ol class="breadcrumb spb-1">
+		
+
+
+
+
+
+
+
+<li class="breadcrumb-item" >
+	<a href="/docs/">Documentation</a>
+</li>
+
+
+
+
+<li class="breadcrumb-item active" aria-current="page">
+	<a href="/docs/installation/">Installation</a>
+</li>
+
+	</ol>
+</nav	>
+
+            
+<div class="td-content">
+	<h1>Installation</h1>
+        <div class="lead">Instructions for installation of Kubernetes cluster and Redis Operator</div>
+	
+	<h2 id="usage-requirements">Usage Requirements</h2>
+<ul>
+<li><strong>Kubernetes cluster version &gt; 1.18</strong>
+<ul>
+<li>All Kubernetes platform are supported like: <a href="https://cloud.google.com/kubernetes-engine/">Google Kubernetes Engine</a>, <a href="https://azure.microsoft.com/en-us/services/kubernetes-service/">Azure Kubernetes Service</a>, <a href="https://aws.amazon.com/eks/">Amazon EKS</a> and <a href="https://github.com/kubernetes/minikube">Minikube</a>.</li>
+</ul>
+</li>
+<li>Redis cluster needs persistence support in Kubernetes cluster</li>
+</ul>
+<h2 id="supported-container-architectures">Supported Container Architectures</h2>
+<p>The following container operating systems and architectures can be utilised with Redis Operaror:</p>
+<table>
+<thead>
+<tr>
+<th>OS</th>
+<th>Architecture</th>
+<th>Support</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>linux</td>
+<td>amd64</td>
+<td>stable</td>
+</tr>
+<tr>
+<td>linux</td>
+<td>arm64</td>
+<td>stable</td>
+</tr>
+</tbody>
+</table>
+
+        <div class="section-index">
+    
+    
+    
+    
+    
+    <hr class="panel-line">
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+                
+                <div class="entry">
+                    <h5>
+                        <a href="/docs/installation/create-cluster/">Create Cluster</a>
+                    </h5>
+                    <p>Instructions for creating a Kubernetes cluster and installing Redis Operator on it</p>
+                </div>
+            
+        
+            
+        
+            
+                
+                <div class="entry">
+                    <h5>
+                        <a href="/docs/installation/installation/">Installation</a>
+                    </h5>
+                    <p>Instructions for installation of Redis Operator.</p>
+                </div>
+            
+        
+            
+                
+                <div class="entry">
+                    <h5>
+                        <a href="/docs/installation/validation/">Installation Validation</a>
+                    </h5>
+                    <p>Instructions for validating installation of Operator</p>
+                </div>
+            
+        
+            
+        
+            
+        
+            
+                
+                <div class="entry">
+                    <h5>
+                        <a href="/docs/installation/upgradation/">Upgrade</a>
+                    </h5>
+                    <p>Instructions for upgrading Redis Operator</p>
+                </div>
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+            
+        
+    
+</div>
+
+	
+	
+	Last modified November 3, 2022: <a data-proofer-ignore href="https://github.com/ot-container-kit/redis-operator/commit/f3565c121dbc5ec5ce68df2b2f7e6b0756550dd5">Revamped documentation for better knowledge base (#370) (f3565c12)</a>
+
+</div>
+
+          </main>
+        </div>
+      </div>
+      
+<footer class="bg-dark py-5 row d-print-none">
+  <div class="container-fluid mx-sm-5">
+    <div class="row">
+      <div class="col-6 col-sm-4 text-xs-center order-sm-2">
+        
+        
+        
+<ul class="list-inline mb-0">
+  
+  <li class="list-inline-item mx-2 h3" data-toggle="tooltip" data-placement="top" title="Slack" aria-label="Slack">
+    <a class="text-white" target="_blank" rel="noopener" href="https://join.slack.com/t/opstree/shared_invite/zt-3o8jp35x-UGMU2Cy0WSBk3Lbzqa2wVw" aria-label="Slack">
+      <i class="fab fa-slack"></i>
+    </a>
+  </li>
+  
+  <li class="list-inline-item mx-2 h3" data-toggle="tooltip" data-placement="top" title="User mailing list" aria-label="User mailing list">
+    <a class="text-white" target="_blank" rel="noopener" href="https://github.com/OT-CONTAINER-KIT/redis-operator/discussions" aria-label="User mailing list">
+      <i class="fa fa-envelope"></i>
+    </a>
+  </li>
+  
+  <li class="list-inline-item mx-2 h3" data-toggle="tooltip" data-placement="top" title="Twitter" aria-label="Twitter">
+    <a class="text-white" target="_blank" rel="noopener" href="https://twitter.com/opstreedevops" aria-label="Twitter">
+      <i class="fab fa-twitter"></i>
+    </a>
+  </li>
+  
+</ul>
+
+        
+        
+      </div>
+      <div class="col-6 col-sm-4 text-right text-xs-center order-sm-3">
+        
+        
+        
+<ul class="list-inline mb-0">
+  
+  <li class="list-inline-item mx-2 h3" data-toggle="tooltip" data-placement="top" title="GitHub" aria-label="GitHub">
+    <a class="text-white" target="_blank" rel="noopener" href="https://github.com/OT-CONTAINER-KIT/redis-operator" aria-label="GitHub">
+      <i class="fab fa-github"></i>
+    </a>
+  </li>
+  
+  <li class="list-inline-item mx-2 h3" data-toggle="tooltip" data-placement="top" title="Slack" aria-label="Slack">
+    <a class="text-white" target="_blank" rel="noopener" href="https://join.slack.com/t/opstree/shared_invite/zt-3o8jp35x-UGMU2Cy0WSBk3Lbzqa2wVw" aria-label="Slack">
+      <i class="fab fa-slack"></i>
+    </a>
+  </li>
+  
+</ul>
+
+        
+        
+      </div>
+      <div class="col-12 col-sm-4 text-center py-2 order-sm-2">
+        <small class="text-white">&copy; 2026 Copyright Opstree Solutions All Rights Reserved</small>
+        
+	
+		
+	
+      </div>
+    </div>
+  </div>
+</footer>
+
+
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js" integrity="sha384-9/reFTGAW83EW2RDu2S0VKaIzap3H66lZH81PoYlFhbGU+6BZp6G7niu735Sk7lN" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.min.js" integrity="sha384-+YQ4JLhjyBLPDQt//I+STsc9iw4uQqACwlvpslubQzn4u2UU2UFM80nGisd026JF" crossorigin="anonymous"></script>
+
+
+
+
+
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+<script src="/js/main.min.5c74b870c6953931a705f390a49c7e4c0a842ec5c83b24354758dd674343ed0d.js" integrity="sha256-XHS4cMaVOTGnBfOQpJx&#43;TAqELsXIOyQ1R1jdZ0ND7Q0=" crossorigin="anonymous"></script>
+
+
+
+<script src='/js/prism.js'></script>
+
+<script src=/js/asciinema-player.js></script>
+
+
+  </body>
+</html>

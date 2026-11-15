@@ -1,0 +1,79 @@
+{
+  "batch_id": "calico-bridge-target-metrics-localpath",
+  "repository": "kubeauto-ext-images-dockerfile",
+  "branch": "v1.34.13",
+  "sha": "02d4a9078dc48206c5d8cf35e33fd1f2e530efa7",
+  "mode": "selected",
+  "images": [
+    "brinnatt/calico-cni:v3.31.7",
+    "brinnatt/calico-node:v3.31.7",
+    "brinnatt/calico-kube-controllers:v3.31.7",
+    "brinnatt/calico-cni:v3.32.4",
+    "brinnatt/calico-node:v3.32.4",
+    "brinnatt/calico-kube-controllers:v3.32.4",
+    "brinnatt/metrics-server:v0.9.1",
+    "brinnatt/local-path-provisioner:v0.0.37"
+  ],
+  "image_count": 8,
+  "platforms": [
+    "linux/amd64",
+    "linux/arm64"
+  ],
+  "fingerprints": {
+    "brinnatt/calico-cni:v3.31.7": "412a96b2ec5cdfe6f1dc41832a7c7fe6caee9e4e42b96be53c5e2daa34f681de",
+    "brinnatt/calico-node:v3.31.7": "c2d1b0eeb2f3f426da9d66b72fae793ca25123d90c195afd641f2abbcdfca957",
+    "brinnatt/calico-kube-controllers:v3.31.7": "1575af081f7008f1171423c30bac62dcc25f81944c3cf9127babc39d5791b6e1",
+    "brinnatt/calico-cni:v3.32.4": "4c588db5f6f493f51d5e7663e5444a64e054deda3c9cfcb5cc81ace3d750176e",
+    "brinnatt/calico-node:v3.32.4": "30bf2b584c7543b5371690a62aaa7b97a0a0234b9dd67b7782a80faccf24850e",
+    "brinnatt/calico-kube-controllers:v3.32.4": "4883dc58339af188ac270f8dabd72e0c5dea9be953ce29071b492243a364679d",
+    "brinnatt/metrics-server:v0.9.1": "d150349d029044052ee6d3bf421a76405e4d625cfe4ed7d9044f3f2b23bf94e6",
+    "brinnatt/local-path-provisioner:v0.0.37": "5fc6795041a9f0ee1089249ebedde4c2c1d6f9fb5014fa7caeca6a8154f735dd"
+  },
+  "state": "local-plan-qualified-not-dispatched",
+  "reason": "六个Calico已确定源桥/目标官方配套、后置Metrics和LocalPath scratch/helper候选均为精确官方版本，已认证私库全部404；仅新增必要目录，不重建原GA制品。",
+  "allowed_publish_set": [
+    "hub.talkedu.cn/kubeauto/calico-cni:v3.31.7",
+    "docker.io/brinnatt/calico-cni:v3.31.7",
+    "hub.talkedu.cn/kubeauto/calico-node:v3.31.7",
+    "docker.io/brinnatt/calico-node:v3.31.7",
+    "hub.talkedu.cn/kubeauto/calico-kube-controllers:v3.31.7",
+    "docker.io/brinnatt/calico-kube-controllers:v3.31.7",
+    "hub.talkedu.cn/kubeauto/calico-cni:v3.32.4",
+    "docker.io/brinnatt/calico-cni:v3.32.4",
+    "hub.talkedu.cn/kubeauto/calico-node:v3.32.4",
+    "docker.io/brinnatt/calico-node:v3.32.4",
+    "hub.talkedu.cn/kubeauto/calico-kube-controllers:v3.32.4",
+    "docker.io/brinnatt/calico-kube-controllers:v3.32.4",
+    "hub.talkedu.cn/kubeauto/metrics-server:v0.9.1",
+    "docker.io/brinnatt/metrics-server:v0.9.1",
+    "hub.talkedu.cn/kubeauto/local-path-provisioner:v0.0.37",
+    "docker.io/brinnatt/local-path-provisioner:v0.0.37"
+  ],
+  "completed_ladder": 1,
+  "checks": [
+    {
+      "command": "python3 scripts/validate_catalog.py",
+      "rc": 0,
+      "result": "214/214"
+    },
+    {
+      "command": "PYTHONPATH=tests python3 -B -m unittest test_image_release test_incremental_release -v",
+      "rc": 0,
+      "tests": 48
+    },
+    {
+      "command": ".venv/bin/python -B -m unittest upgrade.tests.test_records upgrade.tests.test_flannel_stage -v",
+      "rc": 0,
+      "tests": 13
+    }
+  ],
+  "source_contracts": [
+    "CALICO-3317-MANIFEST",
+    "CALICO-3324-MANIFEST",
+    "METRICS-091-FIRST-HOP",
+    "LOCALPATH-037-SCRATCH-IMAGE",
+    "LOCALPATH-037-OFFICIAL-DEPLOYMENT"
+  ],
+  "next": "Preserve current Longhorn nine pending run; dispatch this selected8 only after preceding necessary batches leave pending and after fresh remote SHA/allowed-set check.",
+  "cleanup": "Only ephemeral CI build state; no lab lease or mutation"
+}

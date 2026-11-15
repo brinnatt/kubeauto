@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-11-14T23:13:07.605332+00:00",
+  "matrix_ids": [
+    "UPG-04",
+    "UPG-05"
+  ],
+  "classification": "internal product admission plus offline test-gate",
+  "product_entry": "Actual ClusterManager._run_playbook with config.yml and inventory -> fixed controller-only inventory observer; full kubecli minor composition remains pending",
+  "official_source_ids": [
+    "ANSIBLE-UPGRADE-INVENTORY-CONTRACT",
+    "K8S-SKEW"
+  ],
+  "commands": [
+    ".venv/bin/python -B -m unittest upgrade.tests.test_inventory -v",
+    "PYTHONPATH=/tmp/kubeauto-upgrade-ansible220-fixture/modules .venv/bin/python -B -m unittest upgrade.tests.test_inventory -v",
+    ".venv/bin/python -B -m unittest tests.unit.test_ansible_execution_environment upgrade.tests.test_product_release_scope -v"
+  ],
+  "rc": 0,
+  "logs": {
+    "native": {
+      "path": "upgrade/v1.34.13/evidence/raw/inventory-source/native.log",
+      "sha256": "5ed75f0b8ce08941f9cd68a067320a5d223671737940b53d6f6b2cc32b23811e",
+      "bytes": 4696,
+      "rc": 0,
+      "tests": 11,
+      "duration_seconds": 6.737
+    },
+    "ansible220": {
+      "path": "upgrade/v1.34.13/evidence/raw/inventory-source/ansible220.log",
+      "sha256": "5b39d6c4adfcb3a416f6f57c93767fd3d01727c3167a7d18fb7a1c9ca84eb794",
+      "bytes": 4696,
+      "rc": 0,
+      "tests": 11,
+      "duration_seconds": 7.898
+    },
+    "dependencies": {
+      "path": "upgrade/v1.34.13/evidence/raw/inventory-source/dependencies.log",
+      "sha256": "c1855864c7a1de844a817e437b80e31d37c7224cdbdf075af4bfa8857bbeac4c",
+      "bytes": 5421,
+      "rc": 0,
+      "tests": 16,
+      "duration_seconds": 0.104
+    }
+  },
+  "inputs_sha256": {
+    "upgrade/product/inventory.py": "1b5bb2d314474f7c128be16a32dc9becb659193554827acf63930f1f04404378",
+    "upgrade/product/inventory.yml": "08416e0c86d09513ab9c83ac5880c77bd38309564443810fbd5612cf0da9f46f",
+    "service/cluster/manager.py": "2dc6775740284a8b673c29dc165f6251331fce4c61097bd7b66953589090a423",
+    "upgrade/product/kubernetes_preflight.py": "7668c49f5e523137b58a62df885b90ed7ef973896dfca4928364b9bb05cc440d",
+    "upgrade/tests/test_inventory.py": "eda1565c73d771ce2b20ddacdfc25e62187fc520075d91d19480131545da3c87",
+    "upgrade/tests/test_kubernetes_preflight.py": "d5cfa522b4513d43b08b316385b7fe2783a2f17f5257593a4af829f371a36548",
+    "upgrade/tests/test_control_plane.py": "9821f52098a2a2cc258ca9d4df5739ee9ccde3add5247bbeeec56bae5bf3f877",
+    "tests/unit/test_ansible_execution_environment.py": "dd318af0d516b0a7820f129ab6dcb0506d820f3c739590626c0a9154c758ef49",
+    "upgrade/tests/test_product_release_scope.py": "b60310d38b77384924fc12870473b439ed82a505e6770784dbb4836f7f5b697a",
+    "kubecli-onefile.spec": "1b419dfa57fa9dd97f08d994b5f078950c6f15e4575723f1a5158124195be33f",
+    "conf/config.yml": "cb417b4ff0fdaea868c6b166f0eeaceb24ccb28321a9458b3aa4c78ba6a1884e"
+  },
+  "scope": [
+    "Real Ansible parser, groups/children, host-variable and config extra-var precedence, actual product K8S_NODENAME template and fallback; AIO deduplicates without omitting worker/master roles",
+    "Complete master API endpoint and all Kubernetes node mapping; refuse limited/missing/duplicated/foreign observations, duplicate node names, unreviewed aliases, mixed runtime/network and invalid secure port",
+    "Actual inventory handoff to existing source observer checks every configured API with TLS plus cluster/node identities; existing fixture CLI alone replaces API responses",
+    "Actual product runner cannot bootstrap remote Python for this fixed observer or use the controller-only exception on another playbook",
+    "Allowlisted observation events remain available after real runner TemporaryDirectory cleanup; credentials/arbitrary output are not retained in receipt fields",
+    "Existing native and2.18/2.20 execution-environment selection contracts and product-only packaging scope retain their behavior"
+  ],
+  "first_failure": {
+    "category": "test-gate",
+    "raw": {
+      "path": "upgrade/v1.34.13/evidence/raw/inventory-source/first-failure.log",
+      "sha256": "5f7ddd257790bc9f542abe22c41084fbf40a8e2a47464caf998a7cdfe61e9b21",
+      "bytes": 24603
+    },
+    "cause": "New fixture omitted required pre-existing ansible-runner private_data_dir; importing TestCase also unintentionally rediscovered source observer tests.",
+    "repair": "Create private fixture directory; import source fixture through its module; run exactly the owned inventory tests."
+  },
+  "launch_environment_failure": {
+    "category": "test-gate",
+    "raw": {
+      "path": "upgrade/v1.34.13/evidence/raw/inventory-source/launch-environment-failure.log",
+      "sha256": "11fc5db7d4855ebd2e7769dff72ad5d7f16217ae6c4b60cfdc6f5495eee6e426",
+      "bytes": 17797
+    },
+    "cause": "Fixture called real runner without adding its isolated venv Ansible executable directory to process PATH.",
+    "repair": "Use runtime-only test PATH plus scoped connection plugins; close runner stdout handle. No production workaround or lab rerun."
+  },
+  "completed_ladder": 2,
+  "live_lab_execution": false,
+  "parent_acceptance": false,
+  "cleanup": "Temporary fixture and real /dev/shm runner directories removed; no lab host connections or mutation",
+  "remaining": [
+    "Frozen combination and exact config/inventory/artifact identities, leases, capacity/PDB and verified recovery points",
+    "Complete config+kubecli orchestration/journal/business callbacks and fixed live runner",
+    "Focused real product-path qualification, final scoped clean run; no parent acceptance from these offline contracts"
+  ]
+}

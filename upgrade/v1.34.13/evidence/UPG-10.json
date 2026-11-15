@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "accepted": true,
+  "source": "v1.33.6",
+  "target": "v1.34.13",
+  "case_ids": [
+    "UPG-10"
+  ],
+  "method": "analysis",
+  "claim": "目标实验室集群只包含 Kubernetes 基础 addon，没有中间件 namespace、CRD 或业务实例；因此本次现场不宣称 MySQL/PXC、Kafka、MongoDB、Redis、ES、MinIO、Nacos、RocketMQ 的业务协调、数据保持或恢复实测。各组件保持源 GA 组合，目标平台适用性、Operator 最低版本、固定制品身份和变更差异沿用 upgrade 目录内的官方适用性/静态合同；后续客户环境启用任一组件时，必须把该组件的最小协调/重连/数据账本补测作为独立出口。",
+  "covered_subcases": [
+    "official-operator-target-minimums-and-api-contracts",
+    "unchanged-ga-middleware-combination-reuse",
+    "shared-controller-and-crd-identity-boundary",
+    "target-lab-middleware-scope-observation"
+  ],
+  "inputs": {
+    "upgrade/v1.34.13/release.yaml": "cfdcd0a7d3b168c6c607d27392c6942cf780007e49febf72add154f0c5ef0143",
+    "upgrade/v1.34.13/evidence/UPG-08.json": "5c025585d05e9bf28540535bf1d6556c0bbcf3b096659723fe206b5b3d1a6c64",
+    "upgrade/v1.34.13/evidence/UPG-09.json": "d3e4e0971bff7be9c46c61659c9b504c972d4a1f5e4b2ea53c27c7bab4657dc0",
+    "upgrade/v1.34.13/evidence/kafka-combination.json": "04c206070b4228c81f30d44d59f6a8344ced59e6b4c16dbd38f586e811f98f76",
+    "upgrade/v1.34.13/evidence/redis-combination.json": "50e8ddc9b4dfe18a9eef293d926e74b2e3b092e8652e05a8e6e56e9867156b4f",
+    "upgrade/v1.34.13/evidence/minio-combination.json": "2bb1a2a14d94b7e414c2fc035da4444cc1a2462e07b956a175ad730f521aff34",
+    "upgrade/v1.34.13/evidence/rocketmq-binary-identity.json": "68403b29122d2f438d7c639cc87801ebc605f5896b56c78dbd8b04f9e51017e5"
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/middleware-scope-observation-20261115.log",
+      "sha256": "d6e82f64f74d935ade07a14e655f5c356e24149ab44ed4d2dda7efebf9308f21"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/kafka-combination.json",
+      "sha256": "04c206070b4228c81f30d44d59f6a8344ced59e6b4c16dbd38f586e811f98f76"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/redis-combination.json",
+      "sha256": "50e8ddc9b4dfe18a9eef293d926e74b2e3b092e8652e05a8e6e56e9867156b4f"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/minio-combination.json",
+      "sha256": "2bb1a2a14d94b7e414c2fc035da4444cc1a2462e07b956a175ad730f521aff34"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/nacos-source-evidence-applicability.json",
+      "sha256": "afab1abd2bf3e44b28fde112b0fccddfd0bec9ca083e463885350bc0c285a991"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/rocketmq-binary-identity.json",
+      "sha256": "68403b29122d2f438d7c639cc87801ebc605f5896b56c78dbd8b04f9e51017e5"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/monitoring-render-comparison.json",
+      "sha256": "cc342885c24da3302f6dac2d2238eccea1980542721da5a2d1c4790371883a6a"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/platform-api-impact.json",
+      "sha256": "793190af6eb8b420fd4605b019e636d9e7114505d4e20cff99b1c03d0fe14034"
+    }
+  ],
+  "official_source_ids": [
+    "K8S-SKEW"
+  ],
+  "applicability": {
+    "conditions": "目标实验室未部署中间件 workload/CRD；只核验当前冻结组合和官方支持边界。",
+    "differences": "Kubernetes minor、kubelet 和 runtime 改变；中间件制品、配置和 Operator 版本未改变。",
+    "reason": "依据增量交付规则复用有效 GA 证据，避免对未部署且无变化的中间件重复长链；生产启用路径保持显式补测要求。"
+  },
+  "checks": [
+    {
+      "command": "read-only kubectl namespace/pod/crd scope observation on upgrade-v1336-source",
+      "rc": 0
+    }
+  ],
+  "customer_signoff": null,
+  "live_execution": false,
+  "completed_ladder": 4
+}

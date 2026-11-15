@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-11-14T22:59:37.587449+00:00",
+  "matrix_ids": [
+    "UPG-04",
+    "UPG-05",
+    "UPG-12"
+  ],
+  "classification": "product entry guard plus offline test-gate",
+  "product_entry": "config.yml + kubecli upgrade -> service/cluster/manager.py -> playbooks/93.upgrade.yml (legacy patch path only)",
+  "official_source_ids": [
+    "K8S-SKEW"
+  ],
+  "cause": "Legacy playbook only rejected equal versions and invoked master/node install roles per master; that path cannot safely prove minor HA API ordering or node drain. The former source observation was disk executable on one master only.",
+  "change": [
+    "Observe actual running kube-apiserver process on every master without gathering host facts or mutating services",
+    "Exact upstream source/target formats; target executable must match configured K8S_VER; same minor and nondecreasing patch on every master",
+    "any_errors_fatal stops before all later install roles on any refused host; existing same-version rejection and roles remain",
+    "Separate admitted minor-upgrade product composition remains required; this guard cannot complete a minor upgrade"
+  ],
+  "commands": [
+    ".venv/bin/python -B -m unittest upgrade.tests.test_legacy_upgrade_boundary -v",
+    "PYTHONPATH=/tmp/kubeauto-upgrade-ansible220-fixture/modules .venv/bin/python -B -m unittest upgrade.tests.test_legacy_upgrade_boundary -v"
+  ],
+  "rc": 0,
+  "tests_per_core": 6,
+  "ansible_cores": [
+    "2.16.14",
+    "2.20.9"
+  ],
+  "logs": {
+    "first-five": {
+      "path": "upgrade/v1.34.13/evidence/raw/legacy-upgrade-boundary/first-five.log",
+      "sha256": "26f128a6c16ea930f5c51e11a55a8780553f3f71f5b826fbea8a787d6d8d0c4f",
+      "bytes": 1183,
+      "rc": 0,
+      "tests": 5,
+      "duration_seconds": 4.954
+    },
+    "full-product-playbook": {
+      "path": "upgrade/v1.34.13/evidence/raw/legacy-upgrade-boundary/full-product-playbook.log",
+      "sha256": "7832ea33c93b50acdbcb1ce81a75f70e93204ade6ee036aec84f5eed413190c7",
+      "bytes": 1452,
+      "rc": 0,
+      "tests": 6,
+      "duration_seconds": 5.345
+    },
+    "ansible220": {
+      "path": "upgrade/v1.34.13/evidence/raw/legacy-upgrade-boundary/ansible220.log",
+      "sha256": "54f51fe0075b1491d8694ebde73856d4331019c04530a82c23cc7426029288ac",
+      "bytes": 1452,
+      "rc": 0,
+      "tests": 6,
+      "duration_seconds": 6.342
+    }
+  },
+  "inputs_sha256": {
+    "playbooks/93.upgrade.yml": "8c5c833aaafe3108bc2e1b74895f5f7ea5bddade36be895d2b1d55c46fdeb89f",
+    "upgrade/tests/test_legacy_upgrade_boundary.py": "d119b0eb2248fc7d3881a204e482c02a024c4b696b6734eecd2d809d572b1b8e",
+    "upgrade/tests/test_control_plane.py": "9821f52098a2a2cc258ca9d4df5739ee9ccde3add5247bbeeec56bae5bf3f877"
+  },
+  "alternate_ansible_provenance": {
+    "path": "upgrade/v1.34.13/evidence/raw/legacy-upgrade-boundary/ansible220-provenance.json",
+    "sha256": "8eb42c1d90620e58a9127b59d467875393d4d0135f6056aae1a3fe33fc05c7c5",
+    "bytes": 376
+  },
+  "coverage": [
+    "Execute actual complete product playbook with real role parsing and shell observation adapters; first minor/hidden second-master downgrade stops before roles",
+    "Execute actual first play for valid sourceGA patch fixture1.33.5->1.33.6 and v-prefixed config; master/node roles remain unchanged",
+    "Refuse skipped minor, previous minor, lower patch, prerelease/vendor/malformed version, target/config mismatch and same-version path",
+    "Forbidden connection plugin proves adapter escape cannot open SSH or mutate lab; all fixture directories removed"
+  ],
+  "completed_ladder": 2,
+  "parent_acceptance": false,
+  "live_lab_execution": false,
+  "remaining": [
+    "Complete separately admitted first-hop kubecli orchestration, frozen combination/artifact/lease/recovery and journal",
+    "Narrow actual product-path lab verification after prerequisites, including refusal without state mutation"
+  ],
+  "cleanup": "TemporaryDirectory fixtures only; no lab lease or mutation"
+}

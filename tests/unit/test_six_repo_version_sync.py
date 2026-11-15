@@ -6,6 +6,7 @@ under a different tag — that breaks talkedu/Docker Hub pull order.
 from __future__ import annotations
 
 import re
+import ast
 import json
 import unittest
 from pathlib import Path
@@ -169,6 +170,22 @@ class TestSixRepoVersionSync(unittest.TestCase):
         self.assertIn("ARG K8S_VER", df)
         ci = (k8s_bin / ".github/workflows/build.yml").read_text()
         published = set(re.findall(r"version:\s*(v?[0-9]+\.[0-9]+\.[0-9]+)", ci))
+        # The selected-release workflow computes its matrix in an inline Python
+        # plan. Read its literal legacy list as well as older static matrices.
+        import yaml
+        workflow = yaml.safe_load(ci)
+        for step in workflow.get('jobs', {}).get('plan', {}).get('steps', []):
+            script = step.get('run', '')
+            if not script.startswith("python3 - <<'PY'\n"):
+                continue
+            source = script.split('\n', 1)[1].rsplit('\nPY', 1)[0]
+            for node in ast.walk(ast.parse(source)):
+                if isinstance(node, ast.Assign) and any(
+                        isinstance(target, ast.Name) and target.id == 'versions'
+                        for target in node.targets) and isinstance(node.value, ast.List):
+                    if all(isinstance(value, ast.Constant) and isinstance(value.value, str)
+                           for value in node.value.elts):
+                        published.update(value.value for value in node.value.elts)
         upgrade_gate = (ROOT / "kubeauto" / "tests" / "helpers" / "delivery-upgrade-smoke.sh").read_text()
         upgrade_source = re.search(r"^OLD_VERSION=(v?[0-9]+\.[0-9]+\.[0-9]+)$", upgrade_gate, re.MULTILINE)
         self.assertIsNotNone(upgrade_source, msg="upgrade gate must pin its source fixture")

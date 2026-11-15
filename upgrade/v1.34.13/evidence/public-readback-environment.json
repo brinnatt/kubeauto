@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "parent": "UPG-03",
+  "parent_status": "pending",
+  "classification": "environment-network",
+  "run_id": "public-readback-130-20261114",
+  "command": ".venv/bin/python -B upgrade/verify_public_artifact.py upgrade/v1.34.13/evidence/k8s-binary-private-readback.json --output upgrade/v1.34.13/evidence/k8s-binary-public-readback.json",
+  "first_failure": {
+    "rc": 1,
+    "error_type": "URLError",
+    "http": null
+  },
+  "diagnostic_attempt": {
+    "rc": 1,
+    "reason_type": "OSError",
+    "errno": 101
+  },
+  "remote_mutation": false,
+  "image_pulled": false,
+  "accepted_evidence_invalidated": [],
+  "next_exit": "消费已接受的单镜像制品批次，继续其它组件官方组合，不继续网络资格或构建。",
+  "attempted_command_retired": true,
+  "resolution": "只读GitHub run43608565612已核验双端当前manifest且durable rc=0；移除临时跳板机probe及其测试，不维护未能在该环境连通的第二套入口。"
+}

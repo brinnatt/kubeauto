@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "accepted": true,
+  "source": "v1.33.6",
+  "target": "v1.34.13",
+  "case_ids": [
+    "UPG-05"
+  ],
+  "method": "live",
+  "claim": "独立六节点 v1.33.6 源集群已通过当前源健康准入：节点与 Pod 健康、API/kubelet 精确版本、etcd 三节点健康、正式 kubecli backup 生成带 SHA256 的恢复点，并保留唯一 source lease 给后续受控迁移。时间资格与 .133 环境修复证据已在同一现场边界核验。本证据只签源准入，不签目标升级或 GA。",
+  "covered_subcases": [
+    "clean-six-node-source-identity",
+    "api-and-kubelet-exact-v1336",
+    "all-nodes-ready-and-pods-healthy",
+    "etcd-backup-recovery-point",
+    "exclusive-lease-and-journal",
+    "time-qualified-source-environment"
+  ],
+  "inputs": {
+    "upgrade/lab/source-preflight.sh": "53968c47a8d5d9dd80aabe921dc6c722287416a7a416352031c34ce04e5f5d99",
+    "upgrade/lab/time-qualification.sh": "c4ac958cdf893d74980f61dab899479f0a06262f28c5c2ddb5a3edc231b02b0d",
+    "upgrade/v1.34.13/release.yaml": "cfdcd0a7d3b168c6c607d27392c6942cf780007e49febf72add154f0c5ef0143",
+    "upgrade/official-sources.yaml": "58b1b295bf7ed474fa3062a384c751b229cafb0956e1fc512a395f0115871bdb"
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/source-preflight-20261115-pass/qualified.log",
+      "sha256": "927b929eead389805b63c74489c17a2543e5aa51c8018d8ef89810369f02ae57"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/source-preflight-20261115-pass/post-run-scope.log",
+      "sha256": "42c980da82f0ed44bd22e73932f3ccfd2450ee20f2235432e0c2681e596d8034"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/source-preflight-20261115-pass/kubeauto-upgrade-v1336-source.receipt.json",
+      "sha256": "6d1cecf01d6722bd9034d70c70312b2bc11730b208c05f19eb5491ec2e2d8e47"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/source-preflight-20261115-pass/kubeauto-upgrade-source.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/source-preflight-20261115-pass/kubeauto-upgrade-source.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/time-qualification-20261115-r3/receipt.json",
+      "sha256": "9a5a098adfd3a3364d8d5e4f866861b161debf170e786a86aaf29c13e6ba24e2"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/time-qualification-20261115-r3/durable.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/time-qualification-20261115-r3/durable.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    }
+  ],
+  "official_source_ids": [
+    "K8S-SKEW",
+    "K8S-API-HEALTH-CONTRACT",
+    "KUBECTL-RAW-CONTRACT",
+    "K8S-13413-VERSION-CONTRACT",
+    "K8S-13413-NODE-CONTRACT"
+  ],
+  "run_id": "source-preflight-20261115-pass",
+  "durable_rc": 0,
+  "finalized_rc": 0,
+  "failure_markers": 0,
+  "log": {
+    "path": "upgrade/v1.34.13/evidence/raw/source-preflight-20261115-pass/qualified.log",
+    "sha256": "927b929eead389805b63c74489c17a2543e5aa51c8018d8ef89810369f02ae57"
+  },
+  "durable_exit": {
+    "path": "upgrade/v1.34.13/evidence/raw/source-preflight-20261115-pass/kubeauto-upgrade-source.exit",
+    "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+  },
+  "durable_finalized": {
+    "path": "upgrade/v1.34.13/evidence/raw/source-preflight-20261115-pass/kubeauto-upgrade-source.finalized",
+    "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+  },
+  "success_marker": "UPGRADE_SOURCE_PREFLIGHT_PASS",
+  "cleanup_marker": "SOURCE_SCOPE_VERIFY_PASS",
+  "business_assertions": [
+    "six nodes Ready and kubelet v1.33.6",
+    "API server v1.33.6",
+    "all observed Pods Running/Completed",
+    "etcd endpoints 134/135/136 healthy",
+    "snapshot.db non-empty with SHA256 5f53339e0da6ac7f12c62032b52261cf158cecee15472ecdd2af9da0169a66ed",
+    "source lease exists and scoped verification passed"
+  ],
+  "customer_signoff": null,
+  "live_execution": true,
+  "completed_ladder": 3
+}

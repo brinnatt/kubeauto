@@ -1,3 +1,11 @@
+- name: Admit the reviewed Calico maintenance pair
+  ansible.builtin.assert:
+    that:
+      - calico_ver_main not in ['v3.31', 'v3.32'] or calico_ver in ['v3.31.7', 'v3.32.4']
+      - calico_ver not in ['v3.31.7', 'v3.32.4'] or calico_ver_main == calico_ver.rsplit('.', 1)[0]
+    fail_msg: "Calico maintenance requires its reviewed exact version and manifest."
+  run_once: true
+
 - block:
     - name: create calico CSR
       template: src=calico-csr.json.j2 dest={{ cluster_dir }}/ssl/calico-csr.json

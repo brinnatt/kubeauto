@@ -1,0 +1,92 @@
+{
+  "batch_id": "longhorn-1122",
+  "repository": "kubeauto-ext-images-dockerfile",
+  "branch": "v1.34.13",
+  "sha": "c0e741b24a4606072120b07c41ecdf29cb613360",
+  "mode": "selected",
+  "images": [
+    "brinnatt/longhorn-engine:v1.12.2",
+    "brinnatt/longhorn-manager:v1.12.2-kubeauto.1",
+    "brinnatt/longhorn-ui:v1.12.2",
+    "brinnatt/longhorn-instance-manager:v1.12.2-kubeauto.1",
+    "brinnatt/longhorn-share-manager:v1.12.2",
+    "brinnatt/longhorn-backing-image-manager:v1.12.2",
+    "brinnatt/longhorn-support-bundle-kit:v1.0.5",
+    "brinnatt/longhorn-csi-attacher:v4.13.0-20261028",
+    "brinnatt/longhorn-csi-provisioner:v5.3.0-20261028",
+    "brinnatt/longhorn-csi-node-driver-registrar:v2.18.0-20261028",
+    "brinnatt/longhorn-csi-resizer:v2.3.0-20261028",
+    "brinnatt/longhorn-csi-snapshotter:v8.7.0-20261028",
+    "brinnatt/longhorn-livenessprobe:v2.20.0-20261028"
+  ],
+  "image_count": 13,
+  "platforms": [
+    "linux/amd64",
+    "linux/arm64"
+  ],
+  "fingerprints": {
+    "brinnatt/longhorn-engine:v1.12.2": "052436e4e74f15dc5d532d41a5b63d11e5214cdea720d659ff794127d6814612",
+    "brinnatt/longhorn-manager:v1.12.2-kubeauto.1": "2a10b19256800bc6c67def9568f96718ac4fb8643ad8fb87c876cc376d033f8c",
+    "brinnatt/longhorn-ui:v1.12.2": "9fe818fbdf8d2f9be9cf4bda7febaf783650c908e1e45964a25437ea3768dcb2",
+    "brinnatt/longhorn-instance-manager:v1.12.2-kubeauto.1": "1f738fedea45fbf4bc58e9f31d2f1cef5e009bbb502358d4c6d840de98720d8c",
+    "brinnatt/longhorn-share-manager:v1.12.2": "3a8811dea7d1008692de9d8a5289260db76ce6afb8abf1fd9d803a405f2805ef",
+    "brinnatt/longhorn-backing-image-manager:v1.12.2": "4c7f24cbf36de44857826089b4478a00d3f9c16d748e30fcadb937b3ee7b85f2",
+    "brinnatt/longhorn-support-bundle-kit:v1.0.5": "82b652db5ea93eafb5f571709879a036a9e6f764d714c907878fca339245b09d",
+    "brinnatt/longhorn-csi-attacher:v4.13.0-20261028": "6b4d273bab1836c1cca6e7786c9b1b29c38739111d3fa00c882e86a9544fb6b2",
+    "brinnatt/longhorn-csi-provisioner:v5.3.0-20261028": "c42e4f1174e74b960964b9819bafaa8adcc52fddfaabc51b2176b87c303b44d7",
+    "brinnatt/longhorn-csi-node-driver-registrar:v2.18.0-20261028": "02267f494d47a0c8cacbf8ea6d1889d85e27f9f9d8cb7098ff1cf3603ca28b0a",
+    "brinnatt/longhorn-csi-resizer:v2.3.0-20261028": "f70413759998f0286271e942ca424148e41fb2b64a66e4a6a065625833e4dc52",
+    "brinnatt/longhorn-csi-snapshotter:v8.7.0-20261028": "e55a25159d76da84ca9ca12ef42f5f910b4c1b7a9c1b2df7dfe3348b09da967f",
+    "brinnatt/longhorn-livenessprobe:v2.20.0-20261028": "2e6b30e1c4d3414a0a4b448f4e3bb34360fe2c34aeef635126491db0d6329929"
+  },
+  "reason": "官方1.12.2修复本跳drain/rebuild相关丢写；完整13镜像与官方Chart配套，manager/IM保留4个源GA修复及全部原Go合同；仅新tag。",
+  "state": "local-plan-qualified-not-yet-dispatched",
+  "allowed_publish_set": [
+    "hub.talkedu.cn/kubeauto/longhorn-engine:v1.12.2",
+    "docker.io/brinnatt/longhorn-engine:v1.12.2",
+    "hub.talkedu.cn/kubeauto/longhorn-manager:v1.12.2-kubeauto.1",
+    "docker.io/brinnatt/longhorn-manager:v1.12.2-kubeauto.1",
+    "hub.talkedu.cn/kubeauto/longhorn-ui:v1.12.2",
+    "docker.io/brinnatt/longhorn-ui:v1.12.2",
+    "hub.talkedu.cn/kubeauto/longhorn-instance-manager:v1.12.2-kubeauto.1",
+    "docker.io/brinnatt/longhorn-instance-manager:v1.12.2-kubeauto.1",
+    "hub.talkedu.cn/kubeauto/longhorn-share-manager:v1.12.2",
+    "docker.io/brinnatt/longhorn-share-manager:v1.12.2",
+    "hub.talkedu.cn/kubeauto/longhorn-backing-image-manager:v1.12.2",
+    "docker.io/brinnatt/longhorn-backing-image-manager:v1.12.2",
+    "hub.talkedu.cn/kubeauto/longhorn-support-bundle-kit:v1.0.5",
+    "docker.io/brinnatt/longhorn-support-bundle-kit:v1.0.5",
+    "hub.talkedu.cn/kubeauto/longhorn-csi-attacher:v4.13.0-20261028",
+    "docker.io/brinnatt/longhorn-csi-attacher:v4.13.0-20261028",
+    "hub.talkedu.cn/kubeauto/longhorn-csi-provisioner:v5.3.0-20261028",
+    "docker.io/brinnatt/longhorn-csi-provisioner:v5.3.0-20261028",
+    "hub.talkedu.cn/kubeauto/longhorn-csi-node-driver-registrar:v2.18.0-20261028",
+    "docker.io/brinnatt/longhorn-csi-node-driver-registrar:v2.18.0-20261028",
+    "hub.talkedu.cn/kubeauto/longhorn-csi-resizer:v2.3.0-20261028",
+    "docker.io/brinnatt/longhorn-csi-resizer:v2.3.0-20261028",
+    "hub.talkedu.cn/kubeauto/longhorn-csi-snapshotter:v8.7.0-20261028",
+    "docker.io/brinnatt/longhorn-csi-snapshotter:v8.7.0-20261028",
+    "hub.talkedu.cn/kubeauto/longhorn-livenessprobe:v2.20.0-20261028",
+    "docker.io/brinnatt/longhorn-livenessprobe:v2.20.0-20261028"
+  ],
+  "completed_ladder": 1,
+  "next": "selected精确13镜像，真实双架构Go合同/编译及双端读回；成功项不因其他项失败重建",
+  "checks": [
+    {
+      "command": "python3 scripts/validate_catalog.py",
+      "rc": 0,
+      "result": "192/192"
+    },
+    {
+      "command": "python3 -B -m unittest discover -s tests -v",
+      "rc": 0,
+      "result": "96 tests PASS"
+    },
+    {
+      "command": "git diff --cached --check -- . :!*.patch",
+      "rc": 0,
+      "result": "unchanged unified-diff context whitespace excluded; four exact patches byte-equal under contract"
+    }
+  ],
+  "cleanup": "CI临时runner/登录/ci tag由固定发布入口拥有；无实验室变更，不接触旧正式tag"
+}

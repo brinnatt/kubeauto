@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-11-14T21:49:45.015176+00:00",
+  "matrix_ids": [
+    "UPG-03"
+  ],
+  "claim": "Only previously failed instance-manager selected publication, dual-registry formal-tag readback and both architecture manifests; not live storage acceptance",
+  "run_id": "43639041619",
+  "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/43639041619",
+  "branch": "v1.34.13",
+  "sha": "21abf01955d5c2f4af46fbd2f506a354e2115400",
+  "mode": "selected",
+  "image_count": 1,
+  "conclusion": "success",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "actual_plan": {
+    "schema": 1,
+    "mode": "selected",
+    "head": "21abf01955d5c2f4af46fbd2f506a354e2115400",
+    "items": [
+      {
+        "row": {
+          "dockerfile": "platform/storage/longhorn/longhorn-instance-manager/v1.12.2-kubeauto.1/Dockerfile",
+          "image": "brinnatt/longhorn-instance-manager",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/longhorn-instance-manager",
+          "tag": "v1.12.2-kubeauto.1",
+          "ctx": "platform/storage/longhorn/longhorn-instance-manager/v1.12.2-kubeauto.1"
+        },
+        "fingerprint": "1f738fedea45fbf4bc58e9f31d2f1cef5e009bbb502358d4c6d840de98720d8c"
+      }
+    ],
+    "event_keys": [],
+    "shard_size": 20,
+    "shards": 1
+  },
+  "release_records": [
+    {
+      "digest": "sha256:86bef542e37c11cdfc6c9147ef9378c7bb6e5d05a2ad77afacdc6f3bde70b661",
+      "fingerprint": "1f738fedea45fbf4bc58e9f31d2f1cef5e009bbb502358d4c6d840de98720d8c",
+      "head": "21abf01955d5c2f4af46fbd2f506a354e2115400",
+      "key": "brinnatt/longhorn-instance-manager:v1.12.2-kubeauto.1",
+      "platforms": {
+        "linux/amd64": "sha256:df0609cdc334ee0cd1048f0d0ca9d3a5a72996a0b43ba3d46e1031e4c7793b95",
+        "linux/arm64": "sha256:36cbf48378370dd3b1144d5405aa489b009b3e8a162f3fe796332cd042dab857"
+      },
+      "run_id": "43639041619",
+      "schema": 1,
+      "source_digest": "sha256:9cc68efffc0a4896ccf2d3188a2cbf6b96bf50474f61bce5ab6a9a5c61de901d",
+      "source_ref": "docker.io/longhornio/longhorn-instance-manager:v1.12.2"
+    }
+  ],
+  "archives": {
+    "image-plan": {
+      "path": "upgrade/v1.34.13/evidence/raw/longhorn-instance-manager/43639041619/image-plan.zip",
+      "sha256": "3086f8f46a00be2895be9de2c13db7be44668963c57427218299ecf190a4daa1",
+      "bytes": 462
+    },
+    "plan-evidence-1": {
+      "path": "upgrade/v1.34.13/evidence/raw/longhorn-instance-manager/43639041619/plan-evidence-1.zip",
+      "sha256": "e4031fd9ba82783bed57c2ebac4b0163686eaa0fed853a81919957f622856eb5",
+      "bytes": 300
+    },
+    "release-records-0-1": {
+      "path": "upgrade/v1.34.13/evidence/raw/longhorn-instance-manager/43639041619/release-records-0-1.zip",
+      "sha256": "dc9925467f4774aecde00b906a4269ee468a4d46c650658aee2b63da2215040b",
+      "bytes": 672
+    },
+    "release-evidence-0-1": {
+      "path": "upgrade/v1.34.13/evidence/raw/longhorn-instance-manager/43639041619/release-evidence-0-1.zip",
+      "sha256": "599b01cb5d87ce833d3780e3ec5194e89bcc012a4b272a26f21a9c0bf7957e13",
+      "bytes": 48681
+    }
+  },
+  "completed_ladder": 2,
+  "parent_acceptance": false,
+  "live_lab_execution": false,
+  "retained_first_failure": "upgrade/v1.34.13/evidence/longhorn-publication-first-attempt.json"
+}

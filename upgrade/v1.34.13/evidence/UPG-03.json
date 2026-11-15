@@ -1,0 +1,110 @@
+{
+  "accepted": true,
+  "case_ids": [
+    "UPG-03"
+  ],
+  "checks": [
+    {
+      "command": ".venv/bin/python -B -m unittest upgrade.tests.test_artifact_inventory -v",
+      "rc": 0,
+      "tests": 3
+    },
+    {
+      "command": ".venv/bin/python -B upgrade/validate.py upgrade/v1.34.13/test-matrix.yaml --combination-preflight",
+      "rc": 0
+    }
+  ],
+  "claim": "目标首跳消费制品集合已完成范围闭合和当前双端双架构 manifest readback：130个外部镜像逐项通过，另以既有独立证据关联Kubernetes六二进制与ext-bin overlay；允许发布集合与实际目标消费集合分开记录，未把历史GA digest冒签为目标身份。本项只证明制品准入，不证明现场升级或产品GA。",
+  "covered_subcases": [
+    "complete-consumer-inventory-and-scope",
+    "changed-artifacts-publication-and-readback",
+    "unchanged-artifacts-reuse-boundary",
+    "kubernetes-and-binary-pack-identity"
+  ],
+  "customer_signoff": null,
+  "inputs": {
+    "upgrade/tests/test_artifact_inventory.py": "3537f7b4d9cbbf3871fe1cf551250d5a37f8d71db83afbe79c427767f5b98096",
+    "upgrade/v1.33.6/inventory.yaml": "629f66e7de972c718e5fbed9b0a437b3a1c50fb8664b68ad1b02daeb431b27ea",
+    "upgrade/v1.34.13/release.yaml": "cfdcd0a7d3b168c6c607d27392c6942cf780007e49febf72add154f0c5ef0143"
+  },
+  "inventory_counts": {
+    "changed": 36,
+    "dual_registry_readback": 130,
+    "total": 130,
+    "unchanged": 94
+  },
+  "method": "static",
+  "official_source_ids": [
+    "DOCKER-BUILDX-MANIFEST-INSPECT"
+  ],
+  "references": [
+    {
+      "path": "upgrade/v1.34.13/evidence/artifact-consumer-inventory.json",
+      "sha256": "8831d483e0a9871459833532dfb74e9a8573241092482bdf136c0d812b93dc3f"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/readback-43663677003-image-plan.json",
+      "sha256": "0006f18a476049c3fa01cb378213661672328cb8bd573d6f621d7f6bad131ee8"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/readback-43663677003/image-plan.zip",
+      "sha256": "e2bee31ac679efec50fec38de371743d1a0def04d106b57357f280d5a6d5906a"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/readback-43663677003/plan-evidence-1.zip",
+      "sha256": "cecea1c4f50e891df879e5f3ea8e38c7feef832875821e12a944d80691801997"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/k8s-binary-publication.json",
+      "sha256": "a70e891cfa0225b1fdd45195836a2abe7c0ff889f41fd23452954b37c85e49c8"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/k8s-binary-dual-readback.json",
+      "sha256": "eab4cae4ed82318573af193294618e28a47f30143ab80137800fc35fe5c741f8"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/k8s-binary-content.json",
+      "sha256": "290b31f7b8a562b9f3a0e6fc9bc555434b87a427adf5ad1d059731995aa6e7f2"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/extbin-incremental-publication.json",
+      "sha256": "df7515ccb1aa89f7b5301086efc7189bb8e8e5d7482a43236fc383d1ba27a41a"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/extbin-retained-base-readback.json",
+      "sha256": "fc13d2afa4d180cefb540358ba49d1900c6807644cf89851d2b0ef4ed380d5c2"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/ceph-csi-publication.json",
+      "sha256": "120af8fb45644cc1d3ad20ea1a46a1dbce828b4621ae214b1008eb454e235d78"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/ingress-publication.json",
+      "sha256": "c28021493299c73d82237322a974ae3dcc8a37beba046d9a276ee658d551bf0d"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/network-publication.json",
+      "sha256": "c972f3d5394d761ab00e0856ff5ef39beb582d2d62fe5197eb3eb196e7a5e5b5"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/longhorn-instance-manager-publication.json",
+      "sha256": "d210549b2c0d31f8085906b882fb3cdd77c49dcd598b7d74df511085f330d8cc"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/longhorn-remaining-nine-publication.json",
+      "sha256": "8e9586ac6c66eb423ecf598397ea2fe50269512afe392e20579b038c05e2ab6d"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/dns-publication.json",
+      "sha256": "207eb3e65e78c46afa727def6a239b189fbcbb4605338ab8773fbba5607d7c93"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/platform-eight-publication.json",
+      "sha256": "2b85e5d73e0dee1b4ef2d145c117a0204f9a87627df57024fdfab2852c51c422"
+    }
+  ],
+  "schema_version": 1,
+  "source": "v1.33.6",
+  "target": "v1.34.13",
+  "target_runtime_claim": false
+}

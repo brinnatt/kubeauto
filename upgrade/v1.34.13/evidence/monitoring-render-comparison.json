@@ -1,0 +1,152 @@
+{
+  "schema_version": 1,
+  "observed_on": "2026-11-15",
+  "matrix_ids": [
+    "UPG-04",
+    "UPG-11"
+  ],
+  "claim": "Actual fixed product monitoring chart renders identical objects on source/target, including Thanos path",
+  "checks": [
+    {
+      "schema_version": 1,
+      "claim": "Product monitoring values + fixed vendored chart static source/target render comparison",
+      "live_lab_execution": false,
+      "parent_acceptance": false,
+      "commands": [
+        {
+          "argv": [
+            "/tmp/kubeauto-upgrade-local-bin/helm",
+            "template",
+            "prometheus",
+            "/home/brinnatt/projects/kubeauto/roles/cluster-addon/files/kube-prometheus-stack-88.0.0.tgz",
+            "-n",
+            "monitoring",
+            "--kube-version",
+            "v1.33.6",
+            "-f",
+            "/tmp/kubeauto-upgrade-monitoring-render/v1.33.6-values.yaml"
+          ],
+          "rc": 0,
+          "output_sha256": "682ed8c88fd3d99f7a68558daaebe2c9236c46eea5a676e0782da34450810520",
+          "objects": 130
+        },
+        {
+          "argv": [
+            "/tmp/kubeauto-upgrade-local-bin/helm",
+            "template",
+            "prometheus",
+            "/home/brinnatt/projects/kubeauto/roles/cluster-addon/files/kube-prometheus-stack-88.0.0.tgz",
+            "-n",
+            "monitoring",
+            "--kube-version",
+            "v1.34.13",
+            "-f",
+            "/tmp/kubeauto-upgrade-monitoring-render/v1.34.13-values.yaml"
+          ],
+          "rc": 0,
+          "output_sha256": "682ed8c88fd3d99f7a68558daaebe2c9236c46eea5a676e0782da34450810520",
+          "objects": 130
+        }
+      ],
+      "identity_changes": false,
+      "changed_objects": 0,
+      "chart_sha256": "f96cb0a0999f7375b2899e4b60e6ec0e8f7133e5847f39ac87d53baea765eb32",
+      "template_sha256": "5fa82d469fd06853eac596b7da4fffad30a56977990d3d75b0cc19299bd6171e",
+      "raw_copies": [
+        {
+          "path": "upgrade/v1.34.13/evidence/raw/monitoring-default-v1.33.6-values.yaml",
+          "sha256": "244478aa6963cfb4fb3203ee775642620fc5db761fe158901c8be2b1e1a13b32"
+        },
+        {
+          "path": "upgrade/v1.34.13/evidence/raw/monitoring-default-v1.33.6-render.yaml",
+          "sha256": "682ed8c88fd3d99f7a68558daaebe2c9236c46eea5a676e0782da34450810520"
+        },
+        {
+          "path": "upgrade/v1.34.13/evidence/raw/monitoring-default-v1.34.13-values.yaml",
+          "sha256": "78f13155f7cc7e5bf64d27edba913b1421da794312bea4e231eaaaa937bb6a80"
+        },
+        {
+          "path": "upgrade/v1.34.13/evidence/raw/monitoring-default-v1.34.13-render.yaml",
+          "sha256": "682ed8c88fd3d99f7a68558daaebe2c9236c46eea5a676e0782da34450810520"
+        }
+      ],
+      "scenario": "default"
+    },
+    {
+      "schema_version": 1,
+      "claim": "Product monitoring values + fixed vendored chart static source/target render comparison",
+      "live_lab_execution": false,
+      "parent_acceptance": false,
+      "commands": [
+        {
+          "argv": [
+            "/tmp/kubeauto-upgrade-local-bin/helm",
+            "template",
+            "prometheus",
+            "/home/brinnatt/projects/kubeauto/roles/cluster-addon/files/kube-prometheus-stack-88.0.0.tgz",
+            "-n",
+            "monitoring",
+            "--kube-version",
+            "v1.33.6",
+            "-f",
+            "/tmp/kubeauto-upgrade-monitoring-thanos-render/v1.33.6-values.yaml"
+          ],
+          "rc": 0,
+          "output_sha256": "b972d1f86bd774df6b415fbe1119e575c1d13217222f5301242f1f9fc63eab82",
+          "objects": 132
+        },
+        {
+          "argv": [
+            "/tmp/kubeauto-upgrade-local-bin/helm",
+            "template",
+            "prometheus",
+            "/home/brinnatt/projects/kubeauto/roles/cluster-addon/files/kube-prometheus-stack-88.0.0.tgz",
+            "-n",
+            "monitoring",
+            "--kube-version",
+            "v1.34.13",
+            "-f",
+            "/tmp/kubeauto-upgrade-monitoring-thanos-render/v1.34.13-values.yaml"
+          ],
+          "rc": 0,
+          "output_sha256": "b972d1f86bd774df6b415fbe1119e575c1d13217222f5301242f1f9fc63eab82",
+          "objects": 132
+        }
+      ],
+      "identity_changes": false,
+      "changed_objects": 0,
+      "chart_sha256": "f96cb0a0999f7375b2899e4b60e6ec0e8f7133e5847f39ac87d53baea765eb32",
+      "template_sha256": "5fa82d469fd06853eac596b7da4fffad30a56977990d3d75b0cc19299bd6171e",
+      "raw_copies": [
+        {
+          "path": "upgrade/v1.34.13/evidence/raw/monitoring-thanos-v1.33.6-values.yaml",
+          "sha256": "cd1bb2814dead3642e32131d985244e327eb42e320343a1415f208a1694eb3bd"
+        },
+        {
+          "path": "upgrade/v1.34.13/evidence/raw/monitoring-thanos-v1.33.6-render.yaml",
+          "sha256": "b972d1f86bd774df6b415fbe1119e575c1d13217222f5301242f1f9fc63eab82"
+        },
+        {
+          "path": "upgrade/v1.34.13/evidence/raw/monitoring-thanos-v1.34.13-values.yaml",
+          "sha256": "91ffe3b660ed846c000d68f0b4390463120a388e36e446e15c4fb547fe92b114"
+        },
+        {
+          "path": "upgrade/v1.34.13/evidence/raw/monitoring-thanos-v1.34.13-render.yaml",
+          "sha256": "b972d1f86bd774df6b415fbe1119e575c1d13217222f5301242f1f9fc63eab82"
+        }
+      ],
+      "scenario": "thanos"
+    }
+  ],
+  "live_lab_execution": false,
+  "parent_acceptance": false,
+  "fixture_boundary": "Synthetic names and explicit storage class/namespace; helm template only, no Kubernetes connection",
+  "diagnostic_corrections": [
+    "First temporary render fixture omitted kube_node and CLUSTER_NAME; StrictUndefined refused locally. Added actual required topology and cluster inputs before accepting any render; product code unchanged."
+  ],
+  "remaining": [
+    "Current production target scrape/read/alert/APIService integration in the migration main chain",
+    "Full official directory delta records and source/target interface applicability",
+    "No claim of new performance, fault, long-term lifecycle or customer sign-off"
+  ]
+}

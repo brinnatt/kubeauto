@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "observed_on": "2026-11-15",
+  "matrix_ids": [
+    "UPG-02",
+    "UPG-03",
+    "UPG-10"
+  ],
+  "claim": "Statically extracted, digest-verified current AMD64/ARM64 manager binary identity and module dependency observations; image/binary never executed",
+  "image": {
+    "row": {
+      "dockerfile": "./middleware/rocketmq/rocketmq-operator/Dockerfile",
+      "image": "brinnatt/rocketmq-operator",
+      "talkedu_image": "hub.talkedu.cn/kubeauto/rocketmq-operator",
+      "tag": "latest",
+      "ctx": "./middleware/rocketmq/rocketmq-operator/"
+    },
+    "fingerprint": "b9e2992d7a1d691ac4b64464ba63d9351c9e4f61555f26389134111ff74a6c50",
+    "talkedu": {
+      "digest": "sha256:66516b068aa9b73bee2b218556f551111fc75721a32aa183f655106ef10bcfdf",
+      "platforms": {
+        "linux/amd64": "sha256:af59226058b6b62f2562cfbaba4f8e54b7fb6fee423875984e0ed5a20216acaa",
+        "linux/arm64": "sha256:3e4e448247064be99a4afb531052bcb2b11b1ab20b1729a19e5c53e5294bfb13"
+      }
+    },
+    "dockerhub": {
+      "digest": "sha256:66516b068aa9b73bee2b218556f551111fc75721a32aa183f655106ef10bcfdf",
+      "platforms": {
+        "linux/amd64": "sha256:af59226058b6b62f2562cfbaba4f8e54b7fb6fee423875984e0ed5a20216acaa",
+        "linux/arm64": "sha256:3e4e448247064be99a4afb531052bcb2b11b1ab20b1729a19e5c53e5294bfb13"
+      }
+    }
+  },
+  "source_continuity_evidence": "upgrade/v1.34.13/evidence/legacy-artifact-continuity.json",
+  "source_ids": [
+    "ROCKETMQ-030-GO-DEPS",
+    "ROCKETMQ-CURRENT-OFFICIAL-BUILD",
+    "CLIENTGO-0221-SHARED-API",
+    "CONTROLLER-RUNTIME-010-VERSIONING-ENTRY"
+  ],
+  "raw_metadata": {
+    "path": "upgrade/v1.34.13/evidence/raw/rocketmq-binary-identity/metadata.json",
+    "sha256": "1f8ce92ea3989aacc0d1e87f96627663f04c8ab01f53a5be9f48e835719534ce",
+    "bytes": 456583
+  },
+  "binaries": [
+    {
+      "architecture": "amd64",
+      "layer": "sha256:c9a85256bb405fd8bf513aa0cf0bb47bcc75ffad90919166dc1e896902047650",
+      "member": "manager",
+      "sha256": "0bc6b51609030b136b709fbebba68c8770585b9d14370a87c8be96cd37a67908",
+      "bytes": 50664414,
+      "module": "github.com/apache/rocketmq-operator (devel)",
+      "client_go": "v0.22.1",
+      "controller_runtime": "v0.10.0",
+      "vcs_revision": null
+    },
+    {
+      "architecture": "arm64",
+      "layer": "sha256:1526ccb6aaa95090c3b57033a9ca717332d643706e645560f679d3f597910dc3",
+      "member": "manager",
+      "sha256": "79fed25c8eb4aa7a2c5cd9e4a9ddfa373aa852b5989a475cadc9a34d87f28964",
+      "bytes": 47724628,
+      "module": "github.com/apache/rocketmq-operator (devel)",
+      "client_go": "v0.22.1",
+      "controller_runtime": "v0.10.0",
+      "vcs_revision": null
+    }
+  ],
+  "static_observation": [
+    "Layer, platform manifest and index bytes SHA256 verified before inspection; no unpacking into product/host files or image execution",
+    "Official0.3.0 source module pins match embedded dependencies; exact source commit remains unproven",
+    "Chart appVersion0.3.0 and floating latest are not binary version/provenance evidence; frozen consumer must use the current immutable index digest"
+  ],
+  "parent_acceptance": false,
+  "build_images": 0,
+  "publish_images": 0,
+  "live_lab_execution": false,
+  "remaining": [
+    "Owner decision on minimum/shared-API evidence instead of exact target tested table",
+    "Pin actual consumer references/delivery transfer by digest without silently changing original accepted artifact",
+    "Audit exact official controller API consumption and original GA applicability; smallest actual message/coordination verification only"
+  ]
+}

@@ -1,0 +1,55 @@
+# syntax=docker/dockerfile:1.23.0@sha256:2780b5c3bab67f1f76c781860de469442999ed1a0d7992a5efdf2cffc0e3d769
+FROM registry.suse.com/bci/golang:1.26@sha256:87dde729781b5347dbd4a5a3d4e084e906c3112b71b51095d9f74a46147de25c AS builder
+
+ARG LONGHORN_TWO_MINOR_UPGRADE_DISTROS
+ENV LONGHORN_TWO_MINOR_UPGRADE_DISTROS=${LONGHORN_TWO_MINOR_UPGRADE_DISTROS}
+
+WORKDIR /app
+
+# Copy the build script and source code
+COPY . /app
+
+# Make the build script executable
+RUN chmod +x /app/scripts/build
+
+# Run the build script
+RUN /app/scripts/build
+
+FROM registry.suse.com/bci/bci-base:15.7@sha256:79595412dc8da75bac1a5f9cc75c7d579523dbeeb6fc594d10b22967819760c3 AS release
+
+ARG TARGETPLATFORM
+RUN if [ "$TARGETPLATFORM" != "linux/amd64" ] && [ "$TARGETPLATFORM" != "linux/arm64" ]; then \
+    echo "Error: Unsupported TARGETPLATFORM: $TARGETPLATFORM" && \
+    exit 1; \
+    fi
+
+ENV ARCH=${TARGETPLATFORM#linux/}
+
+RUN zypper -n ref && \
+    zypper update -y
+
+RUN zypper -n install \
+    iputils \
+    iproute2 \
+    nfs-client \
+    cifs-utils \
+    bind-utils \
+    e2fsprogs \
+    xfsprogs \
+    zip \
+    unzip \
+    kmod \
+    smartmontools \
+    && zypper clean --all
+
+# nsmounter needs these utilities.
+RUN for cmd in xargs grep tail; do \
+    command -v "$cmd" >/dev/null || { echo "Error: $cmd is required by nsmounter"; exit 1; }; \
+    done
+
+COPY --from=builder /app/bin/longhorn-manager-${ARCH} /usr/local/sbin/longhorn-manager
+
+COPY --from=builder /app/package/launch-manager /app/package/nsmounter /usr/local/sbin/
+
+EXPOSE 9500
+CMD ["launch-manager"]

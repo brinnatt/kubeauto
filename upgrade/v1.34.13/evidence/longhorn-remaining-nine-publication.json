@@ -1,0 +1,271 @@
+{
+  "schema_version": 1,
+  "observed_on": "2026-11-15",
+  "matrix_ids": [
+    "UPG-03"
+  ],
+  "claim": "Selected 9-image dual-architecture/dual-registry publication and formal-tag readback; no runtime acceptance",
+  "repository": "kubeauto-ext-images-dockerfile",
+  "run_id": "43639656861",
+  "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/43639656861",
+  "sha": "21abf01955d5c2f4af46fbd2f506a354e2115400",
+  "branch": "v1.34.13",
+  "mode": "selected",
+  "image_count": 9,
+  "conclusion": "success",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "actual_plan": {
+    "schema": 1,
+    "mode": "selected",
+    "head": "21abf01955d5c2f4af46fbd2f506a354e2115400",
+    "items": [
+      {
+        "row": {
+          "dockerfile": "platform/storage/longhorn/longhorn-share-manager/v1.12.2/Dockerfile",
+          "image": "brinnatt/longhorn-share-manager",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/longhorn-share-manager",
+          "tag": "v1.12.2",
+          "ctx": "platform/storage/longhorn/longhorn-share-manager/v1.12.2"
+        },
+        "fingerprint": "3a8811dea7d1008692de9d8a5289260db76ce6afb8abf1fd9d803a405f2805ef"
+      },
+      {
+        "row": {
+          "dockerfile": "platform/storage/longhorn/longhorn-backing-image-manager/v1.12.2/Dockerfile",
+          "image": "brinnatt/longhorn-backing-image-manager",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/longhorn-backing-image-manager",
+          "tag": "v1.12.2",
+          "ctx": "platform/storage/longhorn/longhorn-backing-image-manager/v1.12.2"
+        },
+        "fingerprint": "4c7f24cbf36de44857826089b4478a00d3f9c16d748e30fcadb937b3ee7b85f2"
+      },
+      {
+        "row": {
+          "dockerfile": "platform/storage/longhorn/longhorn-support-bundle-kit/v1.0.5/Dockerfile",
+          "image": "brinnatt/longhorn-support-bundle-kit",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/longhorn-support-bundle-kit",
+          "tag": "v1.0.5",
+          "ctx": "platform/storage/longhorn/longhorn-support-bundle-kit/v1.0.5"
+        },
+        "fingerprint": "82b652db5ea93eafb5f571709879a036a9e6f764d714c907878fca339245b09d"
+      },
+      {
+        "row": {
+          "dockerfile": "platform/storage/longhorn/longhorn-csi-attacher/v4.13.0-20261028/Dockerfile",
+          "image": "brinnatt/longhorn-csi-attacher",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/longhorn-csi-attacher",
+          "tag": "v4.13.0-20261028",
+          "ctx": "platform/storage/longhorn/longhorn-csi-attacher/v4.13.0-20261028"
+        },
+        "fingerprint": "6b4d273bab1836c1cca6e7786c9b1b29c38739111d3fa00c882e86a9544fb6b2"
+      },
+      {
+        "row": {
+          "dockerfile": "platform/storage/longhorn/longhorn-csi-provisioner/v5.3.0-20261028/Dockerfile",
+          "image": "brinnatt/longhorn-csi-provisioner",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/longhorn-csi-provisioner",
+          "tag": "v5.3.0-20261028",
+          "ctx": "platform/storage/longhorn/longhorn-csi-provisioner/v5.3.0-20261028"
+        },
+        "fingerprint": "c42e4f1174e74b960964b9819bafaa8adcc52fddfaabc51b2176b87c303b44d7"
+      },
+      {
+        "row": {
+          "dockerfile": "platform/storage/longhorn/longhorn-csi-node-driver-registrar/v2.18.0-20261028/Dockerfile",
+          "image": "brinnatt/longhorn-csi-node-driver-registrar",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/longhorn-csi-node-driver-registrar",
+          "tag": "v2.18.0-20261028",
+          "ctx": "platform/storage/longhorn/longhorn-csi-node-driver-registrar/v2.18.0-20261028"
+        },
+        "fingerprint": "02267f494d47a0c8cacbf8ea6d1889d85e27f9f9d8cb7098ff1cf3603ca28b0a"
+      },
+      {
+        "row": {
+          "dockerfile": "platform/storage/longhorn/longhorn-csi-resizer/v2.3.0-20261028/Dockerfile",
+          "image": "brinnatt/longhorn-csi-resizer",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/longhorn-csi-resizer",
+          "tag": "v2.3.0-20261028",
+          "ctx": "platform/storage/longhorn/longhorn-csi-resizer/v2.3.0-20261028"
+        },
+        "fingerprint": "f70413759998f0286271e942ca424148e41fb2b64a66e4a6a065625833e4dc52"
+      },
+      {
+        "row": {
+          "dockerfile": "platform/storage/longhorn/longhorn-csi-snapshotter/v8.7.0-20261028/Dockerfile",
+          "image": "brinnatt/longhorn-csi-snapshotter",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/longhorn-csi-snapshotter",
+          "tag": "v8.7.0-20261028",
+          "ctx": "platform/storage/longhorn/longhorn-csi-snapshotter/v8.7.0-20261028"
+        },
+        "fingerprint": "e55a25159d76da84ca9ca12ef42f5f910b4c1b7a9c1b2df7dfe3348b09da967f"
+      },
+      {
+        "row": {
+          "dockerfile": "platform/storage/longhorn/longhorn-livenessprobe/v2.20.0-20261028/Dockerfile",
+          "image": "brinnatt/longhorn-livenessprobe",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/longhorn-livenessprobe",
+          "tag": "v2.20.0-20261028",
+          "ctx": "platform/storage/longhorn/longhorn-livenessprobe/v2.20.0-20261028"
+        },
+        "fingerprint": "2e6b30e1c4d3414a0a4b448f4e3bb34360fe2c34aeef635126491db0d6329929"
+      }
+    ],
+    "event_keys": [],
+    "shard_size": 20,
+    "shards": 1
+  },
+  "release_records": [
+    {
+      "digest": "sha256:174ba07ef5e3e32556502b492dba66bd524f5cf98068a384eb23b333e15a9c99",
+      "fingerprint": "e55a25159d76da84ca9ca12ef42f5f910b4c1b7a9c1b2df7dfe3348b09da967f",
+      "head": "21abf01955d5c2f4af46fbd2f506a354e2115400",
+      "key": "brinnatt/longhorn-csi-snapshotter:v8.7.0-20261028",
+      "platforms": {
+        "linux/amd64": "sha256:9431e62578cf45e06742c8dcd725fb6c35e4605daf0c1f530f62563b30df6c36",
+        "linux/arm64": "sha256:38b77326b0c4b942e4b7d96af4d98bdf427e9c288b4704e8fa930bd27e7c2daf"
+      },
+      "run_id": "43639656861",
+      "schema": 1,
+      "source_digest": "sha256:1822bfc63122b3f19df6c4caed40d1171d45d6f270d58093822c41ac909aafc0",
+      "source_ref": "docker.io/longhornio/csi-snapshotter:v8.7.0-20261028"
+    },
+    {
+      "digest": "sha256:9edccbc767effc93abebea420bd384c2c34321af62428daf31e4771a8a33cdda",
+      "fingerprint": "2e6b30e1c4d3414a0a4b448f4e3bb34360fe2c34aeef635126491db0d6329929",
+      "head": "21abf01955d5c2f4af46fbd2f506a354e2115400",
+      "key": "brinnatt/longhorn-livenessprobe:v2.20.0-20261028",
+      "platforms": {
+        "linux/amd64": "sha256:c9f904fb20d8831145f7e1ae54ec1c22e2ffb42cd701e91f7b88a1a9c6e21b43",
+        "linux/arm64": "sha256:a74dda21d6c8ecbca553a50334459aee12668bb38a20d7e5220f9fcb9a07a27f"
+      },
+      "run_id": "43639656861",
+      "schema": 1,
+      "source_digest": "sha256:d0ebbbe820808c98e965d28e4ebbdc6ea0ac0a2d7d485fc03673075c2c6c5821",
+      "source_ref": "docker.io/longhornio/livenessprobe:v2.20.0-20261028"
+    },
+    {
+      "digest": "sha256:be156c2dc7fb5e0680696a7fe44e35405526ab5160fe6b2a0e40e8ca502f9de1",
+      "fingerprint": "82b652db5ea93eafb5f571709879a036a9e6f764d714c907878fca339245b09d",
+      "head": "21abf01955d5c2f4af46fbd2f506a354e2115400",
+      "key": "brinnatt/longhorn-support-bundle-kit:v1.0.5",
+      "platforms": {
+        "linux/amd64": "sha256:4eb1d42e863b49063b8a553799a0ba506cf61fe4f147d9dec2dd9b0dbadcacfe",
+        "linux/arm64": "sha256:52e76fd419ec53134a6a01d23ffa6a7a78b0f9f4673c9f1a706ed3528892638a"
+      },
+      "run_id": "43639656861",
+      "schema": 1,
+      "source_digest": "sha256:0446a47ed7e5245b0b2105f4d8d2ec4f282e8f5e8ea9384fd58ac4cd3be4993a",
+      "source_ref": "docker.io/longhornio/support-bundle-kit:v1.0.5"
+    },
+    {
+      "digest": "sha256:1e25f8aa8ae418bff5ac2afab254774bbc9c42b1e0889b3dccf765f65706541d",
+      "fingerprint": "c42e4f1174e74b960964b9819bafaa8adcc52fddfaabc51b2176b87c303b44d7",
+      "head": "21abf01955d5c2f4af46fbd2f506a354e2115400",
+      "key": "brinnatt/longhorn-csi-provisioner:v5.3.0-20261028",
+      "platforms": {
+        "linux/amd64": "sha256:441d79c4112f3dd4fd7ea11411828faaabf1bb9b076d6d2bb0a0a2fa739e0f0c",
+        "linux/arm64": "sha256:77411fb49278d126d9b83a5af16eacefedd167c49576cf2a8bb08acafe7e33d6"
+      },
+      "run_id": "43639656861",
+      "schema": 1,
+      "source_digest": "sha256:468e089e65502d100005c2947befc691c5c1cde468986e1f4c99b2eed77d92b3",
+      "source_ref": "docker.io/longhornio/csi-provisioner:v5.3.0-20261028"
+    },
+    {
+      "digest": "sha256:e446c9343e4a682dc73099a0813ab73f484f5f6a66c0a7a8d961e26a3a470af8",
+      "fingerprint": "f70413759998f0286271e942ca424148e41fb2b64a66e4a6a065625833e4dc52",
+      "head": "21abf01955d5c2f4af46fbd2f506a354e2115400",
+      "key": "brinnatt/longhorn-csi-resizer:v2.3.0-20261028",
+      "platforms": {
+        "linux/amd64": "sha256:7b38ada2561afd4d089e9bf534500a89c58034290c43c9ec6af46a353fbcc6e1",
+        "linux/arm64": "sha256:4752ee9151d58a210832c4b2c99b53e37b14beffd3cb752ea6a43a25f2666e85"
+      },
+      "run_id": "43639656861",
+      "schema": 1,
+      "source_digest": "sha256:d0c33cdf080de4c52023b003827f6d24bef6e81a34a1b51f4988e3b7a75eb0e6",
+      "source_ref": "docker.io/longhornio/csi-resizer:v2.3.0-20261028"
+    },
+    {
+      "digest": "sha256:aec788f29f920f7765bc264dd6695056e8fdc5bcc1600dddfce8f743adb9d257",
+      "fingerprint": "02267f494d47a0c8cacbf8ea6d1889d85e27f9f9d8cb7098ff1cf3603ca28b0a",
+      "head": "21abf01955d5c2f4af46fbd2f506a354e2115400",
+      "key": "brinnatt/longhorn-csi-node-driver-registrar:v2.18.0-20261028",
+      "platforms": {
+        "linux/amd64": "sha256:56c0ceb2a4189f46da789e66e7d16a1b6778a0df9eb7eb46df136c1957dbddb3",
+        "linux/arm64": "sha256:05fd3f40ef76b987099ff2e88ac8ad8d8d0b863bd7aad0ffd56d33a2b4397f17"
+      },
+      "run_id": "43639656861",
+      "schema": 1,
+      "source_digest": "sha256:7d95d15c1608171785ae5ca0fccac1105ef87e58bf71113c06875a2c853768d1",
+      "source_ref": "docker.io/longhornio/csi-node-driver-registrar:v2.18.0-20261028"
+    },
+    {
+      "digest": "sha256:2d30984b5d84b5bb0e420a856cbe92f833c18f6f7ff8d66db13e49111e8265f1",
+      "fingerprint": "4c7f24cbf36de44857826089b4478a00d3f9c16d748e30fcadb937b3ee7b85f2",
+      "head": "21abf01955d5c2f4af46fbd2f506a354e2115400",
+      "key": "brinnatt/longhorn-backing-image-manager:v1.12.2",
+      "platforms": {
+        "linux/amd64": "sha256:6d7074bcc4905bb1d5381edea21a015866163567f60d1c7edace16b423314ccf",
+        "linux/arm64": "sha256:0a32cb7ac965d874f4579bab80414731f327d8897a9aabe51be1f4b4b63478a6"
+      },
+      "run_id": "43639656861",
+      "schema": 1,
+      "source_digest": "sha256:bfe0300fd94c4e68e74b21f39d140110e0a17b707c898f02d8ec4740ef63d60b",
+      "source_ref": "docker.io/longhornio/backing-image-manager:v1.12.2"
+    },
+    {
+      "digest": "sha256:b861088cde02030f932d84ba0b7a9818c902b0b5e5b61d6a862fa09fcc80397a",
+      "fingerprint": "3a8811dea7d1008692de9d8a5289260db76ce6afb8abf1fd9d803a405f2805ef",
+      "head": "21abf01955d5c2f4af46fbd2f506a354e2115400",
+      "key": "brinnatt/longhorn-share-manager:v1.12.2",
+      "platforms": {
+        "linux/amd64": "sha256:cab882837cbe68b6cc27e9f4fade06056a44d734d179f4db98ad025a8948ead2",
+        "linux/arm64": "sha256:49cf8e58811e1755b6fd780fa6b0d2d82bf1293b0e9bf2142e61da9c90728d6b"
+      },
+      "run_id": "43639656861",
+      "schema": 1,
+      "source_digest": "sha256:0f4b7ae08562176eb65ab30dc7fd723df84021e759b8aed7222518144809627f",
+      "source_ref": "docker.io/longhornio/longhorn-share-manager:v1.12.2"
+    },
+    {
+      "digest": "sha256:ae4781673cb7f1c92656263f2c365ac318307c20e303f523cbbd7ca9a11cf03e",
+      "fingerprint": "6b4d273bab1836c1cca6e7786c9b1b29c38739111d3fa00c882e86a9544fb6b2",
+      "head": "21abf01955d5c2f4af46fbd2f506a354e2115400",
+      "key": "brinnatt/longhorn-csi-attacher:v4.13.0-20261028",
+      "platforms": {
+        "linux/amd64": "sha256:29a8b4bd84c1552d295d9fbde5a52184b62a1a63cb8b237f7e2b5829b1a36966",
+        "linux/arm64": "sha256:dbb0dbd472ea861ba93f090ad13827426afe7e06d8590828d6d631c568d84f10"
+      },
+      "run_id": "43639656861",
+      "schema": 1,
+      "source_digest": "sha256:4d11d62e6ceda26792527e4fdf48a1e6e85af9bd061a6158a85d170e377465cd",
+      "source_ref": "docker.io/longhornio/csi-attacher:v4.13.0-20261028"
+    }
+  ],
+  "archives": {
+    "plan-evidence-1": {
+      "path": "upgrade/v1.34.13/evidence/raw/longhorn-remaining-nine-publication/43639656861/plan-evidence-1.zip",
+      "sha256": "0990854e8fd715b7e267985505e75d27ef4e942395f400464d50752bf30775dc",
+      "bytes": 300
+    },
+    "image-plan": {
+      "path": "upgrade/v1.34.13/evidence/raw/longhorn-remaining-nine-publication/43639656861/image-plan.zip",
+      "sha256": "a1dc1a232e02317deae8e31b16c4bbae9e55ba4bb03c9a1bb6d3196e2ecce05a",
+      "bytes": 1070
+    },
+    "release-records-0-1": {
+      "path": "upgrade/v1.34.13/evidence/raw/longhorn-remaining-nine-publication/43639656861/release-records-0-1.zip",
+      "sha256": "9bd17845da23a8806c5869ca39e594e379b6994e2ac49ff96630b00870b83262",
+      "bytes": 5845
+    },
+    "release-evidence-0-1": {
+      "path": "upgrade/v1.34.13/evidence/raw/longhorn-remaining-nine-publication/43639656861/release-evidence-0-1.zip",
+      "sha256": "de36434b966242e83705ed8ee33113b92c1243e391284c40a9766663df463464",
+      "bytes": 15359
+    }
+  },
+  "completed_ladder": 2,
+  "parent_acceptance": false,
+  "live_lab_execution": false
+}

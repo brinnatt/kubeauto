@@ -783,6 +783,7 @@ class ClusterManager:
         inventory: Path | None = None,
         extra_vars: dict | None = None,
         cmdline: str | None = None,
+        controller_only: bool = False,
         fail_msg: str | None = None,
         fail_exception: type = ClusterManageError,
     ):
@@ -798,29 +799,51 @@ class ClusterManager:
             pb_path = get_resource_path(*str(playbook).split("/"))
         else:
             pb_path = get_resource_path("playbooks", playbook)
+        # The inventory observer uses only controller-side assert/debug actions.
+        # Remote Python discovery can bootstrap managed hosts, so it must not
+        # run as a side effect of this read-only admission. Keep this exception
+        # restricted to the fixed observer; ordinary playbooks retain the gate.
+        if controller_only and Path(pb_path).resolve() != Path(
+            get_resource_path("upgrade", "product", "inventory.yml")
+        ).resolve():
+            raise ClusterManageError("Controller-only execution is restricted to the upgrade inventory observer.")
+        runner_options = {}
+        inventory_events = []
+        if controller_only:
+            from upgrade.product.inventory import inventory_event
+
+            def retain_inventory_event(event):
+                observation = inventory_event(event)
+                if observation is not None:
+                    inventory_events.append(observation)
+                return True
+
+            runner_options['event_handler'] = retain_inventory_event
         envvars = self._ansible_runner_envvars()
         kubeconfig_path = self.clusters_dir / cluster / "kubectl.kubeconfig"
-        native_policy = ansible_python_policy()
         use_execution_environment = False
         execution_core_version = (2, 18)
-        try:
-            prepared_inv = _prepare_inventory_with_python(inv, native_policy)
-        except NoCompatibleAnsibleTargetPython as exc:
-            logger.warning(
-                f"{exc} Switching this playbook run to the audited execution environment.",
-                extra=LOG_STDOUT,
-            )
+        prepared_inv = inv
+        if not controller_only:
+            native_policy = ansible_python_policy()
             try:
-                prepared_inv = _prepare_inventory_with_python(
-                    inv, ansible_python_policy_for_core((2, 18)), execution_environment=True
+                prepared_inv = _prepare_inventory_with_python(inv, native_policy)
+            except NoCompatibleAnsibleTargetPython as exc:
+                logger.warning(
+                    f"{exc} Switching this playbook run to the audited execution environment.",
+                    extra=LOG_STDOUT,
                 )
-            except NoCompatibleAnsibleTargetPython:
-                execution_core_version = (2, 20)
-                prepared_inv = _prepare_inventory_with_python(
-                    inv, ansible_python_policy_for_core(execution_core_version),
-                    execution_environment=True,
-                )
-            use_execution_environment = True
+                try:
+                    prepared_inv = _prepare_inventory_with_python(
+                        inv, ansible_python_policy_for_core((2, 18)), execution_environment=True
+                    )
+                except NoCompatibleAnsibleTargetPython:
+                    execution_core_version = (2, 20)
+                    prepared_inv = _prepare_inventory_with_python(
+                        inv, ansible_python_policy_for_core(execution_core_version),
+                        execution_environment=True,
+                    )
+                use_execution_environment = True
         try:
             with tempfile.TemporaryDirectory(dir="/dev/shm", prefix="ansible-runner-") as tmp_dir:
                 self._write_ansible_cfg(
@@ -847,7 +870,12 @@ class ClusterManager:
                         roles_path=get_resource_path("roles"),
                         cmdline=cmdline or "",
                         envvars=envvars,
+                        **runner_options,
                     )
+                if controller_only:
+                    # Runner artifacts are removed with tmp_dir. Preserve only
+                    # the selected, noncredential fields needed by admission.
+                    result.upgrade_inventory_events = inventory_events
         finally:
             if prepared_inv != inv and prepared_inv.exists():
                 prepared_inv.unlink(missing_ok=True)
@@ -870,11 +898,26 @@ class ClusterManager:
         if not confirm_action(f"Cluster {name}: proceed with {command}?"):
             return
 
-        self._run_playbook(
-            name,
-            playbook,
-            fail_msg=f"Failed to {command} cluster {name} with playbook {playbook}.",
-        )
+        if command == "upgrade":
+            # A target branch that carries an upgrade matrix must enter the
+            # independent first-hop admission path.  It may refuse before any
+            # remote action while prerequisites are pending; the legacy 93
+            # playbook remains available only on branches without that matrix.
+            from upgrade.product.entrypoint import DEFAULT_MATRIX, run_minor_upgrade
+            if DEFAULT_MATRIX.is_file():
+                run_minor_upgrade(self, name)
+            else:
+                self._run_playbook(
+                    name,
+                    playbook,
+                    fail_msg=f"Failed to {command} cluster {name} with playbook {playbook}.",
+                )
+        else:
+            self._run_playbook(
+                name,
+                playbook,
+                fail_msg=f"Failed to {command} cluster {name} with playbook {playbook}.",
+            )
         logger.info(f"Cluster {name}: {command} completed.", extra=LOG_STDOUT)
         # destroy: remove cluster dir so next new/setup or start-aio can run clean
         if command == "destroy":

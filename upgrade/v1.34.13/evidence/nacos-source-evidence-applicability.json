@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "observed_on": "2026-11-15",
+  "matrix_ids": [
+    "UPG-02",
+    "UPG-10"
+  ],
+  "claim": "Original Nacos GA evidence identity, private raw closure and unchanged dependency assertions; no target runtime acceptance",
+  "source_evidence": "upgrade/v1.33.6/evidence/tests/evidence/dev-nacos-startup-20261103.json",
+  "raw_archive": {
+    "source": "logs/dev-production-fixes-20261103/nacos-accepted/accepted-raw.tar",
+    "copy": "upgrade/v1.34.13/private/nacos-source/accepted-raw.tar",
+    "bytes": 880640,
+    "sha256": "6cce0db0ed7497ae9e55fc56407faed57673d82a75d83a115fc320b5eda1110f",
+    "mode": "0600",
+    "parent_mode": "0700",
+    "committed": false
+  },
+  "input_applicability": {
+    "conf/config.yml": {
+      "original_sha256": "24ebecaec847661c860bc101abad5f70a26be40dc2a71cd7228bb93fc49552c2",
+      "current_sha256": "cb417b4ff0fdaea868c6b166f0eeaceb24ccb28321a9458b3aa4c78ba6a1884e",
+      "matches_original": false,
+      "matches_source_GA": true
+    },
+    "service/cluster/manager.py": {
+      "original_sha256": "a6944952b1acd5cc46d223f33814cea62e95f2325025f13946feb50507af65af",
+      "current_sha256": "6411d4a3fba0de58372960db92f61c1727009a30a26b3d3bbffa0f89b80805f2",
+      "matches_original": false,
+      "matches_source_GA": true
+    },
+    "roles/cluster-addon/tasks/main.yml": {
+      "original_sha256": "bf2de674656ebf05e12464208a63e0b33c75fac1de92b1de13027aacac74e9b8",
+      "current_sha256": "abfdf9ea8f3ec5da1b4f6dd16f87c755f50abd0f7e7d3d142869a7b070acb1ed",
+      "matches_original": false,
+      "matches_source_GA": true
+    },
+    "roles/cluster-addon/tasks/nacos.yml": {
+      "original_sha256": "95582cbf1e75e04f6113221d214c30322da59b7e1ce17dfd81cb2e0aab6345c4",
+      "current_sha256": "95582cbf1e75e04f6113221d214c30322da59b7e1ce17dfd81cb2e0aab6345c4",
+      "matches_original": true,
+      "matches_source_GA": true
+    },
+    "roles/cluster-addon/templates/nacos/nacos-sts.yaml.j2": {
+      "original_sha256": "dfaceee57aa346e47fb30b4a1a270df44ca2931cf8dfb44f311e221b4866e280",
+      "current_sha256": "dfaceee57aa346e47fb30b4a1a270df44ca2931cf8dfb44f311e221b4866e280",
+      "matches_original": true,
+      "matches_source_GA": true
+    },
+    "tests/helpers/nacos-startup-gate.sh": {
+      "original_sha256": "9baaf3e5ca25321f0d223d2cc7e2bfd043e7f3b6f3bc108df799c38611c39d70",
+      "current_sha256": "9baaf3e5ca25321f0d223d2cc7e2bfd043e7f3b6f3bc108df799c38611c39d70",
+      "matches_original": true,
+      "matches_source_GA": true
+    },
+    "tests/helpers/nacos-tls-refusal-gate.sh": {
+      "original_sha256": "db9c991d41764e01fa4fe9d29825ad309f0cd228b47564e5f777d47049b4fdab",
+      "current_sha256": "db9c991d41764e01fa4fe9d29825ad309f0cd228b47564e5f777d47049b4fdab",
+      "matches_original": true,
+      "matches_source_GA": true
+    },
+    "tests/helpers/delivery-gap-retest.sh": {
+      "original_sha256": "094c4dc9bdbf861aec2edef013b4acb3dd4bfdf11ac5ed6fe70fcfb11345affd",
+      "current_sha256": "094c4dc9bdbf861aec2edef013b4acb3dd4bfdf11ac5ed6fe70fcfb11345affd",
+      "matches_original": true,
+      "matches_source_GA": true
+    }
+  },
+  "subtree_applicability": {
+    "nacos_config_keys": [
+      "nacos_auth_secret",
+      "nacos_cpu_request",
+      "nacos_install",
+      "nacos_jvm_xmn",
+      "nacos_jvm_xms",
+      "nacos_jvm_xmx",
+      "nacos_mem_request",
+      "nacos_mysql_ca_secret",
+      "nacos_mysql_db",
+      "nacos_mysql_db_param",
+      "nacos_mysql_host",
+      "nacos_mysql_password",
+      "nacos_mysql_port",
+      "nacos_mysql_user",
+      "nacos_namespace",
+      "nacos_ready_timeout",
+      "nacos_replicas",
+      "nacos_storage_class",
+      "nacos_storage_size"
+    ],
+    "all19_values_equal": true,
+    "nacos_import_equal": true,
+    "manager_function_delta": [
+      "_get_config_placeholders"
+    ],
+    "placeholder_delta": [
+      "__business_elasticsearch__"
+    ],
+    "conclusion": "Only unrelated version placeholder addition; all original runtime paths and Nacos values remain identical"
+  },
+  "original_durable": {
+    "exit": 0,
+    "finalized": 0,
+    "failure_markers": 0
+  },
+  "raw_marker_counts": {
+    "NACOS_RESTART_REPEAT_BUSINESS_PASS": 1,
+    "NACOS_TLS_REFUSALS_PASS": 1,
+    "NACOS_TLS_REFUSALS_SCOPED_CLEAN_PASS": 1,
+    "NACOS_STARTUP_FOCUSED_PASS": 1,
+    "NACOS_STARTUP_SCOPED_CLEAN_PASS": 1
+  },
+  "peerfinder_readback": "upgrade/v1.34.13/evidence/nacos-peerfinder-scripts.json",
+  "source_ids": [
+    "NACOS-DOCKER-243-README",
+    "NACOS-DOCKER-243-DOCKERFILE",
+    "NACOS-243-COMPATIBLE",
+    "K8S134-DEPRECATION-GUIDE",
+    "K8S134-DEPRECATION-POLICY",
+    "NACOS-PEERFINDER-130-MAIN",
+    "NACOS-PEERFINDER-130-README",
+    "NACOS-K8S-PLUGIN-DOCKERFILE",
+    "NACOS-243-SCHEMA"
+  ],
+  "reused_claims": [
+    "Original DB persistence, 12 per-instance readbacks and3-replica coherence",
+    "Original actual product repeat convergence and Pod replacement without reseeding",
+    "Original untrusted-CA/wrong-hostname refusals and postfault original-data readback"
+  ],
+  "target_supplement": [
+    "Same source ledger readback after platform node drain and target DNS transition",
+    "Actual peer-finder SRV/three-peer discovery and original registration/config API plus current MySQL TLS connection",
+    "Preserve original StatefulSet/PVC/Secret/DB identities; no schema reinitialization"
+  ],
+  "excluded_repeats": [
+    "Nacos deep fault chain",
+    "DB full backup/PITR matrix",
+    "Original TLS fault namespaces and destructive cluster reset"
+  ],
+  "remaining": [
+    "Version maintenance boundary/target selection approval under official evidence strength policy",
+    "Both registry current identities for retained Nacos runtime images and dependencies",
+    "Actual platform transition and scoped Nacos business results"
+  ],
+  "parent_acceptance": false,
+  "live_lab_execution": false
+}

@@ -1,0 +1,154 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-11-14T22:24:36.797868+00:00",
+  "matrix_ids": [
+    "UPG-03"
+  ],
+  "claim": "Current dual-registry dual-architecture identity only; no historical provenance or project runtime acceptance",
+  "repository": "kubeauto-ext-images-dockerfile",
+  "branch": "v1.34.13",
+  "sha": "9cec0229fd9850c44a88e742998192f1cd606db4",
+  "run_id": "43647490955",
+  "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/43647490955",
+  "mode": "readback",
+  "built_images": 0,
+  "published_images": 0,
+  "observed_images": 3,
+  "conclusion": "success",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "terminal_marker": "IMAGE_MANIFEST_READBACK_PASS count=3",
+  "actual_plan": {
+    "schema": 1,
+    "mode": "readback",
+    "head": "9cec0229fd9850c44a88e742998192f1cd606db4",
+    "items": [],
+    "event_keys": [],
+    "shard_size": 20,
+    "shards": 0,
+    "observed": [
+      {
+        "row": {
+          "dockerfile": "./platform/registry/registry/Dockerfile",
+          "image": "brinnatt/registry",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/registry",
+          "tag": "2",
+          "ctx": "./platform/registry/registry/"
+        },
+        "fingerprint": "a5ebf62b479fb9960769ea7db614036cf4b9923788d0d222e82009df5adb1da3",
+        "talkedu": {
+          "digest": "sha256:3ecb41811885031808684a16cd09cb5c4c0fbe29d9ca1c9e806eedffb0a9ca66",
+          "platforms": {
+            "linux/amd64": "sha256:08b32fac48cfc49b8dd040249a93b1697b194070708bc2476ec9134cfb9d1b3b",
+            "linux/arm64": "sha256:a38f12f4bb27eaa70f05321ff7216d4a2a9060e7aecd1a51e3e9bf535da634d8"
+          }
+        },
+        "dockerhub": {
+          "digest": "sha256:3ecb41811885031808684a16cd09cb5c4c0fbe29d9ca1c9e806eedffb0a9ca66",
+          "platforms": {
+            "linux/amd64": "sha256:08b32fac48cfc49b8dd040249a93b1697b194070708bc2476ec9134cfb9d1b3b",
+            "linux/arm64": "sha256:a38f12f4bb27eaa70f05321ff7216d4a2a9060e7aecd1a51e3e9bf535da634d8"
+          }
+        }
+      },
+      {
+        "row": {
+          "dockerfile": "./tooling/test-infrastructure/registry-2.8.3/Dockerfile",
+          "image": "brinnatt/registry",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/registry",
+          "tag": "2.8.3",
+          "ctx": "./tooling/test-infrastructure/registry-2.8.3/"
+        },
+        "fingerprint": "a93703c43d24fb0116cc845af776c0f70c950e62d24c77b92290483b97cb687b",
+        "talkedu": {
+          "digest": "sha256:1f53ffdde2e358d3e880ed587e14c95bd1053af4feb093b0e9881f519ba4fb26",
+          "platforms": {
+            "linux/amd64": "sha256:7432dc16e997619674adf6e8c4dc47748404cb923031300bf5884b134032407b",
+            "linux/arm64": "sha256:22edab652a34f34c3e3485a38f46fc0cd608fc23b0fb9abfa4b9093e6694e1fa"
+          }
+        },
+        "dockerhub": {
+          "digest": "sha256:1f53ffdde2e358d3e880ed587e14c95bd1053af4feb093b0e9881f519ba4fb26",
+          "platforms": {
+            "linux/amd64": "sha256:7432dc16e997619674adf6e8c4dc47748404cb923031300bf5884b134032407b",
+            "linux/arm64": "sha256:22edab652a34f34c3e3485a38f46fc0cd608fc23b0fb9abfa4b9093e6694e1fa"
+          }
+        }
+      },
+      {
+        "row": {
+          "dockerfile": "./middleware/rocketmq/rocketmq-operator/Dockerfile",
+          "image": "brinnatt/rocketmq-operator",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/rocketmq-operator",
+          "tag": "latest",
+          "ctx": "./middleware/rocketmq/rocketmq-operator/"
+        },
+        "fingerprint": "b9e2992d7a1d691ac4b64464ba63d9351c9e4f61555f26389134111ff74a6c50",
+        "talkedu": {
+          "digest": "sha256:66516b068aa9b73bee2b218556f551111fc75721a32aa183f655106ef10bcfdf",
+          "platforms": {
+            "linux/amd64": "sha256:af59226058b6b62f2562cfbaba4f8e54b7fb6fee423875984e0ed5a20216acaa",
+            "linux/arm64": "sha256:3e4e448247064be99a4afb531052bcb2b11b1ab20b1729a19e5c53e5294bfb13"
+          }
+        },
+        "dockerhub": {
+          "digest": "sha256:66516b068aa9b73bee2b218556f551111fc75721a32aa183f655106ef10bcfdf",
+          "platforms": {
+            "linux/amd64": "sha256:af59226058b6b62f2562cfbaba4f8e54b7fb6fee423875984e0ed5a20216acaa",
+            "linux/arm64": "sha256:3e4e448247064be99a4afb531052bcb2b11b1ab20b1729a19e5c53e5294bfb13"
+          }
+        }
+      }
+    ],
+    "mutation": "none",
+    "scope": "current-dual-registry-manifest-identity-only"
+  },
+  "archives": {
+    "plan-evidence-1.zip": {
+      "path": "upgrade/v1.34.13/evidence/raw/legacy-readback/43647490955/plan-evidence-1.zip",
+      "sha256": "0b4b4dfd4d985da2b2cf99608665f40c3d55ef7b53ab8c6b4ce29eba9e9b3676",
+      "bytes": 843
+    },
+    "image-plan.zip": {
+      "path": "upgrade/v1.34.13/evidence/raw/legacy-readback/43647490955/image-plan.zip",
+      "sha256": "665084befb1d066968e84a60e9d95298a7d86de54d7e3c3983ca2084e2ba4a24",
+      "bytes": 1101
+    },
+    "run.json": {
+      "path": "upgrade/v1.34.13/evidence/raw/legacy-readback/43647490955/run.json",
+      "sha256": "4accff4add6ffae6e396f21a35cbf1d4e3f9162daf33b9b8d42c2512ab04a519",
+      "bytes": 15105
+    },
+    "plan-evidence-1/plan.status": {
+      "path": "upgrade/v1.34.13/evidence/raw/legacy-readback/43647490955/plan-evidence-1/plan.status",
+      "sha256": "93ff7811a209e2a8479230bbb9b6bc19f7f311d3af383ec350c1db2a7e7d5494",
+      "bytes": 5
+    },
+    "plan-evidence-1/plan.log": {
+      "path": "upgrade/v1.34.13/evidence/raw/legacy-readback/43647490955/plan-evidence-1/plan.log",
+      "sha256": "dd237a73cdd88505b6b39e3395c9f8963b1365f9b5c804e7bba005c702a1e179",
+      "bytes": 47
+    },
+    "plan-evidence-1/plan-readback.status": {
+      "path": "upgrade/v1.34.13/evidence/raw/legacy-readback/43647490955/plan-evidence-1/plan-readback.status",
+      "sha256": "93ff7811a209e2a8479230bbb9b6bc19f7f311d3af383ec350c1db2a7e7d5494",
+      "bytes": 5
+    },
+    "plan-evidence-1/plan-readback.log": {
+      "path": "upgrade/v1.34.13/evidence/raw/legacy-readback/43647490955/plan-evidence-1/plan-readback.log",
+      "sha256": "7f6fad0a49f1711a2a46452a991832e73e88ab169a9a0ed6078a2bdbb9a5eafd",
+      "bytes": 504
+    },
+    "image-plan/image-plan.json": {
+      "path": "upgrade/v1.34.13/evidence/raw/legacy-readback/43647490955/image-plan/image-plan.json",
+      "sha256": "e1b853aacff0524c4ef65ae851065c897cdb249ad38b95443e61f863dc165b9e",
+      "bytes": 3538
+    },
+    "jobs.json": {
+      "path": "upgrade/v1.34.13/evidence/raw/legacy-readback/43647490955/jobs.json",
+      "sha256": "30721f743916d2e9194f9de2bff33b9229a7ffc52c84d80353564eeface4e8d8",
+      "bytes": 8578
+    }
+  },
+  "parent_acceptance": false
+}

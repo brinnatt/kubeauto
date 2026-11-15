@@ -1,0 +1,47 @@
+# Controller-only observation. No facts, connection or remote module is needed.
+# Use the same inventory and config extra-vars as the real product playbooks.
+- name: Observe the complete configured upgrade topology
+  hosts: localhost
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - name: Require a complete product topology
+      ansible.builtin.assert:
+        that:
+          - groups['kube_master'] | default([]) | length > 0
+          - groups['etcd'] | default([]) | length in [1, 3, 5]
+          - K8S_VER in ['1.34.13', 'v1.34.13']
+        quiet: true
+
+    - name: Observe upgrade inventory topology
+      ansible.builtin.debug:
+        msg:
+          contract: kubeauto-upgrade-inventory-v1
+          kind: topology
+          groups:
+            etcd: "{{ groups['etcd'] }}"
+            kube_master: "{{ groups['kube_master'] }}"
+            kube_node: "{{ groups['kube_node'] | default([]) }}"
+
+- name: Observe effective host values without contacting a node
+  hosts: etcd:kube_master:kube_node
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - name: Observe upgrade inventory host
+      ansible.builtin.debug:
+        msg:
+          contract: kubeauto-upgrade-inventory-v1
+          kind: host
+          host: "{{ inventory_hostname }}"
+          transport_host: "{{ ansible_host | default(inventory_hostname) }}"
+          node_name: >-
+            {{ K8S_NODENAME if inventory_hostname in
+               (groups['kube_master'] + (groups['kube_node'] | default([]))) else none }}
+          api_port: "{{ SECURE_PORT if inventory_hostname in groups['kube_master'] else none }}"
+          runtime: >-
+            {{ CONTAINER_RUNTIME if inventory_hostname in
+               (groups['kube_master'] + (groups['kube_node'] | default([]))) else none }}
+          network: >-
+            {{ CLUSTER_NETWORK if inventory_hostname in
+               (groups['kube_master'] + (groups['kube_node'] | default([]))) else none }}

@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "observed_on": "2026-11-15",
+  "matrix_ids": [
+    "UPG-02",
+    "UPG-07",
+    "UPG-10"
+  ],
+  "method": "官方两端范围、配套与实际固定Chart/生产模板只读对齐",
+  "official_source_ids": [
+    "STRIMZI-120",
+    "STRIMZI-DRAIN-161-BEHAVIOR",
+    "K8S-13413-CHANGELOG"
+  ],
+  "inputs": {
+    "roles/cluster-addon/tasks/kafka.yml": "13932dad7873e771e20980784db3e0130a8fc2e608f9c9714a0a3cc0d28163b5",
+    "roles/cluster-addon/templates/kafka/cluster.yaml.j2": "7cf780f970fcb4b587d9ae1e32291097cac783cc20a997674439d2fe46c0b908",
+    "roles/cluster-addon/templates/kafka/drain-cleaner-values.yaml.j2": "c007b4f1c3229acd891c3cde87bf4138e1d19345a2790d91003fb5a6c89f312e",
+    "roles/cluster-addon/templates/kafka/monitoring.yaml.j2": "2fc811dd2da6b76829aa80883617f08c1a1e6228c2a77fb28decbf2b807a8ba8",
+    "roles/cluster-addon/templates/kafka/operator-values.yaml.j2": "0f1d4597fc9c751c179470707dd9ec3c58764a84abb11e8c0d5082a17d1f5add",
+    "roles/cluster-addon/files/strimzi-kafka-operator-1.2.0.tgz": "0f8a50b2f19bd99482f9fd6e17cf42902f72f9e594a136813ac3f0b7af422efd",
+    "roles/cluster-addon/files/strimzi-drain-cleaner-1.6.1.tgz": "ce84b8ddcd105f1b10d085fe69ed0d9185f798d009de3fba967386af2b8f6fdd"
+  },
+  "pins": {
+    "v_strimzi_operator": "1.2.0",
+    "v_kafka": "4.3.1",
+    "v_kafka_metadata": "4.3-IV0",
+    "v_strimzi_drain_cleaner": "1.6.1",
+    "v_strimzi_operator_chart_sha256": "0f8a50b2f19bd99482f9fd6e17cf42902f72f9e594a136813ac3f0b7af422efd",
+    "v_strimzi_drain_cleaner_chart_sha256": "ce84b8ddcd105f1b10d085fe69ed0d9185f798d009de3fba967386af2b8f6fdd"
+  },
+  "charts": [
+    {
+      "path": "roles/cluster-addon/files/strimzi-kafka-operator-1.2.0.tgz",
+      "version": "1.2.0",
+      "appVersion": "1.2.0",
+      "kubeVersion": null
+    },
+    {
+      "path": "roles/cluster-addon/files/strimzi-drain-cleaner-1.6.1.tgz",
+      "version": "1.6.1",
+      "appVersion": "1.6.1",
+      "kubeVersion": null
+    }
+  ],
+  "decision": "keep-exact-source-combination",
+  "upstream_evidence_level": "Operator tested range plus Drain Cleaner official procedure; no invented Cleaner target e2e matrix",
+  "result": "component-retention-decision",
+  "parent_acceptance": false,
+  "live_execution": false,
+  "supply_chain_acceptance": false,
+  "remaining": [
+    "UPG-03双端/双架构制品复用准入",
+    "真实产品handoff和有界drain合同",
+    "当前业务账本/目标协调与限定迁移证据",
+    "逐主张关联原始归档，不重开源GA"
+  ]
+}

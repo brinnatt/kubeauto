@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "observed_on": "2026-11-15",
+  "matrix_ids": [
+    "UPG-04",
+    "UPG-08",
+    "UPG-12"
+  ],
+  "claim": "Internal Cilium stage subprocess/ownership/failure contracts and real upstream Chart rendering; not full minor CLI admission",
+  "parent_acceptance": false,
+  "live_lab_execution": false,
+  "checks": [
+    {
+      "command": "PATH=<verified-helm> .venv/bin/python -B -m unittest upgrade.tests.test_cilium upgrade.tests.test_cilium_stage -v",
+      "rc": 0,
+      "tests": 15,
+      "helm": "3.19.0; twelve real renders; zero skip",
+      "offline_boundary": "Fake Helm/kubectl own only TemporaryDirectory; actual stage order and handoffs run through real subprocesses; no lab targets"
+    }
+  ],
+  "inputs": {
+    "upgrade/product/cilium.py": "98ac5d8ad92a011484c417ace6b66c0d9f30bc9b9789439621fe700f1d41080b",
+    "upgrade/product/cilium_stage.py": "62adddb7872a6d55638c3685acd10627d0bf23d8258e7f76ecb3c72c103f3f1b",
+    "upgrade/tests/test_cilium.py": "9129c2eafc93a7a650c7064c27c5983edb32ac9aabfc2959990329611358929e",
+    "upgrade/tests/test_cilium_stage.py": "7fa29c5fb1b836ca18a1bb689943c275e95c6534175237b82288567fdd0b69a7",
+    "roles/cilium/templates/values.yaml.j2": "d28b24732a108803727cd5183f77c2c91050931e991a02614a4982cfabd6ce06",
+    "roles/cilium/files/cilium-1.19.10.tgz": "b7252afca3413a33e2b987c954e52441e96979e411e1495ecc6aefe8cd258863",
+    "roles/cilium/files/cilium-1.20.4.tgz": "505abff8385811df1a949776fc42e9f10697989a332acc86d6e8933efcb855ed"
+  },
+  "raw_log": "upgrade/v1.34.13/evidence/raw/cilium-combined-contracts.log",
+  "next": "Complete outer config+kubecli admission/journal, artifacts and focused source-side migration/business evidence"
+}

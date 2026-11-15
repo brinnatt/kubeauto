@@ -1,0 +1,155 @@
+# Internal task file, called only after successful eviction-based drain.
+# Never call the installation role: it overwrites unrelated registry configuration.
+- name: Reobserve the drained node before runtime mutation
+  ansible.builtin.command:
+    argv:
+      - "{{ base_dir }}/kube-bin/kubectl"
+      - "--kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+      - "--server={{ UPGRADE_API_BACKENDS[0] }}"
+      - --insecure-skip-tls-verify=false
+      - --request-timeout=10s
+      - get
+      - node
+      - "{{ UPGRADE_NODE_NAME }}"
+      - -o
+      - json
+  delegate_to: localhost
+  register: upgrade_runtime_node
+  changed_when: false
+
+- name: Refuse runtime changes without the same cordoned node and owner
+  vars:
+    upgrade_runtime_observed: "{{ upgrade_runtime_node.stdout | from_json }}"
+  ansible.builtin.assert:
+    that:
+      - UPGRADE_PRECONDITIONS_VERIFIED == true
+      - inventory_hostname == UPGRADE_NODE_HOST
+      - upgrade_runtime_observed.metadata.uid == UPGRADE_NODE_UID
+      - upgrade_runtime_observed.metadata.name == UPGRADE_NODE_NAME
+      - upgrade_runtime_observed.spec.unschedulable | default(false) | bool
+      - upgrade_runtime_observed.metadata.deletionTimestamp | default(none) == none
+
+- name: Observe the existing runtime unit policy
+  ansible.builtin.command:
+    argv: [systemctl, show, containerd, --property=KillMode, --property=Delegate]
+  register: upgrade_runtime_unit
+  changed_when: false
+
+- name: Observe the reviewed runtime unit identity
+  ansible.builtin.stat:
+    path: /etc/systemd/system/containerd.service
+    checksum_algorithm: sha256
+    follow: false
+  register: upgrade_runtime_unit_file
+
+- name: Refuse a unit that would kill existing shims during restart
+  ansible.builtin.assert:
+    that:
+      - "'KillMode=process' in upgrade_runtime_unit.stdout_lines"
+      - "'Delegate=yes' in upgrade_runtime_unit.stdout_lines"
+      - upgrade_runtime_unit_file.stat.isreg | default(false)
+      - not (upgrade_runtime_unit_file.stat.islnk | default(false))
+      - upgrade_runtime_unit_file.stat.checksum | default('') == UPGRADE_CONTAINERD_UNIT_SHA256
+
+- name: Observe the existing containerd configuration identity
+  ansible.builtin.stat:
+    path: /etc/containerd/config.toml
+    checksum_algorithm: sha256
+    follow: false
+  register: upgrade_runtime_configuration
+
+- name: Refuse unreviewed configuration drift before changing the runtime
+  ansible.builtin.assert:
+    that:
+      - upgrade_runtime_configuration.stat.isreg | default(false)
+      - not (upgrade_runtime_configuration.stat.islnk | default(false))
+      - >-
+        upgrade_runtime_configuration.stat.checksum == UPGRADE_CONTAINERD_SOURCE_CONFIG_SHA256 or
+        (UPGRADE_NODE_RESUME | default(false) | bool and
+         upgrade_runtime_configuration.stat.checksum == UPGRADE_CONTAINERD_CONFIG.sha256)
+
+- name: Read the running containerd identity through its live CRI socket
+  ansible.builtin.command:
+    argv: ["{{ bin_dir }}/crictl", "--runtime-endpoint=unix:///run/containerd/containerd.sock", "--timeout=10s", version]
+  register: upgrade_runtime_initial
+  changed_when: false
+
+- name: Refuse unknown runtime sources or an unowned partial migration
+  ansible.builtin.assert:
+    that:
+      - upgrade_runtime_initial.stdout is search('RuntimeName:\s+containerd')
+      - upgrade_runtime_initial.stdout is search('RuntimeApiVersion:\s+v1')
+      - >-
+        upgrade_runtime_initial.stdout is search('RuntimeVersion:\s+v?2\.1\.4') or
+        (UPGRADE_NODE_RESUME | default(false) | bool and
+         (upgrade_runtime_initial.stdout is search('RuntimeVersion:\s+v?2\.2\.10') or
+          upgrade_runtime_initial.stdout is search('RuntimeVersion:\s+v?2\.3\.7')))
+
+- name: Remember the actually observed runtime boundary
+  ansible.builtin.set_fact:
+    upgrade_runtime_current: >-
+      {{ ((upgrade_runtime_initial.stdout_lines | select('match', '^RuntimeVersion:\s+') | first).split(':', 1)[1] | trim) | regex_replace('^v', '') }}
+
+- name: Read runtime health before either edge
+  ansible.builtin.command:
+    argv: ["{{ bin_dir }}/crictl", "--runtime-endpoint=unix:///run/containerd/containerd.sock", "--timeout=10s", info, -o, json]
+  register: upgrade_runtime_health
+  changed_when: false
+
+- name: Refuse a runtime without both CRI readiness conditions
+  ansible.builtin.assert:
+    that:
+      - >-
+        ((upgrade_runtime_health.stdout | from_json).status.conditions |
+         selectattr('type', 'equalto', item) | map(attribute='status') | list) == [true]
+  loop: [RuntimeReady, NetworkReady]
+
+- name: Remember ready sandboxes retained by drain
+  ansible.builtin.command:
+    argv: ["{{ bin_dir }}/crictl", "--runtime-endpoint=unix:///run/containerd/containerd.sock", "--timeout=10s", pods, --state=ready, -o, json]
+  register: upgrade_runtime_sandboxes
+  changed_when: false
+
+- name: Advance the source runtime to the adjacent bridge
+  ansible.builtin.include_tasks: containerd-edge.yml
+  vars:
+    upgrade_runtime_target: '2.2.10'
+  when: upgrade_runtime_current == '2.1.4'
+
+- name: Advance the observed bridge runtime to the adjacent target
+  ansible.builtin.include_tasks: containerd-edge.yml
+  vars:
+    upgrade_runtime_target: '2.3.7'
+  when: upgrade_runtime_current == '2.2.10'
+
+- name: Require the final runtime boundary before permitting kubelet replacement
+  ansible.builtin.assert:
+    that:
+      - upgrade_runtime_current == '2.3.7'
+
+- name: Reobserve final on-disk runtime identities even when resuming a completed edge
+  ansible.builtin.stat:
+    path: "{{ bin_dir }}/{{ item }}"
+    checksum_algorithm: sha256
+    follow: false
+  loop: [containerd, containerd-shim-runc-v2, ctr, runc]
+  register: upgrade_runtime_final_files
+
+- name: Refuse final on-disk drift before kubelet replacement
+  ansible.builtin.assert:
+    that:
+      - item.stat.isreg | default(false)
+      - not (item.stat.islnk | default(false))
+      - item.stat.checksum | default('') == UPGRADE_CONTAINERD_BUNDLES['2.3.7'].sha256[item.item]
+  loop: "{{ upgrade_runtime_final_files.results }}"
+
+- name: Verify the exact final runc CLI version
+  ansible.builtin.command:
+    argv: ["{{ bin_dir }}/runc", --version]
+  register: upgrade_runtime_runc
+  changed_when: false
+  failed_when: upgrade_runtime_runc.rc != 0 or upgrade_runtime_runc.stdout_lines[0] != 'runc version 1.5.2'
+
+- name: Report the runtime boundary without signing node or business acceptance
+  ansible.builtin.debug:
+    msg: "UPGRADE_CONTAINERD_STAGE_PASS node={{ UPGRADE_NODE_NAME }} version=2.3.7"

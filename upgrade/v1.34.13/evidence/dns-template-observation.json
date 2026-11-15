@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "observed_on": "2026-11-15",
+  "matrix_ids": [
+    "UPG-02",
+    "UPG-08"
+  ],
+  "classification": "unchanged product templates / official dependency analysis",
+  "result": "static-observation-pass",
+  "source_ga_sha": "940c9020144a88b370cba36793a4d7fad6a347ab",
+  "checks": [
+    {
+      "template": "roles/cluster-addon/templates/dns/coredns.yaml.j2",
+      "template_sha256": "d484d6a653c07a1ce0a2b371d3960dd2048cc4ee36bd9e1c2b168e7913e8c662",
+      "source_render_sha256": "07f8a1e8368d8598106442e9285004f1673e7a38e5693220343ea54c1683509f",
+      "target_render_sha256": "e9b54529553e8506967df15e2f7bc33339ab0b0efd36ff02da1322ad38646aaf",
+      "source": "1.12.4",
+      "target": "1.15.0",
+      "result": "exactly image substitution; source bytes equal immutable GA template"
+    },
+    {
+      "template": "roles/cluster-addon/templates/dns/nodelocaldns-ipvs.yaml.j2",
+      "template_sha256": "7cacbfd895c52538b4501fef02addc6851b78c5543b7a671551f5413048d3706",
+      "source_render_sha256": "e6896afa7a46ff2e66779f1b05cc27cbba078ae59fb34a87721f9abda3e89ec9",
+      "target_render_sha256": "74e4a9595844553395f694370a230331a0fa08fefd9640901d52419bed433504",
+      "source": "1.26.4",
+      "target": "1.26.8",
+      "result": "exactly image substitution; source bytes equal immutable GA template"
+    },
+    {
+      "template": "roles/cluster-addon/templates/dns/nodelocaldns-iptables.yaml.j2",
+      "template_sha256": "86c45a7abcb1d41bad296d405c3d8e672b5bd2de74aeaa171c813fb314a5d8a2",
+      "source_render_sha256": "d93c16bb337cd81e3b5575d56d7c901ca3d9101e68e4b1fb454db65f4000a6b1",
+      "target_render_sha256": "169758829df2081c6999537ba266805c0cc14e4a153634dcdb992151bf424f1a",
+      "source": "1.26.4",
+      "target": "1.26.8",
+      "result": "exactly image substitution; source bytes equal immutable GA template"
+    }
+  ],
+  "live_execution": false,
+  "parent_acceptance": false,
+  "limitations": [
+    "Not a DNS process/config parser/target query or cache/rollout result",
+    "CoreDNS/node-cache artifact publication and real upgrade stage remain pending"
+  ]
+}

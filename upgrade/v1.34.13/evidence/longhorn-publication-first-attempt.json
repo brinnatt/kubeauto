@@ -1,0 +1,246 @@
+{
+  "schema_version": 1,
+  "observed_on": "2026-11-15",
+  "matrix_ids": [
+    "UPG-03"
+  ],
+  "claim": "Selected artifact publication only; no project runtime or parent acceptance",
+  "repository": "kubeauto-ext-images-dockerfile",
+  "branch": "v1.34.13",
+  "sha": "c0e741b24a4606072120b07c41ecdf29cb613360",
+  "run_id": "43619742873",
+  "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/43619742873",
+  "conclusion": "failure",
+  "durable_state": "rc=1",
+  "actual_plan": {
+    "schema": 1,
+    "mode": "selected",
+    "head": "c0e741b24a4606072120b07c41ecdf29cb613360",
+    "items": [
+      {
+        "row": {
+          "dockerfile": "platform/storage/longhorn/longhorn-engine/v1.12.2/Dockerfile",
+          "image": "brinnatt/longhorn-engine",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/longhorn-engine",
+          "tag": "v1.12.2",
+          "ctx": "platform/storage/longhorn/longhorn-engine/v1.12.2"
+        },
+        "fingerprint": "052436e4e74f15dc5d532d41a5b63d11e5214cdea720d659ff794127d6814612"
+      },
+      {
+        "row": {
+          "dockerfile": "platform/storage/longhorn/longhorn-manager/v1.12.2-kubeauto.1/Dockerfile",
+          "image": "brinnatt/longhorn-manager",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/longhorn-manager",
+          "tag": "v1.12.2-kubeauto.1",
+          "ctx": "platform/storage/longhorn/longhorn-manager/v1.12.2-kubeauto.1"
+        },
+        "fingerprint": "2a10b19256800bc6c67def9568f96718ac4fb8643ad8fb87c876cc376d033f8c"
+      },
+      {
+        "row": {
+          "dockerfile": "platform/storage/longhorn/longhorn-ui/v1.12.2/Dockerfile",
+          "image": "brinnatt/longhorn-ui",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/longhorn-ui",
+          "tag": "v1.12.2",
+          "ctx": "platform/storage/longhorn/longhorn-ui/v1.12.2"
+        },
+        "fingerprint": "9fe818fbdf8d2f9be9cf4bda7febaf783650c908e1e45964a25437ea3768dcb2"
+      },
+      {
+        "row": {
+          "dockerfile": "platform/storage/longhorn/longhorn-instance-manager/v1.12.2-kubeauto.1/Dockerfile",
+          "image": "brinnatt/longhorn-instance-manager",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/longhorn-instance-manager",
+          "tag": "v1.12.2-kubeauto.1",
+          "ctx": "platform/storage/longhorn/longhorn-instance-manager/v1.12.2-kubeauto.1"
+        },
+        "fingerprint": "1f738fedea45fbf4bc58e9f31d2f1cef5e009bbb502358d4c6d840de98720d8c"
+      },
+      {
+        "row": {
+          "dockerfile": "platform/storage/longhorn/longhorn-share-manager/v1.12.2/Dockerfile",
+          "image": "brinnatt/longhorn-share-manager",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/longhorn-share-manager",
+          "tag": "v1.12.2",
+          "ctx": "platform/storage/longhorn/longhorn-share-manager/v1.12.2"
+        },
+        "fingerprint": "3a8811dea7d1008692de9d8a5289260db76ce6afb8abf1fd9d803a405f2805ef"
+      },
+      {
+        "row": {
+          "dockerfile": "platform/storage/longhorn/longhorn-backing-image-manager/v1.12.2/Dockerfile",
+          "image": "brinnatt/longhorn-backing-image-manager",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/longhorn-backing-image-manager",
+          "tag": "v1.12.2",
+          "ctx": "platform/storage/longhorn/longhorn-backing-image-manager/v1.12.2"
+        },
+        "fingerprint": "4c7f24cbf36de44857826089b4478a00d3f9c16d748e30fcadb937b3ee7b85f2"
+      },
+      {
+        "row": {
+          "dockerfile": "platform/storage/longhorn/longhorn-support-bundle-kit/v1.0.5/Dockerfile",
+          "image": "brinnatt/longhorn-support-bundle-kit",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/longhorn-support-bundle-kit",
+          "tag": "v1.0.5",
+          "ctx": "platform/storage/longhorn/longhorn-support-bundle-kit/v1.0.5"
+        },
+        "fingerprint": "82b652db5ea93eafb5f571709879a036a9e6f764d714c907878fca339245b09d"
+      },
+      {
+        "row": {
+          "dockerfile": "platform/storage/longhorn/longhorn-csi-attacher/v4.13.0-20261028/Dockerfile",
+          "image": "brinnatt/longhorn-csi-attacher",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/longhorn-csi-attacher",
+          "tag": "v4.13.0-20261028",
+          "ctx": "platform/storage/longhorn/longhorn-csi-attacher/v4.13.0-20261028"
+        },
+        "fingerprint": "6b4d273bab1836c1cca6e7786c9b1b29c38739111d3fa00c882e86a9544fb6b2"
+      },
+      {
+        "row": {
+          "dockerfile": "platform/storage/longhorn/longhorn-csi-provisioner/v5.3.0-20261028/Dockerfile",
+          "image": "brinnatt/longhorn-csi-provisioner",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/longhorn-csi-provisioner",
+          "tag": "v5.3.0-20261028",
+          "ctx": "platform/storage/longhorn/longhorn-csi-provisioner/v5.3.0-20261028"
+        },
+        "fingerprint": "c42e4f1174e74b960964b9819bafaa8adcc52fddfaabc51b2176b87c303b44d7"
+      },
+      {
+        "row": {
+          "dockerfile": "platform/storage/longhorn/longhorn-csi-node-driver-registrar/v2.18.0-20261028/Dockerfile",
+          "image": "brinnatt/longhorn-csi-node-driver-registrar",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/longhorn-csi-node-driver-registrar",
+          "tag": "v2.18.0-20261028",
+          "ctx": "platform/storage/longhorn/longhorn-csi-node-driver-registrar/v2.18.0-20261028"
+        },
+        "fingerprint": "02267f494d47a0c8cacbf8ea6d1889d85e27f9f9d8cb7098ff1cf3603ca28b0a"
+      },
+      {
+        "row": {
+          "dockerfile": "platform/storage/longhorn/longhorn-csi-resizer/v2.3.0-20261028/Dockerfile",
+          "image": "brinnatt/longhorn-csi-resizer",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/longhorn-csi-resizer",
+          "tag": "v2.3.0-20261028",
+          "ctx": "platform/storage/longhorn/longhorn-csi-resizer/v2.3.0-20261028"
+        },
+        "fingerprint": "f70413759998f0286271e942ca424148e41fb2b64a66e4a6a065625833e4dc52"
+      },
+      {
+        "row": {
+          "dockerfile": "platform/storage/longhorn/longhorn-csi-snapshotter/v8.7.0-20261028/Dockerfile",
+          "image": "brinnatt/longhorn-csi-snapshotter",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/longhorn-csi-snapshotter",
+          "tag": "v8.7.0-20261028",
+          "ctx": "platform/storage/longhorn/longhorn-csi-snapshotter/v8.7.0-20261028"
+        },
+        "fingerprint": "e55a25159d76da84ca9ca12ef42f5f910b4c1b7a9c1b2df7dfe3348b09da967f"
+      },
+      {
+        "row": {
+          "dockerfile": "platform/storage/longhorn/longhorn-livenessprobe/v2.20.0-20261028/Dockerfile",
+          "image": "brinnatt/longhorn-livenessprobe",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/longhorn-livenessprobe",
+          "tag": "v2.20.0-20261028",
+          "ctx": "platform/storage/longhorn/longhorn-livenessprobe/v2.20.0-20261028"
+        },
+        "fingerprint": "2e6b30e1c4d3414a0a4b448f4e3bb34360fe2c34aeef635126491db0d6329929"
+      }
+    ],
+    "event_keys": [],
+    "shard_size": 20,
+    "shards": 1
+  },
+  "accepted_records": [
+    {
+      "digest": "sha256:60c288e5f76041c49e9892f8e3b22c8569eab567fb785ca2335feb08d7883300",
+      "fingerprint": "9fe818fbdf8d2f9be9cf4bda7febaf783650c908e1e45964a25437ea3768dcb2",
+      "head": "c0e741b24a4606072120b07c41ecdf29cb613360",
+      "key": "brinnatt/longhorn-ui:v1.12.2",
+      "platforms": {
+        "linux/amd64": "sha256:cca5b5dea38fb51e10b50ea0b796f5c19b7b419746c85f4496d16ef672f7913a",
+        "linux/arm64": "sha256:8d4311d6e99b6bc6ffae326b306b0f57db0c87467e31f60534df430bff8eee49"
+      },
+      "run_id": "43619742873",
+      "schema": 1,
+      "source_digest": "sha256:f25e20f06e13c9795f78efed3cbfd8cd4836ea8de68b6de27fe50a7cd7ce6c5e",
+      "source_ref": "docker.io/longhornio/longhorn-ui:v1.12.2"
+    },
+    {
+      "digest": "sha256:d5212727b82b87a35270b23508b2139c04a0f5cb981908224b70be540d2623eb",
+      "fingerprint": "052436e4e74f15dc5d532d41a5b63d11e5214cdea720d659ff794127d6814612",
+      "head": "c0e741b24a4606072120b07c41ecdf29cb613360",
+      "key": "brinnatt/longhorn-engine:v1.12.2",
+      "platforms": {
+        "linux/amd64": "sha256:599a8f59e02e5fb9140ca4451b627e3c85236ae3d02d83abf97e76ced17dc5fc",
+        "linux/arm64": "sha256:fcfc77e810d43343b6fc0461379f47aadff4626d1c7d8d8d4745e38bf72eb1f8"
+      },
+      "run_id": "43619742873",
+      "schema": 1,
+      "source_digest": "sha256:e197456e5e302558f41fcb055567cea8cad778938821760ef92bdcb649e30427",
+      "source_ref": "docker.io/longhornio/longhorn-engine:v1.12.2"
+    },
+    {
+      "digest": "sha256:75e082e3c1837bfaaef95f217f84c92ad8ec1935fe0ed2770f22c084b940410b",
+      "fingerprint": "2a10b19256800bc6c67def9568f96718ac4fb8643ad8fb87c876cc376d033f8c",
+      "head": "c0e741b24a4606072120b07c41ecdf29cb613360",
+      "key": "brinnatt/longhorn-manager:v1.12.2-kubeauto.1",
+      "platforms": {
+        "linux/amd64": "sha256:bf0f42e30eaaa7ce9dfc8785dc048a79b805e1f20a72d41e991b38352f616c44",
+        "linux/arm64": "sha256:8ff5c8c3659ff53545570bcf89ce4517e1cbb8c6593f58f07b7cbbb2e5f845fb"
+      },
+      "run_id": "43619742873",
+      "schema": 1,
+      "source_digest": "sha256:ce35c73a601d4fd73f9ed14f2abb33d34ca6c8ff7296e3aca4f90f1f3568b0e2",
+      "source_ref": "docker.io/longhornio/longhorn-manager:v1.12.2"
+    }
+  ],
+  "archives": {
+    "release-evidence-0-1": {
+      "path": "upgrade/v1.34.13/evidence/raw/longhorn-/43619742873/release-evidence-0-1.zip",
+      "sha256": "4671dd9de831e59216658be6b19fa37fd50fbb0de3df7e0122c146b8b5ab881f",
+      "bytes": 61188
+    },
+    "release-records-0-1": {
+      "path": "upgrade/v1.34.13/evidence/raw/longhorn-/43619742873/release-records-0-1.zip",
+      "sha256": "410da59f58966e9c99bf272b32de636013aa1c79f7381a59fab8a197ca3eeba8",
+      "bytes": 1932
+    },
+    "image-plan": {
+      "path": "upgrade/v1.34.13/evidence/raw/longhorn-/43619742873/image-plan.zip",
+      "sha256": "37ce9f861a91e1d7752f7036fb4d5b9b36ea3804bc87730cd1243f45f178e864",
+      "bytes": 1321
+    },
+    "plan-evidence-1": {
+      "path": "upgrade/v1.34.13/evidence/raw/longhorn-/43619742873/plan-evidence-1.zip",
+      "sha256": "8507ce37b1295cf364bfbc5c271e1c30e2a1b9e281ca6fcaeb2c8ffdfd981c51",
+      "bytes": 301
+    }
+  },
+  "parent_acceptance": false,
+  "live_lab_execution": false,
+  "first_failure": {
+    "classification": "environment/build storage",
+    "command": "ARM64 instance-manager go build after six passing TLS/RAID tests",
+    "message": "compile: writing output: write $WORK/b993/_pkg_.a: no space left on device",
+    "retained_successes": [
+      "brinnatt/longhorn-ui:v1.12.2",
+      "brinnatt/longhorn-engine:v1.12.2",
+      "brinnatt/longhorn-manager:v1.12.2-kubeauto.1"
+    ],
+    "unaccepted_images": [
+      "brinnatt/longhorn-instance-manager:v1.12.2-kubeauto.1",
+      "brinnatt/longhorn-share-manager:v1.12.2",
+      "brinnatt/longhorn-backing-image-manager:v1.12.2",
+      "brinnatt/longhorn-support-bundle-kit:v1.0.5",
+      "brinnatt/longhorn-csi-attacher:v4.13.0-20261028",
+      "brinnatt/longhorn-csi-provisioner:v5.3.0-20261028",
+      "brinnatt/longhorn-csi-node-driver-registrar:v2.18.0-20261028",
+      "brinnatt/longhorn-csi-resizer:v2.3.0-20261028",
+      "brinnatt/longhorn-csi-snapshotter:v8.7.0-20261028",
+      "brinnatt/longhorn-livenessprobe:v2.20.0-20261028"
+    ],
+    "recovery": "Fresh single-image selected runner; no source or assertion change and no rebuild of accepted images"
+  }
+}

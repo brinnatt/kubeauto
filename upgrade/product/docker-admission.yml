@@ -1,0 +1,30 @@
+# Only cri-dockerd changes. Engine28.5.2, its private runtime and data stay pinned.
+- name: Require the exact reviewed Docker adapter transition inputs
+  ansible.builtin.assert:
+    that:
+      - UPGRADE_PRECONDITIONS_VERIFIED | default(false) == true
+      - CONTAINER_RUNTIME == 'docker'
+      - UPGRADE_CRI_DOCKERD.path is match('^/[^\n\r]+$')
+      - UPGRADE_CRI_DOCKERD.sha256 is match('^[0-9a-f]{64}$')
+      - CGROUP_DRIVER in ['systemd', 'cgroupfs']
+      - DOCKER_STORAGE_DIR is match('^/[^\n\r]+$')
+      - >-
+        UPGRADE_DOCKER_PRESERVED_FILES | list | sort ==
+        ['/etc/docker/daemon.json', '/etc/systemd/system/cri-dockerd.service', '/etc/systemd/system/docker.service']
+      - UPGRADE_DOCKER_PRESERVED_FILES.values() | select('match', '^[0-9a-f]{64}$') | list | length == 3
+    fail_msg: Docker migration needs the exact adapter and reviewed source configuration identities.
+
+- name: Observe the admitted controller CRI adapter
+  ansible.builtin.stat:
+    path: "{{ UPGRADE_CRI_DOCKERD.path }}"
+    checksum_algorithm: sha256
+    follow: false
+  register: upgrade_docker_adapter
+  delegate_to: localhost
+
+- name: Refuse a missing symlink or changed CRI adapter before drain
+  ansible.builtin.assert:
+    that:
+      - upgrade_docker_adapter.stat.isreg | default(false)
+      - not (upgrade_docker_adapter.stat.islnk | default(false))
+      - upgrade_docker_adapter.stat.checksum | default('') == UPGRADE_CRI_DOCKERD.sha256

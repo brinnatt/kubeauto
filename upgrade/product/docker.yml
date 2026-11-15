@@ -1,0 +1,207 @@
+# Internal task file reached only after the node stage's successful drain.
+- name: Reobserve the drained Docker node before changing its adapter
+  ansible.builtin.command:
+    argv:
+      - "{{ base_dir }}/kube-bin/kubectl"
+      - "--kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+      - "--server={{ UPGRADE_API_BACKENDS[0] }}"
+      - --insecure-skip-tls-verify=false
+      - --request-timeout=10s
+      - get
+      - node
+      - "{{ UPGRADE_NODE_NAME }}"
+      - -o
+      - json
+  delegate_to: localhost
+  register: upgrade_docker_node
+  changed_when: false
+
+- name: Require the same owned cordoned Docker node
+  vars:
+    upgrade_docker_observed: "{{ upgrade_docker_node.stdout | from_json }}"
+  ansible.builtin.assert:
+    that:
+      - UPGRADE_PRECONDITIONS_VERIFIED == true
+      - inventory_hostname == UPGRADE_NODE_HOST
+      - upgrade_docker_observed.metadata.uid == UPGRADE_NODE_UID
+      - upgrade_docker_observed.metadata.name == UPGRADE_NODE_NAME
+      - upgrade_docker_observed.metadata.deletionTimestamp | default(none) == none
+      - upgrade_docker_observed.spec.unschedulable | default(false) | bool
+
+- name: Observe the preserved Docker configuration and service identities
+  ansible.builtin.stat:
+    path: "{{ item.key }}"
+    checksum_algorithm: sha256
+    follow: false
+  loop: "{{ UPGRADE_DOCKER_PRESERVED_FILES | dict2items }}"
+  register: upgrade_docker_preserved
+
+- name: Refuse unreviewed Engine or adapter service configuration
+  ansible.builtin.assert:
+    that:
+      - item.stat.isreg | default(false)
+      - not (item.stat.islnk | default(false))
+      - item.stat.checksum | default('') == item.item.value
+  loop: "{{ upgrade_docker_preserved.results }}"
+
+- name: Observe the active Docker daemon PID before changing only its adapter
+  ansible.builtin.command:
+    argv: [systemctl, show, docker, --property=MainPID, --value]
+  register: upgrade_docker_original_pid
+  changed_when: false
+  failed_when: upgrade_docker_original_pid.rc != 0 or upgrade_docker_original_pid.stdout | int <= 0
+
+- name: Observe the real Docker Engine version root and cgroup driver
+  ansible.builtin.command:
+    argv: ["{{ bin_dir }}/docker", info, --format, "{% raw %}{{json .}}{% endraw %}"]
+  register: upgrade_docker_info
+  changed_when: false
+
+- name: Require the reviewed unchanged Engine and driver
+  vars:
+    upgrade_docker_actual: "{{ upgrade_docker_info.stdout | from_json }}"
+  ansible.builtin.assert:
+    that:
+      - upgrade_docker_actual.ServerVersion == '28.5.2'
+      - upgrade_docker_actual.CgroupDriver == CGROUP_DRIVER
+      - upgrade_docker_actual.DockerRootDir == DOCKER_STORAGE_DIR
+
+- name: Observe the actually running CRI adapter executable
+  ansible.builtin.shell: |
+    set -eu
+    systemctl is-active --quiet cri-dockerd
+    upgrade_adapter_pid=$(systemctl show --property=MainPID --value cri-dockerd)
+    test "$upgrade_adapter_pid" -gt 0
+    "/proc/$upgrade_adapter_pid/exe" --version
+  args:
+    executable: /bin/bash
+  register: upgrade_docker_original_adapter
+  changed_when: false
+
+- name: Refuse an unknown or unowned partial CRI adapter transition
+  ansible.builtin.assert:
+    that:
+      - >-
+        upgrade_docker_original_adapter.stdout is match('^cri-dockerd 0\.3\.26 \(') or
+        (UPGRADE_NODE_RESUME | default(false) | bool and
+         upgrade_docker_original_adapter.stdout is match('^cri-dockerd 0\.4\.10 \('))
+
+- name: Verify CRI health before changing the Docker adapter
+  ansible.builtin.command:
+    argv: ["{{ bin_dir }}/crictl", --runtime-endpoint=unix:///var/run/cri-dockerd.sock, --timeout=10s, info, -o, json]
+  register: upgrade_docker_cri_before
+  changed_when: false
+
+- name: Require both source Docker CRI readiness conditions
+  ansible.builtin.assert:
+    that:
+      - >-
+        ((upgrade_docker_cri_before.stdout | from_json).status.conditions |
+         selectattr('type', 'equalto', item) | map(attribute='status') | list) == [true]
+  loop: [RuntimeReady, NetworkReady]
+
+- name: Remember Docker sandboxes retained by drain
+  ansible.builtin.command:
+    argv: ["{{ bin_dir }}/crictl", --runtime-endpoint=unix:///var/run/cri-dockerd.sock, --timeout=10s, pods, --state=ready, -o, json]
+  register: upgrade_docker_sandboxes
+  changed_when: false
+
+- name: Install only the admitted Docker CRI adapter atomically
+  ansible.builtin.copy:
+    src: "{{ UPGRADE_CRI_DOCKERD.path }}"
+    dest: "{{ bin_dir }}/cri-dockerd"
+    owner: root
+    group: root
+    mode: '0755'
+  register: upgrade_docker_adapter_copy
+
+- name: Observe the installed Docker CRI adapter digest
+  ansible.builtin.stat:
+    path: "{{ bin_dir }}/cri-dockerd"
+    checksum_algorithm: sha256
+    follow: false
+  register: upgrade_docker_installed_adapter
+
+- name: Refuse a changed installed Docker CRI adapter
+  ansible.builtin.assert:
+    that:
+      - upgrade_docker_installed_adapter.stat.isreg | default(false)
+      - not (upgrade_docker_installed_adapter.stat.islnk | default(false))
+      - upgrade_docker_installed_adapter.stat.checksum | default('') == UPGRADE_CRI_DOCKERD.sha256
+
+- name: Restart only the changed Docker CRI adapter
+  ansible.builtin.systemd_service:
+    name: cri-dockerd
+    state: restarted
+  when: >-
+    upgrade_docker_adapter_copy.changed or
+    not (upgrade_docker_original_adapter.stdout is match('^cri-dockerd 0\.4\.10 \('))
+
+- name: Verify the actually running target Docker CRI adapter
+  ansible.builtin.shell: |
+    set -eu
+    systemctl is-active --quiet cri-dockerd
+    upgrade_adapter_pid=$(systemctl show --property=MainPID --value cri-dockerd)
+    test "$upgrade_adapter_pid" -gt 0
+    "/proc/$upgrade_adapter_pid/exe" --version
+  args:
+    executable: /bin/bash
+  register: upgrade_docker_target_adapter
+  changed_when: false
+  until: >-
+    upgrade_docker_target_adapter.rc == 0 and
+    upgrade_docker_target_adapter.stdout is match('^cri-dockerd 0\.4\.10 \(')
+  retries: 15
+  delay: 2
+
+- name: Verify the same Docker Engine over the target adapter CRI socket
+  ansible.builtin.command:
+    argv: ["{{ bin_dir }}/crictl", --runtime-endpoint=unix:///var/run/cri-dockerd.sock, --timeout=10s, version, -o, json]
+  register: upgrade_docker_cri_version
+  changed_when: false
+  failed_when: >-
+    upgrade_docker_cri_version.rc != 0 or
+    (upgrade_docker_cri_version.stdout | from_json).runtimeName != 'docker' or
+    (upgrade_docker_cri_version.stdout | from_json).runtimeVersion != '28.5.2' or
+    (upgrade_docker_cri_version.stdout | from_json).runtimeApiVersion != 'v1'
+
+- name: Wait for both target Docker CRI readiness conditions
+  ansible.builtin.command:
+    argv: ["{{ bin_dir }}/crictl", --runtime-endpoint=unix:///var/run/cri-dockerd.sock, --timeout=10s, info, -o, json]
+  register: upgrade_docker_cri_after
+  changed_when: false
+  until: >-
+    upgrade_docker_cri_after.rc == 0 and
+    ((upgrade_docker_cri_after.stdout | from_json).status.conditions |
+     selectattr('type', 'equalto', 'RuntimeReady') | map(attribute='status') | list) == [true] and
+    ((upgrade_docker_cri_after.stdout | from_json).status.conditions |
+     selectattr('type', 'equalto', 'NetworkReady') | map(attribute='status') | list) == [true]
+  retries: 15
+  delay: 2
+
+- name: Reobserve Docker sandboxes after changing only the adapter
+  ansible.builtin.command:
+    argv: ["{{ bin_dir }}/crictl", --runtime-endpoint=unix:///var/run/cri-dockerd.sock, --timeout=10s, pods, --state=ready, -o, json]
+  register: upgrade_docker_retained_sandboxes
+  changed_when: false
+
+- name: Refuse lost Docker sandboxes before permitting kubelet replacement
+  ansible.builtin.assert:
+    that:
+      - >-
+        ((upgrade_docker_sandboxes.stdout | from_json)['items'] | default([]) | map(attribute='id') | list |
+         difference((upgrade_docker_retained_sandboxes.stdout | from_json)['items'] | default([]) |
+                    map(attribute='id') | list) | length) == 0
+
+- name: Verify the Engine process was preserved through the adapter transition
+  ansible.builtin.command:
+    argv: [systemctl, show, docker, --property=MainPID, --value]
+  register: upgrade_docker_final_pid
+  changed_when: false
+  failed_when: >-
+    upgrade_docker_final_pid.rc != 0 or
+    upgrade_docker_final_pid.stdout != upgrade_docker_original_pid.stdout
+
+- name: Report the Docker adapter boundary without signing node acceptance
+  ansible.builtin.debug:
+    msg: "UPGRADE_DOCKER_STAGE_PASS node={{ UPGRADE_NODE_NAME }} engine=28.5.2 adapter=0.4.10"

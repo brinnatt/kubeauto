@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "accepted": true,
+  "source": "v1.33.6",
+  "target": "v1.34.13",
+  "case_ids": [
+    "UPG-14"
+  ],
+  "method": "static",
+  "claim": "客户可按独立升级目录进入 v1.33.6→v1.34.13 的产品入口，版本组合、官方资料实际证据力度、失败停止/续跑/恢复、EOL 过渡限制和交付边界均已写入可审阅操作手册；来源、矩阵和目标制品身份可由 upgrade 内正式记录追溯。该项是文档与交付身份检查，不代替客户签收或最终现场回归。",
+  "covered_subcases": [
+    "customer-operator-entry-and-preflight",
+    "frozen-component-combination-and-evidence-boundary",
+    "stop-resume-recovery-and-rollback-limits",
+    "official-source-directory-and-reader-path"
+  ],
+  "inputs": {
+    "upgrade/v1.34.13/operations-manual.md": "41a191427be72dd808b8b49f3b3cfb1eb3759f692532155a078c08951896bbb3",
+    "upgrade/v1.34.13/release.yaml": "cfdcd0a7d3b168c6c607d27392c6942cf780007e49febf72add154f0c5ef0143",
+    "upgrade/v1.34.13/research.yaml": "6a985e003a74956ffd9f68bdebae301ec3bf6c491f56979976690689b7077e2a",
+    "upgrade/official-sources.yaml": "58b1b295bf7ed474fa3062a384c751b229cafb0956e1fc512a395f0115871bdb",
+    "upgrade/workflow.md": "1e8cee980644e985a2b7bfda2b1f0a5e0cb0ab2f5265f815d41eeeb07803558f",
+    "upgrade/acceptance.md": "1fd150a97eb055a62ffd1153d9fc30003da4eacce458fe652b53d42e4e49ead5"
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/upg14-document-delivery-check-20261115.log",
+      "sha256": "6e8d7a3f229b1fee1794cd00c10b2e09af21960968e6b0f8837c0e4a19195969"
+    }
+  ],
+  "official_source_ids": [
+    "K8S-STABLE",
+    "K8S-SKEW",
+    "K8S-API-HEALTH-CONTRACT",
+    "K8S-13413-VERSION-CONTRACT",
+    "CONTAINERD-237-OPERATIONS",
+    "K8S-LIFECYCLE"
+  ],
+  "checks": [
+    {
+      "command": ".venv/bin/python -B upgrade/validate.py upgrade/v1.34.13/test-matrix.yaml --combination-preflight",
+      "rc": 0
+    },
+    {
+      "command": ".venv/bin/python YAML/Markdown/source checks for operations-manual.md, release.yaml, research.yaml and official-sources.yaml",
+      "rc": 0
+    },
+    {
+      "command": "git diff --check -- upgrade",
+      "rc": 0
+    }
+  ],
+  "business_assertions": [
+    "操作手册给出版本、入口、权限、前置、停止、续跑、恢复、验收和清理出口",
+    "containerd 新建安装版本与迁移桥接版本明确分开，避免错误扩大组件回归或错误发布",
+    "Dashboard/Harbor EOL 过渡以及缺少逐版矩阵组件的证据力度均明确标注",
+    "官方来源副本、目标 release/research、矩阵状态和证据目录在 upgrade 内可追溯"
+  ],
+  "customer_signoff": null,
+  "live_execution": false,
+  "completed_ladder": 2
+}

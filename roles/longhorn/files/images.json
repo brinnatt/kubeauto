@@ -28,5 +28,20 @@
     "longhorn-csi-resizer": "v2.2.1",
     "longhorn-csi-snapshotter": "v8.6.0",
     "longhorn-livenessprobe": "v2.19.0"
+  },
+  "1.12.2": {
+    "longhorn-engine": "v1.12.2",
+    "longhorn-manager": "v1.12.2-kubeauto.1",
+    "longhorn-ui": "v1.12.2",
+    "longhorn-instance-manager": "v1.12.2-kubeauto.1",
+    "longhorn-share-manager": "v1.12.2",
+    "longhorn-backing-image-manager": "v1.12.2",
+    "longhorn-support-bundle-kit": "v1.0.5",
+    "longhorn-csi-attacher": "v4.13.0-20261028",
+    "longhorn-csi-provisioner": "v5.3.0-20261028",
+    "longhorn-csi-node-driver-registrar": "v2.18.0-20261028",
+    "longhorn-csi-resizer": "v2.3.0-20261028",
+    "longhorn-csi-snapshotter": "v8.7.0-20261028",
+    "longhorn-livenessprobe": "v2.20.0-20261028"
   }
 }

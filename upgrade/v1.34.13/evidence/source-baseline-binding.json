@@ -1,0 +1,282 @@
+{
+  "schema_version": 1,
+  "observed_on": "2026-11-14",
+  "scope": "项目参考GA基线；用于在自有实验室构建首跳迁移，非客户生产实装确认",
+  "product_tag": "v0.1.8",
+  "product_source_sha": "940c9020144a88b370cba36793a4d7fad6a347ab",
+  "kubernetes": "v1.33.6",
+  "source_repositories": [
+    {
+      "repo": "kubeauto",
+      "branch": "dev",
+      "head": "940c9020144a88b370cba36793a4d7fad6a347ab",
+      "observation": "上轮六仓干净只读审计；当前仅主仓方案/入口变更，非客户交付身份"
+    },
+    {
+      "repo": "kubeauto-dockerfile",
+      "branch": "dev",
+      "head": "39b75668c901a93fa9fa10d35402999f20ff503f",
+      "observation": "上轮六仓干净只读审计；当前仅主仓方案/入口变更，非客户交付身份"
+    },
+    {
+      "repo": "kubeauto-k8s-bin-dockerfile",
+      "branch": "dev",
+      "head": "b9c52d89684a05d6072eab0bc4f6c84ff135ebdd",
+      "observation": "上轮六仓干净只读审计；当前仅主仓方案/入口变更，非客户交付身份"
+    },
+    {
+      "repo": "kubeauto-ext-bin-dockerfile",
+      "branch": "dev",
+      "head": "8d102d25d5acac6768ffad8341d8dd8abb422e36",
+      "observation": "上轮六仓干净只读审计；当前仅主仓方案/入口变更，非客户交付身份"
+    },
+    {
+      "repo": "kubeauto-ext-bin-sp1-dockerfile",
+      "branch": "dev",
+      "head": "b154b48f041811425626d6ed8d709446b7b500bf",
+      "observation": "上轮六仓干净只读审计；当前仅主仓方案/入口变更，非客户交付身份"
+    },
+    {
+      "repo": "kubeauto-ext-images-dockerfile",
+      "branch": "dev",
+      "head": "33a209565a37c5b476c4730b692fdc51ffd04275",
+      "observation": "上轮六仓干净只读审计；当前仅主仓方案/入口变更，非客户交付身份"
+    }
+  ],
+  "snapshot_git_object_checks": [
+    {
+      "repository": "kubeauto",
+      "commit": "940c9020144a88b370cba36793a4d7fad6a347ab",
+      "path": "common/constants.py",
+      "sha256": "2ae296593a5f7ee7ccfee49e605b684a71dcb8a7c3783f67e96b86b922eef91e"
+    },
+    {
+      "repository": "kubeauto",
+      "commit": "940c9020144a88b370cba36793a4d7fad6a347ab",
+      "path": "conf/config.yml",
+      "sha256": "cb417b4ff0fdaea868c6b166f0eeaceb24ccb28321a9458b3aa4c78ba6a1884e"
+    },
+    {
+      "repository": "kubeauto",
+      "commit": "940c9020144a88b370cba36793a4d7fad6a347ab",
+      "path": "requirements",
+      "sha256": "ab15632ce44e90da5aefb28c39497568cfe5ccb23e7da59a89ab9b8bd0c82905"
+    },
+    {
+      "repository": "kubeauto",
+      "commit": "940c9020144a88b370cba36793a4d7fad6a347ab",
+      "path": "requirements-control.txt",
+      "sha256": "925bc33ae3c7ba750cc70344ac0d6575beeeb1cae2bd585ce1e05866f614515b"
+    },
+    {
+      "repository": "kubeauto",
+      "commit": "940c9020144a88b370cba36793a4d7fad6a347ab",
+      "path": "build.py",
+      "sha256": "29dd1553d6b3b4c46f63abc6f94b4cf94e22118a3320645b65c686512c2e9560"
+    },
+    {
+      "repository": "kubeauto",
+      "commit": "940c9020144a88b370cba36793a4d7fad6a347ab",
+      "path": "kubecli-onefile.spec",
+      "sha256": "9ffb04e602c9e999a82dd234dd8d607a444fed31b18e22fa94dbb7aa3b443d6c"
+    },
+    {
+      "repository": "kubeauto",
+      "commit": "940c9020144a88b370cba36793a4d7fad6a347ab",
+      "path": "tools-onefile.spec",
+      "sha256": "7bb77b6db73a9c015aff2156120d94f7dc67a7a30e037f105d452bcbded45956"
+    },
+    {
+      "repository": "kubeauto",
+      "commit": "940c9020144a88b370cba36793a4d7fad6a347ab",
+      "path": ".github/workflows/release.yml",
+      "sha256": "df8768cb1959ff0fb7fa3c66d7bf4c91c98789245e5e1aa9977b686221cfbd7b"
+    },
+    {
+      "repository": "kubeauto",
+      "commit": "940c9020144a88b370cba36793a4d7fad6a347ab",
+      "path": "controller/cluster/cli.py",
+      "sha256": "e5f0f081ea123d4b802c1b2b526e55f23dad3a010db0eddab3f9b7e09c42f3c1"
+    },
+    {
+      "repository": "kubeauto",
+      "commit": "940c9020144a88b370cba36793a4d7fad6a347ab",
+      "path": "service/cluster/manager.py",
+      "sha256": "6411d4a3fba0de58372960db92f61c1727009a30a26b3d3bbffa0f89b80805f2"
+    },
+    {
+      "repository": "kubeauto",
+      "commit": "940c9020144a88b370cba36793a4d7fad6a347ab",
+      "path": "service/cluster/downloader.py",
+      "sha256": "a15efb6d27984f5a37559309f4603e88b70a86ab03e7b13a69079ef4d8a4785d"
+    },
+    {
+      "repository": "kubeauto",
+      "commit": "940c9020144a88b370cba36793a4d7fad6a347ab",
+      "path": "playbooks/93.upgrade.yml",
+      "sha256": "101fe54750ad8380d23af7dcf9871c62e1359dd36b96038bca437d0058b5f84c"
+    },
+    {
+      "repository": "kubeauto",
+      "commit": "940c9020144a88b370cba36793a4d7fad6a347ab",
+      "path": "roles/kube-master/tasks/main.yml",
+      "sha256": "39929c6dc555dcf8a4b83a69f9fb17582f6ea43d9230afd9e0219004b1b8b627"
+    },
+    {
+      "repository": "kubeauto",
+      "commit": "940c9020144a88b370cba36793a4d7fad6a347ab",
+      "path": "roles/kube-node/tasks/main.yml",
+      "sha256": "75ed2cfddd038f5e387cef9610609ade75d58dfc8eecd76a0e6b10314ab4d2aa"
+    },
+    {
+      "repository": "kubeauto",
+      "commit": "940c9020144a88b370cba36793a4d7fad6a347ab",
+      "path": "roles/kube-node/vars/main.yml",
+      "sha256": "2868d911b2efc4245d8f2c9a197b16d1d30dd4458e5a135e6b6523501c909030"
+    },
+    {
+      "repository": "kubeauto",
+      "commit": "940c9020144a88b370cba36793a4d7fad6a347ab",
+      "path": "roles/kube-node/templates/kubelet-config.yaml.j2",
+      "sha256": "7f3bc2f5bf9b9d229d4429881d2c80517a99ee69a513a19a4dc7c2fa5f3ed458"
+    },
+    {
+      "repository": "kubeauto",
+      "commit": "940c9020144a88b370cba36793a4d7fad6a347ab",
+      "path": "roles/kube-node/templates/kube-proxy-config.yaml.j2",
+      "sha256": "7c0897206669e4aee251292c825d8c9a7aa50d639216ab9b275842872eac7b09"
+    },
+    {
+      "repository": "kubeauto",
+      "commit": "940c9020144a88b370cba36793a4d7fad6a347ab",
+      "path": "tests/README.md",
+      "sha256": "f50f2c56f5510a1eec70ae85bcb44ead8f30bea38b62c03ea122e32b6d11711e"
+    },
+    {
+      "repository": "kubeauto",
+      "commit": "940c9020144a88b370cba36793a4d7fad6a347ab",
+      "path": "tests/enterprise-test-matrix.yaml",
+      "sha256": "fbb30c1a0c57c5e34d0c38b24661f4e74ad2f4e67a160709f68e433cffd47ed1"
+    },
+    {
+      "repository": "kubeauto",
+      "commit": "940c9020144a88b370cba36793a4d7fad6a347ab",
+      "path": "tests/helpers/delivery-upgrade-smoke.sh",
+      "sha256": "fcf3ebd7215c5a7187766a555de856c11564becc823728324cd215505fa1b08b"
+    },
+    {
+      "repository": "kubeauto",
+      "commit": "940c9020144a88b370cba36793a4d7fad6a347ab",
+      "path": "tests/unit/test_upgrade_gate.py",
+      "sha256": "6d9bbcb6f906fa1122bb21f8364e7d073a4973f2a6ca0566fd4830904d1fcb46"
+    },
+    {
+      "repository": "kubeauto",
+      "commit": "940c9020144a88b370cba36793a4d7fad6a347ab",
+      "path": "tests/unit/test_six_repo_version_sync.py",
+      "sha256": "432cd127a220e7fed734c46ae2ee2b9bf2c639dd897e465421865e71fbcc215e"
+    },
+    {
+      "repository": "kubeauto",
+      "commit": "940c9020144a88b370cba36793a4d7fad6a347ab",
+      "path": "docs/whitepaper/A-version-matrix.md",
+      "sha256": "7e14c4696653f4d36f73729e1a0d4619b2fd04cda9f07fa8c45157da5a96c13a"
+    },
+    {
+      "repository": "kubeauto-dockerfile",
+      "commit": "39b75668c901a93fa9fa10d35402999f20ff503f",
+      "path": "Dockerfile",
+      "sha256": "d24660c44f0186bca57307891c771910722ea697db19a289a068d273192c71f5"
+    },
+    {
+      "repository": "kubeauto-dockerfile",
+      "commit": "39b75668c901a93fa9fa10d35402999f20ff503f",
+      "path": ".github/workflows/build_and_push.yml",
+      "sha256": "628809a78d0271f3641cd57732e7ec686cd509c51f24690d70ff8e5105836aff"
+    },
+    {
+      "repository": "kubeauto-k8s-bin-dockerfile",
+      "commit": "b9c52d89684a05d6072eab0bc4f6c84ff135ebdd",
+      "path": "Dockerfile",
+      "sha256": "0ac8dc2c0d1d0773a599881d22520701f78990cc731f946235e7a2ead66e13e5"
+    },
+    {
+      "repository": "kubeauto-k8s-bin-dockerfile",
+      "commit": "b9c52d89684a05d6072eab0bc4f6c84ff135ebdd",
+      "path": "multi-platform-download.sh",
+      "sha256": "940c3a609806a48f174f33f5356971cbc8076455263600abe41af5ab8ae030cf"
+    },
+    {
+      "repository": "kubeauto-k8s-bin-dockerfile",
+      "commit": "b9c52d89684a05d6072eab0bc4f6c84ff135ebdd",
+      "path": ".github/workflows/build.yml",
+      "sha256": "441de0e72656e9b0f165d19577c2bddac3ad7784e771d4ee385139d573148abe"
+    },
+    {
+      "repository": "kubeauto-ext-bin-dockerfile",
+      "commit": "8d102d25d5acac6768ffad8341d8dd8abb422e36",
+      "path": "Dockerfile",
+      "sha256": "7c22df60ec6925e132ff75831622f4f9b19196e50a34303ed94fb17a815342ad"
+    },
+    {
+      "repository": "kubeauto-ext-bin-dockerfile",
+      "commit": "8d102d25d5acac6768ffad8341d8dd8abb422e36",
+      "path": "multi-platform-download.sh",
+      "sha256": "4021ddc0965470c81e2b70581ae64a875717e65e7e82e3ea19ec5458713bd7e8"
+    },
+    {
+      "repository": "kubeauto-ext-bin-dockerfile",
+      "commit": "8d102d25d5acac6768ffad8341d8dd8abb422e36",
+      "path": ".github/workflows/build.yml",
+      "sha256": "ee9aad0b2f838d6659f70997f6cdf93462596f90753b2de048627c08f680c005"
+    },
+    {
+      "repository": "kubeauto-ext-bin-sp1-dockerfile",
+      "commit": "b154b48f041811425626d6ed8d709446b7b500bf",
+      "path": "Dockerfile",
+      "sha256": "633bb30f6093e8b243595ccdd09a5f5e16893a91b71447c2d36c29d034570396"
+    },
+    {
+      "repository": "kubeauto-ext-bin-sp1-dockerfile",
+      "commit": "b154b48f041811425626d6ed8d709446b7b500bf",
+      "path": ".github/workflows/build.yml",
+      "sha256": "2d1c88fbeeef066f6c9172eed1ad8081fdcce28e531655d1126570fd1cc8253f"
+    },
+    {
+      "repository": "kubeauto-ext-images-dockerfile",
+      "commit": "33a209565a37c5b476c4730b692fdc51ffd04275",
+      "path": "catalog.json",
+      "sha256": "6d71977ea99dfc79898af9c001c765bf92c7d94c1089bbaa70c186a1789dcabb"
+    },
+    {
+      "repository": "kubeauto-ext-images-dockerfile",
+      "commit": "33a209565a37c5b476c4730b692fdc51ffd04275",
+      "path": ".github/workflows/build.yml",
+      "sha256": "800effffa6c48d5e9682ab290606af83e7f4351d39f59001e970073540d08e82"
+    },
+    {
+      "repository": "kubeauto-ext-images-dockerfile",
+      "commit": "33a209565a37c5b476c4730b692fdc51ffd04275",
+      "path": "scripts/validate_catalog.py",
+      "sha256": "acafa78b54280d517bc7022c69e877b77d628728b63de8dd8badc5db9cf712b9"
+    },
+    {
+      "repository": "kubeauto-ext-images-dockerfile",
+      "commit": "33a209565a37c5b476c4730b692fdc51ffd04275",
+      "path": "scripts/image_release.py",
+      "sha256": "54ea553d25e40fad9689088606c4727dc610328fafa1c3208d8120ffbfbeccce"
+    }
+  ],
+  "copied_formal_evidence": {
+    "files": 143,
+    "bytes": 6615267,
+    "all_hashes_match": true
+  },
+  "ga_authority": "交付负责人明确确认全部原功能/组件/中间件/存储GA且生产稳定；本轮不重新签原GA",
+  "boundaries": [
+    "客户生产release/config/artifact身份仍未知，不操作客户现场。",
+    "副本只证明归档身份，逐目标断言采用时仍需原始归档与依赖适用性检查。",
+    "UPG-03负责制品复用/新增及双端身份；UPG-05必须验证本次runner创建的实际源集群、配置、运行版本、业务账本和恢复点。",
+    "旧记录中各自pending或限定边界保持原样，不因交付负责人GA确认改写。"
+  ]
+}

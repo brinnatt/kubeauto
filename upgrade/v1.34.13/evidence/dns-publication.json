@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "observed_on": "2026-11-15",
+  "matrix_ids": [
+    "UPG-03"
+  ],
+  "claim": "Selected 2-image dual-architecture/dual-registry publication and formal-tag readback; no runtime acceptance",
+  "repository": "kubeauto-ext-images-dockerfile",
+  "run_id": "43644868448",
+  "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/43644868448",
+  "sha": "02d4a9078dc48206c5d8cf35e33fd1f2e530efa7",
+  "branch": "v1.34.13",
+  "mode": "selected",
+  "image_count": 2,
+  "conclusion": "success",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "actual_plan": {
+    "schema": 1,
+    "mode": "selected",
+    "head": "02d4a9078dc48206c5d8cf35e33fd1f2e530efa7",
+    "items": [
+      {
+        "row": {
+          "dockerfile": "platform/dns/coredns-1.15.0/Dockerfile",
+          "image": "brinnatt/coredns",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/coredns",
+          "tag": "1.15.0",
+          "ctx": "platform/dns/coredns-1.15.0"
+        },
+        "fingerprint": "b8f7f403d1e04dfacc0168bf9a65612a32dbdeba4c91be9c3216710e692aab13"
+      },
+      {
+        "row": {
+          "dockerfile": "platform/dns/k8s-dns-node-cache-1.26.8/Dockerfile",
+          "image": "brinnatt/k8s-dns-node-cache",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/k8s-dns-node-cache",
+          "tag": "1.26.8",
+          "ctx": "platform/dns/k8s-dns-node-cache-1.26.8"
+        },
+        "fingerprint": "fb8238bb671c7f67addf98aa55a93a012416e7fd058754e719876eff112ab6d6"
+      }
+    ],
+    "event_keys": [],
+    "shard_size": 20,
+    "shards": 1
+  },
+  "release_records": [
+    {
+      "digest": "sha256:340d650853acee687423964eafd9a4bf04557d1befd7313578d501c31d1d7b7e",
+      "fingerprint": "fb8238bb671c7f67addf98aa55a93a012416e7fd058754e719876eff112ab6d6",
+      "head": "02d4a9078dc48206c5d8cf35e33fd1f2e530efa7",
+      "key": "brinnatt/k8s-dns-node-cache:1.26.8",
+      "platforms": {
+        "linux/amd64": "sha256:c392f1f91987742c2479270e91e8bccf3e90986d1b5da13b96465b9628cf39a9",
+        "linux/arm64": "sha256:7b7b0477848d55f295ceb3981970d4a99284286e978ea98f8fa8277a05e67f35"
+      },
+      "run_id": "43644868448",
+      "schema": 1,
+      "source_digest": "sha256:bc6e64e2c85956af2fcc0aa720086410d41b4f31f378c9a92646fecc85cd4739",
+      "source_ref": "registry.k8s.io/dns/k8s-dns-node-cache:1.26.8"
+    },
+    {
+      "digest": "sha256:6c9f59cfb5acd6cc8a5c9a30e260227b3cf203f8e002519e933007f3de881341",
+      "fingerprint": "b8f7f403d1e04dfacc0168bf9a65612a32dbdeba4c91be9c3216710e692aab13",
+      "head": "02d4a9078dc48206c5d8cf35e33fd1f2e530efa7",
+      "key": "brinnatt/coredns:1.15.0",
+      "platforms": {
+        "linux/amd64": "sha256:418bea67884ddd0ecbca0b4a9dbbbb62538320afa49f52373923ab02ffb1623f",
+        "linux/arm64": "sha256:218f03568bb86a2b7928e294f5a5bdc41c0b351df07ea3dc963ea908a6f3692b"
+      },
+      "run_id": "43644868448",
+      "schema": 1,
+      "source_digest": "sha256:0a9d8c8ddf34347eb59aad9a8784f0710de88d6d112726d11d271f9bc6daca26",
+      "source_ref": "docker.io/coredns/coredns:1.15.0"
+    }
+  ],
+  "archives": {
+    "image-plan": {
+      "path": "upgrade/v1.34.13/evidence/raw/dns-publication/43644868448/image-plan.zip",
+      "sha256": "4f574f9a3639ae5dfa1ddcadd2cf8c80535e3fa95a1938b5fb6c074a9ba8fa41",
+      "bytes": 526
+    },
+    "release-records-0-1": {
+      "path": "upgrade/v1.34.13/evidence/raw/dns-publication/43644868448/release-records-0-1.zip",
+      "sha256": "c0b93d0093b57b32241ce30ac078361918f9c91506db13244d1c18d5b3cf8af4",
+      "bytes": 1284
+    },
+    "plan-evidence-1": {
+      "path": "upgrade/v1.34.13/evidence/raw/dns-publication/43644868448/plan-evidence-1.zip",
+      "sha256": "dbbc00eca15223f5557ec9487f005d05b3a222bce51d94059a9225d8dd75aec8",
+      "bytes": 300
+    },
+    "release-evidence-0-1": {
+      "path": "upgrade/v1.34.13/evidence/raw/dns-publication/43644868448/release-evidence-0-1.zip",
+      "sha256": "1ba1ab3e9374bb16f1252e1f78b9727ec4ec8ec26a9e9d511feab9cd342ea823",
+      "bytes": 3913
+    }
+  },
+  "completed_ladder": 2,
+  "parent_acceptance": false,
+  "live_lab_execution": false
+}

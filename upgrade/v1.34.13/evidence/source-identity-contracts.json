@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-11-14T21:20:01.535064+00:00",
+  "matrix_ids": [
+    "UPG-04",
+    "UPG-05"
+  ],
+  "classification": "product internal stage and test-gate contracts",
+  "product_entry": "config.yml + kubecli upgrade (outer combination/lease/recovery/final runner not yet connected)",
+  "command": ".venv/bin/python -B -m unittest upgrade.tests.test_kubernetes_preflight -v",
+  "rc": 0,
+  "tests": 11,
+  "inputs_sha256": {
+    "upgrade/product/kubernetes_preflight.py": "7668c49f5e523137b58a62df885b90ed7ef973896dfca4928364b9bb05cc440d",
+    "upgrade/tests/test_kubernetes_preflight.py": "d5cfa522b4513d43b08b316385b7fe2783a2f17f5257593a4af829f371a36548"
+  },
+  "raw_log": {
+    "path": "upgrade/v1.34.13/evidence/raw/kubernetes-handoff/source-identity.log",
+    "sha256": "1e80992f535b8544ded7a97aa2b27af16103e61b36d260079f161b27a92a6ccd",
+    "bytes": 2291
+  },
+  "scope": [
+    "Actual read-only CLI: exact stable adjacent minor and official client SHA; every backend version/readyz plus same Active kube-system UID",
+    "Complete source node names/unique UIDs/exact kubelet/Ready/originally schedulable; duplicate/foreign/missing identity or cordon refuses",
+    "Existing/symlink/concurrent receipt not overwritten; private atomic evidence and no raw secret echo"
+  ],
+  "official_source_ids": [
+    "K8S-SKEW",
+    "K8S-13413-NODE-CONTRACT",
+    "K8S134-OBJECT-META",
+    "K8S-13413-DRAIN-COMMAND",
+    "K8S-13413-DRAIN-LIBRARY"
+  ],
+  "parent_acceptance": false,
+  "live_execution": false,
+  "completed_ladder": 2,
+  "cleanup": "TemporaryDirectory-only API/Ansible/action fixtures; forbidden real connections; no lab mutation",
+  "remaining": [
+    "Frozen overall combination/artifact admission and complete backend discovery",
+    "Outer product CLI/journal/lease/recovery point and storage maintenance admission",
+    "Live business ledger and actual scoped lab gates"
+  ]
+}

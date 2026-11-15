@@ -1,0 +1,152 @@
+{
+  "schema_version": 1,
+  "observed_on": "2026-11-15",
+  "matrix_ids": [
+    "UPG-03",
+    "UPG-04"
+  ],
+  "claim": "Frozen binary overlay supply-chain qualification; original base bytes retained by digest",
+  "parent_acceptance": false,
+  "live_lab_execution": false,
+  "source": {
+    "repository": "brinnatt/kubeauto-ext-bin-dockerfile",
+    "branch": "v1.34.13",
+    "sha": "ba9a235e26cad8e88f73db9dbc95bf351a5f8b7e"
+  },
+  "ci": {
+    "run_id": "43637510564",
+    "url": "https://github.com/brinnatt/kubeauto-ext-bin-dockerfile/actions/runs/43637510564",
+    "conclusion": "success",
+    "durable_prepare": "rc=0",
+    "marker": "EXT_BIN_FROZEN_OVERLAY_PREPARE_PASS",
+    "artifact_sha256": "b67470ff93df6877ccf553674d8b5a4f259722c598f25078f57784c3c555f13b",
+    "published_images": [],
+    "started_binaries": []
+  },
+  "official_asset_count": 14,
+  "official_download_bytes": 580801288,
+  "manifest": {
+    "path": "upgrade/v1.34.13/evidence/extbin-overlay-inputs.json",
+    "sha256": "b6469584b598efbc5f4e6775e91cbff3f5ebac0e06d761ad62f2a7cf8f45aa87"
+  },
+  "focused_contracts": {
+    "tests": 9,
+    "rc": 0,
+    "log": "upgrade/v1.34.13/evidence/raw/extbin-overlay-qualification/kubeauto-upgrade-extbin-overlay-contracts.log",
+    "local_fixture_correction": "Initial altered-retained-file refusal fixture reused a shallow nested dict and changed expected input too. Corrected fixture to independent deep copy; no product-layer fix or live execution was involved."
+  },
+  "native_amd64_version_checks": [
+    {
+      "binary": "etcd",
+      "argv": [
+        "etcd",
+        "--version"
+      ],
+      "sha256": "769222687e03cb2ee0c420193a5012d4ff2a35a47e8f27ae9540dd2acfa3ac49",
+      "rc": 0,
+      "stdout": "etcd Version: 3.6.16\nGit SHA: 0b065e6\nGo Version: go1.26.10\nGo OS/Arch: linux/amd64\n"
+    },
+    {
+      "binary": "etcdctl",
+      "argv": [
+        "etcdctl",
+        "version"
+      ],
+      "sha256": "431ef5ff91a41001a5b72710242a1d426a3e1e3932424c2656a7cf66aeb93cbb",
+      "rc": 0,
+      "stdout": "etcdctl version: 3.6.16\nAPI version: 3.6\n"
+    },
+    {
+      "binary": "etcdutl",
+      "argv": [
+        "etcdutl",
+        "version"
+      ],
+      "sha256": "bb9588ce698b91d516ddefba0804b69ef9eee7578e61d8c60669da28e66865eb",
+      "rc": 0,
+      "stdout": "etcdutl version: 3.6.16\nAPI version: 3.6\n"
+    },
+    {
+      "binary": "containerd-bin/containerd",
+      "argv": [
+        "containerd-bin/containerd",
+        "--version"
+      ],
+      "sha256": "2bef909678b2c232110a784a5c4b3733b661027cae4ea3e3cfea1d1d14cbe45b",
+      "rc": 0,
+      "stdout": "containerd github.com/containerd/containerd/v2 v2.3.7 6f589cf13dc01a5b493911355427e05b2ff005d7\n"
+    },
+    {
+      "binary": "containerd-bin/ctr",
+      "argv": [
+        "containerd-bin/ctr",
+        "--version"
+      ],
+      "sha256": "125419a0b5788f6c020f4365c81ad97cc98af1979f19a432a73b4ea38da72b2a",
+      "rc": 0,
+      "stdout": "ctr github.com/containerd/containerd/v2 v2.3.7\n"
+    },
+    {
+      "binary": "containerd-bin/runc",
+      "argv": [
+        "containerd-bin/runc",
+        "--version"
+      ],
+      "sha256": "599f6f94ff8c5057241eff0d54c3c74f95c34935b6457b33fe545defc61e9488",
+      "rc": 0,
+      "stdout": "runc version 1.5.2\ncommit: v1.5.2-0-g29dd3dc\nspec: 1.3.0\ngo: go1.26.8\nlibseccomp: 2.6.1\nlibpathrs: 0.2.6\n"
+    },
+    {
+      "binary": "cri-dockerd",
+      "argv": [
+        "cri-dockerd",
+        "--version"
+      ],
+      "sha256": "72115edfc4e17633950f06390969e871fa24a69f238891b861fc01fce388bacc",
+      "rc": 0,
+      "stdout": "cri-dockerd 0.4.10 (2527b04)\n"
+    },
+    {
+      "binary": "calicoctl",
+      "argv": [
+        "calicoctl",
+        "version",
+        "--client"
+      ],
+      "sha256": "4dd81052745b0358d29505d3759bf5e83b0cb0e606de70760072e3edb6084d4e",
+      "rc": 0,
+      "stdout": "Client Version:    v3.32.4\nGit commit:        edf78704a2c852da907d38bca19de94e5b69893a\n"
+    },
+    {
+      "binary": "upgrade/containerd-2.2.10/containerd",
+      "argv": [
+        "upgrade/containerd-2.2.10/containerd",
+        "--version"
+      ],
+      "sha256": "b704820e511ae18516eb126c14a9b37059007b744a76b0608c49866d77aeaa9f",
+      "rc": 0,
+      "stdout": "containerd github.com/containerd/containerd/v2 v2.2.10 991ca6a8ca58b47346a42093210099e090bc6c1f\n"
+    },
+    {
+      "binary": "upgrade/calicoctl-v3.31.7",
+      "argv": [
+        "upgrade/calicoctl-v3.31.7",
+        "version",
+        "--client"
+      ],
+      "sha256": "1b91928adc39861ba5e04d8d15c4ce489731269b07a8e7444c0fdf677f041113",
+      "rc": 0,
+      "stdout": "Client Version:    v3.31.7\nGit commit:        94bd1d5b0e04459d4d1c83653e0335a9201248b8\n"
+    }
+  ],
+  "publication": {
+    "run_id": "43637693774",
+    "scope": "selected, single ext-bin1.17.0, dual registries and architectures",
+    "acceptance": "pending dual readback/CLI probes; no target package acceptance yet"
+  },
+  "remaining": [
+    "Successful publication and dual registry file/version readback",
+    "Consumer version pins and source identity consistency",
+    "Target actual CRI/etcd/CNI integration in main migration chain"
+  ]
+}

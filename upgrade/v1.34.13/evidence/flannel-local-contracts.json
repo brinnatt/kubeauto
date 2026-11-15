@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "observed_on": "2026-11-15",
+  "matrix_ids": [
+    "UPG-04",
+    "UPG-08"
+  ],
+  "claim": "Target installer/CNI/health render and actual wrong-pair role refusal; delivered source render unchanged",
+  "parent_acceptance": false,
+  "live_lab_execution": false,
+  "checks": [
+    {
+      "command": "PYTHONPATH=<verified-ansible218> .venv/bin/python -B -m unittest upgrade.tests.test_flannel -v",
+      "rc": 0,
+      "tests": 4,
+      "ansible_core": "2.18.6",
+      "fixture": "TemporaryDirectory/localhost only; no lab target"
+    }
+  ],
+  "inputs": {
+    "roles/flannel/tasks/main.yml": "f7c4d0567bc6feb1ed1a569a2617e4722ba764e9cf9daccdb67284dee915a3c2",
+    "roles/flannel/templates/kube-flannel.yaml.j2": "9841eb60176021c16e1f457b767975869d260f3943ee90a2d3aad61d202bf931",
+    "upgrade/tests/test_flannel.py": "7a28ef8a0ab13d9fd9c18c25376de314ddbeb8c1299191061ec54aa416b6c1b2"
+  },
+  "raw_log": "upgrade/v1.34.13/evidence/raw/flannel-local-contracts.log",
+  "next": "Artifact readback, admitted independent handoff/host-port preflight and actual business transition"
+}

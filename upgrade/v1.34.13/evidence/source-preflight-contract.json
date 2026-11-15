@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "observed_on": "2026-11-15",
+  "source": "v1.33.6",
+  "target": "v1.34.13",
+  "matrix_refs": [
+    "UPG-04",
+    "UPG-05"
+  ],
+  "classification": "product-subcheck-and-test-contract",
+  "scope": "只读精确源API/kubelet预检的本地CLI合同；未接入kubecli或现场runner",
+  "result": "pass",
+  "parent_acceptance": false,
+  "live_execution": false,
+  "mutation": "none",
+  "inputs": {
+    "upgrade/product/kubernetes_preflight.py": "8a8ea6bfb08c1f79e3ac4cdd6bb5a5de30e973aeab01cba1100c3648225c6b0b",
+    "upgrade/tests/test_kubernetes_preflight.py": "d600067ebe74e859ab69b17f04d5b4b72b4abd82806c4ec42b6bbf6bfa355db1"
+  },
+  "official_source_ids": [
+    "K8S-SKEW",
+    "K8S-API-HEALTH-CONTRACT",
+    "KUBECTL-RAW-CONTRACT",
+    "K8S-13413-VERSION-CONTRACT",
+    "K8S-13413-NODE-CONTRACT"
+  ],
+  "first_failure": {
+    "command": ".venv/bin/python -B -m unittest upgrade.tests.test_kubernetes_preflight -v",
+    "rc": 1,
+    "tests": 9,
+    "failures": 2,
+    "layer": "product-subcheck-input-validation",
+    "causes": [
+      "端口0未在运行kubectl前拒绝",
+      "urlsplit畸形IPv6抛ValueError未转换为有界拒绝"
+    ],
+    "fix": "只在endpoint校验层处理URL/port解析并拒绝port<1；同一真实CLI反证通过",
+    "lab_residue": "none; offline temporary fixture cleanup owned by unittest"
+  },
+  "verified_contracts": [
+    "仅相邻minor且精确稳定版本",
+    "非法endpoint/重复inventory/摘要错误在子进程前拒绝",
+    "目标client版本与每个API源版本精确检查",
+    "每个API readyz HTTP失败立即停止，不解析正文",
+    "完整节点集合、唯一Ready=True、精确kubelet与非删除状态",
+    "每个真实argv强制TLS、server、kubeconfig、请求超时，只有version/get",
+    "任一探测失败无receipt、不回显stdout/stderr秘密",
+    "畸形API JSON与对象安全拒绝",
+    "0600原子独占receipt；旧文件/软链/并发生成均不覆盖，临时文件回收"
+  ],
+  "verification": {
+    "command": ".venv/bin/python -B -m unittest discover -s upgrade/tests -v",
+    "rc": 0,
+    "tests": 37,
+    "elapsed_seconds": 7.915,
+    "preflight_test_methods": 10,
+    "raw_log": "upgrade/v1.34.13/evidence/raw/local-contracts-20261115.log"
+  },
+  "completed_ladder": 2,
+  "next_permitted_level": "只有真实产品handoff、组合/制品/租约/恢复点准入后，才资格化最窄固定runner现场分支；本记录本身不解锁现场",
+  "remaining": [
+    "全部API后端发现",
+    "controller/proxy实际身份",
+    "组件组合与制品准入",
+    "容量/租约/源健康其余条件",
+    "业务账本和验证过的恢复点",
+    "产品入口集成与固定runner合同",
+    "现场预检与拒绝证据"
+  ]
+}

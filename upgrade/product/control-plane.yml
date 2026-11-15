@@ -1,0 +1,250 @@
+# Called by the minor-upgrade product path after combination, lease, source,
+# artifact and recovery-point admission. Never use the install roles here:
+# they also reconcile certificates, CNI configuration and node services.
+- name: Admit the exact minor control-plane transition
+  hosts: localhost
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - name: Require the admitted first-hop inputs
+      ansible.builtin.assert:
+        that:
+          - UPGRADE_SOURCE_VERSION | default('') == 'v1.33.6'
+          - K8S_VER == 'v1.34.13'
+          - UPGRADE_PRECONDITIONS_VERIFIED | default(false) | bool
+          - UPGRADE_RUN_ID | default('') is match('^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,95}$')
+          - groups['kube_master'] | length > 0
+          - UPGRADE_API_BACKENDS | length == groups['kube_master'] | length
+          - UPGRADE_API_BACKENDS | unique | length == UPGRADE_API_BACKENDS | length
+          - SECURE_PORT | int > 0
+          - SECURE_PORT | int <= 65535
+        fail_msg: "Minor-upgrade admission is incomplete; no control-plane mutation is permitted."
+
+    - name: Match every API backend to its actual master before any probe
+      ansible.builtin.assert:
+        that:
+          - ('https://' ~ item ~ ':' ~ (SECURE_PORT | string)) in UPGRADE_API_BACKENDS
+      loop: "{{ groups['kube_master'] }}"
+
+    - name: Read every admitted API backend before mutation
+      ansible.builtin.command:
+        argv:
+          - "{{ base_dir }}/kube-bin/kubectl"
+          - "--kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+          - "--server={{ item }}"
+          - --insecure-skip-tls-verify=false
+          - --request-timeout=10s
+          - get
+          - --raw=/version
+      loop: "{{ UPGRADE_API_BACKENDS }}"
+      register: upgrade_api_versions
+      changed_when: false
+
+    - name: Refuse versions outside this exact transition
+      ansible.builtin.assert:
+        that:
+          - (item.stdout | from_json).gitVersion in [UPGRADE_SOURCE_VERSION, K8S_VER]
+      loop: "{{ upgrade_api_versions.results }}"
+
+    - name: Require readiness of every admitted API backend
+      ansible.builtin.command:
+        argv:
+          - "{{ base_dir }}/kube-bin/kubectl"
+          - "--kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+          - "--server={{ item }}"
+          - --insecure-skip-tls-verify=false
+          - --request-timeout=10s
+          - get
+          - --raw=/readyz
+      loop: "{{ UPGRADE_API_BACKENDS }}"
+      changed_when: false
+
+- name: Admit every running controller before the first API replacement
+  hosts: kube_master
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - name: Read every running controller identity without mutation
+      ansible.builtin.shell: |
+        set -eu
+        systemctl is-active --quiet {{ item }}
+        upgrade_pid=$(systemctl show --property=MainPID --value {{ item }})
+        test "$upgrade_pid" -gt 0
+        "/proc/$upgrade_pid/exe" --version
+      args:
+        executable: /bin/bash
+      loop: [kube-controller-manager, kube-scheduler]
+      register: upgrade_source_controllers
+      changed_when: false
+
+    - name: Refuse unknown or prematurely advanced controllers before mutation
+      ansible.builtin.assert:
+        that:
+          - item.stdout in ['Kubernetes ' ~ UPGRADE_SOURCE_VERSION, 'Kubernetes ' ~ K8S_VER]
+          - >-
+            item.stdout == 'Kubernetes ' ~ UPGRADE_SOURCE_VERSION or
+            (hostvars['localhost'].upgrade_api_versions.results |
+             map(attribute='stdout') | map('from_json') |
+             selectattr('gitVersion', 'equalto', K8S_VER) | list | length) ==
+            UPGRADE_API_BACKENDS | length
+      loop: "{{ upgrade_source_controllers.results }}"
+
+- name: Upgrade API servers one at a time
+  hosts: kube_master
+  gather_facts: false
+  serial: 1
+  any_errors_fatal: true
+  vars:
+    upgrade_this_backend: "https://{{ inventory_hostname }}:{{ SECURE_PORT }}"
+    upgrade_prior_api: >-
+      {{ hostvars['localhost'].upgrade_api_versions.results |
+         selectattr('item', 'equalto', upgrade_this_backend) |
+         map(attribute='stdout') | map('from_json') | first }}
+  tasks:
+    - name: Replace only the API server executable
+      ansible.builtin.copy:
+        src: "{{ base_dir }}/kube-bin/kube-apiserver"
+        dest: "{{ bin_dir }}/kube-apiserver"
+        mode: '0755'
+      when: upgrade_prior_api.gitVersion != K8S_VER
+
+    - name: Restart only this API server
+      ansible.builtin.systemd_service:
+        name: kube-apiserver
+        daemon_reload: true
+        state: restarted
+      when: upgrade_prior_api.gitVersion != K8S_VER
+
+    - name: Wait for this backend to report the exact target
+      ansible.builtin.command:
+        argv:
+          - "{{ base_dir }}/kube-bin/kubectl"
+          - "--kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+          - "--server=https://{{ inventory_hostname }}:{{ SECURE_PORT }}"
+          - --insecure-skip-tls-verify=false
+          - --request-timeout=10s
+          - get
+          - --raw=/version
+      delegate_to: localhost
+      register: upgrade_api_version
+      changed_when: false
+      until: >-
+        upgrade_api_version.rc == 0 and
+        (upgrade_api_version.stdout | from_json).gitVersion == K8S_VER
+      retries: 30
+      delay: 2
+
+    - name: Wait for readiness including etcd before the next backend
+      ansible.builtin.command:
+        argv:
+          - "{{ base_dir }}/kube-bin/kubectl"
+          - "--kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+          - "--server=https://{{ inventory_hostname }}:{{ SECURE_PORT }}"
+          - --insecure-skip-tls-verify=false
+          - --request-timeout=10s
+          - get
+          - --raw=/readyz
+      delegate_to: localhost
+      register: upgrade_api_ready
+      changed_when: false
+      until: upgrade_api_ready.rc == 0
+      retries: 30
+      delay: 2
+
+- name: Establish the all-API barrier before any controller advancement
+  hosts: localhost
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - name: Verify every reachable backend has the exact target version
+      ansible.builtin.command:
+        argv:
+          - "{{ base_dir }}/kube-bin/kubectl"
+          - "--kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+          - "--server={{ item }}"
+          - --insecure-skip-tls-verify=false
+          - --request-timeout=10s
+          - get
+          - --raw=/version
+      loop: "{{ UPGRADE_API_BACKENDS }}"
+      register: upgrade_all_api_versions
+      changed_when: false
+      failed_when: >-
+        upgrade_all_api_versions.rc != 0 or
+        (upgrade_all_api_versions.stdout | from_json).gitVersion != K8S_VER
+
+    - name: Verify every reachable backend is ready at the barrier
+      ansible.builtin.command:
+        argv:
+          - "{{ base_dir }}/kube-bin/kubectl"
+          - "--kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+          - "--server={{ item }}"
+          - --insecure-skip-tls-verify=false
+          - --request-timeout=10s
+          - get
+          - --raw=/readyz
+      loop: "{{ UPGRADE_API_BACKENDS }}"
+      changed_when: false
+
+- name: Upgrade controllers after all API servers
+  hosts: kube_master
+  gather_facts: false
+  serial: 1
+  any_errors_fatal: true
+  tasks:
+    - name: Read running controller versions before replacement
+      ansible.builtin.shell: |
+        set -eu
+        systemctl is-active --quiet {{ item }}
+        upgrade_pid=$(systemctl show --property=MainPID --value {{ item }})
+        test "$upgrade_pid" -gt 0
+        "/proc/$upgrade_pid/exe" --version
+      args:
+        executable: /bin/bash
+      loop: [kube-controller-manager, kube-scheduler]
+      register: upgrade_prior_controllers
+      changed_when: false
+
+    - name: Refuse controller identities outside this transition
+      ansible.builtin.assert:
+        that:
+          - item.stdout in ['Kubernetes ' ~ UPGRADE_SOURCE_VERSION, 'Kubernetes ' ~ K8S_VER]
+      loop: "{{ upgrade_prior_controllers.results }}"
+
+    - name: Replace only controller and scheduler executables
+      ansible.builtin.copy:
+        src: "{{ base_dir }}/kube-bin/{{ item }}"
+        dest: "{{ bin_dir }}/{{ item }}"
+        mode: '0755'
+      loop: [kube-controller-manager, kube-scheduler]
+      when: >-
+        (upgrade_prior_controllers.results | selectattr('item', 'equalto', item) |
+         first).stdout != 'Kubernetes ' ~ K8S_VER
+
+    - name: Restart controllers on only this master
+      ansible.builtin.systemd_service:
+        name: "{{ item }}"
+        daemon_reload: true
+        state: restarted
+      loop: [kube-controller-manager, kube-scheduler]
+      when: >-
+        (upgrade_prior_controllers.results | selectattr('item', 'equalto', item) |
+         first).stdout != 'Kubernetes ' ~ K8S_VER
+
+    - name: Verify the executable of each running controller process
+      ansible.builtin.shell: |
+        set -eu
+        systemctl is-active --quiet {{ item }}
+        upgrade_pid=$(systemctl show --property=MainPID --value {{ item }})
+        test "$upgrade_pid" -gt 0
+        "/proc/$upgrade_pid/exe" --version
+      args:
+        executable: /bin/bash
+      loop: [kube-controller-manager, kube-scheduler]
+      register: upgrade_controller_version
+      changed_when: false
+      until: >-
+        upgrade_controller_version.rc == 0 and
+        upgrade_controller_version.stdout == 'Kubernetes ' ~ K8S_VER
+      retries: 15
+      delay: 2

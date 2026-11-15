@@ -2,11 +2,20 @@
 
 # check k8s version
 - hosts: kube_master
+  gather_facts: false
+  any_errors_fatal: true
   tasks:
   - name: get running k8s version
-    shell: "{{ bin_dir }}/kube-apiserver --version"
+    shell: |
+      set -eu
+      systemctl is-active --quiet kube-apiserver
+      upgrade_pid=$(systemctl show --property=MainPID --value kube-apiserver)
+      test "$upgrade_pid" -gt 0
+      "/proc/$upgrade_pid/exe" --version
+    args:
+      executable: /bin/bash
     register: RUNNING_VER
-    run_once: true
+    changed_when: false
 
   - name: print running version
     debug: var="RUNNING_VER.stdout"
@@ -17,10 +26,26 @@
     register: UPDATE_VER
     run_once: true
     delegate_to: localhost
+    changed_when: false
 
   - name: print update version
     debug: var="UPDATE_VER.stdout"
     run_once: true
+
+  - name: Require exact upstream versions and matching configured target
+    ansible.builtin.assert:
+      that:
+        - RUNNING_VER.stdout is match('^Kubernetes v1\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$')
+        - UPDATE_VER.stdout is match('^Kubernetes v1\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$')
+        - UPDATE_VER.stdout == 'Kubernetes v' ~ (K8S_VER | string | regex_replace('^v', ''))
+      fail_msg: Legacy patch upgrade requires exact running and configured binary identities.
+
+  - name: Refuse minor changes and downgrades in the legacy patch path
+    ansible.builtin.assert:
+      that:
+        - RUNNING_VER.stdout.split('.')[0:2] == UPDATE_VER.stdout.split('.')[0:2]
+        - UPDATE_VER.stdout.split('.')[2] | int >= RUNNING_VER.stdout.split('.')[2] | int
+      fail_msg: Legacy patch upgrade refuses minor changes and downgrades; a separately admitted minor-upgrade path is required.
 
   - name: check version
     fail: msg="running version is the same as the update version, UPDATE ABORT."

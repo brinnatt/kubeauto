@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "observed_on": "2026-11-15",
+  "matrix_ids": [
+    "UPG-02",
+    "UPG-04",
+    "UPG-07"
+  ],
+  "classification": "product configuration and test-gate",
+  "source_ga_sha": "940c9020144a88b370cba36793a4d7fad6a347ab",
+  "result": "local-contracts-pass",
+  "tests": 4,
+  "rc": 0,
+  "skipped": 0,
+  "elapsed_seconds": 2.123,
+  "raw_log": "upgrade/v1.34.13/evidence/raw/containerd-config-contracts-20261115.log",
+  "raw_sha256": "65ca9c76e591bf3d814616859c39d5728147b107208121ae88cf9c638b3eb2d3",
+  "inputs": {
+    "roles/containerd/tasks/main.yml": "157fe3d56693e25989a63cb0d56e0efd5744c632bbcc3a1c391286e0195e123a",
+    "roles/containerd/templates/config.toml.j2": "7e9fe39821b144496337a4679942c1be6165eea94aecdf2bdc090b57b78135e2",
+    "upgrade/tests/test_containerd.py": "191a41c73a7d9e78db33a2f6a95285011fdd9d6f40df3328537e09ccab1bb744"
+  },
+  "official_binary_fixtures": [
+    {
+      "version": "2.2.10",
+      "source_url": "https://github.com/containerd/containerd/releases/download/v2.2.10/containerd-static-2.2.10-linux-amd64.tar.gz",
+      "archive_sha256": "e7bbdb6c1e4d76d501783b25cddb63e5cc29d0e16209b216c4a561548e3c0e3c",
+      "binary_sha256": "b704820e511ae18516eb126c14a9b37059007b744a76b0608c49866d77aeaa9f",
+      "scope": "Offline containerd config dump/migrate only; no daemon or socket calls; not a lab node"
+    },
+    {
+      "version": "2.3.7",
+      "source_url": "https://github.com/containerd/containerd/releases/download/v2.3.7/containerd-static-2.3.7-linux-amd64.tar.gz",
+      "archive_sha256": "828db4f3720a37361a803ece1633feca2b130a68579cdb4a9ea4fad03df35a33",
+      "binary_sha256": "2bef909678b2c232110a784a5c4b3733b661027cae4ea3e3cfea1d1d14cbe45b",
+      "scope": "Offline containerd config dump/migrate only; no daemon or socket calls; not a lab node"
+    }
+  ],
+  "official_source_ids": [
+    "CONTAINERD-22-23-RELEASES",
+    "CONTAINERD-237-RUNC-POLICY",
+    "CONTAINERD-2210-RUNC-POLICY",
+    "CONTAINERD-237-RUNC-PIN",
+    "CONTAINERD-2210-RUNC-PIN",
+    "CONTAINERD-237-SCHEMA",
+    "CONTAINERD-237-CONFIG-LOADER",
+    "CONTAINERD-237-CONFIG-CLI",
+    "CONTAINERD-237-CRI-CONFIG",
+    "CONTAINERD-2210-CRI-CONFIG",
+    "CONTAINERD-237-OPS",
+    "RUNC-152-RELEASE",
+    "RUNC-15-CUMULATIVE",
+    "RUNC-152-CGROUPV2",
+    "RUNC-152-SPEC",
+    "NERDCTL-234-COMPATIBILITY",
+    "CRI-DOCKERD-0410-CLIENT",
+    "CRI-DOCKERD-0410-DOCKER-CLIENT"
+  ],
+  "completed_ladder": 2,
+  "next_permitted_level": "Real product node-stage handoff contracts and artifact/lease/source/recovery admission before focused live migration",
+  "live_execution": false,
+  "parent_acceptance": false,
+  "first_failures": [
+    {
+      "classification": "test-gate",
+      "raw_log": "upgrade/v1.34.13/evidence/raw/containerd-first-fixture-failure.log",
+      "cause": "isolated Ansible could not parse existing collection modprobe module; parse-only stub and forbidden connection fixture prove assert runs first"
+    },
+    {
+      "classification": "test-gate",
+      "raw_log": "upgrade/v1.34.13/evidence/raw/containerd-schema-assumption-first-failure.log",
+      "cause": "test incorrectly required schema3 output from2.3.7; official loader/documentation and real binary show automatic schema4 migration"
+    }
+  ],
+  "limitations": [
+    "No daemon, socket, lab or ARM64 execution; binary fixtures only prove offline config load/decode/migration",
+    "Docker/CRI branch, real runtime migration, artifact publication and GA remain pending"
+  ]
+}

@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "accepted": true,
+  "source": "v1.33.6",
+  "target": "v1.34.13",
+  "case_ids": [
+    "UPG-06"
+  ],
+  "method": "live",
+  "claim": "产品入口 kubecli upgrade 已在保留 v1.33.6 source lease 与 etcd snapshot 的同一六节点 HA 集群上完成控制面首跳：三 API server 按 serial=1 达到 v1.34.13/readyz，全部 API barrier 后三 master 的 controller-manager/scheduler 才按顺序达到 v1.34.13；节点仍保持源 kubelet，未进入 UPG-07。首次运行的后端字段类型门禁和控制面后业务探针顺序门禁均保留在 journal/run log，修复后按持锁 journal 续跑且不重复替换已完成服务。本证据只签 UPG-06，不签节点、组件集成或 GA。",
+  "covered_subcases": [
+    "source-observation-rebound-to-product-inventory",
+    "all-api-servers-v13413-and-ready",
+    "controllers-after-all-api-servers",
+    "durable-journal-first-failure-stop-and-resume",
+    "source-lease-and-recovery-point-bound-to-run"
+  ],
+  "inputs": {
+    "upgrade/product/coordinator.py": "70a144886360619577cab4ed5c0e69b9674184d8deb584d1766b46ab3148914a",
+    "upgrade/product/entrypoint.py": "9aee085260f79958ff5dc5d82d647c5727e9f7625d33ac7fe179d751fb1975ec",
+    "upgrade/product/kubernetes_stage.py": "2ba79ccd8916981ba28559f1c56e45c67eafe1e74dc2ba6619a2ee64ddb0417e",
+    "upgrade/product/kubernetes_preflight.py": "4c88f0984533a22d8f970eb6a8e8547d965be48257ec42cb82edc215af2c3080",
+    "upgrade/product/inventory.py": "1886b4412f6c4b09b439a4f4ef8ae8a9deb7b837029a15cec652c6a273b39606",
+    "upgrade/product/control-plane.yml": "25d1d26d5ca2919715a5f080a51cbc9143c07ee8ef4a3d445bfd95f116b94101",
+    "upgrade/product/kubernetes-observe.yml": "fa74197688fa69da67abc01abb914e22372f88126e5fd8f169864bed852ad8bd",
+    "upgrade/tests/test_coordinator.py": "be65d91379c59a6e00bc9104dc18d3566bdfa60b0ba2021d72c6e1e8f3a065e3",
+    "upgrade/tests/test_kubernetes_stage.py": "68686cc519eb2d54aff9296bd9f27cc132b8632b5553a3fe4f8526bc122edf5d",
+    "upgrade/v1.34.13/release.yaml": "cfdcd0a7d3b168c6c607d27392c6942cf780007e49febf72add154f0c5ef0143",
+    "upgrade/v1.34.13/evidence/UPG-05.json": "50227d7ff60209cab28d349e7f17a8a3892bc249535d4ea2c0777e59a657f0c5"
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/kubeauto-upgrade-v1336-source-control-plane.run.log",
+      "sha256": "e9548143d97d5af1923eedf63d74fa0b65d5672ffd253846cafd59db5cf044d1"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/control-plane.exit",
+      "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/control-plane.finalized",
+      "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/control-plane-verify.json",
+      "sha256": "435f788189fde35242f34cfd1e43c63b4cda84024e160256734790f81e1ac957"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/journal.json",
+      "sha256": "bf477d90990ad87e84818c0316b10add6990fe08103ebcad0e13fdcb715af458"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/source-observation.json",
+      "sha256": "02e441dff50e2b89ac08dcb0a6dfc7b3ec033f78024ac847f9de07910b1f2216"
+    }
+  ],
+  "official_source_ids": [
+    "K8S-SKEW",
+    "K8S-API-HEALTH-CONTRACT",
+    "K8S-13413-VERSION-CONTRACT",
+    "K8S-13413-NODE-CONTRACT"
+  ],
+  "run_id": "k8s-v1336-to-v13413",
+  "durable_rc": 0,
+  "finalized_rc": 0,
+  "failure_markers": 0,
+  "log": {
+    "path": "upgrade/v1.34.13/evidence/raw/kubeauto-upgrade-v1336-source-control-plane.run.log",
+    "sha256": "e9548143d97d5af1923eedf63d74fa0b65d5672ffd253846cafd59db5cf044d1"
+  },
+  "durable_exit": {
+    "path": "upgrade/v1.34.13/evidence/raw/control-plane.exit",
+    "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+  },
+  "durable_finalized": {
+    "path": "upgrade/v1.34.13/evidence/raw/control-plane.finalized",
+    "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+  },
+  "success_marker": "UPGRADE_CONTROL_PLANE_STAGE_PASS",
+  "cleanup_marker": "KUBERNETES_CONTROL_PLANE_SCOPE_VERIFY_PASS",
+  "business_assertions": [
+    "three API backends v1.34.13 and readyz success",
+    "all six API barrier checks passed before controller advancement",
+    "six controller processes (3 controller-manager + 3 scheduler) v1.34.13",
+    "six source nodes retained UID/Ready and kubelet v1.33.6",
+    "three masters retained product-owned SchedulingDisabled and workers remained schedulable",
+    "zero Failed Pods at control-plane scope",
+    "journal completed only kubernetes/control-plane and retained first test-gate failure"
+  ],
+  "customer_signoff": null,
+  "live_execution": true,
+  "completed_ladder": 4
+}

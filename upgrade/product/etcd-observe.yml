@@ -1,0 +1,93 @@
+# Read the complete admitted cluster. Called before and after each member; all
+# commands use the reviewed TLS identities and never discover extra endpoints.
+- name: Read the complete etcd membership
+  ansible.builtin.command:
+    argv: "{{ upgrade_etcd_client + ['member', 'list', '--write-out=json'] }}"
+  delegate_to: localhost
+  register: upgrade_etcd_members
+  changed_when: false
+
+- name: Refuse added removed learner or renamed etcd members
+  vars:
+    upgrade_members: "{{ (upgrade_etcd_members.stdout | from_json)['members'] }}"
+  ansible.builtin.assert:
+    that:
+      - upgrade_members | length == UPGRADE_ETCD_MEMBERS | length
+      - >-
+        (upgrade_members | map(attribute='ID') | sort | list) ==
+        (UPGRADE_ETCD_MEMBERS | map(attribute='ID') | sort | list)
+
+- name: Match every member to its reviewed persistent identity
+  vars:
+    upgrade_member: >-
+      {{ (upgrade_etcd_members.stdout | from_json)['members'] |
+         selectattr('ID', 'equalto', item.ID) | first }}
+  ansible.builtin.assert:
+    that:
+      - upgrade_member.name == item.name
+      - upgrade_member.peerURLs | sort == item.peerURLs | sort
+      - upgrade_member.clientURLs | sort == item.clientURLs | sort
+      - not (upgrade_member.isLearner | default(false) | bool)
+  loop: "{{ UPGRADE_ETCD_MEMBERS }}"
+
+- name: Require every etcd endpoint healthy before continuing
+  ansible.builtin.command:
+    argv: "{{ upgrade_etcd_client + ['endpoint', 'health', '--write-out=json'] }}"
+  delegate_to: localhost
+  register: upgrade_etcd_health
+  changed_when: false
+  until: upgrade_etcd_health.rc == 0
+  retries: 30
+  delay: 2
+
+- name: Read every etcd endpoint identity and version
+  ansible.builtin.command:
+    argv: "{{ upgrade_etcd_client + ['endpoint', 'status', '--write-out=json'] }}"
+  delegate_to: localhost
+  register: upgrade_etcd_status
+  changed_when: false
+
+- name: Require exactly the admitted etcd endpoints
+  vars:
+    upgrade_statuses: "{{ upgrade_etcd_status.stdout | from_json }}"
+    upgrade_healths: "{{ upgrade_etcd_health.stdout | from_json }}"
+  ansible.builtin.assert:
+    that:
+      - upgrade_statuses | length == groups['etcd'] | length
+      - upgrade_healths | length == groups['etcd'] | length
+      - >-
+        (upgrade_statuses | map(attribute='Endpoint') | sort | list) ==
+        (UPGRADE_ETCD_ENDPOINTS | sort)
+      - >-
+        (upgrade_healths | map(attribute='endpoint') | sort | list) ==
+        (UPGRADE_ETCD_ENDPOINTS | sort)
+      - upgrade_healths | selectattr('health', 'equalto', true) | list | length == groups['etcd'] | length
+
+- name: Refuse foreign cluster identities revisions versions or alarms
+  vars:
+    upgrade_member: >-
+      {{ UPGRADE_ETCD_MEMBERS | selectattr('clientURLs', 'contains', item.Endpoint) | first }}
+  ansible.builtin.assert:
+    that:
+      - item.Status.header.cluster_id == UPGRADE_ETCD_CLUSTER_ID
+      - item.Status.header.member_id == upgrade_member.ID
+      - item.Status.header.revision | int >= UPGRADE_ETCD_SOURCE_REVISION | int
+      - item.Status.version in ['3.6.4', '3.6.16']
+      - item.Status.leader in (UPGRADE_ETCD_MEMBERS | map(attribute='ID') | list)
+      - item.Status.errors | default([]) | length == 0
+      - not (item.Status.isLearner | default(false) | bool)
+      - >-
+        item.Status.version == '3.6.4' or
+        UPGRADE_ETCD_RESUME | default(false) | bool or
+        upgrade_etcd_completed_host | default('') | length > 0
+  loop: "{{ upgrade_etcd_status.stdout | from_json }}"
+
+- name: Require this restarted member to serve the exact target
+  ansible.builtin.assert:
+    that:
+      - item.Status.version == '3.6.16'
+  loop: >-
+    {{ (upgrade_etcd_status.stdout | from_json) |
+       selectattr('Endpoint', 'equalto',
+         'https://' ~ (upgrade_etcd_completed_host | default('')) ~ ':2379') | list }}
+  when: upgrade_etcd_completed_host | default('') | length > 0

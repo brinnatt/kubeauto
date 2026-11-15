@@ -1,0 +1,178 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-11-14T21:45:37.063673+00:00",
+  "records": [
+    {
+      "image": "registry:2",
+      "digest": "sha256:3ecb41811885031808684a16cd09cb5c4c0fbe29d9ca1c9e806eedffb0a9ca66",
+      "architectures": [
+        "amd64",
+        "arm64",
+        "unknown",
+        "unknown"
+      ],
+      "platforms": {
+        "amd64": {
+          "manifest": "sha256:08b32fac48cfc49b8dd040249a93b1697b194070708bc2476ec9134cfb9d1b3b",
+          "config": "sha256:3214c52ee9f819b21f3b4cc38ccd801940dc952cd0ac89d2f940fb003126a82c",
+          "layers": [
+            "sha256:44cf07d57ee4424189f012074a59110ee2065adfdde9c7d9826bebdffce0a885",
+            "sha256:bbbdd6c6894b7d41bab22098e3a0fff77de4a231f5b407224ead5b3f26cc4ff3",
+            "sha256:8e82f80af0de06ae95429a79d00ae7e98c0f5ded5555a06c024757d81371a742",
+            "sha256:3493bf46cdec3b8ecbb96c0b1cd7fc5f90964306b7c55a0136dac0beeaa627f9",
+            "sha256:6d464ea18732475d5c3591f1eba3ee96a974808791a5fe103ea1c33199f2eb74"
+          ],
+          "runtime_configuration_sha256": "e0cb9d4cdf10278a93ea8770e7f5e87086c2afb087f80e62af28be4c86c328d3",
+          "rootfs": {
+            "type": "layers",
+            "diff_ids": [
+              "sha256:f44f286046d9443b2aeb895c0e1f4e688698247427bca4d15112c8e3432a803e",
+              "sha256:f646c8e10325628ebf7e4e4e29504f6507573a4d08b6ec91d8ff0fd92b8e1a71",
+              "sha256:811f3777554af05e129c61a8a5560c14039294055eaed4fb3b5d71537a22d694",
+              "sha256:858f5c95b990e95d446a3688ef63d976fc9eb2fbc2061f4bfb14ae307df8b92f",
+              "sha256:53c600587fd6fd570e1729c8b5b15df1352aef33a97ff2def12351d53754b3ea"
+            ]
+          },
+          "runtime_keys": [
+            "ExposedPorts",
+            "Env",
+            "Entrypoint",
+            "Cmd",
+            "Volumes",
+            "WorkingDir"
+          ],
+          "label_keys": [
+            "org.opencontainers.image.revision",
+            "org.opencontainers.image.source",
+            "org.opencontainers.image.version"
+          ]
+        },
+        "arm64": {
+          "manifest": "sha256:a38f12f4bb27eaa70f05321ff7216d4a2a9060e7aecd1a51e3e9bf535da634d8",
+          "config": "sha256:9fd6553b929dd4d9615df14163d46724afe1e6c25f4869962a9fea990fd312b3",
+          "layers": [
+            "sha256:95459497489f07b9d71d294c852a09f9bbf1af51bb35db752a31f6f48935e293",
+            "sha256:8bbaad1488a8714e2cc69c2d60095bc20bf1b00df2cbd398f4dc6a36e1abf207",
+            "sha256:9a6b3f59ebc2e050b970e37757f7a57120b76c52798fcf5aaf1dc6eb8d8e8b47",
+            "sha256:bd39ca3613a666408241996cb540196c3a89d30375c8f12b33b9cd4fd7530e6f",
+            "sha256:ddcb6d98388d2ab9e73e34a33bc0795566eefbdc2be62c3d8e63f8d44d21d6ec"
+          ],
+          "runtime_configuration_sha256": "e0cb9d4cdf10278a93ea8770e7f5e87086c2afb087f80e62af28be4c86c328d3",
+          "rootfs": {
+            "type": "layers",
+            "diff_ids": [
+              "sha256:171a26c7bc56cc6ba67549042b24db9f5bc7cc7d4f195e8f03aaf58e956b2544",
+              "sha256:014ffb8901a5ffe69bf08c0b209be589a73679ade0616f1a0de42a0416115743",
+              "sha256:97599ee5c821634635233a30a93b43a27b1eb9a85b846754271d763fed30afda",
+              "sha256:7ad8ac1e6be1a1009389a896b1fd3a5fe9eed187e2a763a4fb40a3eaa0fa9173",
+              "sha256:19c15db2ec23c42d3672333c239243b856f1c88aff1a74cdf247e2d900db3514"
+            ]
+          },
+          "runtime_keys": [
+            "ExposedPorts",
+            "Env",
+            "Entrypoint",
+            "Cmd",
+            "Volumes",
+            "WorkingDir"
+          ],
+          "label_keys": [
+            "org.opencontainers.image.revision",
+            "org.opencontainers.image.source",
+            "org.opencontainers.image.version"
+          ]
+        }
+      }
+    },
+    {
+      "image": "registry:2.8.3",
+      "digest": "sha256:1f53ffdde2e358d3e880ed587e14c95bd1053af4feb093b0e9881f519ba4fb26",
+      "architectures": [
+        "amd64",
+        "arm64",
+        "unknown",
+        "unknown"
+      ],
+      "platforms": {
+        "amd64": {
+          "manifest": "sha256:7432dc16e997619674adf6e8c4dc47748404cb923031300bf5884b134032407b",
+          "config": "sha256:09ebfbded33d7e231e9ceba4e986fc780f7242c68c6cefd29015aa50fc2c9b2e",
+          "layers": [
+            "sha256:44cf07d57ee4424189f012074a59110ee2065adfdde9c7d9826bebdffce0a885",
+            "sha256:bbbdd6c6894b7d41bab22098e3a0fff77de4a231f5b407224ead5b3f26cc4ff3",
+            "sha256:8e82f80af0de06ae95429a79d00ae7e98c0f5ded5555a06c024757d81371a742",
+            "sha256:3493bf46cdec3b8ecbb96c0b1cd7fc5f90964306b7c55a0136dac0beeaa627f9",
+            "sha256:6d464ea18732475d5c3591f1eba3ee96a974808791a5fe103ea1c33199f2eb74"
+          ],
+          "runtime_configuration_sha256": "e0cb9d4cdf10278a93ea8770e7f5e87086c2afb087f80e62af28be4c86c328d3",
+          "rootfs": {
+            "type": "layers",
+            "diff_ids": [
+              "sha256:f44f286046d9443b2aeb895c0e1f4e688698247427bca4d15112c8e3432a803e",
+              "sha256:f646c8e10325628ebf7e4e4e29504f6507573a4d08b6ec91d8ff0fd92b8e1a71",
+              "sha256:811f3777554af05e129c61a8a5560c14039294055eaed4fb3b5d71537a22d694",
+              "sha256:858f5c95b990e95d446a3688ef63d976fc9eb2fbc2061f4bfb14ae307df8b92f",
+              "sha256:53c600587fd6fd570e1729c8b5b15df1352aef33a97ff2def12351d53754b3ea"
+            ]
+          },
+          "runtime_keys": [
+            "ExposedPorts",
+            "Env",
+            "Entrypoint",
+            "Cmd",
+            "Volumes",
+            "WorkingDir"
+          ],
+          "label_keys": [
+            "org.opencontainers.image.revision",
+            "org.opencontainers.image.source",
+            "org.opencontainers.image.version"
+          ]
+        },
+        "arm64": {
+          "manifest": "sha256:22edab652a34f34c3e3485a38f46fc0cd608fc23b0fb9abfa4b9093e6694e1fa",
+          "config": "sha256:058b30c8ba0f66c45e71365ea4074096aed48f15a8011c68e094b79a798d70d6",
+          "layers": [
+            "sha256:95459497489f07b9d71d294c852a09f9bbf1af51bb35db752a31f6f48935e293",
+            "sha256:8bbaad1488a8714e2cc69c2d60095bc20bf1b00df2cbd398f4dc6a36e1abf207",
+            "sha256:9a6b3f59ebc2e050b970e37757f7a57120b76c52798fcf5aaf1dc6eb8d8e8b47",
+            "sha256:bd39ca3613a666408241996cb540196c3a89d30375c8f12b33b9cd4fd7530e6f",
+            "sha256:ddcb6d98388d2ab9e73e34a33bc0795566eefbdc2be62c3d8e63f8d44d21d6ec"
+          ],
+          "runtime_configuration_sha256": "e0cb9d4cdf10278a93ea8770e7f5e87086c2afb087f80e62af28be4c86c328d3",
+          "rootfs": {
+            "type": "layers",
+            "diff_ids": [
+              "sha256:171a26c7bc56cc6ba67549042b24db9f5bc7cc7d4f195e8f03aaf58e956b2544",
+              "sha256:014ffb8901a5ffe69bf08c0b209be589a73679ade0616f1a0de42a0416115743",
+              "sha256:97599ee5c821634635233a30a93b43a27b1eb9a85b846754271d763fed30afda",
+              "sha256:7ad8ac1e6be1a1009389a896b1fd3a5fe9eed187e2a763a4fb40a3eaa0fa9173",
+              "sha256:19c15db2ec23c42d3672333c239243b856f1c88aff1a74cdf247e2d900db3514"
+            ]
+          },
+          "runtime_keys": [
+            "ExposedPorts",
+            "Env",
+            "Entrypoint",
+            "Cmd",
+            "Volumes",
+            "WorkingDir"
+          ],
+          "label_keys": [
+            "org.opencontainers.image.revision",
+            "org.opencontainers.image.source",
+            "org.opencontainers.image.version"
+          ]
+        }
+      }
+    }
+  ],
+  "claim": "TalkEdu registry:2 and registry:2.8.3 have equal per-platform filesystem layers/rootfs and runtime configuration; index/config metadata identity differs",
+  "live_execution": false,
+  "parent_acceptance": false,
+  "remaining": [
+    "Docker Hub current dual-end identities and exact historical publication evidence",
+    "Actual registry binary version evidence and unchanged running source identity",
+    "Retain Compose Harbor lifecycle boundary; no implicit Harbor migration"
+  ]
+}

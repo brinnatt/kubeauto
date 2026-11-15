@@ -174,9 +174,9 @@ class KubeConstant:
     @staticmethod
     def longhorn_image_tags(version):
         """Pinned Chart composition plus the reviewed target IM TLS correction."""
-        if version not in ("1.12.0", "1.12.1"):
+        if version not in ("1.12.0", "1.12.1", "1.12.2"):
             raise ValueError("Unsupported Longhorn version")
-        target = version == "1.12.1"
+        target = version != "1.12.0"
         tags = {"longhorn-" + name: "v" + version for name in (
             "engine", "manager", "ui", "instance-manager", "share-manager", "backing-image-manager")}
         tags.update({
@@ -191,6 +191,18 @@ class KubeConstant:
         if target:
             tags["longhorn-instance-manager"] = "v1.12.1-kubeauto.3"
             tags["longhorn-manager"] = "v1.12.1-kubeauto.2"
+        if version == "1.12.2":
+            tags.update({
+                "longhorn-manager": "v1.12.2-kubeauto.1",
+                "longhorn-instance-manager": "v1.12.2-kubeauto.1",
+                "longhorn-support-bundle-kit": "v1.0.5",
+                "longhorn-csi-attacher": "v4.13.0-20261028",
+                "longhorn-csi-provisioner": "v5.3.0-20261028",
+                "longhorn-csi-node-driver-registrar": "v2.18.0-20261028",
+                "longhorn-csi-resizer": "v2.3.0-20261028",
+                "longhorn-csi-snapshotter": "v8.7.0-20261028",
+                "longhorn-livenessprobe": "v2.20.0-20261028",
+            })
         return tags
 
     @property
@@ -502,6 +514,7 @@ class KubeConstant:
             ],
             "local-path-provisioner": [
                 f"brinnatt/local-path-provisioner:{self.v_localpathprovisioner}",
+                f"brinnatt/busybox:{self.v_busybox}",
             ],
             "network-check": [
                 f"brinnatt/json-mock:{self.v_json_mock}",

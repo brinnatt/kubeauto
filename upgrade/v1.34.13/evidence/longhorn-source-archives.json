@@ -1,0 +1,28 @@
+[
+  {
+    "repository": "longhorn-manager",
+    "commit": "f6144ba7547c81fd1297618de521ecfef9584ae1",
+    "url": "https://codeload.github.com/longhorn/longhorn-manager/tar.gz/f6144ba7547c81fd1297618de521ecfef9584ae1",
+    "sha256": "da9abf778fab45d0c4cac99b78ce23a6b25bcf7f2c07b7db874518f9dc65c2cc",
+    "bytes": 11884169,
+    "checked_files": [
+      "controller/volume_controller.go",
+      "engineapi/instance_manager.go",
+      "go.mod"
+    ],
+    "identity": "archive entries byte-equal to official contents API blobs at v1.12.2; tag resolved to this exact commit"
+  },
+  {
+    "repository": "longhorn-instance-manager",
+    "commit": "e696c433e97a909008335ba0558ef8da9099046c",
+    "url": "https://codeload.github.com/longhorn/longhorn-instance-manager/tar.gz/e696c433e97a909008335ba0558ef8da9099046c",
+    "sha256": "f500c86fb7011ad895cba8827f0339ae4075bb3811c68b879338874866f29224",
+    "bytes": 10301252,
+    "checked_files": [
+      "vendor/github.com/longhorn/longhorn-spdk-engine/pkg/spdk/engine.go",
+      "vendor/github.com/longhorn/longhorn-spdk-engine/pkg/spdk/replica.go",
+      "go.mod"
+    ],
+    "identity": "archive entries byte-equal to official contents API blobs at v1.12.2; tag resolved to this exact commit"
+  }
+]

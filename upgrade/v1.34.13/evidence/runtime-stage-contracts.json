@@ -1,0 +1,148 @@
+{
+  "schema_version": 1,
+  "observed_on": "2026-11-15",
+  "matrix_ids": [
+    "UPG-04",
+    "UPG-07",
+    "UPG-12"
+  ],
+  "classification": "product migration and test-gate",
+  "scope": "containerd adjacent edges and Docker adapter-only path inside actual node task order; recording adapters execute real Ansible assertions/includes/loops without remote operations",
+  "checks": [
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/upgrade-contracts-129-20261115.log",
+      "sha256": "9adcc2b1c8f547f5d9146d808132a7e5b3f24dd969e1b13ab885350537eb2e32",
+      "tests": 129,
+      "rc": 0,
+      "skipped": 0,
+      "elapsed_seconds": 43.819
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/runtime-stage-ansible220-20261115.log",
+      "sha256": "97463e53305a193766b9b06f3a6cc2d0a0b6f419c673b7d4c34c3fee4be7d53b",
+      "tests": 30,
+      "rc": 0,
+      "skipped": 0,
+      "elapsed_seconds": 22.399
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/containerd-version-cli-contract-20261115.log",
+      "sha256": "195abf22cc1b829963aab5d2f36545d99f8192c814b528b9bb47775d81d24e44",
+      "tests": 18,
+      "rc": 0,
+      "skipped": 1,
+      "elapsed_seconds": 11.675
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/runtime-stage-yaml-cordon-20261115.log",
+      "sha256": "88a45ad7316d21c44b0930ad8dcccc13cd76bcd72f822952969ae782ce47c2aa",
+      "tests": 23,
+      "rc": 0,
+      "skipped": 0,
+      "elapsed_seconds": 14.145
+    }
+  ],
+  "focused_checks": [
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/cilium-clock-focused-20261115.log",
+      "sha256": "da329695545364753e0a5c54a273757860608952d7f65342e2c534b91abc3818",
+      "tests": 8,
+      "rc": 0,
+      "skipped": 0,
+      "elapsed_seconds": 5.195
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/docker-stage-focused-20261115.log",
+      "sha256": "68214e9d1b211c317e63682adf902cab8ca4a4c6053cd3dc6b702ff7386fb429",
+      "tests": 8,
+      "rc": 0,
+      "skipped": 0,
+      "elapsed_seconds": 5.643
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/release-bundle-focused-20261115.log",
+      "sha256": "f8c354c601d51a7e01ec0b4eebb7410c1367c3bfdc76d9643728e83e3e127a46",
+      "tests": 4,
+      "rc": 0,
+      "skipped": 0,
+      "elapsed_seconds": 0.48
+    }
+  ],
+  "first_failures": [
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/runtime-fixture-first-failure.log",
+      "sha256": "ac0c9dcfd94cf0ee839bb47b8d3b46feac59daa19ab9a6ca81cf45045b250cc9",
+      "classification": "test-gate",
+      "cause": "recording adapter used wrong argv slice; negative checks now refuse unmodelled operations and require owning assertion"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/runtime-jinja-first-failure.log",
+      "sha256": "339da25817cf2ed6148c5e86e865ff67a4784b6346ccb10509d1a180edc2c967",
+      "classification": "product",
+      "cause": "new runtime sandbox assertion used Jinja .items and resolved dict method; explicit JSON key access plus actual two-edge success/loss contracts fixed before any live run"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/cilium-clock-first-failure.log",
+      "sha256": "d1fb7fbcb79dcd748bfef76d14302db6caa2da85e83446d0213dcbdca3224fc5",
+      "classification": "test-gate",
+      "cause": "patching shared time.sleep counted subprocess supervision waits; patch only product module clock reference, keep production logic unchanged"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/docker-fixture-first-failure.log",
+      "sha256": "40f3066655f7d74c428727c975f65e4ac05fa975a79d3e788a79d4802c31bc39",
+      "classification": "test-gate",
+      "cause": "recording adapter did not normalize real shell string to module raw_params; normalized in adapter, no production change"
+    }
+  ],
+  "inputs": {
+    "upgrade/product/cilium.py": "98ac5d8ad92a011484c417ace6b66c0d9f30bc9b9789439621fe700f1d41080b",
+    "upgrade/product/cilium_stage.py": "62adddb7872a6d55638c3685acd10627d0bf23d8258e7f76ecb3c72c103f3f1b",
+    "upgrade/product/containerd-admission.yml": "0a14f42e8212b002b8182565876fe46318e9f34d93d40562f01385200feedcec",
+    "upgrade/product/containerd-edge.yml": "a2461a62f93a2d73a2f64f2ae450d3873f89a609140a3bb179a936b4c7d3af4c",
+    "upgrade/product/containerd.yml": "82070a01673cf3768ff0a1af0b214642356b7f4e874c7b8f50a4e254a60157de",
+    "upgrade/product/control-plane.yml": "25d1d26d5ca2919715a5f080a51cbc9143c07ee8ef4a3d445bfd95f116b94101",
+    "upgrade/product/docker-admission.yml": "ccecc215795b9b597460d792312f479ea79fb0c8fea845ada8b754922c26a2d4",
+    "upgrade/product/docker.yml": "7da6f05b0c6b456ad4a348203623c9f5b09bd848247c84f28ce5917676f87163",
+    "upgrade/product/journal.py": "ff445ee4356712256d146f5d28cd298a83aa0ce08072e14ade3e23f1df67e87d",
+    "upgrade/product/kubernetes_preflight.py": "8a8ea6bfb08c1f79e3ac4cdd6bb5a5de30e973aeab01cba1100c3648225c6b0b",
+    "upgrade/product/node.yml": "08776e6b26d092e6710466f0709a4963c28ec40ba463ac0402d8fd25899e51c4",
+    "upgrade/tests/fixtures/docker_action.py": "d5eff0938004c53496166c1fbe0e1fc52a7103af89ba04a03ed3d99f2fd5eb80",
+    "upgrade/tests/fixtures/runtime_action.py": "26fe9ad441b416e800fadf90580596a7ae41bd5e8414e0bdfa6828c66a1fac6f",
+    "upgrade/tests/test_artifact_readback_workflow.py": "3f476ff3d686b094e94862cd8fca35d2a0249ca083256239feb038318767bb5d",
+    "upgrade/tests/test_calico.py": "bd4f4efb9a929c14ad38273b604c8447c631973afe2ca18ca366a85cdd7d34a5",
+    "upgrade/tests/test_ceph_csi_patch.py": "cc4ba3c30a648c78d33b135b324ed64bdb9770c6e37db4f567fcebe9a6d07cf8",
+    "upgrade/tests/test_cilium.py": "9129c2eafc93a7a650c7064c27c5983edb32ac9aabfc2959990329611358929e",
+    "upgrade/tests/test_cilium_stage.py": "a0863cb4ea02337d54786d8cca7cd8c6a6a868c3080b12c97f85fde2b21654f5",
+    "upgrade/tests/test_combination_preflight.py": "c090376242867d3854a0a35e62ca5710413056f43d91523a2ccbdc12a8d7485c",
+    "upgrade/tests/test_containerd.py": "191a41c73a7d9e78db33a2f6a95285011fdd9d6f40df3328537e09ccab1bb744",
+    "upgrade/tests/test_containerd_stage.py": "b440d020737b09559542bebdacde55c52216cade6dcce33ef960e55af0f75ef2",
+    "upgrade/tests/test_control_plane.py": "9821f52098a2a2cc258ca9d4df5739ee9ccde3add5247bbeeec56bae5bf3f877",
+    "upgrade/tests/test_docker_stage.py": "d3e16355b984a0cceb5ce13d8f439c2c1958536c696e904fd6599a744b684115",
+    "upgrade/tests/test_flannel.py": "d763dfcd9bdc5768a6cfe013837c834ffca7f7770497d5ba08ab39766411bd0f",
+    "upgrade/tests/test_ingress.py": "89bb4161e382770b126263743d86fcad1105ad6e052f1f3dc84c4a029103a5da",
+    "upgrade/tests/test_journal.py": "065ddda70c3a359a127f49b77244c283ce0afe90b0586f78b6c1165542557159",
+    "upgrade/tests/test_k8s_artifact.py": "dd52730891b868c585fa083df763868fcd2437ca09bf6f6b418eb32f042c82e0",
+    "upgrade/tests/test_kubernetes_preflight.py": "d600067ebe74e859ab69b17f04d5b4b72b4abd82806c4ec42b6bbf6bfa355db1",
+    "upgrade/tests/test_longhorn_patch.py": "d269d9c302263fdd265e8549f736b8479052536d465dcb1578dbe15e0140783e",
+    "upgrade/tests/test_node.py": "6f2fea6715cf0b24e69a292253b26c10d59468f95355c192b0e1d20666a95134",
+    "upgrade/tests/test_product_release_scope.py": "b60310d38b77384924fc12870473b439ed82a505e6770784dbb4836f7f5b697a",
+    "upgrade/tests/test_records.py": "f8a692dca36cfc8c4d6e970f8ecfd13a816e85ebf7e0cfda0d30cdae1680a589",
+    "upgrade/tests/test_validate.py": "371b16d8988354db619c7f591118dbda59aff467efe88dd51824feb0f671a7dd",
+    "kubecli-onefile.spec": "1b419dfa57fa9dd97f08d994b5f078950c6f15e4575723f1a5158124195be33f"
+  },
+  "completed_ladder": 2,
+  "next_permitted_level": "Frozen combination, all consumed artifact receipts, actual config+kubecli outer entry/journal, owned healthy source, recovery point, pool lease and qualified fixed runner before the narrowest live branch",
+  "live_execution": false,
+  "parent_acceptance": false,
+  "source_preservation": [
+    "containerd root/state, registry/CNI paths and existing shims remain; schema3 configuration must be source-reviewed and bound by digest",
+    "Docker28.5.2 daemon/private bundle/configuration/data root remain; only cri-dockerd0.3.26→0.4.10 changes",
+    "runtime failure stops actual node play before kubelet replacement and uncordon; no implicit metadata downgrade"
+  ],
+  "limitations": [
+    "Recording adapters are local orchestration evidence, never real daemon/CRI/business success",
+    "Official containerd CLI decode and Docker adapter help/version have separate checksum-qualified offline evidence",
+    "New Pod/exec/log and application/storage data continuity still require scoped live evidence",
+    "Outer ownership/lease/artifact/source/backup admission and recovery remain unimplemented or incomplete; no GA claim"
+  ]
+}

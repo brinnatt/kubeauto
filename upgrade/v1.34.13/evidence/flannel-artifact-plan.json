@@ -1,0 +1,48 @@
+{
+  "batch_id": "flannel-02810",
+  "repository": "kubeauto-ext-images-dockerfile",
+  "branch": "v1.34.13",
+  "sha": "21abf01955d5c2f4af46fbd2f506a354e2115400",
+  "mode": "selected",
+  "images": [
+    "brinnatt/flannel:v0.28.10",
+    "brinnatt/flannel-cni-plugin:v1.9.1-flannel3"
+  ],
+  "image_count": 2,
+  "platforms": [
+    "linux/amd64",
+    "linux/arm64"
+  ],
+  "fingerprints": {
+    "brinnatt/flannel:v0.28.10": "be43479e07cb0ef761f34e129f3016972d55a49e95a81d594bde9505b1885cfc",
+    "brinnatt/flannel-cni-plugin:v1.9.1-flannel3": "46e3b5076de6bce62bcdb00d894d74dfa5135ee27c5174a055719bc16e5e6d87"
+  },
+  "reason": "源0.28.4到官方最新同minor patch及完整CNI配套，两个新tag认证私库404；旧源制品和目录保持。",
+  "state": "local-plan-qualified-await-existing-pending-run",
+  "allowed_publish_set": [
+    "hub.talkedu.cn/kubeauto/flannel:v0.28.10",
+    "docker.io/brinnatt/flannel:v0.28.10",
+    "hub.talkedu.cn/kubeauto/flannel-cni-plugin:v1.9.1-flannel3",
+    "docker.io/brinnatt/flannel-cni-plugin:v1.9.1-flannel3"
+  ],
+  "completed_ladder": 1,
+  "checks": [
+    {
+      "command": "python3 scripts/validate_catalog.py",
+      "rc": 0,
+      "result": "204/204"
+    },
+    {
+      "command": "python3 -B -m unittest discover -s tests -v",
+      "rc": 0,
+      "tests": 102
+    },
+    {
+      "command": "PYTHONPATH=<verified-ansible218> .venv/bin/python -B -m unittest upgrade.tests.test_flannel -v",
+      "rc": 0,
+      "tests": 4
+    }
+  ],
+  "cleanup": "仅CI临时runner/登录/tag，无实验室变更，旧tag保持",
+  "next": "在已有Ingress pending离开队列后，可与已独立资格化Cilium八镜像合并selected十项；启动前核真实计划、SHA及允许集合"
+}

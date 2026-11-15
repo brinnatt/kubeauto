@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "observed_on": "2026-11-15",
+  "matrix_ids": [
+    "UPG-04",
+    "UPG-09"
+  ],
+  "claim": "Local Path scratch-image helper adaptation with retained resource/storage contracts",
+  "tests": 3,
+  "rc": 0,
+  "live_lab_execution": false,
+  "parent_acceptance": false,
+  "input_sha256": {
+    "roles/cluster-addon/templates/local-storage/local-path-storage.yaml.j2": "ab261379d7c2bf5b02184f451a09b39561853e2c12986c3c366e2b350a90cc7b",
+    "upgrade/tests/test_local_storage.py": "bc4bc082a4e59b40a20e2bed1f29354f0765ad05608ad542605980d52e390ee5"
+  },
+  "raw_log": "upgrade/v1.34.13/evidence/raw/kubeauto-upgrade-localstorage-contracts.log",
+  "remaining": [
+    "Official support evidence boundary decision",
+    "Source live inventory checks custom pathPattern/helper/SC",
+    "Fixed helper/provisioner artifact identities",
+    "Product-scoped rollout and old/new PVC data/cleanup proof"
+  ]
+}

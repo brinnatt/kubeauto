@@ -1,0 +1,40 @@
+{
+  "observed_on": "2026-11-15",
+  "target": "v1.12.2",
+  "method": "Apply existing four production patches to exact official target files in temporary directory; fuzz=0",
+  "results": [
+    {
+      "patch": "kubeauto-ext-images-dockerfile/platform/storage/longhorn/longhorn-manager/v1.12.1-kubeauto.2/linked-eviction.patch",
+      "sha256": "9275735a33fef8606d16223eb413b3717507ffb1d8286695a922e8f72fc20724",
+      "rc": 0,
+      "output": "patching file controller/volume_controller.go\nHunk #1 succeeded at 1437 (offset 4 lines).\n"
+    },
+    {
+      "patch": "kubeauto-ext-images-dockerfile/platform/storage/longhorn/longhorn-manager/v1.12.1-kubeauto.2/v2-pending.patch",
+      "sha256": "d012a7c52b12bb251d9990d368455e4750198014308ed3aa0cd4234ea1a8ddfd",
+      "rc": 0,
+      "output": "patching file engineapi/instance_manager.go\n"
+    },
+    {
+      "patch": "kubeauto-ext-images-dockerfile/platform/storage/longhorn/longhorn-instance-manager/v1.12.1-kubeauto.3/linked-tls.patch",
+      "sha256": "e71ec8761625e9e8d3522d7033c2ea67b5b3e899ad97ad86d48aedf966aef653",
+      "rc": 0,
+      "output": "patching file vendor/github.com/longhorn/longhorn-spdk-engine/pkg/spdk/engine.go\nHunk #1 succeeded at 1467 (offset 8 lines).\nHunk #2 succeeded at 2146 (offset 8 lines).\npatching file vendor/github.com/longhorn/longhorn-spdk-engine/pkg/spdk/replica.go\nHunk #1 succeeded at 752 (offset 1 line).\nHunk #2 succeeded at 4057 (offset 1 line).\n"
+    },
+    {
+      "patch": "kubeauto-ext-images-dockerfile/platform/storage/longhorn/longhorn-instance-manager/v1.12.1-kubeauto.3/raid-status.patch",
+      "sha256": "b74b2232435a30a7cc995382ec53192e7eae206f6c0dc78838727dd71e398380",
+      "rc": 0,
+      "output": "patching file vendor/github.com/longhorn/longhorn-spdk-engine/pkg/spdk/engine.go\nHunk #1 succeeded at 3477 (offset 31 lines).\n"
+    }
+  ],
+  "meaning": "patch context qualification only; not compiled, runtime-tested or published",
+  "parent_acceptance": false,
+  "cleanup": "temporary directory removed",
+  "official_inputs": {
+    "upgrade/official-snapshots/2026-11-14-first-hop/longhorn-1122-manager-volume_controller-go.txt": "8a45ac11daef05267874f78d2ea209c8a422731bed93ec0bab2bff3032768d87",
+    "upgrade/official-snapshots/2026-11-14-first-hop/longhorn-1122-manager-instance_manager-go.txt": "b7ee88315bfbfb7f4cba12aae9daeba38c904e6302dec993cfd3bad810db81ab",
+    "upgrade/official-snapshots/2026-11-14-first-hop/longhorn-1122-instance-manager-replica-go.txt": "80aa23f37e13453af4bb14de2b5caa6d885fc966126a80153e0a8cde6b1495e1",
+    "upgrade/official-snapshots/2026-11-14-first-hop/longhorn-1122-instance-manager-engine-go.txt": "85cf7493f678c2b4aceeb7403c2af30b922f9f6ae620a94d18f8d0d311496aed"
+  }
+}

@@ -8,7 +8,14 @@
       - ceph_csi_rbd_storage_class is match('^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$')
       - ceph_csi_cephfs_storage_class is match('^[a-z0-9]([-a-z0-9.]*[a-z0-9])?$')
       - ceph_csi_provisioner_replicas | int >= 2
-      - ceph_csi_ver == 'v3.17.1'
+      - ceph_csi_ver in ['v3.17.1', 'v3.17.2']
+      # v3.17.2 changes only the driver in the official RBD/CephFS Charts.
+      # Keep its exact sidecar composition; a newer tag is not qualification.
+      - ceph_csi_ver != 'v3.17.2' or ceph_csi_registrar_ver == 'v2.16.0'
+      - ceph_csi_ver != 'v3.17.2' or ceph_csi_provisioner_ver == 'v6.2.0'
+      - ceph_csi_ver != 'v3.17.2' or ceph_csi_attacher_ver == 'v4.11.0'
+      - ceph_csi_ver != 'v3.17.2' or ceph_csi_resizer_ver == 'v2.1.0'
+      - ceph_csi_ver != 'v3.17.2' or ceph_csi_snapshotter_ver == 'v8.5.0'
     fail_msg: "Invalid Ceph-CSI configuration"
 
 - name: Require the target Kubernetes kubeconfig

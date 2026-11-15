@@ -1,0 +1,66 @@
+{
+  "scope": "read-only private manifest discovery; not dual-registry artifact acceptance",
+  "records": [
+    {
+      "registry": "hub.talkedu.cn",
+      "repository": "kubeauto/kubeauto-k8s-bin",
+      "tag": "v1.33.6",
+      "http": 200,
+      "digest": "sha256:782e313f2bb2768712f4a428ca3e26fbc36d55f159b5f0bf2d6ea56dfad86741",
+      "body_sha256": "782e313f2bb2768712f4a428ca3e26fbc36d55f159b5f0bf2d6ea56dfad86741",
+      "platforms": [
+        {
+          "architecture": "amd64",
+          "os": "linux"
+        },
+        {
+          "architecture": "arm64",
+          "os": "linux"
+        },
+        {
+          "architecture": "unknown",
+          "os": "unknown"
+        },
+        {
+          "architecture": "unknown",
+          "os": "unknown"
+        }
+      ],
+      "children": [
+        {
+          "digest": "sha256:58b6a0b0a27d5bc7e705f32e699261d617930c72d39f3df5253a5742a77cf7f9",
+          "platform": {
+            "architecture": "amd64",
+            "os": "linux"
+          }
+        },
+        {
+          "digest": "sha256:7f9f6c69ee905904a4ff4a07dc48f175dae9bee2cfb2e380dab60f74f3241edc",
+          "platform": {
+            "architecture": "arm64",
+            "os": "linux"
+          }
+        },
+        {
+          "digest": "sha256:184475a9934db4772687210acdac7355bbc43f56029bf50832eb698ed4aec5ee",
+          "platform": {
+            "architecture": "unknown",
+            "os": "unknown"
+          }
+        },
+        {
+          "digest": "sha256:4ecbc0f2c88a5eadc64488c5295414b9e6ce53be7580455e1c22e9def5f2bc06",
+          "platform": {
+            "architecture": "unknown",
+            "os": "unknown"
+          }
+        }
+      ]
+    },
+    {
+      "registry": "hub.talkedu.cn",
+      "tag": "v1.34.13",
+      "http": 404
+    }
+  ]
+}

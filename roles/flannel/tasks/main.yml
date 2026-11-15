@@ -1,3 +1,11 @@
+- name: Admit the exact target Flannel and CNI pairing before rendering
+  ansible.builtin.assert:
+    that:
+      - flannel_ver != 'v0.28.10' or flannel_cni_ver | default('') == 'v1.9.1-flannel3'
+    fail_msg: "Flannel v0.28.10 requires its official v1.9.1-flannel3 CNI pairing."
+  run_once: true
+  delegate_to: localhost
+
 - name: configure flannel DaemonSet yaml file
   template: src=kube-flannel.yaml.j2 dest={{ cluster_dir }}/yml/flannel.yaml
   run_once: true

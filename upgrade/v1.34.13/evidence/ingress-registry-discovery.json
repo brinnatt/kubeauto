@@ -1,0 +1,10 @@
+[
+  {
+    "image": "ingress-nginx-controller:v1.15.1",
+    "http": 404
+  },
+  {
+    "image": "kube-webhook-certgen:v1.6.9",
+    "http": 404
+  }
+]

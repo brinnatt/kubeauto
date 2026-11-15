@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "observed_on": "2026-11-15",
+  "matrix_ids": [
+    "UPG-04",
+    "UPG-06",
+    "UPG-07",
+    "UPG-12"
+  ],
+  "claim": "Internal control-plane/node stages and local durable journal contracts only",
+  "classification": "product-and-test-gate",
+  "parent_acceptance": false,
+  "live_lab_execution": false,
+  "completed_ladder": 2,
+  "checks": [
+    {
+      "command": ".venv/bin/python -B -m unittest upgrade.tests.test_control_plane upgrade.tests.test_node upgrade.tests.test_journal -v",
+      "ansible_core": "2.18.6",
+      "rc": 0,
+      "tests": 21,
+      "elapsed_seconds": 8.198
+    },
+    {
+      "command": "ansible-playbook -i localhost, upgrade/product/node.yml --syntax-check",
+      "ansible_core": "2.18.6",
+      "rc": 0
+    }
+  ],
+  "inputs": {
+    "upgrade/product/control-plane.yml": "25d1d26d5ca2919715a5f080a51cbc9143c07ee8ef4a3d445bfd95f116b94101",
+    "upgrade/product/node.yml": "669d75b00e9f6fa849aba95ce8ac65ddcc5c677ebaf116643d0159cc8233cbe5",
+    "upgrade/product/journal.py": "ff445ee4356712256d146f5d28cd298a83aa0ce08072e14ade3e23f1df67e87d",
+    "upgrade/tests/test_control_plane.py": "9821f52098a2a2cc258ca9d4df5739ee9ccde3add5247bbeeec56bae5bf3f877",
+    "upgrade/tests/test_node.py": "138308101107027b0f6827d03b9b99bb98d44b76839ae082f0f14431e84a48a9",
+    "upgrade/tests/test_journal.py": "065ddda70c3a359a127f49b77244c283ce0afe90b0586f78b6c1165542557159"
+  },
+  "official_source_ids": [
+    "K8S-SKEW",
+    "K8S-13413-DRAIN-COMMAND",
+    "K8S-13413-DRAIN-LIBRARY",
+    "K8S-DRAIN-TASK"
+  ],
+  "journal_contracts": [
+    "exclusive-cluster-owner",
+    "exact-identity-config-artifact-run-and-plan",
+    "durable-active-step-on-interruption",
+    "first-failure-retained",
+    "no-skip-or-repeat-accepted-step",
+    "symlink-hardlink-permission-refusal"
+  ],
+  "node_contracts": [
+    "no-admission-zero-commands",
+    "all-api-target-barrier",
+    "UID-Ready-cordon-and-resume-refusal",
+    "eviction-api-no-delete-fallback",
+    "failed-drain-no-binary-transfer-or-uncordon",
+    "unknown-process-before-drain",
+    "serial-order-no-force-or-local-data-bypass"
+  ],
+  "fixtures": "Local kubectl response fixture and connection plugin rejecting any remote connection/exec/transfer; real on-disk journal in temporary directories; all fixture directories removed",
+  "raw_evidence": {
+    "path": "upgrade/v1.34.13/evidence/raw/kubeauto-migration-local-contracts-218.log",
+    "sha256": "b13f1efc93a3e6336a5a698584a5522b1685b1db48b563d696cdbce834b05053",
+    "bytes": 3913
+  },
+  "remaining": [
+    "complete frozen combination and artifact inventory",
+    "product CLI and real ordered handoff",
+    "recovery point, lease and source admission",
+    "focused live drain, continuation and business evidence"
+  ],
+  "next_permitted_level": "Complete static product handoff before a narrow live branch; no full-chain launch permitted"
+}

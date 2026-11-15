@@ -4,16 +4,661 @@ source_release: upgrade/v1.33.6/release.yaml
 target_release: upgrade/v1.34.13/release.yaml
 owning_matrix: upgrade/v1.34.13/test-matrix.yaml
 scope_frozen: false
-authorization: 方案文件与本地静态检查；不含实现、创建分支、发布或现场回归
+authorization: 用户授权v1.33.6到v1.34.13首跳实现、必要增量制品及GA验收；实际发布和现场仍需范围/兼容/合同准入
 evidence_policy: upgrade/acceptance.md
 matrix_reference_rule: 候选原ID均在对应现有矩阵存在，但列表尚未穷尽；映射不修改旧状态、不代表有效复用。
 artifact_scope:
-  consumer_inventory_complete: false
-  reuse_candidates: []
-  allowed_build_set: []
-  allowed_publish_set: []
-  actual_plan: null
-  note: 空集合只表示本轮无发布授权，不能推断不需要制品；未来核验实际计划为允许集子集。
+  consumer_inventory_complete: true
+  consumer_inventory: upgrade/v1.34.13/evidence/artifact-consumer-inventory.json
+  consumer_inventory_observed_on: '2026-11-15'
+  consumer_inventory_counts:
+    total: 130
+    changed: 36
+    unchanged: 94
+    dual_registry_dual_architecture_readback: 130
+  readback_run_id: 43663677003
+  readback_evidence: upgrade/v1.34.13/evidence/readback-43663677003-image-plan.json
+  reuse_candidates:
+  - source GA records are copied under artifact-consumer-inventory.json with source keys and target applicability
+  - unchanged entries retain source identity as applicability evidence; target digest comes only from current readback
+  allowed_build_set:
+  - kubeauto-k8s-bin:v1.34.13
+  - cephcsi:v3.17.2
+  - ingress-nginx-controller:v1.15.1
+  - kube-webhook-certgen:v1.6.9
+  - cilium:v1.19.10
+  - cilium-operator-generic:v1.19.10
+  - hubble-relay:v1.19.10
+  - cilium:v1.20.4
+  - cilium-operator-generic:v1.20.4
+  - hubble-relay:v1.20.4
+  - hubble-ui:v0.13.6
+  - hubble-ui-backend:v0.13.6
+  - longhorn-engine:v1.12.2
+  - longhorn-manager:v1.12.2-kubeauto.1
+  - longhorn-ui:v1.12.2
+  - longhorn-instance-manager:v1.12.2-kubeauto.1
+  - longhorn-share-manager:v1.12.2
+  - longhorn-backing-image-manager:v1.12.2
+  - longhorn-support-bundle-kit:v1.0.5
+  - longhorn-csi-attacher:v4.13.0-20261028
+  - longhorn-csi-provisioner:v5.3.0-20261028
+  - longhorn-csi-node-driver-registrar:v2.18.0-20261028
+  - longhorn-csi-resizer:v2.3.0-20261028
+  - longhorn-csi-snapshotter:v8.7.0-20261028
+  - longhorn-livenessprobe:v2.20.0-20261028
+  - flannel:v0.28.10
+  - flannel-cni-plugin:v1.9.1-flannel3
+  - coredns:1.15.0
+  - k8s-dns-node-cache:1.26.8
+  - calico-cni:v3.31.7
+  - calico-node:v3.31.7
+  - calico-kube-controllers:v3.31.7
+  - calico-cni:v3.32.4
+  - calico-node:v3.32.4
+  - calico-kube-controllers:v3.32.4
+  - metrics-server:v0.9.1
+  - local-path-provisioner:v0.0.37
+  allowed_publish_set:
+  - hub.talkedu.cn/kubeauto/kubeauto-k8s-bin:v1.34.13
+  - docker.io/brinnatt/kubeauto-k8s-bin:v1.34.13
+  - hub.talkedu.cn/kubeauto/cephcsi:v3.17.2
+  - docker.io/brinnatt/cephcsi:v3.17.2
+  - hub.talkedu.cn/kubeauto/longhorn-engine:v1.12.2
+  - docker.io/brinnatt/longhorn-engine:v1.12.2
+  - hub.talkedu.cn/kubeauto/longhorn-manager:v1.12.2-kubeauto.1
+  - docker.io/brinnatt/longhorn-manager:v1.12.2-kubeauto.1
+  - hub.talkedu.cn/kubeauto/longhorn-ui:v1.12.2
+  - docker.io/brinnatt/longhorn-ui:v1.12.2
+  - hub.talkedu.cn/kubeauto/longhorn-instance-manager:v1.12.2-kubeauto.1
+  - docker.io/brinnatt/longhorn-instance-manager:v1.12.2-kubeauto.1
+  - hub.talkedu.cn/kubeauto/longhorn-share-manager:v1.12.2
+  - docker.io/brinnatt/longhorn-share-manager:v1.12.2
+  - hub.talkedu.cn/kubeauto/longhorn-backing-image-manager:v1.12.2
+  - docker.io/brinnatt/longhorn-backing-image-manager:v1.12.2
+  - hub.talkedu.cn/kubeauto/longhorn-support-bundle-kit:v1.0.5
+  - docker.io/brinnatt/longhorn-support-bundle-kit:v1.0.5
+  - hub.talkedu.cn/kubeauto/longhorn-csi-attacher:v4.13.0-20261028
+  - docker.io/brinnatt/longhorn-csi-attacher:v4.13.0-20261028
+  - hub.talkedu.cn/kubeauto/longhorn-csi-provisioner:v5.3.0-20261028
+  - docker.io/brinnatt/longhorn-csi-provisioner:v5.3.0-20261028
+  - hub.talkedu.cn/kubeauto/longhorn-csi-node-driver-registrar:v2.18.0-20261028
+  - docker.io/brinnatt/longhorn-csi-node-driver-registrar:v2.18.0-20261028
+  - hub.talkedu.cn/kubeauto/longhorn-csi-resizer:v2.3.0-20261028
+  - docker.io/brinnatt/longhorn-csi-resizer:v2.3.0-20261028
+  - hub.talkedu.cn/kubeauto/longhorn-csi-snapshotter:v8.7.0-20261028
+  - docker.io/brinnatt/longhorn-csi-snapshotter:v8.7.0-20261028
+  - hub.talkedu.cn/kubeauto/longhorn-livenessprobe:v2.20.0-20261028
+  - docker.io/brinnatt/longhorn-livenessprobe:v2.20.0-20261028
+  - hub.talkedu.cn/kubeauto/ingress-nginx-controller:v1.15.1
+  - docker.io/brinnatt/ingress-nginx-controller:v1.15.1
+  - hub.talkedu.cn/kubeauto/kube-webhook-certgen:v1.6.9
+  - docker.io/brinnatt/kube-webhook-certgen:v1.6.9
+  - hub.talkedu.cn/kubeauto/cilium:v1.19.10
+  - docker.io/brinnatt/cilium:v1.19.10
+  - hub.talkedu.cn/kubeauto/cilium-operator-generic:v1.19.10
+  - docker.io/brinnatt/cilium-operator-generic:v1.19.10
+  - hub.talkedu.cn/kubeauto/hubble-relay:v1.19.10
+  - docker.io/brinnatt/hubble-relay:v1.19.10
+  - hub.talkedu.cn/kubeauto/cilium:v1.20.4
+  - docker.io/brinnatt/cilium:v1.20.4
+  - hub.talkedu.cn/kubeauto/cilium-operator-generic:v1.20.4
+  - docker.io/brinnatt/cilium-operator-generic:v1.20.4
+  - hub.talkedu.cn/kubeauto/hubble-relay:v1.20.4
+  - docker.io/brinnatt/hubble-relay:v1.20.4
+  - hub.talkedu.cn/kubeauto/hubble-ui:v0.13.6
+  - docker.io/brinnatt/hubble-ui:v0.13.6
+  - hub.talkedu.cn/kubeauto/hubble-ui-backend:v0.13.6
+  - docker.io/brinnatt/hubble-ui-backend:v0.13.6
+  - hub.talkedu.cn/kubeauto/flannel:v0.28.10
+  - docker.io/brinnatt/flannel:v0.28.10
+  - hub.talkedu.cn/kubeauto/flannel-cni-plugin:v1.9.1-flannel3
+  - docker.io/brinnatt/flannel-cni-plugin:v1.9.1-flannel3
+  - hub.talkedu.cn/kubeauto/coredns:1.15.0
+  - docker.io/brinnatt/coredns:1.15.0
+  - hub.talkedu.cn/kubeauto/k8s-dns-node-cache:1.26.8
+  - docker.io/brinnatt/k8s-dns-node-cache:1.26.8
+  - hub.talkedu.cn/kubeauto/calico-cni:v3.31.7
+  - docker.io/brinnatt/calico-cni:v3.31.7
+  - hub.talkedu.cn/kubeauto/calico-node:v3.31.7
+  - docker.io/brinnatt/calico-node:v3.31.7
+  - hub.talkedu.cn/kubeauto/calico-kube-controllers:v3.31.7
+  - docker.io/brinnatt/calico-kube-controllers:v3.31.7
+  - hub.talkedu.cn/kubeauto/calico-cni:v3.32.4
+  - docker.io/brinnatt/calico-cni:v3.32.4
+  - hub.talkedu.cn/kubeauto/calico-node:v3.32.4
+  - docker.io/brinnatt/calico-node:v3.32.4
+  - hub.talkedu.cn/kubeauto/calico-kube-controllers:v3.32.4
+  - docker.io/brinnatt/calico-kube-controllers:v3.32.4
+  - hub.talkedu.cn/kubeauto/metrics-server:v0.9.1
+  - docker.io/brinnatt/metrics-server:v0.9.1
+  - hub.talkedu.cn/kubeauto/local-path-provisioner:v0.0.37
+  - docker.io/brinnatt/local-path-provisioner:v0.0.37
+  actual_plan:
+    repository: kubeauto-k8s-bin-dockerfile
+    branch: v1.34.13
+    mode: selected
+    image_count: 1
+    images:
+    - kubeauto-k8s-bin:v1.34.13
+    platforms:
+    - linux/amd64
+    - linux/arm64
+    trigger: push refs/heads/v1.34.13
+    sha: 26bc3329f93ffa9c5ddf6a30f50a872728d26843
+    state: published-dual-readback-and-content-qualified
+    run_id: 43606064516
+    run_url: https://github.com/brinnatt/kubeauto-k8s-bin-dockerfile/actions/runs/43606064516
+  note: 本批仅冻结已证明缺失且官方版本/校验和已确认的Kubernetes六二进制目标制品；生态组合和其它制品集合仍未冻结。Docker Hub读取网络失败不等于缺失，本批双推用于补齐已证明私库缺失的同一制品。
+  consumer_inventory_records:
+  - upgrade/v1.34.13/evidence/artifact-consumer-inventory.json
+  - upgrade/v1.34.13/evidence/readback-43663677003-image-plan.json
+  readback_scope: 130 target consumer images; mode=readback; mutation=none; both registries and linux/amd64+linux/arm64 verified
+  discovery_records:
+  - upgrade/v1.34.13/evidence/registry-discovery.json
+  - evidence: upgrade/v1.34.13/evidence/legacy-artifact-continuity.json
+    state: current-three-double-registry-identities-read-and-ga-content-continuity-proven
+    build_images: 0
+    publish_images: 0
+    remaining: Digest-bound consumer/API/lifecycle admission; no parent PASS
+  confirmed_missing:
+  - repository: kubeauto-k8s-bin-dockerfile
+    image: kubeauto-k8s-bin:v1.34.13
+    platforms:
+    - linux/amd64
+    - linux/arm64
+    destinations:
+    - hub.talkedu.cn/kubeauto
+    - docker.io/brinnatt
+    basis: 私库已认证manifest返回404；源1.33.6返回200，目标缺失与认证失败已区分
+    remaining_checks: Docker Hub读取网络失败不能视为缺失；发布前核对实际集合、输入SHA与所有制品复用证据
+  implementation_scope:
+    repository: ../kubeauto-k8s-bin-dockerfile
+    branch: v1.34.13
+    paths:
+    - multi-platform-download.sh
+    - .github/workflows/build.yml
+    consumers:
+    - 主仓安装/升级的/k8s六项二进制
+    validation:
+    - sh -n multi-platform-download.sh
+    - 主仓upgrade/tests/test_k8s_artifact.py
+    - 主仓tests/unit/test_six_repo_version_sync.py
+    cleanup: 仅本地临时夹具目录；不连接测试节点，不改旧制品
+    publication: run43606064516双架构双推成功，私库12二进制官方SHA/ELF/权限已核；run43608565612只读双端当前索引/子manifest一致、durable rc=0。本批完成，不代表全部制品UPG-03通过。
+  readonly_ci_plan:
+    repository: kubeauto-k8s-bin-dockerfile
+    branch: v1.34.13-readback
+    sha: 03e42a944a094d36f84981b293031d70cddabbd0
+    mode: verify
+    inspected_images:
+    - kubeauto-k8s-bin:v1.34.13
+    image_count: 1
+    actual_publish_set: []
+    actual_build_set: []
+    platforms:
+    - linux/amd64
+    - linux/arm64
+    reason: 开发机和固定跳板机Docker Hub网络不可达；使用已证明双端可达的GitHub runner只读回读成功制品，不重建
+    contract: .venv/bin/python -B -m unittest upgrade.tests.test_artifact_readback_workflow -v
+    contract_rc: 0
+    cleanup: GitHub临时runner/登录由官方action回收；仅上传读操作证据，无实验室变更
+    completed_ladder: 2
+    next: 最窄只读供应链核验
+    run_id: 43608565612
+    run_url: https://github.com/brinnatt/kubeauto-k8s-bin-dockerfile/actions/runs/43608565612
+    result: success
+    durable_status: rc=0
+    disposition: 唯一保留的双端当前回读入口；临时跳板机probe已回收，环境首失败保留在public-readback-environment.json，不交付第二套网络路径。
+  incremental_batches:
+  - batch_id: cephcsi-3172
+    repository: kubeauto-ext-images-dockerfile
+    branch: v1.34.13
+    sha: ff8e69f3e6a2eb8ee7f2f0a8c018e970df5b2d1e
+    mode: selected
+    images:
+    - brinnatt/cephcsi:v3.17.2
+    image_count: 1
+    platforms:
+    - linux/amd64
+    - linux/arm64
+    fingerprint: 812f39e1fe2705767ec1b950c9128463348a72c9f8e88e6d0bfdaa0b2b9ea305
+    reason: 受维护3.17线patch；官方仅driver变化，保留Ceph及全部sidecar/Chart；与本跳CSI目标集成、恢复/删除语义相关
+    state: published-dual-architecture-dual-registry-readback-qualified
+    allowed_publish_set:
+    - hub.talkedu.cn/kubeauto/cephcsi:v3.17.2
+    - docker.io/brinnatt/cephcsi:v3.17.2
+    completed_ladder: 2
+    next: 只发布本批一个镜像；收取双端双架构、原始日志和durable rc
+    checks:
+    - command: python3 scripts/validate_catalog.py
+      rc: 0
+      result: 179 rows/179 Dockerfiles
+    - command: python3 -B -m unittest discover -s tests -v
+      rc: 0
+      result: 91 tests PASS; focused history recheck 24 PASS after readability edit
+    - command: .venv/bin/python -B -m unittest upgrade.tests.test_ceph_csi_patch -v
+      rc: 0
+      result: 4 tests PASS; actual input guards and RBD/CephFS values
+    - command: python3 scripts/image_release.py plan --mode selected --selected brinnatt/cephcsi:v3.17.2 --head
+        ff8e69f3e6a2eb8ee7f2f0a8c018e970df5b2d1e
+      rc: 0
+      result: 1 image/1 shard; unchanged build-policy
+    cleanup: 仅CI临时runner/登录及本批ci临时tag由固定流程拥有；没有实验室变更；旧正式tag保持
+    run_id: 43617585735
+    run_url: https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/43617585735
+    evidence: upgrade/v1.34.13/evidence/ceph-csi-publication.json
+    digest: sha256:3e80e86d7ddf2ecda0aa59766ff04735107e97a33ec77302bca31bc47e39e105
+  - batch_id: longhorn-1122
+    repository: kubeauto-ext-images-dockerfile
+    branch: v1.34.13
+    sha: c0e741b24a4606072120b07c41ecdf29cb613360
+    mode: selected
+    images:
+    - brinnatt/longhorn-engine:v1.12.2
+    - brinnatt/longhorn-manager:v1.12.2-kubeauto.1
+    - brinnatt/longhorn-ui:v1.12.2
+    - brinnatt/longhorn-instance-manager:v1.12.2-kubeauto.1
+    - brinnatt/longhorn-share-manager:v1.12.2
+    - brinnatt/longhorn-backing-image-manager:v1.12.2
+    - brinnatt/longhorn-support-bundle-kit:v1.0.5
+    - brinnatt/longhorn-csi-attacher:v4.13.0-20261028
+    - brinnatt/longhorn-csi-provisioner:v5.3.0-20261028
+    - brinnatt/longhorn-csi-node-driver-registrar:v2.18.0-20261028
+    - brinnatt/longhorn-csi-resizer:v2.3.0-20261028
+    - brinnatt/longhorn-csi-snapshotter:v8.7.0-20261028
+    - brinnatt/longhorn-livenessprobe:v2.20.0-20261028
+    image_count: 13
+    platforms:
+    - linux/amd64
+    - linux/arm64
+    fingerprints:
+      brinnatt/longhorn-engine:v1.12.2: 052436e4e74f15dc5d532d41a5b63d11e5214cdea720d659ff794127d6814612
+      brinnatt/longhorn-manager:v1.12.2-kubeauto.1: 2a10b19256800bc6c67def9568f96718ac4fb8643ad8fb87c876cc376d033f8c
+      brinnatt/longhorn-ui:v1.12.2: 9fe818fbdf8d2f9be9cf4bda7febaf783650c908e1e45964a25437ea3768dcb2
+      brinnatt/longhorn-instance-manager:v1.12.2-kubeauto.1: 1f738fedea45fbf4bc58e9f31d2f1cef5e009bbb502358d4c6d840de98720d8c
+      brinnatt/longhorn-share-manager:v1.12.2: 3a8811dea7d1008692de9d8a5289260db76ce6afb8abf1fd9d803a405f2805ef
+      brinnatt/longhorn-backing-image-manager:v1.12.2: 4c7f24cbf36de44857826089b4478a00d3f9c16d748e30fcadb937b3ee7b85f2
+      brinnatt/longhorn-support-bundle-kit:v1.0.5: 82b652db5ea93eafb5f571709879a036a9e6f764d714c907878fca339245b09d
+      brinnatt/longhorn-csi-attacher:v4.13.0-20261028: 6b4d273bab1836c1cca6e7786c9b1b29c38739111d3fa00c882e86a9544fb6b2
+      brinnatt/longhorn-csi-provisioner:v5.3.0-20261028: c42e4f1174e74b960964b9819bafaa8adcc52fddfaabc51b2176b87c303b44d7
+      brinnatt/longhorn-csi-node-driver-registrar:v2.18.0-20261028: 02267f494d47a0c8cacbf8ea6d1889d85e27f9f9d8cb7098ff1cf3603ca28b0a
+      brinnatt/longhorn-csi-resizer:v2.3.0-20261028: f70413759998f0286271e942ca424148e41fb2b64a66e4a6a065625833e4dc52
+      brinnatt/longhorn-csi-snapshotter:v8.7.0-20261028: e55a25159d76da84ca9ca12ef42f5f910b4c1b7a9c1b2df7dfe3348b09da967f
+      brinnatt/longhorn-livenessprobe:v2.20.0-20261028: 2e6b30e1c4d3414a0a4b448f4e3bb34360fe2c34aeef635126491db0d6329929
+    reason: 官方1.12.2修复本跳drain/rebuild相关丢写；完整13镜像与官方Chart配套，manager/IM保留4个源GA修复及全部原Go合同；仅新tag。
+    state: all-thirteen-covered-by-incremental-publications
+    allowed_publish_set:
+    - hub.talkedu.cn/kubeauto/longhorn-engine:v1.12.2
+    - docker.io/brinnatt/longhorn-engine:v1.12.2
+    - hub.talkedu.cn/kubeauto/longhorn-manager:v1.12.2-kubeauto.1
+    - docker.io/brinnatt/longhorn-manager:v1.12.2-kubeauto.1
+    - hub.talkedu.cn/kubeauto/longhorn-ui:v1.12.2
+    - docker.io/brinnatt/longhorn-ui:v1.12.2
+    - hub.talkedu.cn/kubeauto/longhorn-instance-manager:v1.12.2-kubeauto.1
+    - docker.io/brinnatt/longhorn-instance-manager:v1.12.2-kubeauto.1
+    - hub.talkedu.cn/kubeauto/longhorn-share-manager:v1.12.2
+    - docker.io/brinnatt/longhorn-share-manager:v1.12.2
+    - hub.talkedu.cn/kubeauto/longhorn-backing-image-manager:v1.12.2
+    - docker.io/brinnatt/longhorn-backing-image-manager:v1.12.2
+    - hub.talkedu.cn/kubeauto/longhorn-support-bundle-kit:v1.0.5
+    - docker.io/brinnatt/longhorn-support-bundle-kit:v1.0.5
+    - hub.talkedu.cn/kubeauto/longhorn-csi-attacher:v4.13.0-20261028
+    - docker.io/brinnatt/longhorn-csi-attacher:v4.13.0-20261028
+    - hub.talkedu.cn/kubeauto/longhorn-csi-provisioner:v5.3.0-20261028
+    - docker.io/brinnatt/longhorn-csi-provisioner:v5.3.0-20261028
+    - hub.talkedu.cn/kubeauto/longhorn-csi-node-driver-registrar:v2.18.0-20261028
+    - docker.io/brinnatt/longhorn-csi-node-driver-registrar:v2.18.0-20261028
+    - hub.talkedu.cn/kubeauto/longhorn-csi-resizer:v2.3.0-20261028
+    - docker.io/brinnatt/longhorn-csi-resizer:v2.3.0-20261028
+    - hub.talkedu.cn/kubeauto/longhorn-csi-snapshotter:v8.7.0-20261028
+    - docker.io/brinnatt/longhorn-csi-snapshotter:v8.7.0-20261028
+    - hub.talkedu.cn/kubeauto/longhorn-livenessprobe:v2.20.0-20261028
+    - docker.io/brinnatt/longhorn-livenessprobe:v2.20.0-20261028
+    completed_ladder: 1
+    next: 13项输入fingerprints/架构/双端摘要已闭合；原失败run保留，待产品迁移和最小数据面验收
+    checks:
+    - command: python3 scripts/validate_catalog.py
+      rc: 0
+      result: 192/192
+    - command: python3 -B -m unittest discover -s tests -v
+      rc: 0
+      result: 96 tests PASS
+    - command: git diff --cached --check -- . :!*.patch
+      rc: 0
+      result: unchanged unified-diff context whitespace excluded; four exact patches byte-equal under contract
+    cleanup: CI临时runner/登录/ci tag由固定发布入口拥有；无实验室变更，不接触旧正式tag
+    run_id: 43619742873
+    run_url: https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/43619742873
+    actual_plan_verified: true
+    evidence: upgrade/v1.34.13/evidence/longhorn-publication-first-attempt.json
+    accepted_images:
+    - brinnatt/longhorn-ui:v1.12.2
+    - brinnatt/longhorn-engine:v1.12.2
+    - brinnatt/longhorn-manager:v1.12.2-kubeauto.1
+    incremental_recovery:
+    - run_id: '43639041619'
+      images:
+      - brinnatt/longhorn-instance-manager:v1.12.2-kubeauto.1
+      reason: Fresh runner isolates disk-heavy compiler from previously accepted manager build cache; same source/context/tests;
+        no mutation of successful tags
+      state: published-dual-readback-qualified
+      evidence: upgrade/v1.34.13/evidence/longhorn-instance-manager-publication.json
+      digest: sha256:86bef542e37c11cdfc6c9147ef9378c7bb6e5d05a2ad77afacdc6f3bde70b661
+      completed_ladder: 2
+    - images:
+      - brinnatt/longhorn-share-manager:v1.12.2
+      - brinnatt/longhorn-backing-image-manager:v1.12.2
+      - brinnatt/longhorn-support-bundle-kit:v1.0.5
+      - brinnatt/longhorn-csi-attacher:v4.13.0-20261028
+      - brinnatt/longhorn-csi-provisioner:v5.3.0-20261028
+      - brinnatt/longhorn-csi-node-driver-registrar:v2.18.0-20261028
+      - brinnatt/longhorn-csi-resizer:v2.3.0-20261028
+      - brinnatt/longhorn-csi-snapshotter:v8.7.0-20261028
+      - brinnatt/longhorn-livenessprobe:v2.20.0-20261028
+      reason: Nine previously unexecuted images; exact unchanged fingerprints; selected dispatch accepted; run identity
+        pending collection
+      run_id: '43639656861'
+      run_url: https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/43639656861
+      state: published-dual-readback-qualified
+      evidence: upgrade/v1.34.13/evidence/longhorn-remaining-nine-publication.json
+    coverage_evidence:
+    - upgrade/v1.34.13/evidence/longhorn-publication-first-attempt.json
+    - upgrade/v1.34.13/evidence/longhorn-instance-manager-publication.json
+    - upgrade/v1.34.13/evidence/longhorn-remaining-nine-publication.json
+  - batch_id: ingress-1151
+    repository: kubeauto-ext-images-dockerfile
+    branch: v1.34.13
+    sha: 988e4167308d2f830f81b4808494366ddbb3781b
+    mode: selected
+    images:
+    - brinnatt/ingress-nginx-controller:v1.15.1
+    - brinnatt/kube-webhook-certgen:v1.6.9
+    image_count: 2
+    platforms:
+    - linux/amd64
+    - linux/arm64
+    fingerprints:
+      brinnatt/ingress-nginx-controller:v1.15.1: 8f357f8f284dbd8f7a614e6a5362856a2a56ea5a7c38e817a56f68865781ffca
+      brinnatt/kube-webhook-certgen:v1.6.9: 511f1ea8ece2adba87bcb7db758081adcdc692df35adeab79e6ae8fdc2c76247
+    reason: 源controller不覆盖K8s1.34；官方Chart完整配套两新tag，认证私库确认两项404；不修改旧tag或其它certgen。
+    state: published-dual-readback-qualified
+    allowed_publish_set:
+    - hub.talkedu.cn/kubeauto/ingress-nginx-controller:v1.15.1
+    - docker.io/brinnatt/ingress-nginx-controller:v1.15.1
+    - hub.talkedu.cn/kubeauto/kube-webhook-certgen:v1.6.9
+    - docker.io/brinnatt/kube-webhook-certgen:v1.6.9
+    completed_ladder: 2
+    checks:
+    - command: python3 scripts/validate_catalog.py
+      rc: 0
+      result: 194/194
+    - command: python3 -B -m unittest discover -s tests -v
+      rc: 0
+      tests: 98
+    - command: .venv/bin/python -B -m unittest upgrade.tests.test_ingress -v
+      rc: 0
+      tests: 5
+      helm: 3.19.0; four actual source/target × metrics render combinations, zero skip
+      ansible_core: 2.18.6; actual role refuses unknown Chart before commands or filesystem mutation
+    cleanup: 固定CI拥有临时runner/登录/发布临时tag；无实验室变更，旧正式tag保持
+    next: Await existing global release queue, then verify actual CI plan and collect two-image dual readback
+    run_id: '43623197988'
+    run_url: https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/43623197988
+    evidence: upgrade/v1.34.13/evidence/ingress-publication.json
+    accepted_images:
+    - brinnatt/kube-webhook-certgen:v1.6.9
+    - brinnatt/ingress-nginx-controller:v1.15.1
+  - batch_id: cilium-11910-1204
+    repository: kubeauto-ext-images-dockerfile
+    branch: v1.34.13
+    sha: 21abf01955d5c2f4af46fbd2f506a354e2115400
+    mode: selected
+    images:
+    - brinnatt/cilium:v1.19.10
+    - brinnatt/cilium-operator-generic:v1.19.10
+    - brinnatt/hubble-relay:v1.19.10
+    - brinnatt/cilium:v1.20.4
+    - brinnatt/cilium-operator-generic:v1.20.4
+    - brinnatt/hubble-relay:v1.20.4
+    - brinnatt/hubble-ui:v0.13.6
+    - brinnatt/hubble-ui-backend:v0.13.6
+    image_count: 8
+    platforms:
+    - linux/amd64
+    - linux/arm64
+    fingerprints:
+      brinnatt/cilium:v1.19.10: 7c35544bb88ec80c03e8ec4839f9c73f5465bbf0544b8b9d634c962ba245bcfd
+      brinnatt/cilium-operator-generic:v1.19.10: 0b089f83c9a2b13d0b52a3945ed9b9c3a6636291ae2d9afabeeb95bd2e8510a1
+      brinnatt/hubble-relay:v1.19.10: 44489e2036fd12967b20a62df53e65811dde8c8885e8eae7abb83522dca218e2
+      brinnatt/cilium:v1.20.4: be6d7d27bad6342af01bb175bfac6d2b91052318570d595ca12770da2d3e2542
+      brinnatt/cilium-operator-generic:v1.20.4: 79664a6e8d8ce0d1aede339dd8f90d62b145c53f3277cb49bc5e4ee4d35b4ae6
+      brinnatt/hubble-relay:v1.20.4: 17c9b52b85cc9e887afd86dab785b94aedef61cdf134ddaabab49d3f28820b7a
+      brinnatt/hubble-ui:v0.13.6: f58629a282d82ad4a3ec0a73148902476e4e79e5bec4247d30ce0860c0cbd621
+      brinnatt/hubble-ui-backend:v0.13.6: 8bee52e8991a25624d4c610cae8660082418d2a1a5c09a861e4241377937e9f7
+    reason: 官方强制源最新patch及相邻minor桥接，Chart配套全部实际消费镜像；认证私库八项404，仅新tag。
+    state: published-dual-readback-qualified
+    allowed_publish_set:
+    - hub.talkedu.cn/kubeauto/cilium:v1.19.10
+    - docker.io/brinnatt/cilium:v1.19.10
+    - hub.talkedu.cn/kubeauto/cilium-operator-generic:v1.19.10
+    - docker.io/brinnatt/cilium-operator-generic:v1.19.10
+    - hub.talkedu.cn/kubeauto/hubble-relay:v1.19.10
+    - docker.io/brinnatt/hubble-relay:v1.19.10
+    - hub.talkedu.cn/kubeauto/cilium:v1.20.4
+    - docker.io/brinnatt/cilium:v1.20.4
+    - hub.talkedu.cn/kubeauto/cilium-operator-generic:v1.20.4
+    - docker.io/brinnatt/cilium-operator-generic:v1.20.4
+    - hub.talkedu.cn/kubeauto/hubble-relay:v1.20.4
+    - docker.io/brinnatt/hubble-relay:v1.20.4
+    - hub.talkedu.cn/kubeauto/hubble-ui:v0.13.6
+    - docker.io/brinnatt/hubble-ui:v0.13.6
+    - hub.talkedu.cn/kubeauto/hubble-ui-backend:v0.13.6
+    - docker.io/brinnatt/hubble-ui-backend:v0.13.6
+    completed_ladder: 2
+    next: Ingress离开pending后才允许dispatch，避免GitHub concurrency替换已有pending；启动前重新核远端SHA/允许集合。
+    checks:
+    - command: python3 scripts/validate_catalog.py
+      rc: 0
+      result: 202/202
+    - command: python3 -B -m unittest discover -s tests -v
+      rc: 0
+      tests: 100
+    - command: PATH=<verified-helm> .venv/bin/python -B -m unittest upgrade.tests.test_cilium -v
+      rc: 0
+      tests: 6
+      renders: 12
+    cleanup: 仅固定CI临时runner/登录/临时tag；无实验室变更，不修改旧制品
+    previous_qualified_sha: 76e5ea80ea6f4d6f00e7287e144164e997fb16b0
+    evidence: upgrade/v1.34.13/evidence/network-publication.json
+    run_id: '43638919365'
+    run_url: https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/43638919365
+  - batch_id: flannel-02810
+    repository: kubeauto-ext-images-dockerfile
+    branch: v1.34.13
+    sha: 21abf01955d5c2f4af46fbd2f506a354e2115400
+    mode: selected
+    images:
+    - brinnatt/flannel:v0.28.10
+    - brinnatt/flannel-cni-plugin:v1.9.1-flannel3
+    image_count: 2
+    platforms:
+    - linux/amd64
+    - linux/arm64
+    fingerprints:
+      brinnatt/flannel:v0.28.10: be43479e07cb0ef761f34e129f3016972d55a49e95a81d594bde9505b1885cfc
+      brinnatt/flannel-cni-plugin:v1.9.1-flannel3: 46e3b5076de6bce62bcdb00d894d74dfa5135ee27c5174a055719bc16e5e6d87
+    reason: 源0.28.4到官方最新同minor patch及完整CNI配套，两个新tag认证私库404；旧源制品和目录保持。
+    state: published-dual-readback-qualified
+    allowed_publish_set:
+    - hub.talkedu.cn/kubeauto/flannel:v0.28.10
+    - docker.io/brinnatt/flannel:v0.28.10
+    - hub.talkedu.cn/kubeauto/flannel-cni-plugin:v1.9.1-flannel3
+    - docker.io/brinnatt/flannel-cni-plugin:v1.9.1-flannel3
+    completed_ladder: 2
+    checks:
+    - command: python3 scripts/validate_catalog.py
+      rc: 0
+      result: 204/204
+    - command: python3 -B -m unittest discover -s tests -v
+      rc: 0
+      tests: 102
+    - command: PYTHONPATH=<verified-ansible218> .venv/bin/python -B -m unittest upgrade.tests.test_flannel -v
+      rc: 0
+      tests: 4
+    cleanup: 仅CI临时runner/登录/tag，无实验室变更，旧tag保持
+    next: 在已有Ingress pending离开队列后，可与已独立资格化Cilium八镜像合并selected十项；启动前核真实计划、SHA及允许集合
+    evidence: upgrade/v1.34.13/evidence/network-publication.json
+    run_id: '43638919365'
+    run_url: https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/43638919365
+  - batch_id: dns-1150-1268
+    repository: kubeauto-ext-images-dockerfile
+    branch: v1.34.13
+    sha: 02d4a9078dc48206c5d8cf35e33fd1f2e530efa7
+    mode: selected
+    images:
+    - brinnatt/coredns:1.15.0
+    - brinnatt/k8s-dns-node-cache:1.26.8
+    image_count: 2
+    platforms:
+    - linux/amd64
+    - linux/arm64
+    fingerprints:
+      brinnatt/coredns:1.15.0: b8f7f403d1e04dfacc0168bf9a65612a32dbdeba4c91be9c3216710e692aab13
+      brinnatt/k8s-dns-node-cache:1.26.8: fb8238bb671c7f67addf98aa55a93a012416e7fd058754e719876eff112ab6d6
+    reason: 官方稳定CoreDNS1.15.0与正式promotion node-cache1.26.8；两精确tag已认证私库404，不重建原GA镜像或自组内嵌CoreDNS。
+    state: published-dual-readback-qualified
+    allowed_publish_set:
+    - hub.talkedu.cn/kubeauto/coredns:1.15.0
+    - docker.io/brinnatt/coredns:1.15.0
+    - hub.talkedu.cn/kubeauto/k8s-dns-node-cache:1.26.8
+    - docker.io/brinnatt/k8s-dns-node-cache:1.26.8
+    completed_ladder: 2
+    checks:
+    - command: python3 scripts/validate_catalog.py
+      rc: 0
+      result: 206/206
+    - command: PYTHONPATH=tests python3 -B -m unittest test_image_release test_incremental_release -v
+      rc: 0
+      tests: 48
+    - command: .venv/bin/python -B -m unittest upgrade.tests.test_dns_stage -v
+      rc: 0
+      tests: 11
+    first_local_failure:
+      classification: local test invocation
+      cause: Invoking tests as namespace modules did not put tests/ on sys.path; cross-test import refused
+      correction: Use existing repository test import path PYTHONPATH=tests; no source or assertion change
+      live_execution: false
+    next: 目标组合/完整产品入口/现场依赖尚待闭合；不重复发布
+    cleanup: CI ephemeral runner/registry login only; no lab lease or mutation
+    run_id: '43644868448'
+    run_url: https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/43644868448
+    plan_continuity: 与旧SHA计划items/fingerprints逐项一致；触发前已核remote SHA及selected2包含于允许集合
+    evidence: upgrade/v1.34.13/evidence/dns-publication.json
+  - batch_id: calico-bridge-target-metrics-localpath
+    repository: kubeauto-ext-images-dockerfile
+    branch: v1.34.13
+    sha: 02d4a9078dc48206c5d8cf35e33fd1f2e530efa7
+    mode: selected
+    images:
+    - brinnatt/calico-cni:v3.31.7
+    - brinnatt/calico-node:v3.31.7
+    - brinnatt/calico-kube-controllers:v3.31.7
+    - brinnatt/calico-cni:v3.32.4
+    - brinnatt/calico-node:v3.32.4
+    - brinnatt/calico-kube-controllers:v3.32.4
+    - brinnatt/metrics-server:v0.9.1
+    - brinnatt/local-path-provisioner:v0.0.37
+    image_count: 8
+    platforms:
+    - linux/amd64
+    - linux/arm64
+    fingerprints:
+      brinnatt/calico-cni:v3.31.7: 412a96b2ec5cdfe6f1dc41832a7c7fe6caee9e4e42b96be53c5e2daa34f681de
+      brinnatt/calico-node:v3.31.7: c2d1b0eeb2f3f426da9d66b72fae793ca25123d90c195afd641f2abbcdfca957
+      brinnatt/calico-kube-controllers:v3.31.7: 1575af081f7008f1171423c30bac62dcc25f81944c3cf9127babc39d5791b6e1
+      brinnatt/calico-cni:v3.32.4: 4c588db5f6f493f51d5e7663e5444a64e054deda3c9cfcb5cc81ace3d750176e
+      brinnatt/calico-node:v3.32.4: 30bf2b584c7543b5371690a62aaa7b97a0a0234b9dd67b7782a80faccf24850e
+      brinnatt/calico-kube-controllers:v3.32.4: 4883dc58339af188ac270f8dabd72e0c5dea9be953ce29071b492243a364679d
+      brinnatt/metrics-server:v0.9.1: d150349d029044052ee6d3bf421a76405e4d625cfe4ed7d9044f3f2b23bf94e6
+      brinnatt/local-path-provisioner:v0.0.37: 5fc6795041a9f0ee1089249ebedde4c2c1d6f9fb5014fa7caeca6a8154f735dd
+    state: published-dual-readback-qualified
+    reason: 六个Calico已确定源桥/目标官方配套、后置Metrics和LocalPath scratch/helper候选均为精确官方版本，已认证私库全部404；仅新增必要目录，不重建原GA制品。
+    allowed_publish_set:
+    - hub.talkedu.cn/kubeauto/calico-cni:v3.31.7
+    - docker.io/brinnatt/calico-cni:v3.31.7
+    - hub.talkedu.cn/kubeauto/calico-node:v3.31.7
+    - docker.io/brinnatt/calico-node:v3.31.7
+    - hub.talkedu.cn/kubeauto/calico-kube-controllers:v3.31.7
+    - docker.io/brinnatt/calico-kube-controllers:v3.31.7
+    - hub.talkedu.cn/kubeauto/calico-cni:v3.32.4
+    - docker.io/brinnatt/calico-cni:v3.32.4
+    - hub.talkedu.cn/kubeauto/calico-node:v3.32.4
+    - docker.io/brinnatt/calico-node:v3.32.4
+    - hub.talkedu.cn/kubeauto/calico-kube-controllers:v3.32.4
+    - docker.io/brinnatt/calico-kube-controllers:v3.32.4
+    - hub.talkedu.cn/kubeauto/metrics-server:v0.9.1
+    - docker.io/brinnatt/metrics-server:v0.9.1
+    - hub.talkedu.cn/kubeauto/local-path-provisioner:v0.0.37
+    - docker.io/brinnatt/local-path-provisioner:v0.0.37
+    completed_ladder: 2
+    checks:
+    - command: python3 scripts/validate_catalog.py
+      rc: 0
+      result: 214/214
+    - command: PYTHONPATH=tests python3 -B -m unittest test_image_release test_incremental_release -v
+      rc: 0
+      tests: 48
+    - command: .venv/bin/python -B -m unittest upgrade.tests.test_records upgrade.tests.test_flannel_stage -v
+      rc: 0
+      tests: 13
+    source_contracts:
+    - CALICO-3317-MANIFEST
+    - CALICO-3324-MANIFEST
+    - METRICS-091-FIRST-HOP
+    - LOCALPATH-037-SCRATCH-IMAGE
+    - LOCALPATH-037-OFFICIAL-DEPLOYMENT
+    next: 组合/完整产品入口与真实宿主资格尚待闭合；不重复发布
+    cleanup: Only ephemeral CI build state; no lab lease or mutation
+    run_id: '43645507476'
+    run_url: https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/43645507476
+    evidence: upgrade/v1.34.13/evidence/platform-eight-publication.json
+  publication_candidate:
+    repository: kubeauto-ext-images-dockerfile
+    branch: v1.34.13
+    sha: 21abf01955d5c2f4af46fbd2f506a354e2115400
+    mode: selected
+    images:
+    - brinnatt/cilium:v1.19.10
+    - brinnatt/cilium-operator-generic:v1.19.10
+    - brinnatt/hubble-relay:v1.19.10
+    - brinnatt/cilium:v1.20.4
+    - brinnatt/cilium-operator-generic:v1.20.4
+    - brinnatt/hubble-relay:v1.20.4
+    - brinnatt/hubble-ui:v0.13.6
+    - brinnatt/hubble-ui-backend:v0.13.6
+    - brinnatt/flannel:v0.28.10
+    - brinnatt/flannel-cni-plugin:v1.9.1-flannel3
+    image_count: 10
+    qualified_batches:
+    - cilium-11910-1204
+    - flannel-02810
+    fingerprints:
+      brinnatt/cilium:v1.19.10: 7c35544bb88ec80c03e8ec4839f9c73f5465bbf0544b8b9d634c962ba245bcfd
+      brinnatt/cilium-operator-generic:v1.19.10: 0b089f83c9a2b13d0b52a3945ed9b9c3a6636291ae2d9afabeeb95bd2e8510a1
+      brinnatt/hubble-relay:v1.19.10: 44489e2036fd12967b20a62df53e65811dde8c8885e8eae7abb83522dca218e2
+      brinnatt/cilium:v1.20.4: be6d7d27bad6342af01bb175bfac6d2b91052318570d595ca12770da2d3e2542
+      brinnatt/cilium-operator-generic:v1.20.4: 79664a6e8d8ce0d1aede339dd8f90d62b145c53f3277cb49bc5e4ee4d35b4ae6
+      brinnatt/hubble-relay:v1.20.4: 17c9b52b85cc9e887afd86dab785b94aedef61cdf134ddaabab49d3f28820b7a
+      brinnatt/hubble-ui:v0.13.6: f58629a282d82ad4a3ec0a73148902476e4e79e5bec4247d30ce0860c0cbd621
+      brinnatt/hubble-ui-backend:v0.13.6: 8bee52e8991a25624d4c610cae8660082418d2a1a5c09a861e4241377937e9f7
+      brinnatt/flannel:v0.28.10: be43479e07cb0ef761f34e129f3016972d55a49e95a81d594bde9505b1885cfc
+      brinnatt/flannel-cni-plugin:v1.9.1-flannel3: 46e3b5076de6bce62bcdb00d894d74dfa5135ee27c5174a055719bc16e5e6d87
+    state: published-dual-readback-qualified
+    next: Ingress离开pending后才进入发布准入；不得替换现有pending任务。
+    run_id: '43638919365'
+    run_url: https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/43638919365
+    evidence: upgrade/v1.34.13/evidence/network-publication.json
 support_paths:
   policy: 保留原支持功能；以下是覆盖盘点维度，不是本轮现场执行清单。每条路径用官方/副本/静态/新增实测明确去向。
   topology:
@@ -92,7 +737,7 @@ impact_mappings:
   reuse_evidence:
   - upgrade/v1.33.6/evidence/tests/evidence/ext-images-20261008.json
   changed_inputs: []
-  minimal_supplement: null
+  minimal_supplement: 新增跨minor/HA/逐节点drain、目标干净安装与限定恢复；控制面阶段单独核现有StatefulSet修订与Pod UID非计划滚动，和后续节点drain的计划滚动分开判定；保留默认StatefulSetSemanticRevisionComparison。
   disproof_command: null
   existing_full_gate_disposition: 默认保留原完整验收结论；只对已证明变化的主张按所属契约补证，尚未授权重跑组件完整长链。
   archived_matrix_snapshots:
@@ -286,11 +931,13 @@ impact_mappings:
   original_id_expansion_complete: false
   upgrade_parent_ids:
   - UPG-11
-  decision: investigate
+  decision: supplement
   dependency_analysis: API聚合、kubelet证书与实际采样，不能只检查Pod。
   reuse_evidence: []
-  changed_inputs: []
-  minimal_supplement: null
+  changed_inputs:
+  - metrics-server v0.8.0 → v0.9.1
+  - Kubernetes1.33.6 → 1.34.13
+  minimal_supplement: 目标后置滚动更新，验证node+pod Metrics API及原HPA集成；不展开Prometheus性能/全历史指标功能。
   disproof_command: null
   existing_full_gate_disposition: 默认保留原完整验收结论；只对已证明变化的主张按所属契约补证，尚未授权重跑组件完整长链。
   archived_matrix_snapshots:
@@ -350,12 +997,20 @@ impact_mappings:
   original_id_expansion_complete: false
   upgrade_parent_ids:
   - UPG-09
-  decision: investigate
-  dependency_analysis: CSI/sidecar、snapshot-controller全局所有权与PVC数据；各后端不能用一次挂载互相替代。
+  decision: supplement
+  dependency_analysis: Static OpenEBS actual product values render29 objects with LVM and12 without; only kubectl
+    pre-upgrade hook tag differs. No need to trigger Helm upgrade merely to change unused hook metadata. Local Path
+    helper image mismatch is proven from official scratch Dockerfile and actual product template; integration impact
+    is narrow and separate from existing source GA.
   reuse_evidence:
   - upgrade/v1.33.6/evidence/tests/evidence/dev-rocky9-nfs-20261103.json
-  changed_inputs: []
-  minimal_supplement: null
+  changed_inputs:
+  - Kubernetes minor1.33.6→1.34.13
+  - Candidate Local Path0.0.31→0.0.37 scratch controller; helper must use fixed BusyBox1.37
+  minimal_supplement: Per actual backend verify source PV/PVC/data/node identity, target mount/readback plus one
+    new PVC lifecycle. Local Path only rollout reviewed controller/helper; OpenEBS/NFS retain release/engine and
+    do not replay install role. No LVM/Hostpath cross-node migration, shared CRD deletion or new Mayastor/ZFS feature
+    tests.
   disproof_command: null
   existing_full_gate_disposition: 默认保留原完整验收结论；只对已证明变化的主张按所属契约补证，尚未授权重跑组件完整长链。
   archived_matrix_snapshots:
@@ -370,8 +1025,8 @@ impact_mappings:
   original_id_expansion_complete: false
   upgrade_parent_ids:
   - UPG-09
-  decision: investigate
-  dependency_analysis: 按RBD/CephFS与架构展开原ID；独立Ceph数据面/OS证据只在依赖成立时复用，不重排九模块文档。
+  decision: supplement
+  dependency_analysis: 只有CSI driver patch+K8s minor变化；Ceph数据面/架构/sidecar/模板/所有权不变。3.17.2 Ceph基础镜像修复AES256k，既有宿主安全client门禁仍有效，不能降低或跳过。
   reuse_evidence:
   - upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-01.json
   - upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-02.json
@@ -401,8 +1056,9 @@ impact_mappings:
   - upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-26.json
   - upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-27.json
   - upgrade/v1.33.6/evidence/logs/ceph-cases/ceph-module-20261010T110759Z-775905/CEPH-28.json
-  changed_inputs: []
-  minimal_supplement: null
+  changed_inputs:
+  - v_ceph_csi:v3.17.1→v3.17.2
+  minimal_supplement: 主链RBD/CephFS源卷ID/账本、drain重挂载、目标driver rollout；最小快照恢复/临时卷删除与安全client资格关联。无变化的Ceph独立故障/性能/DR/OS资格按依赖复用。
   disproof_command: null
   existing_full_gate_disposition: 默认保留原完整验收结论；只对已证明变化的主张按所属契约补证，尚未授权重跑组件完整长链。
   archived_matrix_snapshots:
@@ -425,7 +1081,7 @@ impact_mappings:
   - UPG-09
   - UPG-12
   decision: investigate
-  dependency_analysis: V1/V2、drain/PDB、补丁与数据保持；原完整项43不可静默豁免，先形成影响/复用或调整依据。
+  dependency_analysis: K8s节点drain会触发重建；1.12.2修复该路径丢写，不能只引用源功能GA。4个自有补丁尚未吸收，必须继承；官方13镜像配套全部变化，但不因此重跑每个历史深测。
   reuse_evidence:
   - upgrade/v1.33.6/evidence/tests/evidence/longhorn-full-ga-20261103.json
   - upgrade/v1.33.6/evidence/tests/evidence/longhorn-maintenance-20261022.json
@@ -433,7 +1089,7 @@ impact_mappings:
   - upgrade/v1.33.6/evidence/tests/evidence/longhorn-v2-maintenance-complete-20261024.json
   - upgrade/v1.33.6/evidence/tests/evidence/longhorn-v2-upgrade-lifecycle-20261021.json
   changed_inputs: []
-  minimal_supplement: null
+  minimal_supplement: 待精确组合冻结：V1 rebuild并发512B确认写账本、V2限定engine迁移/重挂载、补丁精确Go合同及原保护/安全主张适用性；历史性能/DR/全故障长链不自动重复。
   disproof_command: null
   existing_full_gate_disposition: 默认保留原完整验收结论；只对已证明变化的主张按所属契约补证，尚未授权重跑组件完整长链。
   archived_matrix_snapshots:
@@ -453,11 +1109,14 @@ impact_mappings:
   original_id_expansion_complete: false
   upgrade_parent_ids:
   - UPG-11
-  decision: investigate
-  dependency_analysis: 采集端点、TLS、CRD/webhook、HPA与指标变化；既有稳定性能数字保留原环境边界。
+  decision: supplement
+  dependency_analysis: 固定Operator0.93支持K8s>=1.25、Prometheus2+/Alertmanager0.15+/Thanos0.10+，项目Prometheus3.13.1/AM0.33.1与上游e2e默认一致；KSM2.18官方client-go1.34行覆盖目标接口。保持已GA
+    Chart88.0.0及明确覆盖的镜像组合，不升级引擎/CRD/规则。真实values在1.33.6和1.34.13的130对象及Thanos132对象逐对象/逐字节相同，无需重放安装链。KSM2.18非当前latest且非上游常规维护，本交付仍为短期迁移桥梁；官方API/支持下限与项目目标接口验证分别表述。
   reuse_evidence: []
-  changed_inputs: []
-  minimal_supplement: null
+  changed_inputs:
+  - Kubernetes API/control-plane/kubelet1.33.6→1.34.13; monitoring component objects unchanged in source/target
+    static renders
+  minimal_supplement: 主链补目标端点/TLS scrape、指标与告警；可选APIService/HPA按实际功能路径补接口验证。不重跑历史监控故障、性能、DR或完整middleware长链。
   disproof_command: null
   existing_full_gate_disposition: 默认保留原完整验收结论；只对已证明变化的主张按所属契约补证，尚未授权重跑组件完整长链。
   archived_matrix_snapshots:
@@ -499,12 +1158,12 @@ impact_mappings:
   upgrade_parent_ids:
   - UPG-10
   - UPG-12
-  decision: investigate
-  dependency_analysis: 唯一ECK/CRD与双方隔离；原55/59完整项按实际变更处理，不能只凭升级矩阵替代。
+  decision: supplement
+  dependency_analysis: ECK3.5.0官方支持1.32–1.36；业务ES与日志ES精确版本分开保持，自有smartcn/客户端制品不换原生镜像。
   reuse_evidence:
   - upgrade/v1.33.6/evidence/tests/evidence/elasticsearch-only-20261108-003544-4c218128b104420895c34370a975c0a5.json
   changed_inputs: []
-  minimal_supplement: null
+  minimal_supplement: 在同一K8s迁移主链核对共享控制器/两消费者身份与协调、TLS、索引UUID及数据保持；不重复原快照恢复、故障和Rally长链。
   disproof_command: null
   existing_full_gate_disposition: 默认保留原完整验收结论；只对已证明变化的主张按所属契约补证，尚未授权重跑组件完整长链。
   archived_matrix_snapshots:
@@ -519,16 +1178,17 @@ impact_mappings:
   original_id_expansion_complete: false
   upgrade_parent_ids:
   - UPG-10
-  decision: investigate
-  dependency_analysis: Operator协调、PDB/重连、PVC/业务账本；引擎/PITR深度证据能否复用须查版本与存储依赖。
+  decision: supplement
+  dependency_analysis: 当前Operator1.20.0已是官方latest；认证软件表逐项包含现有PXC/backup/HAProxy/fluentbit，官方测试覆盖目标1.34；保持既有Chart与五组件组合。新minor只补Operator/API协调、主链drain中的SQL账本及重连断言，不重跑原PITR/性能/故障深测。
   reuse_evidence: []
-  changed_inputs: []
-  minimal_supplement: null
+  changed_inputs:
+  - Kubernetes API/control-plane/kubelet v1.33.6→v1.34.13，组件/引擎/Chart保持
+  minimal_supplement: 合并进迁移主链：源业务账本在目标读回、现有CR由Operator正常协调、节点疏散后的客户端重连；不跑独立全量middleware链。
   disproof_command: null
   existing_full_gate_disposition: 默认保留原完整验收结论；只对已证明变化的主张按所属契约补证，尚未授权重跑组件完整长链。
   archived_matrix_snapshots:
   - upgrade/v1.33.6/evidence/tests/mysql-test-matrix.yaml
-  reuse_assessment: 副本已归档；目标断言适用性待版本增量判断，未冒签目标PASS；空列表不表示原能力未GA。
+  reuse_assessment: 组件版本保持、官方目标窗口已核；旧深测按准确断言保留，原始归档/共享CSI依赖采用时核验，未将candidate副本直接签成目标PASS。
   new_live_steps: []
   live_scope_frozen: false
 - component_id: kafka
@@ -541,16 +1201,17 @@ impact_mappings:
   original_id_expansion_complete: false
   upgrade_parent_ids:
   - UPG-10
-  decision: investigate
-  dependency_analysis: Strimzi/CRD协调、Drain Cleaner、卷、quorum和确认消息；不默认升级Kafka metadata。
+  decision: supplement
+  dependency_analysis: Operator/CRD/两Chart/引擎/metadata/Drain Cleaner均不变，K8s跨minor/API协调与节点drain是新增组合主张。默认Cleaner拒绝eviction要由runner识别和有界协调，不能当瞬时Pod
+    Ready或吞rc即通过。
   reuse_evidence: []
   changed_inputs: []
-  minimal_supplement: null
+  minimal_supplement: 在既有迁移主链覆盖目标API协调与逐节点drain/消息账本/事务可见性/quorum/ISR；不为最新tag重跑原深度业务、备份、故障、恢复、性能与长稳。
   disproof_command: null
   existing_full_gate_disposition: 默认保留原完整验收结论；只对已证明变化的主张按所属契约补证，尚未授权重跑组件完整长链。
   archived_matrix_snapshots:
   - upgrade/v1.33.6/evidence/tests/kafka-test-matrix.yaml
-  reuse_assessment: 副本已归档；目标断言适用性待版本增量判断，未冒签目标PASS；空列表不表示原能力未GA。
+  reuse_assessment: 源全功能GA按交付负责人确认保留；已复制Kafka矩阵中KAFKA-04/06/08是历史说明，尚未重新取得其raw/durable归档，不将文字状态冒签目标实测。按具体复用主张定点关联原归档，缺失不触发源全量重开。
   new_live_steps: []
   live_scope_frozen: false
 - component_id: mongodb
@@ -562,18 +1223,19 @@ impact_mappings:
   original_id_expansion_complete: false
   upgrade_parent_ids:
   - UPG-10
-  decision: investigate
-  dependency_analysis: 两拓扑、PDB、majority+j账本、Operator与PVC；不因K8s升级自动推进FCV。
+  decision: supplement
+  dependency_analysis: 当前Operator1.23.1已是官方latest，现有Chart1.23.2实际appVersion1.23.1；支持软件表包含现有Mongo/PBM/fluentbit，目标1.34有上游测试覆盖。源1.33官方未列不撤销项目原GA；保持组合，复用原业务/恢复与CPU资格，仅补目标协调/数据保持。
   reuse_evidence:
   - upgrade/v1.33.6/evidence/tests/evidence/mongodb-maintenance-20261015.json
   - upgrade/v1.33.6/evidence/tests/evidence/mongodb-upgrade-20261017.json
-  changed_inputs: []
-  minimal_supplement: null
+  changed_inputs:
+  - Kubernetes API/control-plane/kubelet v1.33.6→v1.34.13，组件/引擎/Chart保持
+  minimal_supplement: 合并进迁移主链：源业务账本在目标读回、现有CR由Operator正常协调、节点疏散后的客户端重连；不跑独立全量middleware链。
   disproof_command: null
   existing_full_gate_disposition: 默认保留原完整验收结论；只对已证明变化的主张按所属契约补证，尚未授权重跑组件完整长链。
   archived_matrix_snapshots:
   - upgrade/v1.33.6/evidence/tests/mongodb-test-matrix.yaml
-  reuse_assessment: 副本已归档；目标断言适用性待版本增量判断，未冒签目标PASS；空列表不表示原能力未GA。
+  reuse_assessment: 组件版本保持、官方目标窗口已核；旧深测按准确断言保留，原始归档/共享CSI依赖采用时核验，未将candidate副本直接签成目标PASS。
   new_live_steps: []
   live_scope_frozen: false
 - component_id: redis
@@ -608,11 +1270,11 @@ impact_mappings:
   original_id_expansion_complete: false
   upgrade_parent_ids:
   - UPG-10
-  decision: investigate
-  dependency_analysis: Operator/tenant配套、对象读写与PVC；若作备份后端还需检查恢复消费者。
+  decision: supplement
+  dependency_analysis: Operator7.1.1为latest，官方K8s>=1.30最低条件覆盖1.34；当前同版Tenant Chart默认Server与源GA相同，无引擎/格式变化。证据力度仍是minimum，非官方1.34逐版实测。
   reuse_evidence: []
   changed_inputs: []
-  minimal_supplement: null
+  minimal_supplement: 复用原S3/分布式/恢复功能深测；在同一迁移主链补Operator协调、TLS/CSR及源对象key/versionId/hash读回与新写入，不重跑MinIO全功能。
   disproof_command: null
   existing_full_gate_disposition: 默认保留原完整验收结论；只对已证明变化的主张按所属契约补证，尚未授权重跑组件完整长链。
   archived_matrix_snapshots:
@@ -633,7 +1295,7 @@ impact_mappings:
   reuse_evidence:
   - upgrade/v1.33.6/evidence/tests/evidence/dev-nacos-startup-20261103.json
   changed_inputs: []
-  minimal_supplement: null
+  minimal_supplement: 保留源GA配置持久化/重复产品收敛/TLS拒绝深测；仅在同一迁移账本核节点疏散和目标DNS后的原数据、SRV三peer、注册配置API与原MySQL TLS接口，不重跑历史全故障/备份链。
   disproof_command: null
   existing_full_gate_disposition: 默认保留原完整验收结论；只对已证明变化的主张按所属契约补证，尚未授权重跑组件完整长链。
   archived_matrix_snapshots:
@@ -641,6 +1303,7 @@ impact_mappings:
   reuse_assessment: 副本已归档；目标断言适用性待版本增量判断，未冒签目标PASS；空列表不表示原能力未GA。
   new_live_steps: []
   live_scope_frozen: false
+  source_applicability_evidence: upgrade/v1.34.13/evidence/nacos-source-evidence-applicability.json
 - component_id: rocketmq
   matrix_paths:
   - tests/enterprise-test-matrix.yaml
@@ -698,11 +1361,11 @@ impact_mappings:
   upgrade_parent_ids:
   - UPG-04
   - UPG-13
-  decision: investigate
+  decision: supplement
   dependency_analysis: Python K8s client支持矩阵、冻结SDK和原生/EE Ansible边界；不自动升级全部依赖。
   reuse_evidence: []
   changed_inputs: []
-  minimal_supplement: null
+  minimal_supplement: 只核对CoreV1/RBAC当前调用在1.34的集成；tools独立边界不继承此证据。
   disproof_command: null
   existing_full_gate_disposition: 默认保留原完整验收结论；只对已证明变化的主张按所属契约补证，尚未授权重跑组件完整长链。
   archived_matrix_snapshots:
@@ -758,26 +1421,64 @@ impact_mappings:
   live_scope_frozen: false
 resource_plan:
   authority: AGENTS.md Fixed lab authority
-  hosts: []
-  leases: []
-  capacity_budgets: []
+  hosts:
+  - 192.168.47.130
+  - 192.168.47.131
+  - 192.168.47.132
+  - 192.168.47.133
+  - 192.168.47.134
+  - 192.168.47.135
+  - 192.168.47.136
+  - 192.168.122.2
+  - 192.168.122.193
+  - 192.168.122.210
+  - 192.168.122.217
+  - 192.168.122.243
+  - 192.168.122.246
+  leases:
+  - owner: UPG-15
+    scope: source upgrade-v1336-source on 131-136; target upgrade-v13413-clean on 193/210/217/243/246
+    acquisition: final-regression.sh after final-prerequisites pass
+    release: LAB_CLEAN_VERIFY_PASS and removal of both disposable cluster directories
+  capacity_budgets:
+  - source: six-node fixed Rocky 8.10 path; no reserved-resource qualification
+  - target: five-node supplemental Rocky 9.8 pool; registry endpoint 192.168.122.2 is read-only
   disk_allowlists: []
-  port_ownership: []
+  port_ownership:
+  - source API backends 192.168.47.134-136:6443
+  - target API backends 192.168.122.217/243/246:6443
   parallel_branches: []
-  conflicts: []
-  cleanup_scope: null
+  conflicts:
+  - target pool registry 192.168.122.2 is shared and read-only for this run
+  - 192.168.122.1 is forbidden and absent from all final inputs
+  cleanup_scope: upgrade-v1336-source, upgrade-v13413-clean and their run-owned state only
 final_run:
   parent_id: UPG-15
-  frozen: false
-  steps: []
-  launcher: null
-  refusal_contract: null
-  run_id: null
+  frozen: true
+  steps:
+  - id: final-source-main-chain
+    claim: clean v1.33.6 source setup, backup, product kubecli upgrade and exact v1.34.13 six-node readback
+    command: bash /usr/local/kubeauto/upgrade/lab/source-preflight.sh; /usr/local/kubeauto/.venv/bin/python /usr/local/kubeauto/kubecli.py upgrade upgrade-v1336-source
+    covers: [UPG-05, UPG-06, UPG-07, UPG-08, UPG-09, UPG-10, UPG-11, UPG-12]
+    success: FINAL_SOURCE_UPGRADE_PASS
+  - id: final-target-clean-install
+    claim: independent five-node v1.34.13 clean setup and second setup idempotence through kubecli
+    command: /usr/local/kubeauto/.venv/bin/python /usr/local/kubeauto/kubecli.py setup upgrade-v13413-clean 90
+    covers: [UPG-13]
+    success: FINAL_TARGET_INSTALL_PASS
+  - id: final-scope-cleanup
+    claim: run-owned clusters, leases and state removed with final clean verification
+    command: upgrade/lab/final-regression.sh EXIT trap
+    covers: [UPG-15]
+    success: LAB_CLEAN_VERIFY_PASS
+  launcher: upgrade/lab/final-regression.sh
+  refusal_contract: .venv/bin/python -B upgrade/validate.py upgrade/v1.34.13/test-matrix.yaml --final-prerequisites before any cluster cleanup or setup
+  run_id: upgrade-v13413-final-20261115
   prerequisite_rule: 除UPG-15外全部适用父项当前完整证据，通过真实launcher变更前校验；缺失/pending/fail/过期拒绝。
   clean_setup: true
   clean_verify_marker: LAB_CLEAN_VERIFY_PASS
   historical_deep_cases: 只有逐依赖核验后的原证据作为前置；不冒称本轮重跑
-  coverage_methods: 适用旧证据+官方依据+静态合同作为前置；最终只实际执行冻结的迁移、新建主路径和受影响整合
+  coverage_methods: 适用旧证据+官方依据+静态合同作为前置；最终实际执行冻结的迁移主链、新建主路径和受影响整合读回
   no_repeated_full_components: true
 completion_conditions:
 - 全部组件映射展开到实际具体依赖/原ID，复用与补测有可审核依据
@@ -806,17 +1507,42 @@ scope_control:
   - cleanup
   deferred: 没有明确差异/新主张缺口时，不加入历史故障/PITR/DR/性能/长稳场景
   deduplication: 同次真实步骤按断言支持多个父项，不为不同marker重复执行
-  scope_changes: []
+  scope_changes:
+  - date: '2026-11-15'
+    reason: UPG-13 and UPG-14 completed; UPG-15 now has an executable fixed-scope launcher
+    affected: [UPG-15]
+    added: source clean rebuild, target clean rebuild/idempotence, scoped cleanup
+    excluded: historical middleware deep regressions, performance, DR, long-stability and unrelated tools
   expansion_rule: 扩大已冻结范围先列ID/依据/不可复用原因和增量成本；超出本次授权或预算时不启动增量
 cost_control:
-  state: planning-only
+  state: final-run-frozen
   user_context: 用户表示三天测试约700元且不可承担长期重复回归；这不是已授权预算
   authorized_live_budget: null
   max_agent_work_budget: null
   max_live_wall_clock: null
   max_environment_occupancy: null
   billing_telemetry: 未取得真实token/费用计量，不从时长换算费用或承诺节省比例
-  live_launch_enabled: false
+  live_launch_enabled: true
   launch_condition: 实现范围、最小步骤、成本上界和所需合同均冻结并在授权内，才允许现场
   monitoring: 优先持久runner心跳与阶段摘要，异常定点诊断；不反复全量读日志
   overrun_action: 停止启动未授权增量，保留首失败并完成安全恢复/清理
+resource_discovery:
+  record: upgrade/v1.34.13/evidence/pool-discovery.json
+  lease_acquired: false
+  mutation: none
+  candidate_pool:
+  - 192.168.122.217
+  - 192.168.122.243
+  - 192.168.122.246
+  - 192.168.122.193
+  - 192.168.122.210
+  - 192.168.122.216
+  basis: 实际约16GiB，K8s/runtime服务inactive；仍需精确CPU/磁盘/归属/干净资格和共享锁
+  preserve:
+  - 192.168.122.2运行中集群
+  capacity_conflicts:
+  - 137/138实际约4GiB，不能按旧容量安排资源预留或重负载场景
+  unreachable: []
+  scope_rule: 只读发现不取得租约、不证明清理；只对真实使用的主机做后续资格，不重跑全部OS
+  latest_observation: 'pool-discovery.json#followup: fixed runner rc=0, reachable26; read-only, no lease or clean
+    qualification'

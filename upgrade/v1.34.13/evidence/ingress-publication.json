@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "observed_on": "2026-11-15",
+  "matrix_ids": [
+    "UPG-03"
+  ],
+  "claim": "Selected artifact publication only; no project runtime or parent acceptance",
+  "repository": "kubeauto-ext-images-dockerfile",
+  "branch": "v1.34.13",
+  "sha": "988e4167308d2f830f81b4808494366ddbb3781b",
+  "run_id": "43623197988",
+  "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/43623197988",
+  "conclusion": "success",
+  "durable_state": "rc=0",
+  "actual_plan": {
+    "schema": 1,
+    "mode": "selected",
+    "head": "988e4167308d2f830f81b4808494366ddbb3781b",
+    "items": [
+      {
+        "row": {
+          "dockerfile": "./platform/ingress/ingress-nginx-controller-1.15.1/Dockerfile",
+          "image": "brinnatt/ingress-nginx-controller",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/ingress-nginx-controller",
+          "tag": "v1.15.1",
+          "ctx": "./platform/ingress/ingress-nginx-controller-1.15.1/"
+        },
+        "fingerprint": "8f357f8f284dbd8f7a614e6a5362856a2a56ea5a7c38e817a56f68865781ffca"
+      },
+      {
+        "row": {
+          "dockerfile": "./platform/ingress/kube-webhook-certgen-1.6.9/Dockerfile",
+          "image": "brinnatt/kube-webhook-certgen",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/kube-webhook-certgen",
+          "tag": "v1.6.9",
+          "ctx": "./platform/ingress/kube-webhook-certgen-1.6.9/"
+        },
+        "fingerprint": "511f1ea8ece2adba87bcb7db758081adcdc692df35adeab79e6ae8fdc2c76247"
+      }
+    ],
+    "event_keys": [],
+    "shard_size": 20,
+    "shards": 1
+  },
+  "accepted_records": [
+    {
+      "digest": "sha256:dde6a97bafe6e8b3c5b8142daf6e96f78ac6a66ba3ce47fed5177c336235e8ff",
+      "fingerprint": "511f1ea8ece2adba87bcb7db758081adcdc692df35adeab79e6ae8fdc2c76247",
+      "head": "988e4167308d2f830f81b4808494366ddbb3781b",
+      "key": "brinnatt/kube-webhook-certgen:v1.6.9",
+      "platforms": {
+        "linux/amd64": "sha256:ff31947ffcac13fbf2c1b1749cfc9dfc92b3ac94f46ee7dd598aeaf5e82a79ff",
+        "linux/arm64": "sha256:9fca6fcdd097c1f4ce2b54d9ad1994adfe0a94b4d8240ba2349c3dcf7e33b618"
+      },
+      "run_id": "43623197988",
+      "schema": 1,
+      "source_digest": "sha256:01038e7de14b78d702d2849c3aad72fd25903c4765af63cf16aa3398f5d5f2dd",
+      "source_ref": "registry.k8s.io/ingress-nginx/kube-webhook-certgen:v1.6.9@sha256:01038e7de14b78d702d2849c3aad72fd25903c4765af63cf16aa3398f5d5f2dd"
+    },
+    {
+      "digest": "sha256:7ef62dd9a20ae585ef0ca042b548e837809546e2d654b1b7b135f43e6ef17aa3",
+      "fingerprint": "8f357f8f284dbd8f7a614e6a5362856a2a56ea5a7c38e817a56f68865781ffca",
+      "head": "988e4167308d2f830f81b4808494366ddbb3781b",
+      "key": "brinnatt/ingress-nginx-controller:v1.15.1",
+      "platforms": {
+        "linux/amd64": "sha256:6eda25f012aced8450fa9a081c1a316f8d9c9780a9ac69fcb9d078d2770ec212",
+        "linux/arm64": "sha256:84fca1703c6e9ad964f5e8544fbb6d170650266d7ec8535b154f576e60f39a21"
+      },
+      "run_id": "43623197988",
+      "schema": 1,
+      "source_digest": "sha256:594ceea76b01c592858f803f9ff4d2cb40542cae2060410b2c95f75907d659e1",
+      "source_ref": "registry.k8s.io/ingress-nginx/controller:v1.15.1@sha256:594ceea76b01c592858f803f9ff4d2cb40542cae2060410b2c95f75907d659e1"
+    }
+  ],
+  "archives": {
+    "release-records-0-1": {
+      "path": "upgrade/v1.34.13/evidence/raw/ingress-/43623197988/release-records-0-1.zip",
+      "sha256": "80bf5a6f2a3d10b6dcc08e8f8f6bb566262de36793b54a7d4f569d71ffb2e8c0",
+      "bytes": 1331
+    },
+    "release-evidence-0-1": {
+      "path": "upgrade/v1.34.13/evidence/raw/ingress-/43623197988/release-evidence-0-1.zip",
+      "sha256": "22dcbe205f56ab0cebf3863256aab1d6fe54c2e8b3d6d4772e753535ce836e95",
+      "bytes": 5141
+    },
+    "image-plan": {
+      "path": "upgrade/v1.34.13/evidence/raw/ingress-/43623197988/image-plan.zip",
+      "sha256": "0d7e156a869e2301036507e0af828411cca201cbb96c3d2a12db41ba506c78d4",
+      "bytes": 543
+    },
+    "plan-evidence-1": {
+      "path": "upgrade/v1.34.13/evidence/raw/ingress-/43623197988/plan-evidence-1.zip",
+      "sha256": "977d0aa88157cd434f1a4b4d75b00045fbd8b0315da824988be02ad99e9ad996",
+      "bytes": 300
+    }
+  },
+  "parent_acceptance": false,
+  "live_lab_execution": false
+}

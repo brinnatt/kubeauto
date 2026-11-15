@@ -1,0 +1,247 @@
+{
+  "schema_version": 1,
+  "observed_on": "2026-11-15",
+  "matrix_ids": [
+    "UPG-03"
+  ],
+  "claim": "Selected 8-image dual-architecture/dual-registry publication and formal-tag readback; no runtime acceptance",
+  "repository": "kubeauto-ext-images-dockerfile",
+  "run_id": "43645507476",
+  "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/43645507476",
+  "sha": "02d4a9078dc48206c5d8cf35e33fd1f2e530efa7",
+  "branch": "v1.34.13",
+  "mode": "selected",
+  "image_count": 8,
+  "conclusion": "success",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "actual_plan": {
+    "schema": 1,
+    "mode": "selected",
+    "head": "02d4a9078dc48206c5d8cf35e33fd1f2e530efa7",
+    "items": [
+      {
+        "row": {
+          "dockerfile": "platform/network/calico/v3.31.7/calico-cni/Dockerfile",
+          "image": "brinnatt/calico-cni",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/calico-cni",
+          "tag": "v3.31.7",
+          "ctx": "platform/network/calico/v3.31.7/calico-cni"
+        },
+        "fingerprint": "412a96b2ec5cdfe6f1dc41832a7c7fe6caee9e4e42b96be53c5e2daa34f681de"
+      },
+      {
+        "row": {
+          "dockerfile": "platform/network/calico/v3.31.7/calico-node/Dockerfile",
+          "image": "brinnatt/calico-node",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/calico-node",
+          "tag": "v3.31.7",
+          "ctx": "platform/network/calico/v3.31.7/calico-node"
+        },
+        "fingerprint": "c2d1b0eeb2f3f426da9d66b72fae793ca25123d90c195afd641f2abbcdfca957"
+      },
+      {
+        "row": {
+          "dockerfile": "platform/network/calico/v3.31.7/calico-kube-controllers/Dockerfile",
+          "image": "brinnatt/calico-kube-controllers",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/calico-kube-controllers",
+          "tag": "v3.31.7",
+          "ctx": "platform/network/calico/v3.31.7/calico-kube-controllers"
+        },
+        "fingerprint": "1575af081f7008f1171423c30bac62dcc25f81944c3cf9127babc39d5791b6e1"
+      },
+      {
+        "row": {
+          "dockerfile": "platform/network/calico/v3.32.4/calico-cni/Dockerfile",
+          "image": "brinnatt/calico-cni",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/calico-cni",
+          "tag": "v3.32.4",
+          "ctx": "platform/network/calico/v3.32.4/calico-cni"
+        },
+        "fingerprint": "4c588db5f6f493f51d5e7663e5444a64e054deda3c9cfcb5cc81ace3d750176e"
+      },
+      {
+        "row": {
+          "dockerfile": "platform/network/calico/v3.32.4/calico-node/Dockerfile",
+          "image": "brinnatt/calico-node",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/calico-node",
+          "tag": "v3.32.4",
+          "ctx": "platform/network/calico/v3.32.4/calico-node"
+        },
+        "fingerprint": "30bf2b584c7543b5371690a62aaa7b97a0a0234b9dd67b7782a80faccf24850e"
+      },
+      {
+        "row": {
+          "dockerfile": "platform/network/calico/v3.32.4/calico-kube-controllers/Dockerfile",
+          "image": "brinnatt/calico-kube-controllers",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/calico-kube-controllers",
+          "tag": "v3.32.4",
+          "ctx": "platform/network/calico/v3.32.4/calico-kube-controllers"
+        },
+        "fingerprint": "4883dc58339af188ac270f8dabd72e0c5dea9be953ce29071b492243a364679d"
+      },
+      {
+        "row": {
+          "dockerfile": "platform/observability/metrics-server-0.9.1/Dockerfile",
+          "image": "brinnatt/metrics-server",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/metrics-server",
+          "tag": "v0.9.1",
+          "ctx": "platform/observability/metrics-server-0.9.1"
+        },
+        "fingerprint": "d150349d029044052ee6d3bf421a76405e4d625cfe4ed7d9044f3f2b23bf94e6"
+      },
+      {
+        "row": {
+          "dockerfile": "platform/storage/provisioners/local-path-provisioner-0.0.37/Dockerfile",
+          "image": "brinnatt/local-path-provisioner",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/local-path-provisioner",
+          "tag": "v0.0.37",
+          "ctx": "platform/storage/provisioners/local-path-provisioner-0.0.37"
+        },
+        "fingerprint": "5fc6795041a9f0ee1089249ebedde4c2c1d6f9fb5014fa7caeca6a8154f735dd"
+      }
+    ],
+    "event_keys": [],
+    "shard_size": 20,
+    "shards": 1
+  },
+  "release_records": [
+    {
+      "digest": "sha256:c8caf38dd43f2658ae94778cee2b2b14c36db7988824ccfc530d117a7e4f21ff",
+      "fingerprint": "c2d1b0eeb2f3f426da9d66b72fae793ca25123d90c195afd641f2abbcdfca957",
+      "head": "02d4a9078dc48206c5d8cf35e33fd1f2e530efa7",
+      "key": "brinnatt/calico-node:v3.31.7",
+      "platforms": {
+        "linux/amd64": "sha256:313d1f7602f56446042d3d8487ad2dc34e670d071852a924751d11bc57488e28",
+        "linux/arm64": "sha256:3fdbd7b9e51821fb6e8927e6c1285f0b3413a075f9ce5a12ba46441c6addd0af"
+      },
+      "run_id": "43645507476",
+      "schema": 1,
+      "source_digest": "sha256:dc2697811e14ff3a26bf1129daa8e9b48fc8bc5ae9fa92cd9e2aefe138873bad",
+      "source_ref": "docker.io/calico/node:v3.31.7"
+    },
+    {
+      "digest": "sha256:c26ee5a58173282c820c36d0caebe3d1cdd650da532c94e3eec4436223e48b9a",
+      "fingerprint": "d150349d029044052ee6d3bf421a76405e4d625cfe4ed7d9044f3f2b23bf94e6",
+      "head": "02d4a9078dc48206c5d8cf35e33fd1f2e530efa7",
+      "key": "brinnatt/metrics-server:v0.9.1",
+      "platforms": {
+        "linux/amd64": "sha256:85668af2a63a90a493f8f83e6281367c075a2d5e9a575c818e92af554d7e40d7",
+        "linux/arm64": "sha256:74b86cbf7131818128a796f30101d75f6ac8f84aee32fdb9a01c3f5f9bf06d15"
+      },
+      "run_id": "43645507476",
+      "schema": 1,
+      "source_digest": "sha256:9b0ba1926e1d3089673f45461c3c1416109dea33b3ba3434048defd380df329b",
+      "source_ref": "registry.k8s.io/metrics-server/metrics-server:v0.9.1"
+    },
+    {
+      "digest": "sha256:c9f6a2254f6dcb0bf65b1e95cae226fbeba802a93eb077da7bf4ddc0557084aa",
+      "fingerprint": "1575af081f7008f1171423c30bac62dcc25f81944c3cf9127babc39d5791b6e1",
+      "head": "02d4a9078dc48206c5d8cf35e33fd1f2e530efa7",
+      "key": "brinnatt/calico-kube-controllers:v3.31.7",
+      "platforms": {
+        "linux/amd64": "sha256:24f611b37e3361fad2d9b63c0ad7d04cd05c5aadbf5a74da81b4bb572d218429",
+        "linux/arm64": "sha256:fdb7fd842657d4a204d17c1087a82b5fda1b7e041136cff8659fe3e8d6aac204"
+      },
+      "run_id": "43645507476",
+      "schema": 1,
+      "source_digest": "sha256:948db31bfcdcfae9fa3cc3f1b466cc157223406980edd35b5a7bdd2892a16081",
+      "source_ref": "docker.io/calico/kube-controllers:v3.31.7"
+    },
+    {
+      "digest": "sha256:2a3b6ae7dfce526e9bb830b94b18b1901d76dfb3d65a7f0862eff8942790552b",
+      "fingerprint": "30bf2b584c7543b5371690a62aaa7b97a0a0234b9dd67b7782a80faccf24850e",
+      "head": "02d4a9078dc48206c5d8cf35e33fd1f2e530efa7",
+      "key": "brinnatt/calico-node:v3.32.4",
+      "platforms": {
+        "linux/amd64": "sha256:de0253a3a3eeb5d3179e0d55dd1b590efd8e51b3c5231dfd7e2bdeb1f6d498bf",
+        "linux/arm64": "sha256:edc7b3eb81477910f4fb6330e9b3b6ae46d0dea2d38f4f5d1b34f556fe985d93"
+      },
+      "run_id": "43645507476",
+      "schema": 1,
+      "source_digest": "sha256:3487797085dbb163652640249d5e9e8d1fe85f3d87e53e839586741684a21da0",
+      "source_ref": "docker.io/calico/node:v3.32.4"
+    },
+    {
+      "digest": "sha256:66939aeca5dafb5f6e4ec391f361b17233929e2d92270c3792cf1018c430651b",
+      "fingerprint": "4c588db5f6f493f51d5e7663e5444a64e054deda3c9cfcb5cc81ace3d750176e",
+      "head": "02d4a9078dc48206c5d8cf35e33fd1f2e530efa7",
+      "key": "brinnatt/calico-cni:v3.32.4",
+      "platforms": {
+        "linux/amd64": "sha256:3c288beff038cd960bb685cd7240faa4c310aecbc8936d318fa664650d2485c2",
+        "linux/arm64": "sha256:36d4e49f18bc8ade5b3cfc721e2397a981bbb81f92af13ce5d5ebf12b299ce9d"
+      },
+      "run_id": "43645507476",
+      "schema": 1,
+      "source_digest": "sha256:a7fb275dccb6638c6dc7c16466c808a2839434f29f7e86f999a5a715e6da4809",
+      "source_ref": "docker.io/calico/cni:v3.32.4"
+    },
+    {
+      "digest": "sha256:18a005f3584d9604d1574dcbe6322ab89e3cc7052ae6efbbd97e6a3691b2558e",
+      "fingerprint": "412a96b2ec5cdfe6f1dc41832a7c7fe6caee9e4e42b96be53c5e2daa34f681de",
+      "head": "02d4a9078dc48206c5d8cf35e33fd1f2e530efa7",
+      "key": "brinnatt/calico-cni:v3.31.7",
+      "platforms": {
+        "linux/amd64": "sha256:93054e1e9e501311669c31e9b0a4502db7bafe09885120baa1453b30b2988310",
+        "linux/arm64": "sha256:876f796e52be15dfd8401bd509a2290c19f2a04e9b2b3f03924db3d79304a521"
+      },
+      "run_id": "43645507476",
+      "schema": 1,
+      "source_digest": "sha256:22d9307335b89f759de5a9a76dc6c0dfb0ca83cc4ca6eeae6d3960ce8d4a2b69",
+      "source_ref": "docker.io/calico/cni:v3.31.7"
+    },
+    {
+      "digest": "sha256:e85b4b19384dd3905bd0440c34571e575d2cef53abdd837317484a3d379a301c",
+      "fingerprint": "5fc6795041a9f0ee1089249ebedde4c2c1d6f9fb5014fa7caeca6a8154f735dd",
+      "head": "02d4a9078dc48206c5d8cf35e33fd1f2e530efa7",
+      "key": "brinnatt/local-path-provisioner:v0.0.37",
+      "platforms": {
+        "linux/amd64": "sha256:13612ca9ffb4d1cccde1585fc0548642cbbce68547883a846775e95c44a505b3",
+        "linux/arm64": "sha256:153c84808f14c404db6991e505bd8dfcd9e71211cb1ae6719dafbfded2d2c9c9"
+      },
+      "run_id": "43645507476",
+      "schema": 1,
+      "source_digest": "sha256:e757967a5ec338f6a9b371c5a9688bedaa8c3578ea3dd4db329ea0084be0a86f",
+      "source_ref": "docker.io/rancher/local-path-provisioner:v0.0.37"
+    },
+    {
+      "digest": "sha256:88de17f0f4e3e15405337131d317c144b41a01140e474c77738268b25bd3dc7c",
+      "fingerprint": "4883dc58339af188ac270f8dabd72e0c5dea9be953ce29071b492243a364679d",
+      "head": "02d4a9078dc48206c5d8cf35e33fd1f2e530efa7",
+      "key": "brinnatt/calico-kube-controllers:v3.32.4",
+      "platforms": {
+        "linux/amd64": "sha256:27dc7c6e418aa96a79fe4ae3e542002d4a90525b6d67aa811a356f4cbdda1fd3",
+        "linux/arm64": "sha256:9a6fc98ba48faf2951ee10d99124de3fac490368fe0eaf97ebfc2027bb501732"
+      },
+      "run_id": "43645507476",
+      "schema": 1,
+      "source_digest": "sha256:6f95752c620858ae76c48f0a078788b7481fe3ab5a8be5140836621beb9d8b06",
+      "source_ref": "docker.io/calico/kube-controllers:v3.32.4"
+    }
+  ],
+  "archives": {
+    "plan-evidence-1": {
+      "path": "upgrade/v1.34.13/evidence/raw/platform-eight-publication/43645507476/plan-evidence-1.zip",
+      "sha256": "39f0f793b539fb2c2477b5ec7cbc6572e16a9ba40fbcc4f0e4a83060f15d932c",
+      "bytes": 300
+    },
+    "image-plan": {
+      "path": "upgrade/v1.34.13/evidence/raw/platform-eight-publication/43645507476/image-plan.zip",
+      "sha256": "682f568382c25ec9a0ca9af53580401749ce94bb5ea489bd36c3f1fd9ea649c3",
+      "bytes": 924
+    },
+    "release-evidence-0-1": {
+      "path": "upgrade/v1.34.13/evidence/raw/platform-eight-publication/43645507476/release-evidence-0-1.zip",
+      "sha256": "de66281046152d63c560128d10d60dea8fa76c2ef665c02e732eabda69950b42",
+      "bytes": 11838
+    },
+    "release-records-0-1": {
+      "path": "upgrade/v1.34.13/evidence/raw/platform-eight-publication/43645507476/release-records-0-1.zip",
+      "sha256": "7bafa36a8937b34fc8e9f88682d69f60f1697feabdec8ed213165b9098d5a7b6",
+      "bytes": 5094
+    }
+  },
+  "completed_ladder": 2,
+  "parent_acceptance": false,
+  "live_lab_execution": false
+}

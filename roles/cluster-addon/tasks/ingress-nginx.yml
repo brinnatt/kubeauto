@@ -1,4 +1,10 @@
 - block:
+    - name: 拒绝未固定的 ingress-nginx Chart 与镜像组合
+      ansible.builtin.assert:
+        that:
+          - ingress_nginx_ver in ['4.13.0', '4.15.1']
+        fail_msg: "Unsupported ingress-nginx Chart; no cluster changes were made."
+
     - name: prepare some dirs
       file: name={{ cluster_dir }}/yml/ingress-nginx state=directory
 

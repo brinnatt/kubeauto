@@ -1,0 +1,296 @@
+name: CI
+on:
+  pull_request:
+    branches:
+      - main
+  # push:
+  #   branches:
+  #     - main
+
+permissions:
+  contents: read
+
+env:
+  GOLANG_VERSION: 1.25.0
+  APPLICATION_NAME: redis-operator
+  DockerImagName: docker.io/opstree/redis-operator
+  BuildDocs: true
+  AppVersion: "v0.27.0"
+  DOCKERFILE_PATH: "**/Dockerfile"
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GOLANG_VERSION }}
+          cache: false
+
+      - name: Get golangci-lint version from Makefile
+        run: |
+          GOLANGCI_VERSION=$(grep '^GOLANGCI_LINT_VERSION' Makefile | cut -d'=' -f2 | tr -d ' ?')
+          echo "GOLANGCI_LINT_VERSION=$GOLANGCI_VERSION" >> $GITHUB_ENV
+
+      - name: Run GolangCI-Lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: ${{ env.GOLANGCI_LINT_VERSION }}
+
+  gotest:
+    needs:
+      - lint
+    name: Go Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GOLANG_VERSION }}
+      - name: Install integration test dependencies
+        run: make integration-test-setup
+      - name: Run Go Tests with coverage
+        run: go test ./... -coverprofile=coverage.txt -covermode=atomic
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          file: ./coverage.txt
+          fail_ci_if_error: false
+          verbose: true
+
+  helm_docs_test:
+    needs: [lint]
+    name: Helm Docs Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Ensure documentation is updated
+        uses: docker://jnorwood/helm-docs:latest
+
+      - name: Check for changes
+        run: |
+          if git diff --exit-code; then
+            echo -e "\n####### Helm docs are up-to-date! #######\n"
+          else
+            git status
+            echo -e "\n####### Helm docs are not up-to-date! Please run generate helm docs locally and push the changes #######\n"
+            exit 1
+          fi
+
+  validate_examples:
+    needs: [gotest, helm_docs_test]
+    name: Validate Examples
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install yamllint
+        run: sudo apt-get install -y yamllint
+
+      - name: Lint YAML files
+        run: yamllint --strict ./example
+
+      - name: Install kubectl
+        run: |
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
+
+      - name: Create k8s Kind Cluster
+        uses: helm/kind-action@v1.12.0
+        with:
+          cluster_name: kind
+
+      - name: Apply CRD
+        run: |
+          for crd in $(find ./config/crd/bases -type f -name '*.yaml'); do
+            kubectl create -f $crd
+          done
+
+      - name: Validate CRD Installation
+        run: |
+          CRDs=("redis" "redissentinels" "redisclusters" "redisreplications")
+          for crd in "${CRDs[@]}"; do
+            kubectl get crd $crd.redis.redis.opstreelabs.in || exit 1
+          done
+
+      - name: Validate CR
+        run: |
+          for example in $(find ./example -type f -name '*.yaml'); do
+            kubectl apply --dry-run=server -f $example
+          done
+
+  validate_yaml:
+    # Standalone on purpose: e2e_test gates on this job, and it only lints
+    # ./tests/, so it must not inherit the gotest chain via validate_examples.
+    name: Validate YAML
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Install yamllint
+        run: sudo apt-get install -y yamllint
+      - name: Lint YAML files
+        run: yamllint --strict ./tests/
+
+  container_quality_dockerfile_lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Execute dockerlinter
+        uses: hadolint/hadolint-action@v3.3.0
+        with:
+          dockerfile: Dockerfile
+          ignore: DL3007,DL3018
+
+  build_go_binary:
+    needs: [lint]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: ["amd64", "arm64"]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+      - name: Setup Go Environment
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GOLANG_VERSION }}
+      - name: Set GOARCH
+        run: echo "GOARCH=${{ matrix.arch }}" >> $GITHUB_ENV
+      - name: Build Go Binary
+        run: go build -o ${{ github.workspace }}/${{ env.APPLICATION_NAME }} cmd/main.go
+      - name: Archive Binary
+        run: |
+          mkdir -p ${{ github.workspace }}/compiled/${{ matrix.arch }}
+          zip ${{ github.workspace }}/compiled/${{ matrix.arch }}/${{ env.APPLICATION_NAME }}-${{ matrix.arch }}.zip ${{ github.workspace }}/${{ env.APPLICATION_NAME }}
+
+  build_scan_container_image:
+    needs: [container_quality_dockerfile_lint]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build multi-arch image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/arm64,linux/amd64
+          push: false
+          tags: ${{ env.DockerImagName }}:latest
+
+  gosec_scan:
+    needs: [build_go_binary]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+      - name: Gosec Scan
+        uses: securego/gosec@master
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+          GOSEC_OUTPUT: "junit-xml:/github/workspace/gosec-results.xml"
+
+  helm_chart_test:
+    needs: [gotest]
+    name: Helm Chart Test
+    uses: ./.github/workflows/call-test-charts.yaml
+
+  e2e_test:
+    # validate_yaml lints ./tests/, which is this suite's own YAML, so keep it
+    # as a gate. helm_chart_test is dropped: it pulled in the whole gotest
+    # chain and delayed the job by ~12 minutes without testing anything the
+    # suite depends on.
+    needs: [lint, validate_yaml]
+    name: E2E Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Build Dockerfile
+        run: docker build . --file Dockerfile --tag redis-operator:e2e
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3.9.2
+      - name: Install chainsaw
+        uses: kyverno/action-install-chainsaw@v0.2.13
+        with:
+          verify: true
+      - name: Check install
+        run: chainsaw version
+      - name: Install kubectl
+        run: |
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
+
+      - name: Create k8s Kind Cluster
+        uses: helm/kind-action@v1.12.0
+        with:
+          config: tests/_config/kind-config.yaml
+          cluster_name: kind
+
+      # NOTE: This is a workaround for the issue where the default storage class does not support volume expansion.
+      # Since we don't require PVC resizing (unlike physical disks), we can simply ensure that the requested PVC size is met.
+      - name: Setup k8s Kind Cluster
+        run: |
+          DEFAULT_SC=$(kubectl get storageclass -o=jsonpath='{.items[?(@.metadata.annotations.storageclass\.kubernetes\.io/is-default-class=="true")].metadata.name}')
+          kubectl patch storageclass $DEFAULT_SC -p '{"allowVolumeExpansion": true}'          
+
+          # install cert-manager
+          kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.18.2/cert-manager.yaml
+
+      - name: Load Docker image into Kind
+        run: |
+          kubectl cluster-info --context kind-kind
+          kind load docker-image redis-operator:e2e --name kind
+
+      - name: Preload test images into Kind
+        run: ./hack/preload-e2e-images.sh kind
+
+      - name: Install Redis Operator
+        run: |
+          make deploy IMG=redis-operator:e2e
+          kubectl set env deployment/redis-operator-redis-operator -n redis-operator-system INIT_CONTAINER_IMAGE=redis-operator:e2e FEATURE_GATES=GenerateConfigInInitContainer=true MAX_CONCURRENT_RECONCILES=10
+          # config/manager ships a 100m CPU cap. With MAX_CONCURRENT_RECONCILES=10
+          # and the operator streaming every `redis-cli --cluster` exec itself,
+          # that cap throttles the suite rather than protecting anything. Lift it
+          # for the test run only -- the shipped default is left untouched.
+          # (`set resources --limits=cpu=0` would write cpu: "0", which then fails
+          # the requests<=limits check; a strategic merge with null drops the key.)
+          kubectl -n redis-operator-system patch deployment redis-operator-redis-operator \
+            -p '{"spec":{"template":{"spec":{"containers":[{"name":"manager","resources":{"limits":{"cpu":null}}}]}}}}'
+
+      - name: Wait for Redis Operator to be ready
+        run: |
+          kubectl wait --for=condition=available --timeout=300s deployment/redis-operator-redis-operator -n redis-operator-system
+
+      # - name: DEBUG:Install k9s
+      #   run: |
+      #     curl -sS https://webi.sh/k9s | sh; \
+      #     source ~/.config/envman/PATH.env
+
+      # - name: DEBUG:Setup tmate session
+      #   uses: mxschmitt/action-tmate@v3
+      #   with:
+      #     timeout-minutes: 15
+      #     limit-access-to-actor: true
+      #     detached: true
+
+      - name: Run chainsaw test
+        run: chainsaw test --test-dir ./tests/e2e-chainsaw/v1beta2 --config tests/_config/chainsaw-configuration.yaml

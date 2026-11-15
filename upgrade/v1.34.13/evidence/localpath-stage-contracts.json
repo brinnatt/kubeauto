@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-11-14T22:50:47.407148+00:00",
+  "matrix_ids": [
+    "UPG-04",
+    "UPG-09",
+    "UPG-12"
+  ],
+  "classification": "internal product stage and offline test-gate",
+  "product_entry": "config.yml + kubecli upgrade; outer composition and real data/lifecycle callbacks still required",
+  "command": ".venv/bin/python -B -m unittest upgrade.tests.test_local_path_stage -v",
+  "dependency_command": ".venv/bin/python -B -m unittest upgrade.tests.test_local_storage upgrade.tests.test_records upgrade.tests.test_product_release_scope -v",
+  "rc": 0,
+  "focused_tests": 13,
+  "dependency_tests": 7,
+  "inputs_sha256": {
+    "upgrade/product/local_path_stage.py": "7b7bba1ccc4901ad28de47b15a4ca768a36d6e3708f2220b7de4c62ded5387bd",
+    "upgrade/tests/test_local_path_stage.py": "e0b63b17886014319eb125020dd6eaaeefb1f146e02760e747c119bbe8a0d349",
+    "upgrade/tests/fixtures/local_path_kubectl.py": "a499bf7370936660f3e670e30013b290dbcd2640d9016bb05e396ead83ae3e39",
+    "upgrade/product/dns_stage.py": "eb6d1e1400860a9c237b6cd284cf3da788377b44017bcc37cc39448a3eb75e2c",
+    "upgrade/product/calico_stage.py": "0d63235b4ebb7f38dcae53e4161ef9ace06517264a1b1dd3eba7ff6a602efc0f",
+    "roles/cluster-addon/templates/local-storage/local-path-storage.yaml.j2": "ab261379d7c2bf5b02184f451a09b39561853e2c12986c3c366e2b350a90cc7b"
+  },
+  "logs": {
+    "focused": {
+      "path": "upgrade/v1.34.13/evidence/raw/localpath-stage/focused.log",
+      "sha256": "a4a117544f31588074c4c9563c33f475bccd5e49991942a8f235649f7c57a623",
+      "bytes": 2779,
+      "rc": 0,
+      "tests": 13,
+      "duration_seconds": 10.832
+    },
+    "dependencies": {
+      "path": "upgrade/v1.34.13/evidence/raw/localpath-stage/dependencies.log",
+      "sha256": "5d9bc192984eeda2551126bbe74558b2f511b5a2998660d950c52f97f3b84727",
+      "bytes": 2272,
+      "rc": 0,
+      "tests": 7,
+      "duration_seconds": 0.616
+    }
+  },
+  "official_source_ids": [
+    "LOCALPATH-037-BEHAVIOR",
+    "LOCALPATH-031-037-DELTA",
+    "LOCALPATH-037-SCRATCH-IMAGE",
+    "LOCALPATH-037-OFFICIAL-DEPLOYMENT",
+    "LOCALPATH-037-CONFIG-RELOAD-CONTRACT"
+  ],
+  "scope": [
+    "Exact source GA template0.0.31 to0.0.37 image-only and helper BusyBox1.37; target complete API/node/cluster identity barrier",
+    "Every required JSON Patch server dry-run precedes first write, with UID/resourceVersion/source-value guards; helper first then controller; refuse additional admission changes",
+    "Retain reviewed RBAC/SC/config/scripts and bound PV/PVC UID, claim binding, paths and node affinity; refuse drift, source unhealthy, root/traversal/duplicate paths and unreviewed custom configuration",
+    "Resume only source/source, target-helper/source, target/target; no completed patch repeated; no automatic rollback or deletion",
+    "Call existing data boundary before writes and after target, plus a real target provisioning/write/read/delete/scoped-cleanup boundary; callback failure cannot produce success",
+    "Preserve subprocess42 and redact sensitive fixture diagnostics; conflict/dry-run mutation/volume drift prevents later writes"
+  ],
+  "completed_ladder": 2,
+  "live_lab_execution": false,
+  "parent_acceptance": false,
+  "cleanup": "TemporaryDirectory process fixtures only; no remote mutation",
+  "remaining": [
+    "Outer frozen config+kubecli entry, artifacts, cluster lease/provisioning quiescence/recovery point and journal composition",
+    "Complete source SC/PV/PVC inventory and exact actual helper/script applicability",
+    "Real old-volume ledger and target new-volume lifecycle callbacks, followed by narrow fixed-runner live gate"
+  ]
+}

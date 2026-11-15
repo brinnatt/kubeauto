@@ -1,0 +1,294 @@
+{
+  "schema_version": 1,
+  "observed_on": "2026-11-15",
+  "matrix_ids": [
+    "UPG-03"
+  ],
+  "claim": "Selected ten-image dual-architecture/dual-registry publication and formal-tag readback; no runtime acceptance",
+  "run_id": "43638919365",
+  "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/43638919365",
+  "sha": "21abf01955d5c2f4af46fbd2f506a354e2115400",
+  "branch": "v1.34.13",
+  "mode": "selected",
+  "image_count": 10,
+  "conclusion": "success",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "actual_plan": {
+    "schema": 1,
+    "mode": "selected",
+    "head": "21abf01955d5c2f4af46fbd2f506a354e2115400",
+    "items": [
+      {
+        "row": {
+          "dockerfile": "./platform/network/cilium/cilium-1.19.10/Dockerfile",
+          "image": "brinnatt/cilium",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/cilium",
+          "tag": "v1.19.10",
+          "ctx": "./platform/network/cilium/cilium-1.19.10/"
+        },
+        "fingerprint": "7c35544bb88ec80c03e8ec4839f9c73f5465bbf0544b8b9d634c962ba245bcfd"
+      },
+      {
+        "row": {
+          "dockerfile": "./platform/network/cilium/cilium-operator-generic-1.19.10/Dockerfile",
+          "image": "brinnatt/cilium-operator-generic",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/cilium-operator-generic",
+          "tag": "v1.19.10",
+          "ctx": "./platform/network/cilium/cilium-operator-generic-1.19.10/"
+        },
+        "fingerprint": "0b089f83c9a2b13d0b52a3945ed9b9c3a6636291ae2d9afabeeb95bd2e8510a1"
+      },
+      {
+        "row": {
+          "dockerfile": "./platform/network/cilium/hubble-relay-1.19.10/Dockerfile",
+          "image": "brinnatt/hubble-relay",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/hubble-relay",
+          "tag": "v1.19.10",
+          "ctx": "./platform/network/cilium/hubble-relay-1.19.10/"
+        },
+        "fingerprint": "44489e2036fd12967b20a62df53e65811dde8c8885e8eae7abb83522dca218e2"
+      },
+      {
+        "row": {
+          "dockerfile": "./platform/network/cilium/cilium-1.20.4/Dockerfile",
+          "image": "brinnatt/cilium",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/cilium",
+          "tag": "v1.20.4",
+          "ctx": "./platform/network/cilium/cilium-1.20.4/"
+        },
+        "fingerprint": "be6d7d27bad6342af01bb175bfac6d2b91052318570d595ca12770da2d3e2542"
+      },
+      {
+        "row": {
+          "dockerfile": "./platform/network/cilium/cilium-operator-generic-1.20.4/Dockerfile",
+          "image": "brinnatt/cilium-operator-generic",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/cilium-operator-generic",
+          "tag": "v1.20.4",
+          "ctx": "./platform/network/cilium/cilium-operator-generic-1.20.4/"
+        },
+        "fingerprint": "79664a6e8d8ce0d1aede339dd8f90d62b145c53f3277cb49bc5e4ee4d35b4ae6"
+      },
+      {
+        "row": {
+          "dockerfile": "./platform/network/cilium/hubble-relay-1.20.4/Dockerfile",
+          "image": "brinnatt/hubble-relay",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/hubble-relay",
+          "tag": "v1.20.4",
+          "ctx": "./platform/network/cilium/hubble-relay-1.20.4/"
+        },
+        "fingerprint": "17c9b52b85cc9e887afd86dab785b94aedef61cdf134ddaabab49d3f28820b7a"
+      },
+      {
+        "row": {
+          "dockerfile": "./platform/network/cilium/hubble-ui-0.13.6/Dockerfile",
+          "image": "brinnatt/hubble-ui",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/hubble-ui",
+          "tag": "v0.13.6",
+          "ctx": "./platform/network/cilium/hubble-ui-0.13.6/"
+        },
+        "fingerprint": "f58629a282d82ad4a3ec0a73148902476e4e79e5bec4247d30ce0860c0cbd621"
+      },
+      {
+        "row": {
+          "dockerfile": "./platform/network/cilium/hubble-ui-backend-0.13.6/Dockerfile",
+          "image": "brinnatt/hubble-ui-backend",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/hubble-ui-backend",
+          "tag": "v0.13.6",
+          "ctx": "./platform/network/cilium/hubble-ui-backend-0.13.6/"
+        },
+        "fingerprint": "8bee52e8991a25624d4c610cae8660082418d2a1a5c09a861e4241377937e9f7"
+      },
+      {
+        "row": {
+          "dockerfile": "./platform/network/flannel/flannel-0.28.10/Dockerfile",
+          "image": "brinnatt/flannel",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/flannel",
+          "tag": "v0.28.10",
+          "ctx": "./platform/network/flannel/flannel-0.28.10/"
+        },
+        "fingerprint": "be43479e07cb0ef761f34e129f3016972d55a49e95a81d594bde9505b1885cfc"
+      },
+      {
+        "row": {
+          "dockerfile": "./platform/network/flannel/flannel-cni-plugin-1.9.1-flannel3/Dockerfile",
+          "image": "brinnatt/flannel-cni-plugin",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/flannel-cni-plugin",
+          "tag": "v1.9.1-flannel3",
+          "ctx": "./platform/network/flannel/flannel-cni-plugin-1.9.1-flannel3/"
+        },
+        "fingerprint": "46e3b5076de6bce62bcdb00d894d74dfa5135ee27c5174a055719bc16e5e6d87"
+      }
+    ],
+    "event_keys": [],
+    "shard_size": 20,
+    "shards": 1
+  },
+  "release_records": [
+    {
+      "digest": "sha256:7f401955a2bd5227ca2e38ec8dea6be1db776251ceb86ba8667029430fa0b4ff",
+      "fingerprint": "7c35544bb88ec80c03e8ec4839f9c73f5465bbf0544b8b9d634c962ba245bcfd",
+      "head": "21abf01955d5c2f4af46fbd2f506a354e2115400",
+      "key": "brinnatt/cilium:v1.19.10",
+      "platforms": {
+        "linux/amd64": "sha256:1511aeb58712931a9a57ade9205d394a1df5b1f7f86ffeedb9fc9a09fe2a17f0",
+        "linux/arm64": "sha256:673064c7e472aab2deeb4ba6637f053b0d152c74607422aecb1237c80bb97249"
+      },
+      "run_id": "43638919365",
+      "schema": 1,
+      "source_digest": "sha256:e86fb55fa703ada191fbd4489513daa19674952c8c3c4985dc3c77ce51ac4f27",
+      "source_ref": "quay.io/cilium/cilium:v1.19.10@sha256:e86fb55fa703ada191fbd4489513daa19674952c8c3c4985dc3c77ce51ac4f27"
+    },
+    {
+      "digest": "sha256:30ea02a386d4ce4e6373f0ccd874c5d66de0ee6316598f157401f5cb431936ac",
+      "fingerprint": "17c9b52b85cc9e887afd86dab785b94aedef61cdf134ddaabab49d3f28820b7a",
+      "head": "21abf01955d5c2f4af46fbd2f506a354e2115400",
+      "key": "brinnatt/hubble-relay:v1.20.4",
+      "platforms": {
+        "linux/amd64": "sha256:6e1f6fd9c8100612515828be1e70da89da64956698589fa7cab55cc69fb1f1b1",
+        "linux/arm64": "sha256:47ee533b5027eddc79327c0ff7c333c8c8aa3fded4e08caeafed1f623d421f38"
+      },
+      "run_id": "43638919365",
+      "schema": 1,
+      "source_digest": "sha256:cb23408209697ed30d2bc462e1f01eb622ea4423a891458f78bc88d7255bbfc1",
+      "source_ref": "quay.io/cilium/hubble-relay:v1.20.4@sha256:cb23408209697ed30d2bc462e1f01eb622ea4423a891458f78bc88d7255bbfc1"
+    },
+    {
+      "digest": "sha256:28f26782e0ed4de6ea93cc9916eca2246eddbddb36600883939afc5264df1580",
+      "fingerprint": "be43479e07cb0ef761f34e129f3016972d55a49e95a81d594bde9505b1885cfc",
+      "head": "21abf01955d5c2f4af46fbd2f506a354e2115400",
+      "key": "brinnatt/flannel:v0.28.10",
+      "platforms": {
+        "linux/amd64": "sha256:0d3f2a6b150a50e97dd999a38c378187650529e45250cd43a7f1988151bb5440",
+        "linux/arm64": "sha256:391f3a6b99e3d014a6af8ddf6091ae64c0ae2bb2bbabf373d9fdfcda00948a48"
+      },
+      "run_id": "43638919365",
+      "schema": 1,
+      "source_digest": "sha256:f26b2403273cbbce2bdc262c62e7a6e74c0031b139df247fa0fd5801cb9f639d",
+      "source_ref": "ghcr.io/flannel-io/flannel:v0.28.10@sha256:f26b2403273cbbce2bdc262c62e7a6e74c0031b139df247fa0fd5801cb9f639d"
+    },
+    {
+      "digest": "sha256:d9f9591e08b60fda059475661dacc76b41436393a784a177bf3c64ea58145d17",
+      "fingerprint": "46e3b5076de6bce62bcdb00d894d74dfa5135ee27c5174a055719bc16e5e6d87",
+      "head": "21abf01955d5c2f4af46fbd2f506a354e2115400",
+      "key": "brinnatt/flannel-cni-plugin:v1.9.1-flannel3",
+      "platforms": {
+        "linux/amd64": "sha256:2b0f319175d3c85e3806a56e1d4af7200efbc5ec93b944a7cf7fbc4e08065964",
+        "linux/arm64": "sha256:df8bde645da42535e6ad147b37f28da9459192a3fc40e2d5067863669619a37b"
+      },
+      "run_id": "43638919365",
+      "schema": 1,
+      "source_digest": "sha256:9fccdf677e6e26e76a4aa60da2113bab9852e8317287ba51b2c29778d2351345",
+      "source_ref": "ghcr.io/flannel-io/flannel-cni-plugin:v1.9.1-flannel3@sha256:9fccdf677e6e26e76a4aa60da2113bab9852e8317287ba51b2c29778d2351345"
+    },
+    {
+      "digest": "sha256:7498699addd200afc867b6f674ce00671db20c695ea279c75ae64b223546eb70",
+      "fingerprint": "8bee52e8991a25624d4c610cae8660082418d2a1a5c09a861e4241377937e9f7",
+      "head": "21abf01955d5c2f4af46fbd2f506a354e2115400",
+      "key": "brinnatt/hubble-ui-backend:v0.13.6",
+      "platforms": {
+        "linux/amd64": "sha256:0f0e76793cd59e51d9db1761eba1a59b364217a97ac8ec32c1e1ec882eafa370",
+        "linux/arm64": "sha256:5c6ec35809ea3deefe098409d145f459126dc800e8ea7d374e85327c55f37842"
+      },
+      "run_id": "43638919365",
+      "schema": 1,
+      "source_digest": "sha256:83b3fc763f3d49948c306bf49b08277383e195904b9ca5c0c0022b2112628787",
+      "source_ref": "quay.io/cilium/hubble-ui-backend:v0.13.6@sha256:83b3fc763f3d49948c306bf49b08277383e195904b9ca5c0c0022b2112628787"
+    },
+    {
+      "digest": "sha256:96e1af11e9ff90b9f97d09e910b410c5bc03649a1803533c39d2616df362365a",
+      "fingerprint": "be6d7d27bad6342af01bb175bfac6d2b91052318570d595ca12770da2d3e2542",
+      "head": "21abf01955d5c2f4af46fbd2f506a354e2115400",
+      "key": "brinnatt/cilium:v1.20.4",
+      "platforms": {
+        "linux/amd64": "sha256:f69252154e336495d7a0ace52e8171df36cfde6c2c3ba16e911134469972cf14",
+        "linux/arm64": "sha256:7e2d0e4cd1aab8ce970b15deca7d2deba05ffdf01544b64d9a54c227cb876992"
+      },
+      "run_id": "43638919365",
+      "schema": 1,
+      "source_digest": "sha256:20fe92e4c86641233a450098c158d2d29085f3419931ab6bf681d2485dedf16e",
+      "source_ref": "quay.io/cilium/cilium:v1.20.4@sha256:20fe92e4c86641233a450098c158d2d29085f3419931ab6bf681d2485dedf16e"
+    },
+    {
+      "digest": "sha256:cd7bdbba9ff681f91ab0b015b55e0df0b68d9433bd44014829f6c0f2a01ee7c7",
+      "fingerprint": "79664a6e8d8ce0d1aede339dd8f90d62b145c53f3277cb49bc5e4ee4d35b4ae6",
+      "head": "21abf01955d5c2f4af46fbd2f506a354e2115400",
+      "key": "brinnatt/cilium-operator-generic:v1.20.4",
+      "platforms": {
+        "linux/amd64": "sha256:2771f09a9144087512051dcaac6fe431936e073c8c23caaf577609d555dbd09c",
+        "linux/arm64": "sha256:9325b06e7202e07d7522f47fa29a88df59e9cc86fb0f739a91d1e920e39d6c89"
+      },
+      "run_id": "43638919365",
+      "schema": 1,
+      "source_digest": "sha256:7a7a3489dc66ad67e420d285c8a8d2e169b0957ad15e120f593d27081bf38d82",
+      "source_ref": "quay.io/cilium/operator-generic:v1.20.4@sha256:7a7a3489dc66ad67e420d285c8a8d2e169b0957ad15e120f593d27081bf38d82"
+    },
+    {
+      "digest": "sha256:4db1b7093c957e1b7537f04006b0d14729b0ee2d523ff40718397cdcc0e443cb",
+      "fingerprint": "44489e2036fd12967b20a62df53e65811dde8c8885e8eae7abb83522dca218e2",
+      "head": "21abf01955d5c2f4af46fbd2f506a354e2115400",
+      "key": "brinnatt/hubble-relay:v1.19.10",
+      "platforms": {
+        "linux/amd64": "sha256:bcc76f6bc34082587fa55c839140dd9ec775f34913654723881d3628ce7292df",
+        "linux/arm64": "sha256:87b0e0aaa3eb5d0754fe93a9202b5697b8aab17740aba40bb7e5e7f914bf279a"
+      },
+      "run_id": "43638919365",
+      "schema": 1,
+      "source_digest": "sha256:93089f137c7a55c6550b547902e230827d26a2dc4cb396b65751e87e4206293a",
+      "source_ref": "quay.io/cilium/hubble-relay:v1.19.10@sha256:93089f137c7a55c6550b547902e230827d26a2dc4cb396b65751e87e4206293a"
+    },
+    {
+      "digest": "sha256:4ada8c6452b371b2579585647be9225dfb8a3b02fd123c50d97be25c5928e883",
+      "fingerprint": "f58629a282d82ad4a3ec0a73148902476e4e79e5bec4247d30ce0860c0cbd621",
+      "head": "21abf01955d5c2f4af46fbd2f506a354e2115400",
+      "key": "brinnatt/hubble-ui:v0.13.6",
+      "platforms": {
+        "linux/amd64": "sha256:76059e3d7522a50deeca359bb7d39c66416731ad52060026f03e09573daf9de2",
+        "linux/arm64": "sha256:0617984dea146dfd7cdf812b4b6195a4443ed5de0ac6a51ae87663fcfdaa3e03"
+      },
+      "run_id": "43638919365",
+      "schema": 1,
+      "source_digest": "sha256:049a80a03585c043d0c3121bdc518c72b0fd42bae07e4bcce0fdb8f1e88041d0",
+      "source_ref": "quay.io/cilium/hubble-ui:v0.13.6@sha256:049a80a03585c043d0c3121bdc518c72b0fd42bae07e4bcce0fdb8f1e88041d0"
+    },
+    {
+      "digest": "sha256:81345b41209701c71f7f0be9fee949afe357ad1a3a426f839c28f7f5226a94b1",
+      "fingerprint": "0b089f83c9a2b13d0b52a3945ed9b9c3a6636291ae2d9afabeeb95bd2e8510a1",
+      "head": "21abf01955d5c2f4af46fbd2f506a354e2115400",
+      "key": "brinnatt/cilium-operator-generic:v1.19.10",
+      "platforms": {
+        "linux/amd64": "sha256:ec0fcb3665b120fc7ad9c8abc65081c0416bfb2df0d7951ae26bb62b0cb43c83",
+        "linux/arm64": "sha256:6f1de509e7f2dbf60c17513f7dcbdd37a9669b1e6aac5d582003a5e577657aab"
+      },
+      "run_id": "43638919365",
+      "schema": 1,
+      "source_digest": "sha256:b3d1c26d4bc58e307282bad9639b4d598e73f91be1430028f36bc5fdce19a85c",
+      "source_ref": "quay.io/cilium/operator-generic:v1.19.10@sha256:b3d1c26d4bc58e307282bad9639b4d598e73f91be1430028f36bc5fdce19a85c"
+    }
+  ],
+  "archives": {
+    "image-plan": {
+      "path": "upgrade/v1.34.13/evidence/raw/network/43638919365/image-plan.zip",
+      "sha256": "e9649c5ae932ed6a1cf7d19015930c0108f7957550f16511430775eedf1af444",
+      "bytes": 1047
+    },
+    "plan-evidence-1": {
+      "path": "upgrade/v1.34.13/evidence/raw/network/43638919365/plan-evidence-1.zip",
+      "sha256": "2a831cb8a93f5a16af66154e9c6ab33b54d56051568bb586f25cbf792528cded",
+      "bytes": 301
+    },
+    "release-records-0-1": {
+      "path": "upgrade/v1.34.13/evidence/raw/network/43638919365/release-records-0-1.zip",
+      "sha256": "1a4041808341467741882ee6b2bdebf820fcdf05e14af70703887d3ae740abd4",
+      "bytes": 6425
+    },
+    "release-evidence-0-1": {
+      "path": "upgrade/v1.34.13/evidence/raw/network/43638919365/release-evidence-0-1.zip",
+      "sha256": "5b34c7bfc4c50aad3a73be58b58daae7da4fedfd6d86bb05cc7f27e2818fb08a",
+      "bytes": 17935
+    }
+  },
+  "completed_ladder": 2,
+  "parent_acceptance": false,
+  "live_lab_execution": false
+}

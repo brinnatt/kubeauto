@@ -1,0 +1,36 @@
+:_mod-docs-content-type: CONCEPT
+
+// This assembly is included in the following assemblies:
+//
+// assembly-upgrade.adoc
+
+[id='con-upgrade-paths-{context}']
+= Strimzi upgrade paths
+
+[role="_abstract"]
+Two upgrade paths are available for Strimzi.
+
+Incremental upgrade::
+An incremental upgrade moves between consecutive minor versions (such as {ProductVersionPrevious} to {ProductVersion}), following a supported upgrade path.
+
+Multi-version upgrade::
+A multi-version upgrade skips one or more minor versions. 
+While temporary errors due to Kafka version changes may occur, they can typically be resolved during the upgrade.  
+
+Before upgrading in production, test your specific scenario in a controlled environment to identify potential issues.
+
+[id='con-upgrade-paths-kafka-versions-{context}']
+== Support for Kafka versions when upgrading
+
+When upgrading Strimzi, it is important to ensure compatibility with the Kafka version being used.
+
+Multi-version upgrades are possible even if the supported Kafka versions differ between the old and new versions. 
+However, if you attempt to upgrade to a new Strimzi version that does not support the current Kafka version, xref:con-upgrade-cluster-operator-unsupported-kafka-str[an error indicating that the Kafka version is not supported is generated]. 
+In this case, you must upgrade the Kafka version as part of the Strimzi upgrade by changing the `spec.kafka.version` in the `Kafka` custom resource to the supported version for the new Strimzi version.
+
+ifdef::Section[]
+Review supported Kafka versions in the link:https://strimzi.io/downloads/[Supported versions^] table on the Strimzi website.
+
+* The *Operators* column lists all released Strimzi versions (the Strimzi version is often called the "Operator version").
+* The *Kafka versions* column lists the supported Kafka versions for each Strimzi version.
+endif::Section[]

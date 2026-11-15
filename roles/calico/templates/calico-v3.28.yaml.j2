@@ -1,3 +1,4 @@
+{% set calico_maintenance = calico_ver in ['v3.31.7', 'v3.32.4'] %}
 ---
 # download Release archive: https://github.com/projectcalico/calico/releases/download/v3.28.2/release-v3.28.2.tgz
 # Release notes: https://projectcalico.docs.tigera.io/archive/v3.28/release-notes/
@@ -74,7 +75,7 @@ data:
   cni_network_config: |-
     {
       "name": "k8s-pod-network",
-      "cniVersion": "0.3.1",
+      "cniVersion": "{{ '1.0.0' if calico_maintenance else '0.3.1' }}",
       "plugins": [
         {
           "type": "calico",
@@ -129,12 +130,27 @@ rules:
       - list
       - get
   # Watch for changes to Kubernetes NetworkPolicies.
+{% if calico_maintenance %}
+  # Official etcdv3 manifest: service reconciliation permissions.
+  - apiGroups: [""]
+    resources: [services, services/status]
+    verbs: [get, list, update, watch]
+{% endif %}
   - apiGroups: ["networking.k8s.io"]
     resources:
       - networkpolicies
     verbs:
       - watch
       - list
+{% if calico_ver == 'v3.32.4' %}
+  # Official 3.32 policy-name migrator; this does not enable native v3 CRDs.
+  - apiGroups: [projectcalico.org, crd.projectcalico.org]
+    resources: [networkpolicies, stagednetworkpolicies, globalnetworkpolicies, stagedglobalnetworkpolicies]
+    verbs: [watch, list, get, create, update, delete]
+  - apiGroups: [apps]
+    resources: [daemonsets, deployments]
+    verbs: [get, list, watch]
+{% endif %}
 ---
 # Source: calico/templates/calico-node-rbac.yaml
 # Include a clusterrole for the calico-node DaemonSet,
@@ -245,6 +261,31 @@ subjects:
 - kind: ServiceAccount
   name: calico-cni-plugin
   namespace: kube-system
+{% if calico_maintenance %}
+---
+# Official manifest permission for Kubernetes garbage collection of tiered policies.
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: calico-tier-getter
+rules:
+  - apiGroups: [projectcalico.org]
+    resources: [tiers]
+    verbs: [get]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: calico-tier-getter
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: calico-tier-getter
+subjects:
+  - apiGroup: rbac.authorization.k8s.io
+    kind: User
+    name: system:kube-controller-manager
+{% endif %}
 ---
 # Source: calico/templates/calico-node.yaml
 # This manifest installs the calico-node container, as well
@@ -283,6 +324,11 @@ spec:
         - effect: NoExecute
           operator: Exists
       serviceAccountName: calico-node
+{% if calico_maintenance %}
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+{% endif %}
       # Minimize downtime during a rolling upgrade or deletion; tell Kubernetes to do a "force
       # deletion": https://kubernetes.io/docs/concepts/workloads/pods/pod/#termination-of-pods.
       terminationGracePeriodSeconds: 0
@@ -336,7 +382,7 @@ spec:
         # This init container mounts the necessary filesystems needed by the BPF data plane
         # i.e. bpf at /sys/fs/bpf and cgroup2 at /run/calico/cgroup. Calico-node initialisation is executed
         # in best effort fashion, i.e. no failure for errors, to not disrupt pod creation in iptable mode.
-        - name: "mount-bpffs"
+        - name: "{{ 'ebpf-bootstrap' if calico_maintenance else 'mount-bpffs' }}"
           image: registry.talkschool.cn:5000/brinnatt/calico-node:{{ calico_ver }}
           imagePullPolicy: IfNotPresent
           command: ["calico-node", "-init", "-best-effort"]
@@ -461,6 +507,13 @@ spec:
               value: "false"
             - name: FELIX_HEALTHENABLED
               value: "true"
+{% if calico_maintenance %}
+            # Preserve the admitted iptables dataplane; no automatic migration.
+            - name: FELIX_BPFENABLED
+              value: "false"
+            - name: FELIX_NFTABLESMODE
+              value: "Disabled"
+{% endif %}
             # Set Kubernetes NodePorts: If services do use NodePorts outside Calico’s expected range,
             # Calico will treat traffic to those ports as host traffic instead of pod traffic.
             - name: FELIX_KUBENODEPORTRANGES
@@ -525,6 +578,11 @@ spec:
             # parent directory.
             - name: bpffs
               mountPath: /sys/fs/bpf
+{% if calico_ver == 'v3.31.7' %}
+            - name: sys-kernel-security
+              mountPath: /sys/kernel/security
+              readOnly: true
+{% endif %}
             - name: cni-log-dir
               mountPath: /var/log/calico/cni
               readOnly: true
@@ -553,6 +611,11 @@ spec:
           hostPath:
             path: /sys/fs/bpf
             type: Directory
+{% if calico_ver == 'v3.31.7' %}
+        - name: sys-kernel-security
+          hostPath:
+            path: /sys/kernel/security
+{% endif %}
         # mount /proc at /nodeproc to be used by mount-bpffs initContainer to mount root cgroup2 fs.
         - name: nodeproc
           hostPath:
@@ -616,6 +679,11 @@ spec:
         - key: node-role.kubernetes.io/control-plane
           effect: NoSchedule
       serviceAccountName: calico-kube-controllers
+{% if calico_maintenance %}
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+{% endif %}
       priorityClassName: system-cluster-critical
       # The controllers must run in the host network namespace so that
       # it isn't governed by policy that would prevent it from working.
@@ -624,6 +692,10 @@ spec:
         - name: calico-kube-controllers
           image: registry.talkschool.cn:5000/brinnatt/calico-kube-controllers:{{ calico_ver }}
           imagePullPolicy: IfNotPresent
+{% if calico_maintenance %}
+          securityContext:
+            runAsNonRoot: true
+{% endif %}
           env:
             # The location of the etcd cluster.
             - name: ETCD_ENDPOINTS

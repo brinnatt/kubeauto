@@ -1,0 +1,219 @@
+{
+  "schema_version": 1,
+  "observed_on": "2026-11-14",
+  "source": "v1.33.6",
+  "target": "v1.34.13",
+  "scope": "新增只读矩阵validator、官方来源/副本完整性、K8s二进制下载与精确发布计划的本地合同",
+  "result": "pass",
+  "parent_acceptance": false,
+  "live_execution": false,
+  "publication_triggered": false,
+  "checks": [
+    {
+      "command": ".venv/bin/python -B -m unittest discover -s upgrade/tests -v",
+      "rc": 0,
+      "tests": 19,
+      "elapsed_seconds": 2.761,
+      "scope": "实际脚本/selector执行、拒绝合同、69份官方snapshot摘要和143份原GA副本身份；无网络/实验室"
+    },
+    {
+      "command": ".venv/bin/python -B -m unittest tests.unit.test_six_repo_version_sync -v",
+      "rc": 0,
+      "tests": 10,
+      "elapsed_seconds": 0.09,
+      "scope": "六仓当前生产版本映射和改后CI计划的兼容读取；未修改消费者pin"
+    },
+    {
+      "command": "sh -n multi-platform-download.sh",
+      "cwd": "../kubeauto-k8s-bin-dockerfile",
+      "rc": 0
+    },
+    {
+      "command": "git diff --check",
+      "cwd": ".",
+      "rc": 0
+    },
+    {
+      "command": "git diff --check",
+      "cwd": "../kubeauto-k8s-bin-dockerfile",
+      "rc": 0
+    }
+  ],
+  "inputs": {
+    "upgrade/validate.py": "dfca2f35a289d7238cdb26dec067479c9069cd806b03dd78e8fc6adc45d0d0cc",
+    "upgrade/tests/test_validate.py": "371b16d8988354db619c7f591118dbda59aff467efe88dd51824feb0f671a7dd",
+    "upgrade/tests/test_k8s_artifact.py": "dd52730891b868c585fa083df763868fcd2437ca09bf6f6b418eb32f042c82e0",
+    "upgrade/tests/test_records.py": "dd730c25b75e57812e7ad4649396e7c303e02af4f155d1e75383d867311d3530",
+    "tests/unit/test_six_repo_version_sync.py": "272493b5727eb8f62d7d0ff573be067afd555c6432b32538d228940fbe001a4e",
+    "../kubeauto-k8s-bin-dockerfile/multi-platform-download.sh": "12aec77d253aea8452e9024906ba2417eb5b3fd301565455653c7d06003cbfc1",
+    "../kubeauto-k8s-bin-dockerfile/.github/workflows/build.yml": "4981c5680f090962d3e7ad97f857464a0824d4ec3228c44b82eec0aae53eb67a",
+    "../kubeauto-k8s-bin-dockerfile/Dockerfile": "0ac8dc2c0d1d0773a599881d22520701f78990cc731f946235e7a2ead66e13e5",
+    "upgrade/tests/test_artifact_readback_workflow.py": "3f476ff3d686b094e94862cd8fca35d2a0249ca083256239feb038318767bb5d",
+    "../kubeauto-k8s-bin-dockerfile/.github/workflows/verify-v1.34.13.yml": "65ea3b93b659314c43080bb5d1d3af0f7438dfe34024e66cb48e026c194b3b57",
+    "upgrade/tests/test_combination_preflight.py": "10d6e71ab5b3587ccac145b64f9f97e1749f3f96bf5950fad11143ec941010f8",
+    "upgrade/product/kubernetes_preflight.py": "8a8ea6bfb08c1f79e3ac4cdd6bb5a5de30e973aeab01cba1100c3648225c6b0b",
+    "upgrade/tests/test_kubernetes_preflight.py": "d600067ebe74e859ab69b17f04d5b4b72b4abd82806c4ec42b6bbf6bfa355db1"
+  },
+  "official_source_ids": [
+    "K8S-BINARY-CHECKSUM",
+    "ACTIONS-MATRIX-FIRST-HOP",
+    "ACTIONS-DISPATCH-FIRST-HOP"
+  ],
+  "limitations": [
+    "静态合同不证明双架构容器实际构建或双端发布成功。",
+    "validator的final-prerequisites是只读前置检查；真实最终launcher及其handoff仍未实现。",
+    "UPG-03和UPG-04父项仍pending；本记录不冒签GA或现场升级。",
+    "固定只读inventory首次rc=1保留；恢复后26/26可达、rc=0见pool-discovery.json followup；连通性不等于租约/干净资格。"
+  ],
+  "subsequent_checks": [
+    {
+      "command": ".venv/bin/python -B -m unittest upgrade.tests.test_artifact_readback_workflow -v",
+      "tests": 1,
+      "scenarios": [
+        "both-registry-success",
+        "transport-failure",
+        "wrong-child-digest",
+        "wrong-index-digest",
+        "missing-architecture",
+        "duplicate-architecture"
+      ],
+      "rc": 0,
+      "elapsed_seconds": 0.465,
+      "scope": "实际只读CI脚本及durable/first-failure；无发布、无实验室"
+    },
+    {
+      "command": ".venv/bin/python -B -m unittest discover -s upgrade/tests -v",
+      "tests": 20,
+      "rc": 0,
+      "elapsed_seconds": 2.942,
+      "scope": "最新readback分支排除断言及全部升级本地合同；无网络/实验室，未重跑已完成CI"
+    },
+    {
+      "command": ".venv/bin/python -B -m unittest discover -s upgrade/tests -v",
+      "tests": 27,
+      "rc": 0,
+      "elapsed_seconds": 3.013,
+      "scope": "新增组合冻结真实CLI拒绝合同；官方snapshot/143份GA副本完整性；不发布、不操作集群"
+    },
+    {
+      "command": ".venv/bin/python -B -m unittest discover -s upgrade/tests -v",
+      "rc": 0,
+      "tests": 37,
+      "elapsed_seconds": 7.915,
+      "preflight_test_methods": 10,
+      "raw_log": "upgrade/v1.34.13/evidence/raw/local-contracts-20261115.log",
+      "scope": "新增源预检真实CLI合同及并发receipt拒绝；最新官方snapshot与既有GA副本完整性；无网络/实验室"
+    },
+    {
+      "command": ".venv/bin/python -B -m unittest discover -s upgrade/tests -v",
+      "ansible_core": "2.18.6",
+      "helm": "3.19.0",
+      "rc": 0,
+      "tests": 75,
+      "skipped": 0,
+      "elapsed_seconds": 17.333,
+      "raw_log": "upgrade/v1.34.13/evidence/raw/kubeauto-upgrade-local-contracts-current.log",
+      "scope": "current upgrade contracts including migration journal, Ingress pairing and nested pin validation; no lab"
+    },
+    {
+      "command": "PYTHONPATH=<isolated ansible-core 2.18.6> PATH=<verified Helm3.19.0> .venv/bin/python -B -m unittest discover -s upgrade/tests -v",
+      "ansible_core": "2.18.6",
+      "helm": "3.19.0",
+      "rc": 0,
+      "tests": 95,
+      "skipped": 0,
+      "elapsed_seconds": 25.716,
+      "raw_log": "upgrade/v1.34.13/evidence/raw/upgrade-contracts-95-20261115.log",
+      "raw_sha256": "beb8d92c39dd1dfb9faa40248d49bc453fc62b9d8b7b5b2ceb264b4d1587e62b",
+      "scope": "Current complete upgrade local contracts, including Cilium subprocess handoff, Flannel rendering/refusal, all pages of official observations, and Redis retention records; no network or lab"
+    },
+    {
+      "command": "PYTHONPATH=<isolated ansible-core 2.20.9> PATH=<verified Helm3.19.0> .venv/bin/python -B -m unittest upgrade.tests.test_control_plane upgrade.tests.test_node upgrade.tests.test_ingress upgrade.tests.test_flannel -v",
+      "ansible_core": "2.20.9",
+      "rc": 0,
+      "tests": 24,
+      "skipped": 0,
+      "elapsed_seconds": 11.174,
+      "raw_log": "upgrade/v1.34.13/evidence/raw/ansible220-contracts-24-20261115.log",
+      "raw_sha256": "019e4a7a458ff2d3ba809c5f014bb122babc49bd194d28fee8396d8ad0807c3d",
+      "scope": "Changed Ansible product templates and playbook contracts under delivered Python3.14 EE controller version; local Python3.12 fixture only, no new Python3.14 live claim"
+    },
+    {
+      "command": "UPGRADE_CONTAINERD_FIXTURE_DIR=<checksum-qualified official static2.2.10/2.3.7> PYTHONPATH=<isolated ansible-core2.18.6> PATH=<verified Helm3.19.0> .venv/bin/python -B -m unittest discover -s upgrade/tests -v",
+      "tests": 104,
+      "rc": 0,
+      "skipped": 0,
+      "elapsed_seconds": 28.777,
+      "raw_log": "upgrade/v1.34.13/evidence/raw/upgrade-contracts-104-20261115.log",
+      "raw_sha256": "eb7c6751be8915a0de2f75e18cc18c7d8f552a25d5aea8eb5704ecf12007f3c0",
+      "scope": "Current complete local upgrade contracts including Calico5 and containerd4; no daemon/network/lab"
+    },
+    {
+      "command": "UPGRADE_CONTAINERD_FIXTURE_DIR=<qualified official binaries> PYTHONPATH=<isolated ansible-core2.18.6> PATH=<qualified Helm3.19.0> .venv/bin/python -B -m unittest discover -s upgrade/tests -v",
+      "path": "upgrade/v1.34.13/evidence/raw/upgrade-contracts-129-20261115.log",
+      "sha256": "9adcc2b1c8f547f5d9146d808132a7e5b3f24dd969e1b13ab885350537eb2e32",
+      "tests": 129,
+      "rc": 0,
+      "skipped": 0,
+      "elapsed_seconds": 43.819,
+      "scope": "Current complete upgrade suite including runtime stages, actual node failure handoff, release bundle closure and corrected Cilium clock isolation"
+    }
+  ],
+  "implementation_note": "原checks是实现前期观察，publication_triggered:false只描述该次本地检查；后续真实发布和只读核验分别见k8s-binary-publication.json与k8s-binary-dual-readback.json。",
+  "combination_preflight": {
+    "classification": "test-gate",
+    "matrix_id": "UPG-02",
+    "command": ".venv/bin/python -B upgrade/validate.py upgrade/v1.34.13/test-matrix.yaml --combination-preflight",
+    "observed_rc": 1,
+    "result": "expected-refusal",
+    "raw_log": "upgrade/v1.34.13/evidence/raw/combination-preflight.log",
+    "reason": "目标整体未冻结且组件决策/迁移边有缺口；不得仅将release_frozen改true绕过。",
+    "completed_ladder": 2,
+    "unlocked_scope": "本地冻结记录的真实CLI拒绝检查；27项既有合同通过，无远程变更许可",
+    "next_permitted_level": "依赖具体组件组合闭合后资格化其真实产品handoff和最窄runner分支，不启动完整现场链"
+  },
+  "source_preflight_contract": "upgrade/v1.34.13/evidence/source-preflight-contract.json",
+  "current_suite_inputs": {
+    "upgrade/product/cilium.py": "98ac5d8ad92a011484c417ace6b66c0d9f30bc9b9789439621fe700f1d41080b",
+    "upgrade/product/cilium_stage.py": "62adddb7872a6d55638c3685acd10627d0bf23d8258e7f76ecb3c72c103f3f1b",
+    "upgrade/product/containerd-admission.yml": "0a14f42e8212b002b8182565876fe46318e9f34d93d40562f01385200feedcec",
+    "upgrade/product/containerd-edge.yml": "82949b068d4667c61ac89c37b6130a0e8ffcb9550b481d18e3a1d55577872c7c",
+    "upgrade/product/containerd.yml": "4f837a0962f7f905702a1f60708b54fb346f48885691d2960752f0c5be3325dc",
+    "upgrade/product/control-plane.yml": "25d1d26d5ca2919715a5f080a51cbc9143c07ee8ef4a3d445bfd95f116b94101",
+    "upgrade/product/docker-admission.yml": "ccecc215795b9b597460d792312f479ea79fb0c8fea845ada8b754922c26a2d4",
+    "upgrade/product/docker.yml": "7da6f05b0c6b456ad4a348203623c9f5b09bd848247c84f28ce5917676f87163",
+    "upgrade/product/journal.py": "ff445ee4356712256d146f5d28cd298a83aa0ce08072e14ade3e23f1df67e87d",
+    "upgrade/product/kubernetes_preflight.py": "8a8ea6bfb08c1f79e3ac4cdd6bb5a5de30e973aeab01cba1100c3648225c6b0b",
+    "upgrade/product/node.yml": "7c1e65e3bd7646fc58b52969ac2a2bfb155ebef3c56d026de12edb37fd148ec6",
+    "upgrade/tests/fixtures/docker_action.py": "d5eff0938004c53496166c1fbe0e1fc52a7103af89ba04a03ed3d99f2fd5eb80",
+    "upgrade/tests/fixtures/runtime_action.py": "aa7a9897b72d6aae60147d4f742e1f0c0a21699b4edb6a6ec4d61fee1ea3c6f0",
+    "upgrade/tests/test_artifact_readback_workflow.py": "3f476ff3d686b094e94862cd8fca35d2a0249ca083256239feb038318767bb5d",
+    "upgrade/tests/test_calico.py": "bd4f4efb9a929c14ad38273b604c8447c631973afe2ca18ca366a85cdd7d34a5",
+    "upgrade/tests/test_ceph_csi_patch.py": "cc4ba3c30a648c78d33b135b324ed64bdb9770c6e37db4f567fcebe9a6d07cf8",
+    "upgrade/tests/test_cilium.py": "9129c2eafc93a7a650c7064c27c5983edb32ac9aabfc2959990329611358929e",
+    "upgrade/tests/test_cilium_stage.py": "a0863cb4ea02337d54786d8cca7cd8c6a6a868c3080b12c97f85fde2b21654f5",
+    "upgrade/tests/test_combination_preflight.py": "c090376242867d3854a0a35e62ca5710413056f43d91523a2ccbdc12a8d7485c",
+    "upgrade/tests/test_containerd.py": "191a41c73a7d9e78db33a2f6a95285011fdd9d6f40df3328537e09ccab1bb744",
+    "upgrade/tests/test_containerd_stage.py": "bc91ef0d15727aef034a7a529328578c31c34f1971ed90cb4ca1e4ed0ea19253",
+    "upgrade/tests/test_control_plane.py": "9821f52098a2a2cc258ca9d4df5739ee9ccde3add5247bbeeec56bae5bf3f877",
+    "upgrade/tests/test_docker_stage.py": "d3e16355b984a0cceb5ce13d8f439c2c1958536c696e904fd6599a744b684115",
+    "upgrade/tests/test_flannel.py": "d763dfcd9bdc5768a6cfe013837c834ffca7f7770497d5ba08ab39766411bd0f",
+    "upgrade/tests/test_ingress.py": "89bb4161e382770b126263743d86fcad1105ad6e052f1f3dc84c4a029103a5da",
+    "upgrade/tests/test_journal.py": "065ddda70c3a359a127f49b77244c283ce0afe90b0586f78b6c1165542557159",
+    "upgrade/tests/test_k8s_artifact.py": "dd52730891b868c585fa083df763868fcd2437ca09bf6f6b418eb32f042c82e0",
+    "upgrade/tests/test_kubernetes_preflight.py": "d600067ebe74e859ab69b17f04d5b4b72b4abd82806c4ec42b6bbf6bfa355db1",
+    "upgrade/tests/test_longhorn_patch.py": "d269d9c302263fdd265e8549f736b8479052536d465dcb1578dbe15e0140783e",
+    "upgrade/tests/test_node.py": "138308101107027b0f6827d03b9b99bb98d44b76839ae082f0f14431e84a48a9",
+    "upgrade/tests/test_product_release_scope.py": "b60310d38b77384924fc12870473b439ed82a505e6770784dbb4836f7f5b697a",
+    "upgrade/tests/test_records.py": "f8a692dca36cfc8c4d6e970f8ecfd13a816e85ebf7e0cfda0d30cdae1680a589",
+    "upgrade/tests/test_validate.py": "371b16d8988354db619c7f591118dbda59aff467efe88dd51824feb0f671a7dd",
+    "kubecli-onefile.spec": "1b419dfa57fa9dd97f08d994b5f078950c6f15e4575723f1a5158124195be33f",
+    "upgrade/validate.py": "01a005cb639003b41392ce3721b8ea8f88515fd65ad80c2d0e637de5c853d06c"
+  },
+  "component_contracts": [
+    "upgrade/v1.34.13/evidence/calico-local-contracts.json",
+    "upgrade/v1.34.13/evidence/containerd-local-contracts.json",
+    "upgrade/v1.34.13/evidence/runtime-stage-contracts.json",
+    "upgrade/v1.34.13/evidence/cri-dockerd-offline-cli.json"
+  ]
+}

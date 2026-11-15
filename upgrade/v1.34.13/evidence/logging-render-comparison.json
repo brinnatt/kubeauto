@@ -1,0 +1,171 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-11-14T21:45:36.735498+00:00",
+  "matrix_ids": [
+    "UPG-02",
+    "UPG-04",
+    "UPG-11"
+  ],
+  "claim": "Same fixed product Loki/Alloy charts and values render identical on source and target; not a live logging result",
+  "checks": [
+    {
+      "component": "loki",
+      "chart_sha256": "633a1a223fd5b58aeceff648a586816383903f090b332f4b460b3ebdfcc053fa",
+      "template_sha256": "2dafa28e7d67a77637b96c396aa5f333684699d18b1aadef5257e9f02a30d698",
+      "chart_metadata_matches_exact_official_tag": true,
+      "commands": [
+        {
+          "argv": [
+            "/tmp/kubeauto-upgrade-local-bin/helm",
+            "template",
+            "loki",
+            "/home/brinnatt/projects/kubeauto/roles/cluster-addon/files/loki-18.9.0.tgz",
+            "-n",
+            "logging",
+            "--kube-version",
+            "v1.33.6",
+            "-f",
+            "/tmp/kubeauto-upgrade-logging-render/loki-values.yaml"
+          ],
+          "rc": 0,
+          "objects": 41,
+          "output_sha256": "adfe9ac496a3b69b03bd39e9a16711b6c576b805aa3d6d346fda4e89dbb0e49e",
+          "raw_path": "/tmp/kubeauto-upgrade-logging-render/loki-v1.33.6.yaml"
+        },
+        {
+          "argv": [
+            "/tmp/kubeauto-upgrade-local-bin/helm",
+            "template",
+            "loki",
+            "/home/brinnatt/projects/kubeauto/roles/cluster-addon/files/loki-18.9.0.tgz",
+            "-n",
+            "logging",
+            "--kube-version",
+            "v1.34.13",
+            "-f",
+            "/tmp/kubeauto-upgrade-logging-render/loki-values.yaml"
+          ],
+          "rc": 0,
+          "objects": 41,
+          "output_sha256": "adfe9ac496a3b69b03bd39e9a16711b6c576b805aa3d6d346fda4e89dbb0e49e",
+          "raw_path": "/tmp/kubeauto-upgrade-logging-render/loki-v1.34.13.yaml"
+        }
+      ],
+      "changed_objects": [],
+      "api_versions": [
+        "apps/v1",
+        "monitoring.coreos.com/v1",
+        "networking.k8s.io/v1",
+        "policy/v1",
+        "rbac.authorization.k8s.io/v1",
+        "v1"
+      ],
+      "live_execution": false,
+      "parent_acceptance": false
+    },
+    {
+      "component": "alloy",
+      "chart_sha256": "cc4cd48a885c070fe8b2929971552852375c11e92d95fc6337d0c3fa277ac575",
+      "template_sha256": "94c1bf307cc7f5a759a31d370a5aa7eb442d79fd15dc24967f97e11038e3a84e",
+      "chart_metadata_matches_exact_official_tag": true,
+      "commands": [
+        {
+          "argv": [
+            "/tmp/kubeauto-upgrade-local-bin/helm",
+            "template",
+            "alloy",
+            "/home/brinnatt/projects/kubeauto/roles/cluster-addon/files/alloy-1.11.1.tgz",
+            "-n",
+            "logging",
+            "--kube-version",
+            "v1.33.6",
+            "-f",
+            "/tmp/kubeauto-upgrade-logging-render/alloy-values.yaml"
+          ],
+          "rc": 0,
+          "objects": 7,
+          "output_sha256": "41d8560e4bd474517c2e4ca15b1c074a7f76092d92d5180acb5a165f8ade1bdc",
+          "raw_path": "/tmp/kubeauto-upgrade-logging-render/alloy-v1.33.6.yaml"
+        },
+        {
+          "argv": [
+            "/tmp/kubeauto-upgrade-local-bin/helm",
+            "template",
+            "alloy",
+            "/home/brinnatt/projects/kubeauto/roles/cluster-addon/files/alloy-1.11.1.tgz",
+            "-n",
+            "logging",
+            "--kube-version",
+            "v1.34.13",
+            "-f",
+            "/tmp/kubeauto-upgrade-logging-render/alloy-values.yaml"
+          ],
+          "rc": 0,
+          "objects": 7,
+          "output_sha256": "41d8560e4bd474517c2e4ca15b1c074a7f76092d92d5180acb5a165f8ade1bdc",
+          "raw_path": "/tmp/kubeauto-upgrade-logging-render/alloy-v1.34.13.yaml"
+        }
+      ],
+      "changed_objects": [],
+      "api_versions": [
+        "apps/v1",
+        "monitoring.coreos.com/v1",
+        "rbac.authorization.k8s.io/v1",
+        "v1"
+      ],
+      "live_execution": false,
+      "parent_acceptance": false
+    }
+  ],
+  "raw_copies": [
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/logging-render/summary.json",
+      "sha256": "84ca1935ab7005514eba8e1406d04ba89ecfee2d74551cb35a4fb9cfac05bd0b",
+      "bytes": 3744
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/logging-render/alloy-v1.34.13.yaml",
+      "sha256": "41d8560e4bd474517c2e4ca15b1c074a7f76092d92d5180acb5a165f8ade1bdc",
+      "bytes": 8883
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/logging-render/alloy-v1.33.6.yaml",
+      "sha256": "41d8560e4bd474517c2e4ca15b1c074a7f76092d92d5180acb5a165f8ade1bdc",
+      "bytes": 8883
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/logging-render/alloy-values.yaml",
+      "sha256": "e97e59a707ed5dca36e3c55d00eeeeaf3ca9a267a914e2f69584ff3009e89ae0",
+      "bytes": 3594
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/logging-render/loki-v1.34.13.yaml",
+      "sha256": "adfe9ac496a3b69b03bd39e9a16711b6c576b805aa3d6d346fda4e89dbb0e49e",
+      "bytes": 589144
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/logging-render/loki-v1.33.6.yaml",
+      "sha256": "adfe9ac496a3b69b03bd39e9a16711b6c576b805aa3d6d346fda4e89dbb0e49e",
+      "bytes": 589144
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/logging-render/loki-values.yaml",
+      "sha256": "52f6b7492bab98330efc315076676b519efd2002ae2ea41aabf9bdf1a40799b2",
+      "bytes": 2971
+    }
+  ],
+  "official_source_ids": [
+    "ALLOY1181-KUBERNETES-DISCOVERY",
+    "ALLOY1181-KUBERNETES-LOGS",
+    "LOKI1890-CHART",
+    "ALLOY1111-CHART",
+    "HELM319-CHART-DEPENDENCY"
+  ],
+  "live_execution": false,
+  "parent_acceptance": false,
+  "limits": [
+    "Chart lower bound/API contract is not official exact-Kubernetes-version e2e",
+    "Alloy actual Pod log API/reconnection and Loki write/query ledger remain target integration gaps",
+    "Lifecycle/security maintenance review and source raw evidence applicability remain before whole logging selection closes"
+  ]
+}

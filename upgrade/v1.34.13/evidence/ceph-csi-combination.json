@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "observed_on": "2026-11-15",
+  "matrix_ids": [
+    "UPG-02",
+    "UPG-03",
+    "UPG-09"
+  ],
+  "method": "official exact patch compare and both official sidecar compositions",
+  "official_source_ids": [
+    "CEPHCSI-3172-RELEASE",
+    "CEPHCSI-3172-README",
+    "CEPHCSI-3172-RBD-COMPOSITION",
+    "CEPHCSI-3172-CEPHFS-COMPOSITION",
+    "CEPHCSI-3172-EXACT-DELTA"
+  ],
+  "target_pins": {
+    "v_ceph": "20.2.4",
+    "v_ceph_upgrade_source": "20.2.3",
+    "v_cephadm_sha256": "5b78c8d5772ef7c5c8619dac6ee0b36716b829338ea7a11c9f2b896626ab354f",
+    "v_ceph_csi": "v3.17.2",
+    "v_ceph_csi_registrar": "v2.16.0",
+    "v_ceph_csi_provisioner": "v6.2.0",
+    "v_ceph_csi_attacher": "v4.11.0",
+    "v_ceph_csi_resizer": "v2.1.0",
+    "v_ceph_csi_snapshotter": "v8.5.0",
+    "vendored_charts_sha256": {
+      "roles/ceph/files/ceph-csi-cephfs-3.17.1.tgz": "100c00932b1969df63400e5bb477b5ef2701371fb350e5b8cb8c4fb2873aa117",
+      "roles/ceph/files/ceph-csi-rbd-3.17.1.tgz": "75527adefcdf248e9acd2e9759205ddf4fd444824157e3e1914cf9659544bffc"
+    }
+  },
+  "chart_delta": "Only two image tags change; vendored source chart templates remain equivalent after explicit driver override",
+  "allowed_candidate_changes": [
+    "cephcsi:v3.17.2"
+  ],
+  "reused_sidecars": [
+    "csi-node-driver-registrar:v2.16.0",
+    "csi-provisioner:v6.2.0",
+    "csi-attacher:v4.11.0",
+    "csi-resizer:v2.1.0",
+    "csi-snapshotter:v8.5.0"
+  ],
+  "production_changes_not_yet_applied": false,
+  "parent_acceptance": false,
+  "live_execution": false,
+  "supply_chain_acceptance": false,
+  "remaining": [
+    "生产准入和4项合同已完成；minor owning handoff尚未接入",
+    "最小新镜像发布与全部消费制品当前双端证据",
+    "真实CSI owning handoff及范围内现场补证"
+  ],
+  "production_admission": "roles/ceph/tasks/csi.yml now accepts exact 3.17.2 only with the official five sidecar pins; defaults remain source"
+}

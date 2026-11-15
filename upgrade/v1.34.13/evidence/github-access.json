@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-11-14T14:39:33.675021+00:00",
+  "scope": "GitHub authentication read-only qualification",
+  "credential_content_recorded": false,
+  "target_repository": "brinnatt/kubeauto-k8s-bin-dockerfile",
+  "checks": [
+    {
+      "endpoint": "user",
+      "http": 200
+    },
+    {
+      "endpoint": "repos/brinnatt/kubeauto-k8s-bin-dockerfile",
+      "http": 200
+    },
+    {
+      "endpoint": "repos/brinnatt/kubeauto-k8s-bin-dockerfile/actions/workflows/build.yml",
+      "http": 200
+    },
+    {
+      "endpoint": "repos/brinnatt/kubeauto-k8s-bin-dockerfile/actions/runs?per_page=2",
+      "http": 200
+    }
+  ],
+  "workflow_state": "active",
+  "publication_triggered": false,
+  "prior_observation": "先前404已解除，保留观察历史，不将认证失败视为制品缺失"
+}

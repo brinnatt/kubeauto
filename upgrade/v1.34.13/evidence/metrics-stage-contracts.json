@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-11-14T22:32:56.848122+00:00",
+  "matrix_ids": [
+    "UPG-04",
+    "UPG-11",
+    "UPG-12"
+  ],
+  "classification": "internal product stage and offline test-gate",
+  "product_entry": "config.yml + kubecli upgrade; outer composition/admission still required",
+  "official_source_ids": [
+    "METRICS-091-FIRST-HOP",
+    "METRICS-091-FAQ",
+    "METRICS-091-KNOWN-ISSUES",
+    "METRICS-V1BETA1-WIRE-CONTRACT",
+    "K8S-RESOURCE-QUANTITY-CONTRACT",
+    "K8S-METAV1-DURATION-CONTRACT"
+  ],
+  "command": ".venv/bin/python -B -m unittest upgrade.tests.test_metrics_stage upgrade.tests.test_records upgrade.tests.test_product_release_scope -v",
+  "rc": 0,
+  "tests": 19,
+  "focused_metrics_tests": 15,
+  "inputs_sha256": {
+    "upgrade/product/metrics_stage.py": "41d9eb17b3549e4e55552c064622b5ea3715c3ddc26b1ea09663abb747637345",
+    "upgrade/tests/test_metrics_stage.py": "7d10e7f982bf6908647b79caf2dddefac025511309ddaa58c26e8f516c8a4cca",
+    "upgrade/tests/fixtures/metrics_kubectl.py": "4fb45996e7b82b5de21f5700e64612eb5c28bc03ab8e9ce4f9a06d020209b569",
+    "upgrade/product/dns_stage.py": "eb6d1e1400860a9c237b6cd284cf3da788377b44017bcc37cc39448a3eb75e2c",
+    "upgrade/product/calico_stage.py": "0d63235b4ebb7f38dcae53e4161ef9ace06517264a1b1dd3eba7ff6a602efc0f",
+    "roles/cluster-addon/templates/metrics-server/components.yaml.j2": "a0666109f2064150c84f911cd479e5a0f2e192aee3d82f33526f795f922624b8"
+  },
+  "logs": {
+    "first-attempt": {
+      "path": "upgrade/v1.34.13/evidence/raw/metrics-stage/first-attempt.log",
+      "sha256": "997d2a3d61237832e1b55eabd6be8f1cb9bc3638b7e53cacad8dda929ffeb495",
+      "bytes": 3400,
+      "rc": 1,
+      "tests": 13
+    },
+    "qualified": {
+      "path": "upgrade/v1.34.13/evidence/raw/metrics-stage/qualified.log",
+      "sha256": "95cc3d77191cbcb9c162c2d8e81c22a8a4bc02352256090029d60ac4926a4dc9",
+      "bytes": 4754,
+      "rc": 0,
+      "tests": 19
+    }
+  },
+  "scope": [
+    "Admit exact0.8.0 ->0.9.1 only after every API/node target barrier, complete cluster/node identities and uncordoned healthy inventory",
+    "Actual product template and source API health; preserve all nine objects, UIDs, metadata, permissions, APIService, networking/TLS settings and explicit15s resolution; image-only JSON Patch with UID/resourceVersion/source image tests",
+    "Server dry-run of exact image patch must produce only reviewed delta before actual write; refuse admission mutation, drift, conflicts and missing identities",
+    "Direct authenticated Metrics API must return every admitted node and all containers of each selected live business Pod; verify actual Pod UID/placement/readiness before and after metrics read",
+    "Accept source only with metrics, then require newer post-rollout timestamps; target resume also proves a subsequent fresh scrape; missing, stale, frozen, malformed or empty metrics never PASS",
+    "Bounded rollout/sample convergence, preserve real first rc and sanitized diagnostics, no delete/reinstall, permission widening or automatic rollback"
+  ],
+  "first_failure": {
+    "classification": "test-gate assertion",
+    "cause": "Substring private diagnostic also matched the fixed safe text retain private diagnostics; 12/13 contracts passed and no real diagnostic leaked.",
+    "repair": "Use unique sensitive fixture sentinel; add actual API probe rc/redaction and additional refusal contracts.",
+    "live_lab_consumed": false
+  },
+  "completed_ladder": 2,
+  "parent_acceptance": false,
+  "live_lab_execution": false,
+  "remaining": [
+    "Connect actual frozen product outer path, journal, lease/recovery and exact artifact admission",
+    "Collect the target live business Pod identity set at admitted boundary",
+    "Run minimum real Metrics API integration and final limited-scope acceptance"
+  ],
+  "cleanup": "TemporaryDirectory process/API fixtures only; no remote mutation"
+}

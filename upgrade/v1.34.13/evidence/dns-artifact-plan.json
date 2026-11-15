@@ -1,0 +1,54 @@
+{
+  "batch_id": "dns-1150-1268",
+  "repository": "kubeauto-ext-images-dockerfile",
+  "branch": "v1.34.13",
+  "sha": "96f791a2395254d88565246eab802d74dfe7dbfa",
+  "mode": "selected",
+  "images": [
+    "brinnatt/coredns:1.15.0",
+    "brinnatt/k8s-dns-node-cache:1.26.8"
+  ],
+  "image_count": 2,
+  "platforms": [
+    "linux/amd64",
+    "linux/arm64"
+  ],
+  "fingerprints": {
+    "brinnatt/coredns:1.15.0": "b8f7f403d1e04dfacc0168bf9a65612a32dbdeba4c91be9c3216710e692aab13",
+    "brinnatt/k8s-dns-node-cache:1.26.8": "fb8238bb671c7f67addf98aa55a93a012416e7fd058754e719876eff112ab6d6"
+  },
+  "reason": "官方稳定CoreDNS1.15.0与正式promotion node-cache1.26.8；两精确tag已认证私库404，不重建原GA镜像或自组内嵌CoreDNS。",
+  "state": "local-plan-qualified-await-existing-pending-run",
+  "allowed_publish_set": [
+    "hub.talkedu.cn/kubeauto/coredns:1.15.0",
+    "docker.io/brinnatt/coredns:1.15.0",
+    "hub.talkedu.cn/kubeauto/k8s-dns-node-cache:1.26.8",
+    "docker.io/brinnatt/k8s-dns-node-cache:1.26.8"
+  ],
+  "completed_ladder": 1,
+  "checks": [
+    {
+      "command": "python3 scripts/validate_catalog.py",
+      "rc": 0,
+      "result": "206/206"
+    },
+    {
+      "command": "PYTHONPATH=tests python3 -B -m unittest test_image_release test_incremental_release -v",
+      "rc": 0,
+      "tests": 48
+    },
+    {
+      "command": ".venv/bin/python -B -m unittest upgrade.tests.test_dns_stage -v",
+      "rc": 0,
+      "tests": 11
+    }
+  ],
+  "first_local_failure": {
+    "classification": "local test invocation",
+    "cause": "Invoking tests as namespace modules did not put tests/ on sys.path; cross-test import refused",
+    "correction": "Use existing repository test import path PYTHONPATH=tests; no source or assertion change",
+    "live_execution": false
+  },
+  "next": "Only dispatch after Longhorn nine-image pending leaves queue; recheck remote SHA/actual selected2/allowed set before trigger",
+  "cleanup": "CI ephemeral runner/registry login only; no lab lease or mutation"
+}

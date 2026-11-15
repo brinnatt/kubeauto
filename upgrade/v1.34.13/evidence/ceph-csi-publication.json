@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "observed_on": "2026-11-15",
+  "matrix_ids": [
+    "UPG-03"
+  ],
+  "claim": "Selected Ceph CSI v3.17.2 artifact publication and immediate dual-registry dual-architecture formal-tag readback only",
+  "repository": "kubeauto-ext-images-dockerfile",
+  "branch": "v1.34.13",
+  "sha": "ff8e69f3e6a2eb8ee7f2f0a8c018e970df5b2d1e",
+  "mode": "selected",
+  "allowed_images": [
+    "brinnatt/cephcsi:v3.17.2"
+  ],
+  "actual_images": [
+    "brinnatt/cephcsi:v3.17.2"
+  ],
+  "image_count": 1,
+  "run_id": "43617585735",
+  "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/43617585735",
+  "conclusion": "success",
+  "durable_rc": 0,
+  "failure_markers": 0,
+  "success_markers": [
+    "DUAL_PUSH_MANIFEST_PASS",
+    "IMAGE_SHARD_PASS shard=0 items=1"
+  ],
+  "release_record": {
+    "digest": "sha256:3e80e86d7ddf2ecda0aa59766ff04735107e97a33ec77302bca31bc47e39e105",
+    "fingerprint": "812f39e1fe2705767ec1b950c9128463348a72c9f8e88e6d0bfdaa0b2b9ea305",
+    "head": "ff8e69f3e6a2eb8ee7f2f0a8c018e970df5b2d1e",
+    "key": "brinnatt/cephcsi:v3.17.2",
+    "platforms": {
+      "linux/amd64": "sha256:38343fed124e4de376cec996a0b3296188276a389eb37d9e776602a12e9212e0",
+      "linux/arm64": "sha256:516df295b3ff766eb83807d1095c8ba9e49eff7fd0beba8d689fa327fb0859be"
+    },
+    "run_id": "43617585735",
+    "schema": 1,
+    "source_digest": "sha256:e93b8b689179bf4f5b501563e85780d2bc127b19bd9bbe36c52a6ceb0c51092d",
+    "source_ref": "quay.io/cephcsi/cephcsi:v3.17.2"
+  },
+  "archives": {
+    "image-plan": {
+      "path": "upgrade/v1.34.13/evidence/raw/cephcsi-43617585735/image-plan.zip",
+      "sha256": "20f07b0aaef3ca2d8cdded2dd8e823cc698652ceb810208f6a8e23b07c64fa2c",
+      "bytes": 442
+    },
+    "plan-evidence-1": {
+      "path": "upgrade/v1.34.13/evidence/raw/cephcsi-43617585735/plan-evidence-1.zip",
+      "sha256": "423ff94314872fc5eb87e06e3f8efae9dee85930d695b333fe4ba4bc3098417b",
+      "bytes": 300
+    },
+    "release-records-0-1": {
+      "path": "upgrade/v1.34.13/evidence/raw/cephcsi-43617585735/release-records-0-1.zip",
+      "sha256": "84ba46eaa367ca6efa1dc544392c7e3c89b42eb149b8d48735801f51b0678bfa",
+      "bytes": 645
+    },
+    "release-evidence-0-1": {
+      "path": "upgrade/v1.34.13/evidence/raw/cephcsi-43617585735/release-evidence-0-1.zip",
+      "sha256": "b6249f7fc592cc86f7e7e32cae6a4fa7d9979d8f597c8905113fc2fcabc3213c",
+      "bytes": 3300
+    }
+  },
+  "readback": "Fixed publish() checks both staged and formal manifests and unchanged upstream digest before accepting record",
+  "parent_acceptance": false,
+  "live_lab_execution": false,
+  "completed_ladder": 2,
+  "next": "按完整消费制品集合完成UPG-03准入；不重复发布本批、不冒签CSI现场集成"
+}

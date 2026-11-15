@@ -26,8 +26,8 @@ def atomic(path,obj):
 
 
 def validate(c):
-    if c.get('longhorn_version')!='1.12.1' or 'v2' not in c.get('longhorn_data_engines',[]):
-        raise ValueError('AIO block retirement requires Longhorn 1.12.1 with V2 enabled')
+    if c.get('longhorn_version') not in ('1.12.1','1.12.2') or 'v2' not in c.get('longhorn_data_engines',[]):
+        raise ValueError('AIO block retirement requires Longhorn 1.12.1/1.12.2 with V2 enabled')
     rows=c.get('longhorn_retire_block_disks',[])
     operation=c.get('longhorn_block_retirement_id','')
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]{0,63}',operation) or not isinstance(rows,list) or not rows:

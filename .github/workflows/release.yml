@@ -22,7 +22,7 @@ jobs:
       - name: Build kubecli (amd64)
         run: |
           # 直接使用系统 Python，无需 setup-python
-          python3 build.py
+          python3 build.py --kubecli-only
           mv dist/kubecli dist/kubecli-amd64
           
           tar -czf dist/kubecli-amd64.tar.gz -C dist kubecli-amd64
@@ -43,7 +43,7 @@ jobs:
 
       - name: Build kubecli (arm64)
         run: |
-          python3 build.py
+          python3 build.py --kubecli-only
           mv dist/kubecli dist/kubecli-arm64
           
           tar -czf dist/kubecli-arm64.tar.gz -C dist kubecli-arm64

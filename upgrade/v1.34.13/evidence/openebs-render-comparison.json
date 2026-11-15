@@ -1,0 +1,141 @@
+{
+  "schema_version": 1,
+  "live_lab_execution": false,
+  "parent_acceptance": false,
+  "commands": [
+    {
+      "argv": [
+        "/tmp/kubeauto-upgrade-local-bin/helm",
+        "template",
+        "openebs",
+        "/home/brinnatt/projects/kubeauto/roles/cluster-addon/files/openebs-4.3.2.tgz",
+        "-n",
+        "openebs",
+        "--kube-version",
+        "v1.33.6",
+        "-f",
+        "/tmp/kubeauto-upgrade-openebs-render/yes-v1.33.6-values.yaml"
+      ],
+      "rc": 0,
+      "objects": 29,
+      "output_sha256": "73c20de18e732ba02bdd2a2f070e734676adc6eb98f6d9e27f831baa530a54de"
+    },
+    {
+      "argv": [
+        "/tmp/kubeauto-upgrade-local-bin/helm",
+        "template",
+        "openebs",
+        "/home/brinnatt/projects/kubeauto/roles/cluster-addon/files/openebs-4.3.2.tgz",
+        "-n",
+        "openebs",
+        "--kube-version",
+        "v1.34.13",
+        "-f",
+        "/tmp/kubeauto-upgrade-openebs-render/yes-v1.34.13-values.yaml"
+      ],
+      "rc": 0,
+      "objects": 29,
+      "output_sha256": "87d49b3ff5f76be20fab184eea055bd208238bb8b34a9ed0ff46d12a9a9c8427"
+    },
+    {
+      "argv": [
+        "/tmp/kubeauto-upgrade-local-bin/helm",
+        "template",
+        "openebs",
+        "/home/brinnatt/projects/kubeauto/roles/cluster-addon/files/openebs-4.3.2.tgz",
+        "-n",
+        "openebs",
+        "--kube-version",
+        "v1.33.6",
+        "-f",
+        "/tmp/kubeauto-upgrade-openebs-render/no-v1.33.6-values.yaml"
+      ],
+      "rc": 0,
+      "objects": 12,
+      "output_sha256": "5dfa163c26cb7000c31494862f2739f5c671061ed504549abfba253de6e1c9ad"
+    },
+    {
+      "argv": [
+        "/tmp/kubeauto-upgrade-local-bin/helm",
+        "template",
+        "openebs",
+        "/home/brinnatt/projects/kubeauto/roles/cluster-addon/files/openebs-4.3.2.tgz",
+        "-n",
+        "openebs",
+        "--kube-version",
+        "v1.34.13",
+        "-f",
+        "/tmp/kubeauto-upgrade-openebs-render/no-v1.34.13-values.yaml"
+      ],
+      "rc": 0,
+      "objects": 12,
+      "output_sha256": "9d9ed789ca16c0f2d739c302f87b6d0a39b1b4d0fc482a78dbf90fc13c33350c"
+    }
+  ],
+  "scenarios": [
+    {
+      "lvm_enabled": "yes",
+      "changed_objects": [
+        [
+          "Job",
+          "openebs",
+          "openebs-pre-upgrade-hook"
+        ]
+      ],
+      "identity_changes": false,
+      "only_change": "pre-upgrade hook kubectl image follows exact K8s version",
+      "objects": 29
+    },
+    {
+      "lvm_enabled": "no",
+      "changed_objects": [
+        [
+          "Job",
+          "openebs",
+          "openebs-pre-upgrade-hook"
+        ]
+      ],
+      "identity_changes": false,
+      "only_change": "pre-upgrade hook kubectl image follows exact K8s version",
+      "objects": 12
+    }
+  ],
+  "inputs": {
+    "roles/cluster-addon/files/openebs-4.3.2.tgz": "59bc769fa6078881d33652ad8ba31e27288aa11149e53c8cd1f82765a8be51f5",
+    "roles/cluster-addon/templates/openebs/values.yaml.j2": "538bd596ae6f7474c87b350f521d262930edf1d49cb64b0381c119f3477fc33e"
+  },
+  "raw_copies": [
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/openebs-no-v1.34.13-render.yaml",
+      "sha256": "9d9ed789ca16c0f2d739c302f87b6d0a39b1b4d0fc482a78dbf90fc13c33350c"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/openebs-no-v1.34.13-values.yaml",
+      "sha256": "8b9209339ef37dda609d5c1d856d351f27e70a4ef2acdad72da0e27ce3b23096"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/openebs-no-v1.33.6-render.yaml",
+      "sha256": "5dfa163c26cb7000c31494862f2739f5c671061ed504549abfba253de6e1c9ad"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/openebs-no-v1.33.6-values.yaml",
+      "sha256": "a590ac24bbf24dc041aafabaa682d4deaf558684227f604b729a5cd41df16f75"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/openebs-yes-v1.34.13-render.yaml",
+      "sha256": "87d49b3ff5f76be20fab184eea055bd208238bb8b34a9ed0ff46d12a9a9c8427"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/openebs-yes-v1.34.13-values.yaml",
+      "sha256": "d6a4081e117e106307b71fa159ea247b292d06a099dcf35114aa5cc63ef2feef"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/openebs-yes-v1.33.6-render.yaml",
+      "sha256": "73c20de18e732ba02bdd2a2f070e734676adc6eb98f6d9e27f831baa530a54de"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/openebs-yes-v1.33.6-values.yaml",
+      "sha256": "4dc4a0f3ff3d9d833857a81bc8181db225fa76335acb8b34f7bfad8532bfb534"
+    }
+  ]
+}

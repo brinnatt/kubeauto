@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "accepted": true,
+  "source": "v1.33.6",
+  "target": "v1.34.13",
+  "case_ids": [
+    "UPG-01"
+  ],
+  "method": "analysis",
+  "claim": "接受本次项目GA实践的参考源身份与归档完整性；不重新签署原GA、不签目标适用性或客户生产身份。",
+  "covered_subcases": [
+    "ga-authority-and-preserved-original-scope",
+    "exact-project-reference-tag-and-six-repository-source-identities",
+    "immutable-formal-evidence-copy-identities",
+    "customer-and-live-source-identity-boundaries"
+  ],
+  "inputs": {
+    "upgrade/v1.33.6/release.yaml": "2af2147df822246c8b8a4ea601d5cb4dcf315928d8facfa05dbebd0625c76657",
+    "upgrade/v1.33.6/inventory.yaml": "629f66e7de972c718e5fbed9b0a437b3a1c50fb8664b68ad1b02daeb431b27ea"
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.34.13/evidence/source-baseline-binding.json",
+      "sha256": "e1bd15b5abad39d95b6c2895e608f867085645b533117087c810c2800d9bb57e"
+    },
+    {
+      "path": "upgrade/v1.33.6/evidence-manifest.yaml",
+      "sha256": "3f57a618ff40e52b43d5bb2628b235e3a18025d5da2abdec7743589f56208e92"
+    }
+  ],
+  "applicability": {
+    "conditions": "交付负责人已确认全功能GA；v0.1.8精确指向940c9020144a88b370cba36793a4d7fad6a347ab，37项六仓源码摘要与对应Git对象一致；143份副本字节和摘要一致。",
+    "differences": "本次使用自有实验室项目参考基线，非未知客户实装；目标兼容/迁移未验收，原归档逐断言核验仍保留。",
+    "reason": "将项目参考身份、客户生产身份与本次实际源集群身份分开归属，覆盖保留在UPG-03/05；不因未知客户配置重开旧GA或停止独立项目工作。"
+  },
+  "checks": [
+    {
+      "command": "git rev-parse v0.1.8^{commit} + 37 source inventory entries checked against git show <pinned-sha>:<path>",
+      "rc": 0
+    },
+    {
+      "command": ".venv/bin/python -B -m unittest discover -s upgrade/tests -v",
+      "rc": 0,
+      "tests": 19
+    }
+  ],
+  "target_runtime_claim": false,
+  "customer_signoff": null
+}

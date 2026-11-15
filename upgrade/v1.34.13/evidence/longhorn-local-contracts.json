@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "observed_on": "2026-11-15",
+  "matrix_ids": [
+    "UPG-02",
+    "UPG-04",
+    "UPG-09",
+    "UPG-12"
+  ],
+  "classification": "target patch product admission and source capability preservation",
+  "claim": "Official Chart/pairing and exact version/refusal/render contracts; not Longhorn runtime or parent acceptance",
+  "official_source_ids": [
+    "LONGHORN-1122-CHART-INDEX",
+    "LONGHORN-1122-CHART-COMPOSITION",
+    "LONGHORN-1122-UPGRADE",
+    "LONGHORN-1122-SETTINGS"
+  ],
+  "inputs": {
+    "common/constants.py": "d3f4b235a67bbea2627427abfb26d9c11b4304a91d41ec3ed003c42f667d8b24",
+    "roles/longhorn/files/longhorn.py": "bf6e7982acf16dcac00d42f9e827fca6dad7512ea7f26411a4918a72e7a09dc3",
+    "roles/longhorn/files/block-retire.py": "43fff93ab49f95051f0952dbbf0238a953e808198d761975beb1bf39c708f214",
+    "roles/longhorn/files/images.json": "e9e4d6f7853143a53784e97560384af80bb84d9ee6564aef3ad1e4994dc918d6",
+    "roles/longhorn/files/longhorn-1.12.2.tgz": "3514c3a802ec910b3e97698f0b816c038d66547e1bf3d1a4ebad44a9f5b8ac8a",
+    "upgrade/tests/test_longhorn_patch.py": "d269d9c302263fdd265e8549f736b8479052536d465dcb1578dbe15e0140783e"
+  },
+  "checks": [
+    {
+      "command": ".venv/bin/python -B -m unittest tests.unit.test_longhorn_delivery tests.unit.test_longhorn_v2 tests.unit.test_longhorn_cpu_isolation_policy tests.unit.test_longhorn_block_retirement upgrade.tests.test_longhorn_patch -v",
+      "rc": 0,
+      "result": "154 tests; 3 Helm-dependent skips retained in original log"
+    },
+    {
+      "command": "PATH=/tmp/kubeauto-upgrade-local-bin:$PATH .venv/bin/python -B -m unittest upgrade.tests.test_longhorn_patch.LonghornPatchContracts.test_target_chart_renders_actual_v1_v2_pairing_and_preserves_drain_protection tests.unit.test_longhorn_delivery.PinnedSourceContracts.test_helm_values_render tests.unit.test_longhorn_v2.EngineConfiguration.test_actual_official_chart_serializes_v2_engine_settings tests.unit.test_longhorn_v2.EngineConfiguration.test_official_charts_render_rebuild_qos_and_preserve_unmanaged_default -v",
+      "rc": 0,
+      "result": "4 focused actual Helm renders PASS, zero skips; official v3.19.0 checksum-qualified local binary"
+    }
+  ],
+  "source_defaults": "Kubernetes v1.33.6 and Longhorn1.12.1 remain source defaults; target1.12.2 images not yet published",
+  "scope": "Only selected 1.12.2; 1.12.3/1.13/prerelease refused. Old .0/.1 image maps unchanged. .2→.1/.0 downgrade refused. V2 detach, backup, last replica and degraded-availability protections retained.",
+  "raw_logs": [
+    "upgrade/v1.34.13/evidence/raw/longhorn-patch-before-20261115.log",
+    "upgrade/v1.34.13/evidence/raw/longhorn-patch-contracts-20261115.log",
+    "upgrade/v1.34.13/evidence/raw/longhorn-patch-render-20261115.log"
+  ],
+  "parent_acceptance": false,
+  "live_execution": false,
+  "remaining": [
+    "4自有补丁固定目标源码编译/Go合同及双端双架构13镜像准入",
+    "实际升级产品handoff、V2维护窗口与受影响现场证据"
+  ],
+  "local_helm_fixture": {
+    "version": "v3.19.0",
+    "official_url": "https://get.helm.sh/helm-v3.19.0-linux-amd64.tar.gz",
+    "sha256_url": "https://get.helm.sh/helm-v3.19.0-linux-amd64.tar.gz.sha256sum",
+    "archive_sha256": "a7f81ce08007091b86d8bd696eb4d86b8d0f2e1b9f6c714be62f82f96a594496",
+    "binary_sha256": "e4722a77de9df824214aaf19d43687c49f7cbcf3b107905acea002173777d486",
+    "method": "official checksum verified archive and exact member extraction",
+    "use": "local Helm render contracts only; no lab mutation"
+  }
+}

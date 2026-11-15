@@ -1,0 +1,123 @@
+{
+  "observed_on": "2026-11-15",
+  "claim": "Official GHCR immutable source indices; not downstream publication",
+  "images": [
+    {
+      "name": "flannel",
+      "version": "v0.28.10",
+      "registry": "ghcr.io",
+      "digest": "sha256:f26b2403273cbbce2bdc262c62e7a6e74c0031b139df247fa0fd5801cb9f639d",
+      "platforms": [
+        {
+          "architecture": "amd64",
+          "os": "linux"
+        },
+        {
+          "architecture": "arm64",
+          "os": "linux"
+        },
+        {
+          "architecture": "arm",
+          "os": "linux",
+          "variant": "v7"
+        },
+        {
+          "architecture": "s390x",
+          "os": "linux"
+        },
+        {
+          "architecture": "ppc64le",
+          "os": "linux"
+        },
+        {
+          "architecture": "riscv64",
+          "os": "linux"
+        },
+        {
+          "architecture": "unknown",
+          "os": "unknown"
+        },
+        {
+          "architecture": "unknown",
+          "os": "unknown"
+        },
+        {
+          "architecture": "unknown",
+          "os": "unknown"
+        },
+        {
+          "architecture": "unknown",
+          "os": "unknown"
+        },
+        {
+          "architecture": "unknown",
+          "os": "unknown"
+        },
+        {
+          "architecture": "unknown",
+          "os": "unknown"
+        }
+      ],
+      "raw_copy": "upgrade/official-snapshots/2026-11-14-first-hop/flannel-v0.28.10-index.json"
+    },
+    {
+      "name": "flannel-cni-plugin",
+      "version": "v1.9.1-flannel3",
+      "registry": "ghcr.io",
+      "digest": "sha256:9fccdf677e6e26e76a4aa60da2113bab9852e8317287ba51b2c29778d2351345",
+      "platforms": [
+        {
+          "architecture": "amd64",
+          "os": "linux"
+        },
+        {
+          "architecture": "arm64",
+          "os": "linux"
+        },
+        {
+          "architecture": "arm",
+          "os": "linux",
+          "variant": "v7"
+        },
+        {
+          "architecture": "s390x",
+          "os": "linux"
+        },
+        {
+          "architecture": "ppc64le",
+          "os": "linux"
+        },
+        {
+          "architecture": "riscv64",
+          "os": "linux"
+        },
+        {
+          "architecture": "unknown",
+          "os": "unknown"
+        },
+        {
+          "architecture": "unknown",
+          "os": "unknown"
+        },
+        {
+          "architecture": "unknown",
+          "os": "unknown"
+        },
+        {
+          "architecture": "unknown",
+          "os": "unknown"
+        },
+        {
+          "architecture": "unknown",
+          "os": "unknown"
+        },
+        {
+          "architecture": "unknown",
+          "os": "unknown"
+        }
+      ],
+      "raw_copy": "upgrade/official-snapshots/2026-11-14-first-hop/flannel-cni-plugin-v1.9.1-flannel3-index.json"
+    }
+  ],
+  "parent_acceptance": false
+}

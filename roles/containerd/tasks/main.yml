@@ -1,3 +1,10 @@
+- name: Require a supported containerd configuration schema
+  ansible.builtin.assert:
+    that:
+      - (CONTAINERD_CONFIG_VERSION | default(2) | type_debug) == 'int'
+      - CONTAINERD_CONFIG_VERSION | default(2) in [2, 3]
+    fail_msg: "containerd configuration schema must be the reviewed integer 2 or 3."
+
 - name: prepare containerd-related directories
   file: name={{ item }} state=directory
   with_items:

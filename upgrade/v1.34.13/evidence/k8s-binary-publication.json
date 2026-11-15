@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "observed_on": "2026-11-14",
+  "scope": "首跳Kubernetes六二进制单镜像批次；不签全部消费制品或UPG-03父项",
+  "repository": "brinnatt/kubeauto-k8s-bin-dockerfile",
+  "branch": "v1.34.13",
+  "source_sha": "26bc3329f93ffa9c5ddf6a30f50a872728d26843",
+  "mode": "selected",
+  "images": [
+    "kubeauto-k8s-bin:v1.34.13"
+  ],
+  "destinations": [
+    "hub.talkedu.cn/kubeauto",
+    "docker.io/brinnatt"
+  ],
+  "platforms": [
+    "linux/amd64",
+    "linux/arm64"
+  ],
+  "build_policy_context": {
+    "dockerfile_base": "alpine:3.16",
+    "inputs_sha256": {
+      "multi-platform-download.sh": "12aec77d253aea8452e9024906ba2417eb5b3fd301565455653c7d06003cbfc1",
+      ".github/workflows/build.yml": "4981c5680f090962d3e7ad97f857464a0824d4ec3228c44b82eec0aae53eb67a",
+      "Dockerfile": "0ac8dc2c0d1d0773a599881d22520701f78990cc731f946235e7a2ead66e13e5"
+    },
+    "fingerprint": "a76d1148135520213acd41c14ac62bf3964c16fa5e012f94fb480e79e8e0bad4"
+  },
+  "run_id": 43606064516,
+  "run_url": "https://github.com/brinnatt/kubeauto-k8s-bin-dockerfile/actions/runs/43606064516",
+  "run_attempt": 1,
+  "workflow_status": "completed",
+  "workflow_conclusion": "success",
+  "job_conclusions": {
+    "plan": "success",
+    "docker (v1.34.13)": "success"
+  },
+  "actions_verified_push_digest": "sha256:102ab56b22ea78c726949ff18c6798f6d7a1a53dd7debc07384373985e153d35",
+  "both_platform_bundle_markers": true,
+  "private_current_manifest_and_binary_content_verified": true,
+  "dockerhub_current_independent_readback": true,
+  "remaining_gap": "本批独立双端回读已由只读run43608565612补齐；其余组件/消费制品仍待准入。",
+  "parent_acceptance": false,
+  "references": [
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/actions-43606064516.zip",
+      "sha256": "fc70ca12104d8e6a4eda6d26ff35ae79fc5ae3409cf2590924ab25059e15f1bc",
+      "bytes": 77366
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/actions-43606064516-run.json",
+      "sha256": "d4ad01565801c3b3718e70a0087d4c287e9f643b43ea0c7b9974ed42487d0752",
+      "bytes": 14933
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/actions-43606064516-jobs.json",
+      "sha256": "0b84bfededb20c0a9a32f2a1797e63167ee15efb6fe7e75fc6b05d7caf911ff8",
+      "bytes": 6846
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/k8s-binary-private-readback.json",
+      "sha256": "0915edfd376f0318ff00a30a89c3f46567103414c048aeadc1a09db148006621",
+      "bytes": 2469
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/k8s-binary-content.json",
+      "sha256": "290b31f7b8a562b9f3a0e6fc9bc555434b87a427adf5ad1d059731995aa6e7f2",
+      "bytes": 3490
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/k8s-binary-dual-readback.json",
+      "sha256": "eab4cae4ed82318573af193294618e28a47f30143ab80137800fc35fe5c741f8",
+      "bytes": 1458
+    }
+  ]
+}

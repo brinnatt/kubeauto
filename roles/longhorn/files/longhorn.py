@@ -27,7 +27,9 @@ LABELS = {'app.kubernetes.io/managed-by': 'kubeauto', 'kubeauto.io/component': '
 OWNER = {'kubeauto.io/component': 'longhorn'}
 SNAPSHOT_OWNER = {'kubeauto.io/component': 'longhorn-snapshot'}
 SNAPSHOT_CRDS = ('volumesnapshots', 'volumesnapshotcontents', 'volumesnapshotclasses')
+V2_SETTINGS_VERSIONS = ('1.12.1', '1.12.2')
 CHART_HASHES = {
+    '1.12.2': '3514c3a802ec910b3e97698f0b816c038d66547e1bf3d1a4ebad44a9f5b8ac8a',
     '1.12.1': 'c8cf4b35a9d872cd5f7e44fd26d8e6ac7c2abaee42f4e2f2a0b0ebbc6e3a6116',
     '1.12.0': '869bb20701b154473606f1e8967b27f34f2448a2dfe6eb8970f1cae6957384f5',
 }
@@ -92,8 +94,8 @@ def validate_engines(c, inventory, clients, replicas):
     if not isinstance(mask, str) or not re.fullmatch(r'0x[0-9a-fA-F]{1,64}', mask) or not int(mask, 16):
         raise ValueError('Longhorn V2 CPU mask requires a nonzero hexadecimal bitmask')
     cores = integer(c.get('longhorn_v2_cpu_cores', 0), 0, 256)
-    if cores and ('v2' not in selected or c['longhorn_version'] != '1.12.1'):
-        raise ValueError('exclusive CPU allocation requires enabled V2 and Longhorn 1.12.1')
+    if cores and ('v2' not in selected or c['longhorn_version'] not in V2_SETTINGS_VERSIONS):
+        raise ValueError('exclusive CPU allocation requires enabled V2 and Longhorn 1.12.1/1.12.2')
     integer(c.get('longhorn_v2_cpu_reservation_percentage', 25), 1, 40)
     integer(c.get('longhorn_v2_memory_mib', 2048), 2048, 1048576)
     flag(c.get('longhorn_v2_hugepages', True)); flag(c.get('longhorn_v2_interrupt_mode', False))
@@ -102,12 +104,12 @@ def validate_engines(c, inventory, clients, replicas):
     if cores and not flag(c.get('longhorn_v2_hugepages', True)):
         raise ValueError('V2 anonymous memory with exclusive CPU requires an instance-manager memory limit covering SPDK allocation')
     isolation = flag(c.get('longhorn_v2_cpu_isolation_enabled', False))
-    if isolation and ('v2' not in selected or c['longhorn_version'] != '1.12.1'):
-        raise ValueError('host CPU isolation requires enabled V2 and Longhorn 1.12.1')
+    if isolation and ('v2' not in selected or c['longhorn_version'] not in V2_SETTINGS_VERSIONS):
+        raise ValueError('host CPU isolation requires enabled V2 and Longhorn 1.12.1/1.12.2')
     large = integer(c.get('longhorn_v2_iobuf_large_pool_size', 1024), 1024, 2**63 - 1)
     small = integer(c.get('longhorn_v2_iobuf_small_pool_size', 8192), 8192, 2**63 - 1)
-    if (large, small) != (1024, 8192) and ('v2' not in selected or c['longhorn_version'] != '1.12.1'):
-        raise ValueError('iobuf tuning requires enabled V2 and Longhorn 1.12.1')
+    if (large, small) != (1024, 8192) and ('v2' not in selected or c['longhorn_version'] not in V2_SETTINGS_VERSIONS):
+        raise ValueError('iobuf tuning requires enabled V2 and Longhorn 1.12.1/1.12.2')
     # Fixed upstream buffer sizes; SPDK also needs memory outside these pools.
     if large * 132 + small * 8 >= int(c.get('longhorn_v2_memory_mib', 2048)) * 1024:
         raise ValueError('iobuf pools exhaust the configured SPDK memory budget; increase memory first')
@@ -293,8 +295,8 @@ def validate(c):
                 raise ValueError('recurring backup parameters must be strings')
             integer(value, 0, 2147483647)
     if flag(c['longhorn_monitoring_enabled']):
-        if c['longhorn_version'] != '1.12.1':
-            raise ValueError('restricted monitoring requires Longhorn 1.12.1 network policies')
+        if c['longhorn_version'] not in V2_SETTINGS_VERSIONS:
+            raise ValueError('restricted monitoring requires Longhorn 1.12.1/1.12.2 network policies')
         name(c['longhorn_monitoring_namespace']); name(c['longhorn_monitoring_release'])
         selector = c['longhorn_monitoring_selector']
         if not isinstance(selector, dict) or not selector or any(not isinstance(k, str) or not isinstance(v, str) or not v for k, v in selector.items()):
@@ -428,7 +430,7 @@ def chart_values(c):
             dataEngineMemorySize={'v2': str(c.get('longhorn_v2_memory_mib', 2048))},
             dataEngineHugepageEnabled={'v2': str(flag(c.get('longhorn_v2_hugepages', True))).lower()},
             dataEngineInterruptModeEnabled={'v2': str(flag(c.get('longhorn_v2_interrupt_mode', False))).lower()})
-        if c['longhorn_version'] == '1.12.1':
+        if c['longhorn_version'] in V2_SETTINGS_VERSIONS:
             if 'longhorn_v2_cpu_isolation_enabled' in c:
                 values['defaultSettings']['dataEngineCPUIsolationEnabled'] = {
                     'v2': str(flag(c['longhorn_v2_cpu_isolation_enabled'])).lower()}
@@ -681,8 +683,8 @@ def preflight(c, api, helm, values):
             guard(api)
         return {}, current
     if c['longhorn_action'] == 'retire-block-disks':
-        if not current or current['app_version'].removeprefix('v') != '1.12.1':
-            raise ValueError('block retirement requires the accepted Longhorn 1.12.1 installation')
+        if not current or current['app_version'].removeprefix('v') not in V2_SETTINGS_VERSIONS:
+            raise ValueError('block retirement requires the accepted Longhorn 1.12.1/1.12.2 installation')
         nodes = node_map(c, api)
         block_retirement().preflight(c, api, values, sys.modules[__name__])
         return nodes, current
@@ -695,7 +697,8 @@ def preflight(c, api, helm, values):
     check_engine_changes(c, api, nodes)
     if current:
         old = current['app_version'].removeprefix('v')
-        if old not in CHART_HASHES or (old == '1.12.1' and c['longhorn_version'] == '1.12.0'):
+        if (old not in CHART_HASHES or tuple(map(int, old.split('.'))) >
+                tuple(map(int, c['longhorn_version'].split('.')))):
             raise ValueError('unsupported Longhorn upgrade or direct downgrade')
         if old != c['longhorn_version']:
             if not c['longhorn_upgrade_id'] or not c['longhorn_upgrade_system_backup']:
@@ -713,7 +716,7 @@ def preflight(c, api, helm, values):
                         status.get('state') != 'detached' or spec.get('nodeID') or spec.get('migrationNodeID')):
                     raise ValueError('Longhorn V2 patch upgrade requires detached volumes')
                 if spec.get('dataEngine') == 'v2' and spec.get('backingImage'):
-                    raise ValueError('Longhorn V2 backing images require migration before 1.12.1 upgrade')
+                    raise ValueError('Longhorn V2 backing images require migration before patch upgrade')
             v2_names = {v['metadata']['name'] for v in api.get('volumes.longhorn.io', namespace=NAMESPACE)['items']
                         if v.get('spec', {}).get('dataEngine') == 'v2'}
             if v2_names:
@@ -1286,7 +1289,7 @@ def v2_cpu_isolation(c, api, manager):
         return override == 'true'
     if 'longhorn_v2_cpu_isolation_enabled' in c:
         return flag(c['longhorn_v2_cpu_isolation_enabled'])
-    if c['longhorn_version'] != '1.12.1':
+    if c['longhorn_version'] not in V2_SETTINGS_VERSIONS:
         return False
     setting = api.get('settings.longhorn.io', 'data-engine-cpu-isolation-enabled', NAMESPACE)
     if not setting:
@@ -1317,7 +1320,7 @@ def v2_manager_ready(c, api, manager):
     expected_args = [('--spdk-cpumask', '' if exclusive else c['longhorn_v2_cpu_mask']),
                      ('--spdk-memory-size', str(c['longhorn_v2_memory_mib']))]
     # CPU Manager automatic allocation is new in 1.12.1; 1.12.0 has no flag.
-    if c['longhorn_version'] == '1.12.1':
+    if c['longhorn_version'] in V2_SETTINGS_VERSIONS:
         expected_args.append(('--spdk-core-number', str(exclusive)))
         for field, argument, default in (
                 ('longhorn_v2_iobuf_large_pool_size', '--spdk-iobuf-large-pool-size', 1024),

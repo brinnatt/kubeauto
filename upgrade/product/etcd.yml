@@ -1,0 +1,229 @@
+# Internal patch-only stage. The outer product path must admit the complete
+# combination, verified recovery point, artifacts, cluster lease and journal.
+- name: Admit the exact etcd patch transition without changing membership
+  hosts: localhost
+  gather_facts: false
+  any_errors_fatal: true
+  vars:
+    upgrade_etcd_client:
+      - "{{ UPGRADE_ETCDCTL }}"
+      - "--endpoints={{ UPGRADE_ETCD_ENDPOINTS | join(',') }}"
+      - "--cacert={{ cluster_dir }}/ssl/ca.pem"
+      - "--cert={{ cluster_dir }}/ssl/etcd.pem"
+      - "--key={{ cluster_dir }}/ssl/etcd-key.pem"
+      - --dial-timeout=5s
+      - --command-timeout=15s
+  tasks:
+    - name: Require reviewed etcd recovery identities and exact artifact coverage
+      ansible.builtin.assert:
+        that:
+          - UPGRADE_PRECONDITIONS_VERIFIED | default(false) | bool
+          - UPGRADE_ETCD_RECOVERY_VERIFIED | default(false) | bool
+          - UPGRADE_RUN_ID | default('') is match('^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,95}$')
+          - UPGRADE_ETCD_CLUSTER_ID | type_debug == 'int'
+          - UPGRADE_ETCD_CLUSTER_ID > 0
+          - UPGRADE_ETCD_SOURCE_REVISION | type_debug == 'int'
+          - UPGRADE_ETCD_SOURCE_REVISION > 0
+          - groups['etcd'] | length in [1, 3, 5]
+          - UPGRADE_ETCD_ENDPOINTS | unique | length == groups['etcd'] | length
+          - UPGRADE_ETCD_MEMBERS | length == groups['etcd'] | length
+          - UPGRADE_ETCD_MEMBERS | map(attribute='ID') | unique | length == groups['etcd'] | length
+          - >-
+            (UPGRADE_ETCD_MEMBERS | map(attribute='clientURLs') | flatten | sort | list) ==
+            (UPGRADE_ETCD_ENDPOINTS | sort)
+          - UPGRADE_ETCD_TARGETS | list | sort == groups['etcd'] | sort
+          - UPGRADE_ETCD_UNIT_SHA256 | list | sort == groups['etcd'] | sort
+          - UPGRADE_ETCDCTL_SHA256 is match('^[a-f0-9]{64}$')
+        fail_msg: Etcd admission is incomplete; no member replacement is permitted.
+
+    - name: Match every admitted endpoint to an actual etcd host
+      ansible.builtin.assert:
+        that:
+          - ('https://' ~ item ~ ':2379') in UPGRADE_ETCD_ENDPOINTS
+          - UPGRADE_ETCD_TARGETS[item].sha256 is match('^[a-f0-9]{64}$')
+          - UPGRADE_ETCD_UNIT_SHA256[item] is match('^[a-f0-9]{64}$')
+      loop: "{{ groups['etcd'] }}"
+
+    - name: Verify the exact controller etcdctl artifact
+      ansible.builtin.stat:
+        path: "{{ UPGRADE_ETCDCTL }}"
+        checksum_algorithm: sha256
+      register: upgrade_etcdctl_file
+
+    - name: Reject an unverified etcd client before any endpoint command
+      ansible.builtin.assert:
+        that:
+          - upgrade_etcdctl_file.stat.isreg | default(false)
+          - upgrade_etcdctl_file.stat.executable | default(false)
+          - upgrade_etcdctl_file.stat.checksum == UPGRADE_ETCDCTL_SHA256
+
+    - name: Verify every target etcd binary before the first replacement
+      ansible.builtin.stat:
+        path: "{{ UPGRADE_ETCD_TARGETS[item].path }}"
+        checksum_algorithm: sha256
+      loop: "{{ groups['etcd'] }}"
+      register: upgrade_etcd_binaries
+
+    - name: Refuse stale or missing per-host etcd artifacts
+      ansible.builtin.assert:
+        that:
+          - item.stat.isreg | default(false)
+          - item.stat.executable | default(false)
+          - item.stat.checksum == UPGRADE_ETCD_TARGETS[item.item].sha256
+      loop: "{{ upgrade_etcd_binaries.results }}"
+
+    - name: Observe the full admitted source cluster
+      ansible.builtin.import_tasks: etcd-observe.yml
+
+- name: Admit every existing etcd service before the first member replacement
+  hosts: etcd
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - name: Refuse unreviewed etcd service drop-ins before any member replacement
+      ansible.builtin.command:
+        argv: [systemctl, show, --property=DropInPaths, --value, etcd]
+      register: upgrade_etcd_dropins
+      changed_when: false
+      failed_when: upgrade_etcd_dropins.rc != 0 or upgrade_etcd_dropins.stdout | trim | length > 0
+
+    - name: Read the actual etcd unit path
+      ansible.builtin.command:
+        argv: [systemctl, show, --property=FragmentPath, --value, etcd]
+      register: upgrade_etcd_unit_path
+      changed_when: false
+
+    - name: Hash the existing etcd service definition
+      ansible.builtin.stat:
+        path: "{{ upgrade_etcd_unit_path.stdout }}"
+        checksum_algorithm: sha256
+      register: upgrade_etcd_unit
+
+    - name: Refuse an altered etcd service definition
+      ansible.builtin.assert:
+        that:
+          - upgrade_etcd_unit.stat.isreg | default(false)
+          - upgrade_etcd_unit.stat.checksum == UPGRADE_ETCD_UNIT_SHA256[inventory_hostname]
+
+    - name: Read the actual running etcd executable identity
+      ansible.builtin.shell: |
+        set -eu
+        systemctl is-active --quiet etcd
+        upgrade_pid=$(systemctl show --property=MainPID --value etcd)
+        test "$upgrade_pid" -gt 0
+        "/proc/$upgrade_pid/exe" --version
+      args:
+        executable: /bin/bash
+      register: upgrade_etcd_process
+      changed_when: false
+
+    - name: Match each process to the admitted live server version
+      vars:
+        upgrade_server: >-
+          {{ (hostvars['localhost'].upgrade_etcd_status.stdout | from_json) |
+             selectattr('Endpoint', 'equalto', 'https://' ~ inventory_hostname ~ ':2379') | first }}
+      ansible.builtin.assert:
+        that:
+          - "('etcd Version: ' ~ upgrade_server.Status.version) in upgrade_etcd_process.stdout_lines"
+
+- name: Replace etcd executables one member at a time preserving quorum and data
+  hosts: etcd
+  gather_facts: false
+  serial: 1
+  any_errors_fatal: true
+  vars:
+    upgrade_etcd_client:
+      - "{{ UPGRADE_ETCDCTL }}"
+      - "--endpoints={{ UPGRADE_ETCD_ENDPOINTS | join(',') }}"
+      - "--cacert={{ cluster_dir }}/ssl/ca.pem"
+      - "--cert={{ cluster_dir }}/ssl/etcd.pem"
+      - "--key={{ cluster_dir }}/ssl/etcd-key.pem"
+      - --dial-timeout=5s
+      - --command-timeout=15s
+  tasks:
+    - name: Recheck every endpoint before touching this member
+      ansible.builtin.import_tasks: etcd-observe.yml
+      vars:
+        # Completed members are a legitimate part of this serial stage. The
+        # initial observation above separately refuses an unowned target.
+        UPGRADE_ETCD_RESUME: true
+
+    - name: Read this member current server version
+      ansible.builtin.set_fact:
+        upgrade_etcd_current: >-
+          {{ (upgrade_etcd_status.stdout | from_json) |
+             selectattr('Endpoint', 'equalto', 'https://' ~ inventory_hostname ~ ':2379') | first }}
+
+    - name: Replace only this admitted member executable
+      ansible.builtin.copy:
+        src: "{{ UPGRADE_ETCD_TARGETS[inventory_hostname].path }}"
+        dest: "{{ bin_dir }}/etcd"
+        mode: '0755'
+      register: upgrade_etcd_copy
+
+    - name: Restart only this member when its live or disk identity changes
+      ansible.builtin.systemd_service:
+        name: etcd
+        state: restarted
+      when: upgrade_etcd_copy.changed or upgrade_etcd_current.Status.version != '3.6.16'
+
+    - name: Observe quorum identities and the completed member before the next
+      ansible.builtin.import_tasks: etcd-observe.yml
+      vars:
+        upgrade_etcd_completed_host: "{{ inventory_hostname }}"
+
+    - name: Verify the installed member binary identity
+      ansible.builtin.stat:
+        path: "{{ bin_dir }}/etcd"
+        checksum_algorithm: sha256
+      register: upgrade_etcd_installed
+
+    - name: Require the exact installed target after restart
+      ansible.builtin.assert:
+        that:
+          - upgrade_etcd_installed.stat.checksum == UPGRADE_ETCD_TARGETS[inventory_hostname].sha256
+
+    - name: Recheck the preserved etcd service definition
+      ansible.builtin.stat:
+        path: "{{ upgrade_etcd_unit_path.stdout }}"
+        checksum_algorithm: sha256
+      register: upgrade_etcd_preserved_unit
+
+    - name: Reject service configuration drift during this member transition
+      ansible.builtin.assert:
+        that:
+          - upgrade_etcd_preserved_unit.stat.isreg | default(false)
+          - upgrade_etcd_preserved_unit.stat.checksum == UPGRADE_ETCD_UNIT_SHA256[inventory_hostname]
+
+    - name: Record this internal member stage completion
+      ansible.builtin.debug:
+        msg: "UPGRADE_ETCD_MEMBER_PASS {{ inventory_hostname }}"
+
+- name: Verify the entire target etcd cluster before accepting this internal stage
+  hosts: localhost
+  gather_facts: false
+  any_errors_fatal: true
+  vars:
+    upgrade_etcd_client:
+      - "{{ UPGRADE_ETCDCTL }}"
+      - "--endpoints={{ UPGRADE_ETCD_ENDPOINTS | join(',') }}"
+      - "--cacert={{ cluster_dir }}/ssl/ca.pem"
+      - "--cert={{ cluster_dir }}/ssl/etcd.pem"
+      - "--key={{ cluster_dir }}/ssl/etcd-key.pem"
+      - --dial-timeout=5s
+      - --command-timeout=15s
+  tasks:
+    - name: Reobserve all target members with original cluster identities
+      ansible.builtin.import_tasks: etcd-observe.yml
+      vars:
+        UPGRADE_ETCD_RESUME: true
+
+    - name: Reject a previously completed member that regressed during the serial stage
+      ansible.builtin.assert:
+        that:
+          - item.Status.version == '3.6.16'
+      loop: "{{ upgrade_etcd_status.stdout | from_json }}"
+
+    - name: Accept only this fully observed internal etcd stage
+      ansible.builtin.debug:
+        msg: UPGRADE_ETCD_STAGE_PASS

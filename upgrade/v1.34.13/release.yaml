@@ -5,15 +5,15 @@ source_kubernetes: v1.33.6
 target_kubernetes: v1.34.13
 source_release: upgrade/v1.33.6/release.yaml
 target_branch: v1.34.13
-branch_created: false
+branch_created: true
 candidate_observed_on: '2026-11-13'
 candidate_source_ids:
 - K8S-STABLE
-scope: 只准备第一跳方案，后续逐 minor 候选不在本次实现/发布/现场授权内
+scope: 首跳实现、必要增量制品及最小变化范围GA验收；后续逐minor候选不在本次授权内
 review:
-  design_review: 已接受方案方向，具体文件待评审；无客户签收主张
-  implementation_authorized: false
-  release_frozen: false
+  design_review: 方案方向已接受，首跳实施已获授权；目标组合和产品验收仍按证据准入，无客户签收主张
+  implementation_authorized: true
+  release_frozen: true
   product_acceptance: null
   customer_signoff: null
   author_document_check:
@@ -31,10 +31,10 @@ review:
       finding: 新资产集中upgrade；根AGENTS仅导航；源码观察与客户基线分开，旧代码/门禁/证据不迁移
     - requirement: 版本与证据结论不超出已核实事实
       location: upgrade/official-sources.yaml + upgrade/v1.34.13/research.yaml
-      finding: 保留观察日期、已读范围、来源冲突和未读目录；所有目标组件决策待查，未宣称全矩阵兼容
+      finding: 保留观察日期、已读范围、来源冲突和未读目录；组件逐项决策，未宣称全矩阵兼容。
     - requirement: 数据可追溯且无虚构PASS
       location: upgrade/catalog.yaml + upgrade/v1.33.6/inventory.yaml + upgrade/v1.34.13/test-matrix.yaml
-      finding: 组件引用/原矩阵ID/依赖顺序/源码与Dockerfile摘要可本地核对；正式项全部pending，执行入口为空
+      finding: 组件/原矩阵ID/依赖顺序与摘要可核；当前状态由只读validator读取正式矩阵，源身份已验收不冒签目标运行。
     - requirement: 已GA基线继承、实际复制与回归成本边界
       location: upgrade/acceptance.md 第1–6节、源evidence-manifest与目标acceptance-plan
       finding: 修正只引用不复制、全部路径现场化和源身份未知等同未GA的问题；实际归档143份文件，目标适用性与原始归档核验仍未冒签完成
@@ -45,9 +45,28 @@ review:
     - 快照源码与178条外部镜像Dockerfile SHA256核对
     - Markdown本地链接/锚点、代码块与新旧文件空白检查
     limitations:
-    - 没有升级专用正式validator或现场执行，静态检查不能解锁产品PASS
+    - 此处保留方案阶段作者检查；本轮已新增只读validator，但现场runner及其handoff仍未完成
     - 官方四类目录增量、目标组合和必要身份关联仍待完成；不撤销源GA，不自动扩大现场范围
     - 无非作者评审、用户文件批准或客户签收主张
+  compatibility_evidence_boundary:
+    status: accepted
+    original_requirement: 官方明确兼容矩阵，不臆造配套；未知关键支持不得冻结
+    requested_alternative: 区分官方支持声明/最低版本/稳定接口与逐版测试，结合最小项目集成验证；已退役组件仅作明示限制的首跳迁移过渡
+    affected_components:
+    - kube-router
+    - kube-ovn
+    - local-storage NFS
+    - rocketmq
+    - dashboard
+    - registry Harbor
+    unchanged_requirements:
+    - 不冒称官方目标tested或维护承诺
+    - 不豁免安全迁移/数据保护/制品/租约/恢复前置
+    - 不扩大为旧GA全量回归
+    - 不以边界选择代签目标GA或客户签收
+    decision_recorded_on: '2026-11-15'
+    decision: 接受官方资料实际力度的分层边界；缺少逐版矩阵时使用官方稳定API/明确支持下限/源码契约加最小项目集成验证，并明确标注非上游逐版认证；Dashboard与Harbor首跳保留为带EOL限制的迁移过渡，后续替换另案评审；RocketMQ保留原制品并按不可变digest与最小协调验证；Kube-OVN若无1.11.5到目标的官方直升承诺，不将实际验证表述为上游认证。
+    question_state: owner-choice-accepted
 lifecycle:
   upstream_maintained: false
   role: 必要迁移桥梁，非长期受维护落点
@@ -56,7 +75,20 @@ lifecycle:
 target_product_release: null
 target_source_sha: null
 target_repo_bindings: []
-target_artifact_receipts: []
+target_artifact_receipts:
+- upgrade/v1.34.13/evidence/k8s-binary-publication.json
+- upgrade/v1.34.13/evidence/k8s-binary-dual-readback.json
+- upgrade/v1.34.13/evidence/k8s-binary-content.json
+- upgrade/v1.34.13/evidence/ceph-csi-publication.json
+- upgrade/v1.34.13/evidence/extbin-incremental-publication.json
+- upgrade/v1.34.13/evidence/ingress-publication.json
+- upgrade/v1.34.13/evidence/network-publication.json
+- upgrade/v1.34.13/evidence/longhorn-instance-manager-publication.json
+- upgrade/v1.34.13/evidence/longhorn-remaining-nine-publication.json
+- upgrade/v1.34.13/evidence/dns-publication.json
+- upgrade/v1.34.13/evidence/platform-eight-publication.json
+- upgrade/v1.34.13/evidence/legacy-manifest-readback.json
+- upgrade/v1.34.13/evidence/legacy-artifact-continuity.json
 current_upgrade_contract:
   production_entry: config.yml + kubecli upgrade
   source_paths:
@@ -67,264 +99,1788 @@ current_upgrade_contract:
   existing_contract: tests/unit/test_upgrade_gate.py
   proven_gate_scope: v1.33.5 到 v1.33.6 的单节点 Docker 补丁迁移；此处未重新核验旧现场证据
   design_gaps:
-  - 当前 playbook 只显式拒绝相同版本，未提供完整 minor/降级/组合准入。
+  - 旧93现已限定同minor补丁并读取每master真实进程；完整首跳仍须独立组合/恢复/租约准入和编排，不能沿旧路径放行。
   - 按单台 master 组合执行控制面和节点角色，需证明全部实际可达 API 的偏差与组件顺序。
   - worker 更新无显式滚动批次，节点升级路径没有 drain/PDB 流程。
   - 旧门禁不能证明 HA 跨 minor、持续业务、受控疏散和中断续跑。
   classification: 新升级能力的准入缺口；未复现并认定现有稳定基线存在生产故障
 component_decisions:
 - component_id: product
-  decision: investigate
+  decision: keep
   source: upgrade/v1.33.6/inventory.yaml
-  target_pins: null
-  source_ids: []
-  rationale: 逐具体版本完成官方增量、依赖、配套与维护期检查，再决定保持或最小更新。
-  transition_edges: []
-  acceptance_refs: []
-- component_id: kubernetes
-  decision: investigate
-  source: upgrade/v1.33.6/inventory.yaml
-  target_pins: null
+  target_pins:
+    kubeauto: v0.1.8
+    ansible_core: 2.18.6
+    ansible_core_py314: 2.20.9
+    kubecli_scope: kubecli-only
   source_ids:
+  - ACTIONS-PRODUCT-RELEASE-SCOPE
+  - PYINSTALLER-616-UPGRADE-DATA
+  - ANSIBLE-UPGRADE-INVENTORY-CONTRACT
+  rationale: 保留已GA产品版本、控制端运行时与kubecli-only打包范围；本跳只增加独立upgrade产品入口和合同，不把tools带入主产品发布。官方workflow/spec资料只证明入口与数据收集契约，config+kubecli完整目标编排和现场验收仍由矩阵补证；不以静态合同代签产品GA。
+  transition_edges:
+  - edge_id: product-preserved-entry-on-kubernetes-13413
+    source: kubeauto v0.1.8 and frozen Ansible 2.18.6/2.20.9 on source v1.33.6
+    target: same product pins and kubecli-only scope on target v1.34.13
+    bridge: null
+    depends_on:
+    - UPG-02
+    - UPG-04
+    official_source_ids:
+    - ACTIONS-PRODUCT-RELEASE-SCOPE
+    - PYINSTALLER-616-UPGRADE-DATA
+    - ANSIBLE-UPGRADE-INVENTORY-CONTRACT
+    product_entry: config.yml + kubecli upgrade
+    preconditions:
+    - upgrade/product文件闭包、产品配置版本和六仓源码身份已固定
+    - 独立tools入口不得被主产品spec或升级链隐式收集
+    steps:
+    - 保留原产品运行时、配置入口和kubecli打包边界
+    - 由UPG-04合同验证真实include/handoff与拒绝顺序，再进入目标平台现场
+    success_conditions:
+    - 产品入口仍解析同一配置并产生目标版本升级计划，tools保持独立矩阵
+    - 未因升级引入浮动依赖、跨仓隐式调用或未审数据文件
+    irreversible_point: 产品入口变更前不发布；kubecli构建产物与现场状态不以静态合同推断
+    recovery: 失败保留渲染输入和合同诊断，恢复源GA产品入口，不改写源发布证据
+    cleanup: 仅清理本run构建/渲染临时目录和自有探针，不触碰主项目或tools运行数据
+  acceptance_refs:
+  - UPG-02
+  - UPG-04
+  - UPG-15
+- component_id: kubernetes
+  decision: update
+  source: upgrade/v1.33.6/inventory.yaml
+  target_pins:
+    kubernetes: v1.34.13
+  source_ids: &id001
   - K8S-STABLE
   - K8S-SKEW
   - K8S-LIFECYCLE
   - K8S-DEPENDENCIES-13413
-  rationale: K8s 官方 stable 候选已观察；制品、源码差异、源 patch 选择与混合阶段尚未冻结。
-  transition_edges: []
-  acceptance_refs: []
+  - K8S-13413-EXACT-PATCH-DELTA
+  - K8S-API-HEALTH-CONTRACT
+  - KUBECTL-RAW-CONTRACT
+  - K8S-13413-VERSION-CONTRACT
+  - K8S-13413-NODE-CONTRACT
+  - K8S-13413-DRAIN-COMMAND
+  - K8S-13413-DRAIN-LIBRARY
+  - K8S-DRAIN-TASK
+  - K8S134-KUBELET-CONFIG-FIELDS
+  - K8S134-PROXY-CONFIG-FIELDS
+  - K8S134-OBJECT-META
+  rationale: 目标v1.34.13由官方stable-1.34/非预发布release、六binary官方SHA与已发布双端双架构材料固定；保留源GA v1.33.6，按官方相邻minor/skew顺序直接迁移。目标选择已经确定，全球组合冻结、完整配置/进程/业务和现场是后续验收，不以investigate代替实现缺口。40组真实CLI解析、配置字段及18个精确patch增量已有依据；源patch前置不自行升级成官方强制要求。1.34已EOL，角色仅为不可跳过的迁移桥梁，不声明长期受维护。
+  transition_edges:
+  - edge_id: kubernetes-1336-13413-api-before-controllers-before-nodes
+    source: v1.33.6; existing GA units/configuration/identities
+    target: v1.34.13; official immutable binary pack
+    bridge: null
+    depends_on:
+    - UPG-03
+    - UPG-04
+    - UPG-05
+    official_source_ids: *id001
+    product_entry: config.yml + kubecli upgrade；内部KubernetesStage消费真实source receipt与持锁journal并调用control-plane.yml/node.yml，外层组合/租约/恢复准入待接通
+    preconditions:
+    - 完整实际API后端/同一kube-system UID、全部Node UID/原可调度状态、源配置和运行进程身份已核，官方组合/不可变制品/租约/容量/PDB/数据恢复点准入完成
+    - 先完成官方要求的CNI桥接和etcd patch边；配置API/已弃用参数/客户自定义对象影响已审，不直接重放安装roles
+    steps:
+    - 逐API实例替换仅apiserver二进制并等精确目标/readyz；全部后端达标后再逐master更新控制器和scheduler
+    - 每个节点由持久化journal独立执行，先policy/v1 eviction drain再对应已审运行时边，再kubelet/proxy，核同UID Ready后解cordon
+    - 每段前后重观测完整身份/版本/健康及真实业务账本；首次进入与续跑只读核实际controller/proxy进程版本，拒绝完成前缀与真实环境不符
+    success_conditions:
+    - 全部实际API/controller/scheduler/kubelet/proxy为精确v1.34.13，原node/namespace/config/unit/TLS身份保持
+    - HA混合状态、驱逐/运行时/业务失败均在首失败边界停止；已完成健康API不重复替换/重启，恢复仅在匹配journal边界执行
+    irreversible_point: 不承诺二进制降级能恢复已变化的API对象/数据；不自动降级、强驱逐或回收健康共享状态
+    recovery: 保留首失败、原始诊断、原UID与journal；重观测后限定续跑当前阶段，不能证明隔离才使用已验证的最小恢复出口
+    cleanup: 仅本run临时材料和自有probe；失败保留cordon/诊断，不删除etcd/数据/证书/全局CRD
+  acceptance_refs:
+  - UPG-02
+  - UPG-03
+  - UPG-04
+  - UPG-05
+  - UPG-06
+  - UPG-07
+  - UPG-12
+  local_qualification_evidence: &id017
+  - upgrade/v1.34.13/evidence/k8s-service-cli-qualification.json
+  - upgrade/v1.34.13/evidence/source-identity-contracts.json
+  - upgrade/v1.34.13/evidence/kubernetes-handoff-contracts.json
 - component_id: binary-packs
-  decision: investigate
+  decision: update
   source: upgrade/v1.33.6/inventory.yaml
-  target_pins: null
-  source_ids: []
-  rationale: 逐具体版本完成官方增量、依赖、配套与维护期检查，再决定保持或最小更新。
-  transition_edges: []
-  acceptance_refs: []
+  target_pins:
+    v_extra_bin: 1.17.0
+    v_extra_bin_sp1: 1.3.1
+    ext_bin_index_digest: sha256:0029d1d4f4dba068c7a79461a6ec2378b84524e6de5110c52a0730e1dc5f37b8
+    etcd: 3.6.16
+  source_ids: &id002
+  - ETCD-373-RELEASE
+  - ETCD-3616-RELEASE
+  - ETCD-36-PATCH-DELTA
+  - ETCD-36-MINOR-PRECONDITIONS
+  - ETCD-36-PATCH-POLICY
+  - RUNC-137-RELEASE
+  - ETCD-36-SUPPORTED-UPGRADE-POLICY
+  - EXTBIN-OFFICIAL-ASSETS-CALICO-3317
+  - EXTBIN-OFFICIAL-ASSETS-CALICO-3324
+  - EXTBIN-OFFICIAL-ASSETS-CONTAINERD-2210
+  - EXTBIN-OFFICIAL-ASSETS-CONTAINERD-237
+  - EXTBIN-OFFICIAL-ASSETS-CRIDOCKERD-0410
+  - EXTBIN-OFFICIAL-ASSETS-ETCD-3616
+  - EXTBIN-OFFICIAL-ASSETS-RUNC-152
+  rationale: 官方固定资产和SHA、双架构53文件/22真实CLI探测及双端digest已闭合，采用1.17.0增量包；35原文件逐字节/mode保持，sp1不重编译。源GA制品不变，包内新增桥接只提供材料，不触发节点安装。目标版本选择已确定；组合全局仍未冻结，CLI/租约/恢复/现场是后续验收缺口，不再用investigate混同版本选型。
+  transition_edges:
+  - edge_id: admit-overlay-and-serial-etcd
+    source: ext-bin1.16.0; etcd3.6.4; retained sp1 1.3.1
+    target: ext-bin1.17.0; etcd3.6.16; retained sp1 1.3.1
+    bridge: null
+    depends_on:
+    - UPG-03
+    - UPG-05
+    official_source_ids: *id002
+    product_entry: config.yml + kubecli upgrade；内部upgrade/product/etcd.yml已实现，外层尚未接通
+    preconditions:
+    - 读取双端固定digest/目标架构与逐文件sha256，隔离提取到本run工作目录；禁止用浮动latest或覆盖源包
+    - 完整源成员ID/集群ID/数据WAL路径/原unit/TLS身份和恢复点已核实，持有集群租约；拒绝未知drop-in
+    steps:
+    - 只按固定pack校验材料，不重做安装role或重编译保留工具
+    - 实际成员按serial1执行etcd3.6.4到3.6.16；每个成员前后检查全部endpoint健康/member/revision，保持数据/TLS/unit身份
+    - containerd/CRI/calicoctl桥接交所属阶段按依赖次序消费，包发布不表示所有消费者已升级
+    success_conditions:
+    - 每个成员运行精确3.6.16且原member/cluster/data路径保持，完整endpoint健康，revision不倒退
+    - 22 CLI材料探测只用于制品准入；真实成员读写/恢复及业务证据另由所属矩阵验收
+    irreversible_point: 不做etcd minor或格式迁移；升级失败禁止混入新集群成员或自动二进制降级
+    recovery: 保留首失败/journal/成员状态，先定位健康边界；限定续跑或按已验证完整恢复点恢复，不以单成员旧快照混入现存集群
+    cleanup: 仅本轮材料临时目录；不删成员、数据、证书或源制品
+  acceptance_refs:
+  - UPG-02
+  - UPG-03
+  - UPG-04
+  - UPG-06
+  - UPG-12
+  qualified_etcd_candidate:
+    source: 3.6.4
+    target: 3.6.16
+    minor_change: false
+    stage: upgrade/product/etcd.yml
+    local_contracts: upgrade/v1.34.13/evidence/etcd-stage-contracts.json
+    frozen: false
+    remaining: Other /extra dependencies and artifact bundle not frozen; no product pin or live stage launched.
+  qualified_pack_candidate:
+    v_extra_bin: 1.17.0
+    base_digest: sha256:86d53e65b24595d450ce7f7d83c06914a0f7180641eb32bf5e2e5601b0d0fdfb
+    retained_sp1:
+      tag: 1.3.1
+      digest: sha256:37051f0e1720dd0f9973085bf4d4c49df14e163db88bc4cb85b092357bb9cd5c
+    changed:
+      etcd: 3.6.16
+      containerd: 2.3.7
+      containerd_bridge: 2.2.10
+      runc: 1.5.2
+      cri_dockerd: 0.4.10
+      calicoctl: v3.32.4
+      calicoctl_bridge: v3.31.7
+    retained_files: Original46 per architecture; replace10 binary files and Docker checksum manifest; retain35 original
+      files byte-for-byte, add6 bridge binaries and1 upgrade checksum manifest
+    qualification: upgrade/v1.34.13/evidence/extbin-overlay-qualification.json
+    publication_run_id: '43637693774'
+    publication_acceptance: Accepted dual endpoints/architectures, retained file identities and22 real CLI probes;
+      parentUPG-03 stillpending
+    index_digest: sha256:0029d1d4f4dba068c7a79461a6ec2378b84524e6de5110c52a0730e1dc5f37b8
+    publication_evidence: upgrade/v1.34.13/evidence/extbin-incremental-publication.json
 - component_id: runtime
-  decision: investigate
+  decision: update
   source: upgrade/v1.33.6/inventory.yaml
-  target_pins: null
-  source_ids:
+  target_pins:
+    containerd: 2.3.7
+    containerd_bridge: 2.2.10
+    runc: 1.5.2
+    v_nerdctl: 2.3.4
+    v_docker: 28.5.2
+    v_cri_dockerd: 0.4.10
+  source_ids: &id003
   - CONTAINERD
-  rationale: 现有2.1.4满足1.34所列下限但2.1已EOL；维护期和源/目标过渡选型需先闭合，不重跑全部OS。
-  transition_edges: []
-  acceptance_refs: []
+  - CONTAINERD-FIRST-HOP
+  - K8S-13413-CRI-CGROUP
+  - CONTAINERD-219-RELEASE
+  - CRI-DOCKERD-0410-RELEASE
+  - CRI-DOCKERD-040-DELTA
+  - CRI-DOCKERD-0410-CGROUP
+  - K8S-13413-EXACT-PATCH-DELTA
+  - CONTAINERD-215-DELTA
+  - CONTAINERD-216-DELTA
+  - CONTAINERD-217-DELTA
+  - CONTAINERD-218-DELTA
+  - RUNC-137-RELEASE
+  - CONTAINERD-22-23-RELEASES
+  - CONTAINERD-237-RUNC-POLICY
+  - CONTAINERD-2210-RUNC-POLICY
+  - CONTAINERD-237-RUNC-PIN
+  - CONTAINERD-2210-RUNC-PIN
+  - CONTAINERD-237-SCHEMA
+  - CONTAINERD-237-CONFIG-LOADER
+  - CONTAINERD-237-CONFIG-CLI
+  - CONTAINERD-237-CRI-CONFIG
+  - CONTAINERD-2210-CRI-CONFIG
+  - CONTAINERD-237-OPS
+  - RUNC-152-RELEASE
+  - RUNC-15-CUMULATIVE
+  - RUNC-152-CGROUPV2
+  - RUNC-152-SPEC
+  - NERDCTL-234-COMPATIBILITY
+  - CRI-DOCKERD-0410-CLIENT
+  - CRI-DOCKERD-0410-DOCKER-CLIENT
+  - DOCKER-2852-PATCH-POLICY
+  - DOCKER-2852-API-CONTRACT
+  - CRI-DOCKERD-0410-SDK
+  - CRI-DOCKERD-0410-FLAGS
+  - CRI-DOCKERD-0410-ENDPOINT-FLAG
+  - CRI-DOCKERD-0326-0410-DELTA
+  - CRI-DOCKERD-0326-BACKPORTS
+  - CRI-DOCKERD-0326-CGROUP-BASELINE
+  - CRI-DOCKERD-0326-DEPENDENCIES
+  - CRI-DOCKERD-04-PATCHES
+  - CRI-DOCKERD-0410-CRI-V1
+  rationale: containerd相邻minor2.1.4→2.2.10→2.3.7LTS、runc1.5.2与官方运行时/CRI/Engine API交集已核，材料由已发布1.17.0提供；Docker28线最新patch28.5.2及nerdctl2.3.4保持。实际node任务顺序已接drain后、kubelet前，Ansible2.18/2.20合同验证拒绝与失败留cordon；版本选择确定。外层配置绑定/journal/恢复和真实CRI/业务尚待验收，不将合同当现场PASS。
+  transition_edges:
+  - edge_id: containerd-after-drain-before-kubelet
+    source: containerd2.1.4/runc原固定版 on original node
+    target: containerd2.3.7/runc1.5.2 before node kubelet1.34.13
+    bridge: 2.2.10
+    depends_on:
+    - UPG-03
+    - UPG-05
+    - UPG-06
+    official_source_ids: *id003
+    product_entry: config.yml + kubecli upgrade；upgrade/product/node.yml真实include containerd.yml，外层尚未接通
+    preconditions:
+    - 全部实际API已达1.34.13且健康；同一节点UID/原可调度身份由journal绑定，成功policy/v1 eviction drain后仍cordon
+    - 源unit/config/运行进程/CRI socket与已审输入一致；材料逐文件digest已核、节点存储维护和恢复点有效
+    steps:
+    - 先2.2.10后2.3.7，每边真实CRI版本/RuntimeReady+NetworkReady/原ready sandbox集合核验；保持shims与数据，未知unit/config拒绝
+    - 原schema3配置按已审目标解码为有效schema4，保留客户registry/cgroup/网络；变更前用目标binary解码且摘要匹配
+    - 只在运行时边通过后替换kubelet/proxy，核目标版本和同UID Ready，再解cordon并复验真实业务
+    success_conditions:
+    - 运行时精确目标、CRI v1健康、原sandbox/业务数据保持；仅被疏散的Pod按正常控制器重建
+    - 任一前置/中间边失败阻止kubelet及下一节点；只已健康目标且原可调度节点才解cordon
+    irreversible_point: daemon/shim/CRI边界非自动可逆；不承诺容器零中断，不自动覆盖旧二进制回退
+    recovery: 保存首失败和cordon，重观测同UID/unit/config/runtime后仅续跑当前边；无法证明隔离才重建最小从属环境，不清理健康共享集群
+    cleanup: 成功只回收本轮临时配置；失败保留诊断和cordon；不删镜像、sandboxes、shim或客户runtime目录
+  - edge_id: docker-after-drain-before-kubelet
+    source: Docker28.5.2/cri-dockerd0.3.26 on original node
+    target: Docker28.5.2/cri-dockerd0.4.10 before node kubelet1.34.13
+    bridge: null
+    depends_on:
+    - UPG-03
+    - UPG-05
+    - UPG-06
+    official_source_ids: *id003
+    product_entry: config.yml + kubecli upgrade；upgrade/product/node.yml真实include docker.yml，外层尚未接通
+    preconditions:
+    - 全部实际API已达1.34.13且健康；同一节点UID/原可调度身份由journal绑定，成功policy/v1 eviction drain后仍cordon
+    - 源unit/config/运行进程/CRI socket与已审输入一致；材料逐文件digest已核、节点存储维护和恢复点有效
+    steps:
+    - Engine28.5.2保持，只原子替换cri-dockerd0.4.10，原unit/socket/args/config/数据保持
+    - 重启仅适配器，真实CRI v1/原sandbox保持及Docker Engine API/运行容器核验
+    - 只在运行时边通过后替换kubelet/proxy，核目标版本和同UID Ready，再解cordon并复验真实业务
+    success_conditions:
+    - 运行时精确目标、CRI v1健康、原sandbox/业务数据保持；仅被疏散的Pod按正常控制器重建
+    - 任一前置/中间边失败阻止kubelet及下一节点；只已健康目标且原可调度节点才解cordon
+    irreversible_point: daemon/shim/CRI边界非自动可逆；不承诺容器零中断，不自动覆盖旧二进制回退
+    recovery: 保存首失败和cordon，重观测同UID/unit/config/runtime后仅续跑当前边；无法证明隔离才重建最小从属环境，不清理健康共享集群
+    cleanup: 成功只回收本轮临时配置；失败保留诊断和cordon；不删镜像、sandboxes、shim或客户runtime目录
+  acceptance_refs:
+  - UPG-02
+  - UPG-03
+  - UPG-04
+  - UPG-07
+  - UPG-12
+  qualified_candidates:
+    containerd: 2.3.7
+    containerd_bridge: 2.2.10
+    runc: 1.5.2
+    nerdctl: 2.3.4
+    containerd_input_schema: '3'
+    target_effective_schema: '4'
+    candidate_status: Version/API and local orchestration qualified; artifact admission, outer config+kubecli journal/lease/recovery
+      and real live integration remain pending
+    docker: 28.5.2
+    cri_dockerd: 0.4.10
 - component_id: calico
-  decision: investigate
+  decision: update
   source: upgrade/v1.33.6/inventory.yaml
-  target_pins: null
-  source_ids:
+  target_pins:
+    v_calico: v3.32.4
+    v_calico_source_bridge: v3.31.7
+    calicoctl: v3.32.4
+    calicoctl_source_bridge: v3.31.7
+    cniVersion: 1.0.0
+    datastore: etcdv3
+    dataplane: iptables
+  source_ids: &id004
   - CALICO-328
-  rationale: 3.28官方测试表未覆盖目标1.34，选型及etcdv3桥接需先闭合；不否定旧项目GA，不把缺矩阵改成全量测试。
-  transition_edges: []
-  acceptance_refs: []
+  - CALICO-331-FIRST-HOP
+  - CALICO-331-UPGRADE
+  - CALICO-332-FIRST-HOP
+  - CALICO-332-UPGRADE
+  - CALICO-333-FIRST-HOP
+  - CALICO-3317-RELEASE
+  - CALICO-332-TAGS
+  - CALICO-3324-RELEASE
+  - CALICO-3317-MANIFEST
+  - CALICO-3324-MANIFEST
+  - CALICO-3317-PATCH-NOTES
+  - CALICO-3324-PATCH-NOTES
+  - CALICO-3317-KERNEL-FEATURES
+  - CALICO-3324-KERNEL-FEATURES
+  - CALICO-3317-KERNEL-TESTS
+  - CALICO-3324-KERNEL-TESTS
+  - CALICO-331-SYSTEM-SOURCE
+  - CALICO-330-SYSTEM
+  - CALICO-KERNEL-POLICY-HISTORY
+  - CALICO-KERNEL-POLICY-REVIEW
+  - CALICO-329-DELTA
+  - CALICO-330-DELTA
+  - CALICO-331-DELTA
+  - CALICO-332-DELTA
+  - CALICO-331-CUMULATIVE
+  - CALICO-332-CUMULATIVE
+  - CALICO-3324-FELIX-API
+  - CALICO-3324-FELIX-CONFIG
+  - K8S134-CORE-DEFAULTS
+  - K8S1336-CORE-DEFAULTS
+  rationale: 官方3.31/3.32均允许3.15+源直升，因此只需源侧3.31.7覆盖K8s1.33/1.34，再于全部API/节点1.34后升3.32.4。保留etcdv3/iptables/kube-proxy及网络身份，不加无依据3.30步骤。官方列RHEL8+且维护者确认Redhat4.18，与通用5.10最低文字共同限定：非该发行版回移路径要求>=5.10；RHEL8系仅按原iptables所需特性和实际宿主资格接受，不能扩张eBPF/nft或全OS支持。原3.28.4渲染与GA
+    SHA逐字节一致，目标RBAC/配套已本地核；真实升级handoff、宿主及数据面仍待UPG-05/08。
+  transition_edges:
+  - edge_id: calico-source-bridge-before-api
+    source: Calico3.28.4 on K8s1.33.6
+    target: Calico3.31.7 on source1.33.6 and mixed1.33/1.34
+    bridge: 3.31.7
+    depends_on:
+    - UPG-03
+    - UPG-05
+    official_source_ids: *id004
+    product_entry: config.yml + kubecli upgrade；upgrade/product/calico_stage.py内部阶段已完成真实kubectl合同，外层准入/journal/现场尚待接通
+    preconditions:
+    - 源node/cni/kube-controllers/CM/SA/RBAC/Secret与UID及当前模式、IPPool/IPAM/BGP/策略/路由器身份已导出核实；保留原etcdv3，不将KDD迁移混入首跳
+    - 实际每节点内核/iptables/ipset/模块及网络backend特性满足固定版本要求；RHEL8回移仅限已交付iptables路径，未覆盖分支不得借通用OS名称放行
+    - ANP/BANP discovery与资源、allow-tigera或其他受影响策略tier/引用、iptablesLockTimeout/定制BPF/nft/客户额外feature均已检查；涉及删除/转换前拒绝，不自动改安全策略
+    - 源健康、全成员一致的etcd恢复点、业务/网络账本和独占journal/租约有效；目标三镜像和对应calicoctl摘要/架构已核，所有节点缓存就绪
+    steps: &id005
+    - 按原config.yml渲染精确目标声明，仅apply保持原对象/selector/etcd-endpoints/Secret/网段/ASN/overlay和原控制器范围；不调用会重签cert/删除CNI配置的完整安装role
+    - 依官方RollingUpdate maxUnavailable=1收敛node及controllers；目标calicoctl同步换同版，旧client不再操作新存储；不切换CNI、数据存储、eBPF或nftables
+    - 连续同一业务探针验证原Pod跨节点/Service/DNS及原策略允许和拒绝；最小新Pod创建/删除核CNI1.0与IPAM，RR/所选backend按原能力分配定点覆盖
+    - 校验实际进程/Pod目标镜像、原IPAM/网段/策略语义及对象UID保持；新默认静态tier单独登记，不伪称无任何数据变化
+    success_conditions:
+    - 源网络/IPAM/策略语义和业务账本保持，所有适用节点及controllers精确目标并Ready
+    - 策略允许/拒绝、跨节点网络、Service/DNS和最小新Pod数据面通过，仅本轮探针清理
+    irreversible_point: tier及策略名称/存储可能由新controller自动迁移；禁止把还原镜像当作可逆，新增版本特性在窗口内冻结
+    recovery: 首失败停止该网络边及依赖K8s迁移，保留精确对象/诊断/journal，优先在当前已准入版本恢复后定点前进；降级不自动支持。确需灾难恢复时按UPG-12隔离全部写入并协调原etcd/IPAM/业务一致恢复，不单独回滚部分网络数据
+    cleanup: 仅本轮网络探针和私有临时清单；不删除原工作负载/Secret/IPPool/IPAM/tier或主机接口
+  - edge_id: calico-target-after-platform
+    source: Calico3.31.7 on K8s1.34.13
+    target: Calico3.32.4 on K8s1.34.13
+    bridge: 3.31.7
+    depends_on:
+    - UPG-03
+    - UPG-05
+    - UPG-06
+    - UPG-07
+    official_source_ids: *id004
+    product_entry: config.yml + kubecli upgrade；upgrade/product/calico_stage.py内部阶段已完成真实kubectl合同，外层准入/journal/现场尚待接通
+    preconditions:
+    - 源node/cni/kube-controllers/CM/SA/RBAC/Secret与UID及当前模式、IPPool/IPAM/BGP/策略/路由器身份已导出核实；保留原etcdv3，不将KDD迁移混入首跳
+    - 实际每节点内核/iptables/ipset/模块及网络backend特性满足固定版本要求；RHEL8回移仅限已交付iptables路径，未覆盖分支不得借通用OS名称放行
+    - ANP/BANP discovery与资源、allow-tigera或其他受影响策略tier/引用、iptablesLockTimeout/定制BPF/nft/客户额外feature均已检查；涉及删除/转换前拒绝，不自动改安全策略
+    - 源健康、全成员一致的etcd恢复点、业务/网络账本和独占journal/租约有效；目标三镜像和对应calicoctl摘要/架构已核，所有节点缓存就绪
+    - 必须先完成源侧3.31.7桥接、全部实际API/节点已到1.34.13且网络健康
+    steps: *id005
+    success_conditions:
+    - 源网络/IPAM/策略语义和业务账本保持，所有适用节点及controllers精确目标并Ready
+    - 策略允许/拒绝、跨节点网络、Service/DNS和最小新Pod数据面通过，仅本轮探针清理
+    irreversible_point: tier及策略名称/存储可能由新controller自动迁移；禁止把还原镜像当作可逆，新增版本特性在窗口内冻结
+    recovery: 首失败停止该网络边及依赖K8s迁移，保留精确对象/诊断/journal，优先在当前已准入版本恢复后定点前进；降级不自动支持。确需灾难恢复时按UPG-12隔离全部写入并协调原etcd/IPAM/业务一致恢复，不单独回滚部分网络数据
+    cleanup: 仅本轮网络探针和私有临时清单；不删除原工作负载/Secret/IPPool/IPAM/tier或主机接口
+  acceptance_refs:
+  - UPG-02
+  - UPG-03
+  - UPG-04
+  - UPG-08
+  - UPG-12
+  handoff_evidence: upgrade/v1.34.13/evidence/calico-handoff-contracts.json
 - component_id: flannel
-  decision: investigate
+  decision: update
   source: upgrade/v1.33.6/inventory.yaml
-  target_pins: null
-  source_ids: []
-  rationale: 逐具体版本完成官方增量、依赖、配套与维护期检查，再决定保持或最小更新。
-  transition_edges: []
-  acceptance_refs: []
+  target_pins:
+    v_flannel: v0.28.10
+    v_flannel_cni: v1.9.1-flannel3
+    cniVersion: 1.0.0
+    healthz_address: 127.0.0.1:8081
+  source_ids: &id006
+  - FLANNEL-02810-FIRST-HOP
+  - FLANNEL-LATEST-RELEASE
+  - FLANNEL-02810-MANIFEST
+  - FLANNEL-0284-MANIFEST
+  - FLANNEL-028-PATCH-DELTA
+  - FLANNEL-CNI-191-RELEASE
+  - FLANNEL-CNI-191-MECHANISM
+  - FLANNEL-02810-INSTALL-CONF
+  - FLANNEL-02810-KIND-E2E
+  - FLANNEL-02810-HEALTH
+  - FLANNEL-02810-BUILD
+  - FLANNEL-CNI-180-191-EXACT-DELTA
+  rationale: 选型截止日最新稳定0.28.10及官方manifest完整CNI配套；官方README支持K8s1.17+，作为minimum支持条件而非1.34逐版tested。源0.28.4同minor patch更新在API迁移前完成，保留kube-system、RBAC、selector、kube-subnet-mgr、backend/CIDR/DirectRouting；目标跟进原子安装和CNI1.0/健康探针，源渲染逐字节保持。
+  transition_edges:
+  - edge_id: flannel-patch-before-api
+    source: Flannel0.28.4 + CNI1.8.0-flannel1 on K8s1.33.6
+    target: Flannel0.28.10 + CNI1.9.1-flannel3 on source/mixed/target K8s
+    bridge: null
+    depends_on:
+    - UPG-03
+    - UPG-05
+    official_source_ids: *id006
+    product_entry: config.yml + kubecli upgrade；内部FlannelStage已实现真实kubectl JSON Patch/前后置/失败停止/目标续跑，外层CLI/journal/宿主资格及业务探针待接通
+    preconditions:
+    - 源DS/CM/SA/RBAC归属及UID和当前精确镜像/配置均已核；PodCIDR、subnet.env、backend、DirectRouting及确认账本有身份
+    - 逐节点确认br_netfilter/overlay、CNI标准1.0可用和127.0.0.1:8081无外来监听；不自动杀进程/改端口
+    - 目标两镜像全部所需节点预拉/摘要已核；健康源、恢复点及journal/租约有效
+    steps:
+    - 保留现有名字/namespace/selector和原网络参数，按产品配置渲染目标声明；拒绝CHANGE_CA/delete安装链
+    - 对原对象apply更新，依DS默认RollingUpdate逐节点完成plugin和install-conf；不删除接口/子网分配/CNI缓存
+    - 同一迁移业务探针覆盖存量Pod、跨节点Pod/Service/DNS和最小新Pod创建/删除；不把readyz当作业务结果
+    success_conditions:
+    - 原对象UID/所有权、PodCIDR/backend与原业务账本保持，DS全部目标且probe就绪
+    - 原子CNI1.0配置/配套插件生效，实际业务和新Pod网络通过
+    - 仅本轮探针清理；无外来资源或网络故障残留
+    irreversible_point: 不迁移etcd/CRD/网段或引擎，无新持久数据格式；仍需保留本轮Pod变化和CNI配置身份，不能仅凭还原镜像宣称恢复
+    recovery: 失败停在本节点/DS，不启动API迁移；保留事件/日志和源配置，在官方同minor范围内还原原声明及两源制品并核网络/账本；不清CNI缓存或全网重装
+    cleanup: 仅本轮网络探针和受控配置临时文件，不删原DS/CM/RBAC/CNI接口或业务Pod
+  acceptance_refs:
+  - UPG-02
+  - UPG-03
+  - UPG-04
+  - UPG-08
+  - UPG-12
+  local_contract_evidence: upgrade/v1.34.13/evidence/flannel-handoff-contracts.json
 - component_id: cilium
-  decision: investigate
+  decision: update
   source: upgrade/v1.33.6/inventory.yaml
-  target_pins: null
-  source_ids:
+  target_pins:
+    v_cilium: v1.20.4
+    v_cilium_source_bridge: v1.19.10
+    v_cilium_hubble_ui: v0.13.6
+    upgradeCompatibility: '1.19'
+    vendored_charts_sha256:
+      roles/cilium/files/cilium-1.19.10.tgz: b7252afca3413a33e2b987c954e52441e96979e411e1495ecc6aefe8cd258863
+      roles/cilium/files/cilium-1.20.4.tgz: 505abff8385811df1a949776fc42e9f10697989a332acc86d6e8933efcb855ed
+  source_ids: &id007
   - CILIUM-1195
-  rationale: 现有1.19.5官方已测试1.33和1.34；优先核对版本增量及项目模式，不以核心表替代Hubble/内核等边界。
-  transition_edges: []
-  acceptance_refs: []
+  - CILIUM-1204-FIRST-HOP
+  - CILIUM-LATEST-RELEASE
+  - CILIUM-1204-UPGRADE
+  - CILIUM-1204-WARNING
+  - CILIUM-1204-NOTES
+  - CILIUM-119-TAGS
+  - CILIUM-11910-RELEASE
+  - CILIUM-1204-REQUIRED
+  - CILIUM-CHART-INDEX
+  - CILIUM-1204-VALUES
+  - CILIUM-11910-VALUES
+  - CILIUM-1204-FLAGS
+  - CILIUM-119-PATCH-DELTA
+  - HELM-319-CMD-HELM-STATUS
+  - HELM-319-PKG-RELEASE-RELEASE
+  - HELM-319-PKG-ACTION-STATUS
+  - HELM-319-CMD-HELM-UPGRADE
+  - HELM-319-CMD-HELM-INSTALL
+  - HELM-319-CMD-HELM-GET_METADATA
+  - HELM-319-PKG-ACTION-GET_METADATA
+  - HELM-319-PKG-STORAGE-DRIVER-SECRETS
+  - HELM-319-PKG-ACTION-INSTALL
+  - HELM-319-PKG-ACTION-UPGRADE
+  rationale: 目标1.20.4官方覆盖K8s1.33/1.34；遵循强制最新源patch和相邻minor，先1.19.10再1.20.4，两边均在API更新前完成。Chart完整配套及源patch增量已核；保留CRD身份/cluster-pool/kube-proxy/embedded
+    envoy。内核>=5.10或官方RHEL8.10等价4.18，实际OS资格仍由现场核验。原安装role清BPF/接口，不得用于升级。
+  transition_edges:
+  - edge_id: cilium-latest-source-patch-before-api
+    source: Cilium1.19.5 on K8s1.33.6
+    target: Cilium1.19.10 on K8s1.33.6
+    bridge: null
+    depends_on:
+    - UPG-03
+    - UPG-05
+    official_source_ids: *id007
+    product_entry: config.yml + kubecli upgrade的独立Cilium阶段；内部CiliumStage已实现真实Helm/kubectl子进程、预检和所有权清理，外层CLI/组合/恢复/journal
+      handoff尚未完成
+    preconditions:
+    - 实际Helm release/DS/Deployment/节点UID、运行版本、user values及现有策略完整读取且和已审配置一致；输入漂移拒绝
+    - 新旧制品准入、源健康和恢复点有效；保留release cilium/kube-system及资源所有权
+    - 旧客户端manifest/tooling不得继续写CiliumNodeConfig v2alpha1；Kafka/l7/l7proto规则明确处置前拒绝，不自动删除
+    - Gateway/ClusterMesh/加密/定制CNI等超出既有配置的功能需单独迁移评审，不能静默关闭
+    steps: &id008
+    - 按目标Chart和私库preflight.image启动官方独立预检；逐实际agent节点确认预拉Pod Ready且CNP validator 1/1，完成后清理仅本轮预检资源
+    - 保存并核对原user values；保留原配置，只按官方配套替换镜像、upgradeCompatibility=1.19；不使用--reuse-values，不调用清理BPF/网络接口的安装role
+    - 保持Helm release/namespace与身份、IPAM/CNI网络，依Chart滚动收敛全部组件；连续探测跨节点Pod/Service/DNS、策略和Hubble，L7连接验证重连
+    success_conditions: &id009
+    - 官方预检完成，agent/operator/relay均精确目标、UI0.13.6；原工作负载UID/网络/策略语义和业务账本保持
+    - L3/L4探针在明确窗口内保持；用户空间代理连接可能断开并能重连，不承诺L7零中断
+    - Helm归属保持；预检全部本轮资源清理；无清BPF、删除接口、强删业务对象
+    irreversible_point: 不迁移身份/IPAM，不自动修改客户策略/外部CRD；新功能在首跳窗口冻结。新增1.20功能后的回退需重新核官方限制
+    recovery: 失败停在当前Cilium阶段，不开始API迁移；保存Helm revision/诊断，重观测后定点续跑。需撤销时只回到已核相邻版本revision，并验证数据面/原账本，禁止用原安装清理路径回退
+    cleanup: 仅本轮预检release/自有网络探针，不删除cilium release、CRD、业务策略、BPF或接口
+  - edge_id: cilium-adjacent-minor-before-api
+    source: Cilium1.19.10 on K8s1.33.6
+    target: Cilium1.20.4 on K8s1.33.6, mixed1.33/1.34 and target1.34.13
+    bridge: 1.19.10
+    depends_on:
+    - UPG-03
+    - UPG-05
+    official_source_ids: *id007
+    product_entry: config.yml + kubecli upgrade的独立Cilium阶段；内部CiliumStage已实现真实Helm/kubectl子进程、预检和所有权清理，外层CLI/组合/恢复/journal
+      handoff尚未完成
+    preconditions:
+    - 实际Helm release/DS/Deployment/节点UID、运行版本、user values及现有策略完整读取且和已审配置一致；输入漂移拒绝
+    - 新旧制品准入、源健康和恢复点有效；保留release cilium/kube-system及资源所有权
+    - 旧客户端manifest/tooling不得继续写CiliumNodeConfig v2alpha1；Kafka/l7/l7proto规则明确处置前拒绝，不自动删除
+    - Gateway/ClusterMesh/加密/定制CNI等超出既有配置的功能需单独迁移评审，不能静默关闭
+    - 必须先完成cilium-latest-source-patch-before-api，源实际1.19.10且所有配套组件同版健康，前一预检资源已清理。
+    steps: *id008
+    success_conditions: *id009
+    irreversible_point: 不迁移身份/IPAM，不自动修改客户策略/外部CRD；新功能在首跳窗口冻结。新增1.20功能后的回退需重新核官方限制
+    recovery: 失败停在当前Cilium阶段，不开始API迁移；保存Helm revision/诊断，重观测后定点续跑。需撤销时只回到已核相邻版本revision，并验证数据面/原账本，禁止用原安装清理路径回退
+    cleanup: 仅本轮预检release/自有网络探针，不删除cilium release、CRD、业务策略、BPF或接口
+  acceptance_refs:
+  - UPG-02
+  - UPG-03
+  - UPG-04
+  - UPG-08
+  - UPG-12
 - component_id: kube-router
-  decision: investigate
+  decision: update
   source: upgrade/v1.33.6/inventory.yaml
-  target_pins: null
-  source_ids: []
-  rationale: 逐具体版本完成官方增量、依赖、配套与维护期检查，再决定保持或最小更新。
-  transition_edges: []
-  acceptance_refs: []
+  target_pins:
+    v_kuberouter: v2.12.0
+    source_bridge: v1.5.4
+    cni_config: v1
+    iptables_mode: explicit-project-default
+  source_ids:
+  - KUBEROUTER-212-UPGRADE
+  - KUBEROUTER-212-GUIDE
+  - KUBEROUTER-212-E2E
+  - KUBEROUTER-212-BREAKING-RELEASES
+  - KUBEROUTER-212-HEALTH
+  - KUBEROUTER-212-TUNNELS
+  - KUBEROUTER-212-IMAGE
+  - KUBEROUTER-212-MANIFEST
+  - KUBEROUTER-212-INFORMERS
+  - KUBEROUTER-212-CNI-INSTALL
+  - KUBEROUTER-212-NODE-IDENTITY
+  - KUBEROUTER-212-CNI-CONFIG
+  rationale: 固定官方latest稳定v2.12.0并保留v1.5.4作为源桥接身份。官方升级文档要求逐major/minor阅读breaking changes、先单节点canary和maxUnavailable=1；固定CI只使用kind 1.37，不能冒称1.34逐版认证。本跳采用官方升级/稳定API契约加最小真实网络、Service、NetworkPolicy和节点隧道验证；不自动执行原安装脚本的删除CNI行为。
+  transition_edges:
+  - edge_id: kuberouter-154-212-canary-before-platform
+    source: kube-router v1.5.4 on source v1.33.6
+    target: kube-router v2.12.0 on source-to-target mixed v1.33/v1.34 and final v1.34.13
+    bridge: v1.5.4 source bridge retained until v2.12.0 canary and tunnel cleanup are verified
+    depends_on:
+    - UPG-02
+    - UPG-03
+    - UPG-05
+    - UPG-06
+    official_source_ids:
+    - KUBEROUTER-212-UPGRADE
+    - KUBEROUTER-212-GUIDE
+    - KUBEROUTER-212-E2E
+    - KUBEROUTER-212-BREAKING-RELEASES
+    - KUBEROUTER-212-HEALTH
+    - KUBEROUTER-212-TUNNELS
+    - KUBEROUTER-212-IMAGE
+    - KUBEROUTER-212-MANIFEST
+    - KUBEROUTER-212-INFORMERS
+    - KUBEROUTER-212-CNI-INSTALL
+    - KUBEROUTER-212-NODE-IDENTITY
+    - KUBEROUTER-212-CNI-CONFIG
+    product_entry: config.yml + kubecli upgrade的独立kube-router阶段
+    preconditions:
+    - 逐节点读取实际DaemonSet、CNI配置、Node身份、IPIP隧道和BGP/service-proxy开关；未知自定义参数拒绝
+    - 先完成单节点canary及回滚边界，确认EndpointSlice RBAC和现有NetworkPolicy对象不丢失
+    steps:
+    - 按官方maxUnavailable=1逐节点切换，保留源隧道直到目标节点健康
+    - 验证Pod到Pod、Service、外部IP校验、NetworkPolicy和跨节点路径，再清理已确认的旧隧道
+    - 全部节点通过后才允许平台控制面/节点后续阶段
+    success_conditions:
+    - 所有节点运行精确v2.12.0，CNI配置、Node身份、Service和策略语义保持
+    - 首个网络/隧道/策略失败立即停止，不强删旧CNI或扩大批次
+    irreversible_point: 1.x到2.x隧道和service-proxy语义完成切换后不承诺二进制降级可恢复网络状态
+    recovery: 保留canary journal、隧道和策略诊断；仅在已验证节点边界恢复源镜像并复验数据面
+    cleanup: 只清理本run网络探针和已拥有的临时资源，不flush宿主iptables、不删除客户策略
+  acceptance_refs:
+  - UPG-02
+  - UPG-03
+  - UPG-06
+  - UPG-07
+  - UPG-11
 - component_id: kube-ovn
-  decision: investigate
+  decision: update
   source: upgrade/v1.33.6/inventory.yaml
-  target_pins: null
-  source_ids: []
-  rationale: 逐具体版本完成官方增量、依赖、配套与维护期检查，再决定保持或最小更新。
-  transition_edges: []
-  acceptance_refs: []
+  target_pins:
+    v_kubeovn: v1.17.1
+    source_bridge: v1.11.5
+    chart_app_version: 1.17.1
+    kube_minimum: v1.29.0
+  source_ids:
+  - KUBEOVN-1171-CHART
+  - KUBEOVN-1171-RELEASE
+  - KUBEOVN-117-REQUIREMENTS
+  - KUBEOVN-117-MAINTENANCE
+  - KUBEOVN-117-INSTALL-UPGRADE-PROCEDURE
+  - KUBEOVN-117-PRODUCTION-PREPARATION
+  - KUBEOVN-117-OVN-RECOVERY
+  rationale: 固定官方latest稳定v1.17.1，保留v1.11.5为源桥接。官方资料仅给Kubernetes最低版本、发布变化、升级准备和OVN恢复约束，没有1.11.5到1.17.1逐版直升承诺；因此本跳把该边界明确标为项目最小真实迁移验证，不写成上游1.34认证。所有1.17 breaking changes、OVN/OVS数据面、CRD字段和TLS/NB/SB身份必须先核对，禁止直接重放会删除常驻Pod的安装脚本。
+  transition_edges:
+  - edge_id: kubeovn-1115-171-bounded-migration
+    source: kube-ovn v1.11.5 and its OVN/OVS identities on source v1.33.6
+    target: kube-ovn v1.17.1 on target v1.34.13
+    bridge: v1.11.5 retained until CRD, OVN NB/SB and data-plane migration probes pass
+    depends_on:
+    - UPG-02
+    - UPG-03
+    - UPG-05
+    - UPG-06
+    official_source_ids:
+    - KUBEOVN-1171-CHART
+    - KUBEOVN-1171-RELEASE
+    - KUBEOVN-117-REQUIREMENTS
+    - KUBEOVN-117-MAINTENANCE
+    - KUBEOVN-117-INSTALL-UPGRADE-PROCEDURE
+    - KUBEOVN-117-PRODUCTION-PREPARATION
+    - KUBEOVN-117-OVN-RECOVERY
+    product_entry: config.yml + kubecli upgrade的独立Kube-OVN阶段
+    preconditions:
+    - 读取并锁定现有CRD、CR、OVN NB/SB数据库身份、证书、节点标签、路由和自定义参数
+    - 对ports/protocols、VIP、external-gateway及OVN/OVS版本变化完成逐字段迁移评审；未知字段拒绝
+    steps:
+    - 在源平台先做官方准备检查和只读对象/数据库快照，再按受控顺序更新控制器和数据面
+    - 以Pod/Service/NetworkPolicy/跨节点/外部网关最小账本验证每一边，失败停止并保留源身份
+    - 仅在迁移证据成立后进入Kubernetes节点升级，不调用删除非hostNetwork常驻Pod的原安装入口
+    success_conditions:
+    - CRD/API、OVN NB/SB、节点网络身份与原策略保持，最小数据面和恢复探针通过
+    - 未删除未审客户CR、路由、VIP或外部网关配置
+    irreversible_point: OVN/OVS数据库或CRD字段迁移后不承诺直接降级恢复；恢复必须使用已核快照/官方出口
+    recovery: 首失败停止并保留数据库/对象/网络诊断；按官方恢复边界在独立恢复点处理，不清空原数据面
+    cleanup: 仅删除本run探针和临时资源，不删除OVN数据库、CRD、证书或宿主网络规则
+  acceptance_refs:
+  - UPG-02
+  - UPG-03
+  - UPG-06
+  - UPG-07
+  - UPG-12
 - component_id: dns
-  decision: investigate
+  decision: update
   source: upgrade/v1.33.6/inventory.yaml
-  target_pins: null
-  source_ids: []
-  rationale: 逐具体版本完成官方增量、依赖、配套与维护期检查，再决定保持或最小更新。
-  transition_edges: []
-  acceptance_refs: []
+  target_pins:
+    v_coredns: 1.15.0
+    v_dnsnodecache: 1.26.8
+    nodecache_embedded_coredns: 1.13.2
+  source_ids: &id010
+  - COREDNS-115-OPERATIONS
+  - COREDNS-115-KUBERNETES
+  - COREDNS-115-CONTROLLER
+  - COREDNS-113-115-DELTA
+  - COREDNS-115-CACHE
+  - COREDNS-115-FORWARD
+  - COREDNS-115-METRICS
+  - K8S-13413-COREDNS-PIN
+  - K8S-13413-COREDNS-MANIFEST
+  - DNS-1268-VERSION-POLICY
+  - DNS-1268-TAGS
+  - DNS-1268-PROMOTION
+  - DNS-1264-1268-DELTA
+  - DNS-1268-MAIN
+  - DNS-1268-CACHE-APP
+  - DNS-1268-DEPS
+  - K8S-13413-NODELOCAL-MANIFEST
+  - K8S-NODELOCAL-OPERATIONS
+  - K8S134-JSON-PATCH
+  - K8S134-API-CONCURRENCY
+  rationale: CoreDNS最新稳定1.15.0保持项目实际消费CoreV1与DiscoveryV1和既有Corefile语法；官方没有逐K8s版本测试表，依据明确记为API/source契约。NodeLocal官方明确无K8s版本对应要求，按正式tag/promotion选同线最后patch1.26.8并保留其官方内嵌CoreDNS1.13.2，不自行重组。两组件放在全部API/节点1.34之后独立滚动，保留源网络/Service/ConfigMap/网段及DNS协议。自定义RCODE
+    failover或额外plugin先拒绝待迁移处置；不承诺单节点缓存滚动零丢包。
+  transition_edges:
+  - edge_id: dns-after-platform
+    source: CoreDNS1.12.4 / node-cache1.26.4 across source/mixed/target APIs
+    target: CoreDNS1.15.0 / node-cache1.26.8 on all API and nodes1.34.13
+    bridge: null
+    depends_on:
+    - UPG-03
+    - UPG-05
+    - UPG-06
+    - UPG-07
+    official_source_ids: *id010
+    product_entry: config.yml + kubecli upgrade；内部upgrade/product/dns_stage.py已实现并通过11个实际子进程合同，外层尚未接通
+    preconditions:
+    - 所有实际API/节点1.34.13且原DNS/网络健康；原Service/ConfigMap/workload的UID、镜像、Corefile和DNS/IPVS/iptables模式均核实
+    - 两新镜像双端双架构准入；保持原集群zone、localIP、ClusterIP、kubelet resolver和上游DNS；不接管外来DNS实现
+    - 源若自定义Corefile额外plugins、RCODE failover或DNS安全语义，须先评审处置，禁止静默覆盖客户设置；单节点缓存滚动维护窗口已声明
+    steps:
+    - 保留原对象和配置，仅按已审config更新两个DNS镜像，不调用会删除资源的CHANGE_CA路径
+    - CoreDNS收敛并核list/watch、原Service/EndpointSlice解析后，再按原NodeLocal模式滚动；每步保存首失败并停止依赖
+    - 利用同一网络业务账本验证Service/Pod/Headless/PTR、NXDOMAIN/否定TTL、原上游转发，以及启用NodeLocal各实际节点查询；正常接口复核覆盖缓存恢复，不加入历史全量DNS性能/故障长链
+    - 核目标精确镜像及原对象UID/配置/ServiceIP保持；duration指标按server/zone/view检查，独立于业务DNS结果
+    success_conditions:
+    - 全部目标工作负载健康，原DNS身份/配置保持；声明窗口后UDP/TCP、原记录及最小动态EndpointSlice更新通过
+    - 实际Pod的resolver和NodeLocal监听/IPVS或iptables路径相符；探针与临时对象作用域清理
+    irreversible_point: 无持久数据格式迁移；缓存重建和forward/AA默认语义变化已声明，镜像回退不能隐藏客户自定义Corefile不兼容
+    recovery: 首失败停止本DNS边，保留对象/事件/日志与journal；按已保存精确源镜像和原配置限定恢复并验证实际查询，不清空宿主iptables/dummy接口。已就绪独立分支证据保持；不因此重建健康集群
+    cleanup: 仅本轮命名空间/查询探针，保留DNS Service/SA/RBAC/CM及宿主网络规则；禁止全局iptables flush
+  acceptance_refs:
+  - UPG-02
+  - UPG-03
+  - UPG-08
+  - UPG-11
+  - UPG-12
+  local_contract_evidence: upgrade/v1.34.13/evidence/dns-stage-contracts.json
 - component_id: metrics
-  decision: investigate
+  decision: update
   source: upgrade/v1.33.6/inventory.yaml
-  target_pins: null
+  target_pins:
+    v_metricsserver: v0.9.1
   source_ids:
   - METRICS-080
-  rationale: 现有0.8.x官方支持1.31+，不能因K8s minor变化默认重测全部指标；冻结前仍核对最新兼容patch与实际API/配置差异。
-  transition_edges: []
-  acceptance_refs: []
+  - METRICS-091-FIRST-HOP
+  - METRICS-LATEST-RELEASE
+  - METRICS-090-DELTA
+  - METRICS-091-FAQ
+  - METRICS-091-KNOWN-ISSUES
+  - METRICS-V1BETA1-WIRE-CONTRACT
+  - K8S-RESOURCE-QUANTITY-CONTRACT
+  - K8S-METAV1-DURATION-CONTRACT
+  rationale: 最新稳定0.9.1官方支持1.34+，仅在全部API和节点完成1.34后后置更新；0.8.0保留过渡。已读0.9增量/FAQ/已知问题；实际参数模板合同和制品资格在UPG-03/04，目标node+pod
+    metrics在UPG-11验收。
+  transition_edges:
+  - edge_id: metrics-after-platform
+    source: v0.8.0 on v1.33.6 and mixed 1.33/1.34
+    target: v0.9.1 on v1.34.13
+    bridge: null
+    depends_on:
+    - UPG-06
+    - UPG-07
+    official_source_ids:
+    - METRICS-080
+    - METRICS-091-FIRST-HOP
+    - METRICS-LATEST-RELEASE
+    - METRICS-090-DELTA
+    - METRICS-091-KNOWN-ISSUES
+    product_entry: config.yml + kubecli upgrade；upgrade/product/metrics_stage.py内部镜像滚动及真实Metrics API合同已完成，外层准入/journal/现场待接通；禁止重放含删除动作的安装任务
+    preconditions:
+    - 全部实际API/kubelet已到1.34且原0.8指标健康
+    - UPG-03镜像双端双架构已核，UPG-04模板/参数已核
+    - 现有aggregation/webhook/10250连通性和显式15s分辨率保留
+    steps:
+    - 保持原SA/RBAC/APIService归属，滚动替换metrics-server镜像
+    - 等待node与pod metrics均可读；用同一业务探针确认Metrics API集成
+    success_conditions:
+    - APIService Available且所有适用节点/存活业务Pod的CPU/内存指标和时间窗口有效
+    - 原对象所有权/权限无不必要扩大
+    irreversible_point: 未声明新持久数据格式；不修改业务HPA目标或放宽requests
+    recovery: 更新失败停止后置依赖；在目标1.34允许范围内恢复已核验0.8制品和原声明并复验指标
+    cleanup: 仅本次指标/HPA业务探针；不删除系统APIService或放宽TLS/PDB
+  acceptance_refs:
+  - UPG-02
+  - UPG-03
+  - UPG-04
+  - UPG-11
+  handoff_evidence: upgrade/v1.34.13/evidence/metrics-stage-contracts.json
 - component_id: ingress
-  decision: investigate
+  decision: update
   source: upgrade/v1.33.6/inventory.yaml
-  target_pins: null
-  source_ids:
+  target_pins:
+    v_ingressnginx: 4.15.1
+    v_ingress_nginx_controller: v1.15.1
+    v_webhook_certgen: v1.6.9
+    chart_sha256: 3eff0bd18151d6e6b1c441463410571443dda1ac78292cb189346628de784f0c
+  source_ids: &id011
   - INGRESS-LIFECYCLE
-  rationale: 退役公告与部署页观察冲突待解；未授权控制器替换，风险只阻断相关选型，不扩大至全部中间件。
-  transition_edges: []
-  acceptance_refs: []
+  - INGRESS-FIRST-HOP
+  - INGRESS-ARCHIVED
+  - INGRESS-1140-DELTA
+  - INGRESS-1150-DELTA
+  - INGRESS-1151-RELEASE
+  - INGRESS-1151-UPGRADE
+  - INGRESS-1151-MANIFEST
+  - INGRESS-4151-RELEASE
+  - INGRESS-4151-VALUES
+  - INGRESS-4151-CHART
+  rationale: 源1.13.0支持表不含1.34，选择最新兼容稳定controller1.15.1/Chart4.15.1/certgen1.6.9，官方表覆盖1.31–1.35；源侧先更新完整配套。官方仓已归档，只作为本次EOL平台迁移桥梁，不宣称持续安全维护；不顺带换控制器、关闭webhook或修改其它certgen消费者。
+  transition_edges:
+  - edge_id: ingress-before-platform
+    source: controller1.13.0 / Chart4.13.0 / certgen1.6.0 on1.33.6
+    target: controller1.15.1 / Chart4.15.1 / certgen1.6.9 on1.33.6→mixed1.33/1.34→1.34.13
+    bridge: null
+    depends_on:
+    - UPG-05
+    official_source_ids: *id011
+    product_entry: config.yml ingress_nginx_ver + kubecli setup cluster-addon的原Ingress任务；跨minor调用顺序仍待接线
+    preconditions:
+    - 源Ingress/webhook/HTTP/TLS健康及恢复声明已存档
+    - 目标两镜像双端双架构准入
+    - 自定义模板/注解/ConfigMap检查不违反目标验证，禁止放宽安全规则
+    steps:
+    - 在全部API仍1.33时定点升级同release的Chart和两个配套镜像
+    - 验证admission Fail、HTTP/TLS真实流量和原Service/Secret/IngressClass身份
+    - 之后才进入Kubernetes API逐台升级，持续复用同一业务探针
+    success_conditions:
+    - 原Ingress路由与TLS有效、无非计划对象重建
+    - 拒绝不合规对象且正常请求成功，目标前后持续业务可核验
+    irreversible_point: 不改变Ingress API版本和外部数据格式；不保证模板/注解语义无差异
+    recovery: 升级失败停止平台升级，保存Helm revision和首失败；按官方允许恢复原声明/镜像并复验原TLS/路由，证据不足时不自动回退
+    cleanup: 仅本次流量/准入探针；保留系统release、Secret和入口身份
+  acceptance_refs:
+  - UPG-02
+  - UPG-03
+  - UPG-04
+  - UPG-06
+  - UPG-11
 - component_id: dashboard
-  decision: investigate
+  decision: keep
   source: upgrade/v1.33.6/inventory.yaml
-  target_pins: null
-  source_ids: []
-  rationale: 逐具体版本完成官方增量、依赖、配套与维护期检查，再决定保持或最小更新。
-  transition_edges: []
-  acceptance_refs: []
+  target_pins:
+    chart: 7.14.0
+    api: 1.14.0
+    auth: 1.4.0
+    web: 1.7.0
+    metrics_scraper: 1.2.2
+    kong: '3.9'
+  source_ids:
+  - DASHBOARD-714-PINS
+  - DASHBOARD-714-INSTALL-CONTRACT
+  - DASHBOARD-ARCHIVED
+  rationale: 首跳保留已GA Dashboard 7.14.0及Kong/配套镜像精确组合，官方Chart最低Kubernetes版本满足目标但没有1.34逐版矩阵；官方仓已归档，因此本组合是明确标注EOL限制的迁移过渡，不宣称仍受维护，也不在本跳引入替换和数据迁移项目。目标仅补Kubernetes API/RBAC、登录、代理和页面最小集成。
+  transition_edges:
+  - edge_id: dashboard-preserved-eol-bridge
+    source: Dashboard 7.14.0/Kong 3.9 and project-pinned modules on source v1.33.6
+    target: same exact Dashboard/Kong pins on target v1.34.13
+    bridge: EOL component retained as first-hop migration bridge; replacement is a separate future project
+    depends_on:
+    - UPG-02
+    - UPG-06
+    - UPG-07
+    official_source_ids:
+    - DASHBOARD-714-PINS
+    - DASHBOARD-714-INSTALL-CONTRACT
+    - DASHBOARD-ARCHIVED
+    product_entry: config.yml + kubecli dashboard path
+    preconditions:
+    - 核实Chart、四个模块镜像、Kong、RBAC/Secret/Service UID和登录配置；不安装条件依赖
+    - EOL限制和后续替换边界已记录，目标验证不得扩大为替换/迁移
+    steps:
+    - 保留全部Dashboard/Kong对象和版本，随平台受控迁移
+    - 验证登录、RBAC最小权限、代理API、页面读取和TLS/Service身份
+    success_conditions:
+    - 原Dashboard功能和权限边界在目标平台成立，所有精确pin保持
+    - 报告明确EOL限制，不把最小集成写成上游1.34认证
+    irreversible_point: 本跳不进行替换或数据迁移；替换项目另行建立版本和恢复边界
+    recovery: 平台失败按UPG-12恢复，保留Dashboard/Kong源对象和EOL记录
+    cleanup: 仅清理本run登录/API探针，不删除Dashboard、Kong、RBAC、Secret或业务会话
+  acceptance_refs:
+  - UPG-02
+  - UPG-10
+  - UPG-11
 - component_id: local-storage
-  decision: investigate
+  decision: update
   source: upgrade/v1.33.6/inventory.yaml
-  target_pins: null
-  source_ids: []
-  rationale: 逐具体版本完成官方增量、依赖、配套与维护期检查，再决定保持或最小更新。
-  transition_edges: []
-  acceptance_refs: []
+  target_pins:
+    local_path_provisioner: v0.0.37
+    local_path_helper: busybox:1.37
+    nfs_provisioner: v4.0.2
+    openebs_chart: 4.3.2
+    openebs_hostpath: 4.3.0
+    openebs_lvm: 1.7.0
+  source_ids:
+  - NFS-402-BEHAVIOR
+  - LOCALPATH-037-BEHAVIOR
+  - OPENEBS-432-ENGINE-BOUNDARY
+  - OPENEBS-LVM-170-SYSTEM
+  - OPENEBS-HOSTPATH-430-MATRIX
+  - LOCALPATH-031-037-DELTA
+  - LOCALPATH-037-SCRATCH-IMAGE
+  - LOCALPATH-037-OFFICIAL-DEPLOYMENT
+  - LOCALPATH-037-CLIENT-PIN
+  - NFS-402-CLIENT-PIN
+  - LOCALPATH-037-CONFIG-RELOAD-CONTRACT
+  rationale: 只更新Local Path到官方latest v0.0.37并固定独立BusyBox helper；NFS 4.0.2、OpenEBS及其引擎保持源GA。NFS官方明确尚无自动e2e，Local Path/OpenEBS资料是下限/API/行为边界而非1.34逐版认证；验收采用最小真实动态卷创建、跨节点挂载、确认写读、删除清理和原PV/PVC身份复核，不重跑无关存储深测。
+  transition_edges:
+  - edge_id: local-storage-helper-before-platform
+    source: Local Path v0.0.31/helper project behavior, NFS v4.0.2 and OpenEBS 4.3.2 on source v1.33.6
+    target: Local Path v0.0.37 with BusyBox 1.37 helper; retained NFS/OpenEBS pins on target v1.34.13
+    bridge: v0.0.31 controller remains until v0.0.37 helper dry-run and data identity checks pass
+    depends_on:
+    - UPG-02
+    - UPG-03
+    - UPG-05
+    - UPG-07
+    - UPG-09
+    official_source_ids:
+    - NFS-402-BEHAVIOR
+    - LOCALPATH-037-BEHAVIOR
+    - OPENEBS-432-ENGINE-BOUNDARY
+    - OPENEBS-LVM-170-SYSTEM
+    - OPENEBS-HOSTPATH-430-MATRIX
+    - LOCALPATH-031-037-DELTA
+    - LOCALPATH-037-SCRATCH-IMAGE
+    - LOCALPATH-037-OFFICIAL-DEPLOYMENT
+    - LOCALPATH-037-CLIENT-PIN
+    - NFS-402-CLIENT-PIN
+    - LOCALPATH-037-CONFIG-RELOAD-CONTRACT
+    product_entry: config.yml + kubecli local-storage path
+    preconditions:
+    - 核实真实StorageClass、PV/PVC UID、nodeAffinity、helper脚本/pathPattern、NFS目录、OpenEBS引擎/VG和全部数据账本
+    - v0.0.37 scratch控制器与独立BusyBox helper已分别准入；未知自定义pathPattern拒绝
+    steps:
+    - 先对helper和控制器执行server dry-run，再按安全顺序滚动Local Path；不重放会删除共享CRD的安装role
+    - 通过真实新卷供给、跨节点挂载、确认写读、删除清理后才进入节点drain
+    - NFS/OpenEBS仅复用固定组件并补目标API/数据身份验证，不做引擎替换
+    success_conditions:
+    - 原PV/PVC/路径/亲和/数据保持，新卷和NFS跨节点最小账本通过，清理边界可核
+    - 不删除客户卷、NFS服务、OpenEBS CRD、VG或宿主目录
+    irreversible_point: Local Path旧目录与节点亲和不能由升级自动迁移；存储引擎不承诺二进制降级恢复格式
+    recovery: 首失败保留卷和目录账本，按组件边界续跑或用已核源镜像恢复；不自动删除客户卷或清空VG
+    cleanup: 只删除本run新卷/探针并验证其目录清理；保留原PV/PVC、NFS数据和OpenEBS盘
+  acceptance_refs:
+  - UPG-02
+  - UPG-03
+  - UPG-07
+  - UPG-09
+  - UPG-12
 - component_id: ceph
-  decision: investigate
+  decision: update
   source: upgrade/v1.33.6/inventory.yaml
-  target_pins: null
+  target_pins:
+    v_ceph: 20.2.4
+    v_ceph_upgrade_source: 20.2.3
+    v_cephadm_sha256: 5b78c8d5772ef7c5c8619dac6ee0b36716b829338ea7a11c9f2b896626ab354f
+    v_ceph_csi: v3.17.2
+    v_ceph_csi_registrar: v2.16.0
+    v_ceph_csi_provisioner: v6.2.0
+    v_ceph_csi_attacher: v4.11.0
+    v_ceph_csi_resizer: v2.1.0
+    v_ceph_csi_snapshotter: v8.5.0
+    vendored_charts_sha256:
+      roles/ceph/files/ceph-csi-cephfs-3.17.1.tgz: 100c00932b1969df63400e5bb477b5ef2701371fb350e5b8cb8c4fb2873aa117
+      roles/ceph/files/ceph-csi-rbd-3.17.1.tgz: 75527adefcdf248e9acd2e9759205ddf4fd444824157e3e1914cf9659544bffc
   source_ids:
   - CEPHCSI-3171
-  rationale: 现有CSI3.17.1表列目标1.34–1.36；源1.33官方测试与ARM64边界单独保留，不触发Ceph数据面全量复测。
-  transition_edges: []
-  acceptance_refs: []
+  - CEPHCSI-3182-FIRST-HOP
+  - CEPH-CSI-LATEST-RELEASE
+  - CEPHCSI-3172-RELEASE
+  - CEPHCSI-3172-README
+  - CEPHCSI-3172-RBD-COMPOSITION
+  - CEPHCSI-3172-CEPHFS-COMPOSITION
+  - CEPHCSI-3172-EXACT-DELTA
+  rationale: 保留Ceph20.2.4、cephadm身份、全部sidecar、源vendored Chart及所有权；仅CSI driver升受维护3.17线最新patch3.17.2。官方明确测目标1.34；精确compare证明Chart仅driver
+    tag差异，与显式override等效。补丁触达恢复锁/DeleteVolume/unpublish与AES256k客户端，最窄补证包含RBD/CephFS目标迁移和既有安全client资格；不重开Ceph数据面全矩阵，不改九模块结构。
+  transition_edges:
+  - edge_id: ceph-csi-driver-patch-after-platform
+    source: Ceph20.2.4 + CSI3.17.1 on v1.33.6
+    target: same Ceph20.2.4 + CSI3.17.2 on v1.34.13
+    bridge: null
+    depends_on:
+    - UPG-03
+    - UPG-05
+    - UPG-06
+    - UPG-07
+    official_source_ids:
+    - CEPHCSI-3172-RELEASE
+    - CEPHCSI-3172-README
+    - CEPHCSI-3172-RBD-COMPOSITION
+    - CEPHCSI-3172-CEPHFS-COMPOSITION
+    - CEPHCSI-3172-EXACT-DELTA
+    product_entry: config.yml + kubecli upgrade的独立CSI handoff；既有roles/ceph/tasks/csi.yml最小适配，不重跑cephadm bootstrap
+    preconditions:
+    - 核实原Ceph FSID、CSI release/CRD/StorageClass与Secret所有权、RBD/CephFS源卷ID/UID和确认写账本
+    - 全部API/节点目标1.34后才应用新driver；源侧CSI3.17.1保持
+    - 实际源宿主secure msgr2+aes256k client资格有效；不从新Ceph容器的AES支持推导宿主内核资格
+    - UPG-03新driver及全部复用sidecar双端双架构准入，原Chart SHA保持
+    steps:
+    - 先完成源CSI3.17.1下K8s迁移，验证已存在RBD/CephFS卷重挂载与源账本
+    - 用源Chart及显式3.17.2 driver override逐步收敛CSI工作负载；不更改sidecar、FSID、mon地址、凭据、StorageClass、驱动名或CRD所有权
+    - 目标只读核原账本，再建立最小新卷/快照恢复并读回、删除本轮临时卷与快照验证清理；缺失backend unpublish幂等按精确源码/合同证明，不删除客户卷造故障
+    success_conditions:
+    - RBD/CephFS原卷及确认数据保持、真实客户入口收敛、无并行CSI release或外部Operator接管
+    - msgr2 secure及原安全配置保持；新driver精确3.17.2、所有sidecar/Chart源身份保持
+    - 临时卷/快照、探针namespace清理和资源所有权成立
+    irreversible_point: 本跳不更新Ceph数据格式或CSI CRD存储版本；Helm rollback仅恢复CSI工作负载模板，不恢复已删除后端卷或业务写入
+    recovery: 失败停在CSI handoff保留PV/PVC/Secret/StorageClass与原账本；限定Helm已知源revision恢复，并验证挂载/数据；不可恢复用UPG-12已验证恢复点，不执行cephadm重建
+    cleanup: 仅移除本轮自有探针卷/快照/namespace，不删除原Ceph集群/池/FS/客户卷
+  acceptance_refs:
+  - UPG-03
+  - UPG-09
 - component_id: longhorn
-  decision: investigate
+  decision: update
   source: upgrade/v1.33.6/inventory.yaml
-  target_pins: null
+  target_pins:
+    v_longhorn: 1.12.2
+    v_longhorn_upgrade_source: 1.12.1
+    v_longhorn_snapshot_controller: v8.6.0
+    chart_sha256: 3514c3a802ec910b3e97698f0b816c038d66547e1bf3d1a4ebad44a9f5b8ac8a
+    images:
+      longhorn-engine: v1.12.2
+      longhorn-manager: v1.12.2-kubeauto.1
+      longhorn-ui: v1.12.2
+      longhorn-instance-manager: v1.12.2-kubeauto.1
+      longhorn-share-manager: v1.12.2
+      longhorn-backing-image-manager: v1.12.2
+      longhorn-support-bundle-kit: v1.0.5
+      longhorn-csi-attacher: v4.13.0-20261028
+      longhorn-csi-provisioner: v5.3.0-20261028
+      longhorn-csi-node-driver-registrar: v2.18.0-20261028
+      longhorn-csi-resizer: v2.3.0-20261028
+      longhorn-csi-snapshotter: v8.7.0-20261028
+      longhorn-livenessprobe: v2.20.0-20261028
   source_ids:
   - LONGHORN-1121
-  rationale: 现有1.12.1官方已测试1.33–1.36；先核对最新兼容patch与自有补丁。网络策略测试限定发行版/CNI，优先核验原网络策略证据的目标适用性。
-  transition_edges: []
-  acceptance_refs: []
+  - LONGHORN-LATEST-RELEASE
+  - LONGHORN-1122-RELEASE
+  - LONGHORN-1122-EVICTION
+  - LONGHORN-1122-PENDING
+  - LONGHORN-1122-SETTINGS
+  - LONGHORN-1122-IM-ENGINE
+  - LONGHORN-1122-IM-REPLICA
+  - LONGHORN-1122-MANAGER-IDENTITY
+  - LONGHORN-1122-IM-IDENTITY
+  - LONGHORN-1122-CHART-COMPOSITION
+  - LONGHORN-1122-CHART-METADATA
+  - LONGHORN-1122-UPGRADE
+  - LONGHORN-1122-MAINTENANCE
+  - LONGHORN-1122-PLATFORM
+  - LONGHORN-1122-CHART-INDEX
+  - LONGHORN-1122-MANAGER-GOMOD
+  - LONGHORN-1122-IM-GOMOD
+  - LONGHORN-1122-MANAGER-BUILD
+  - LONGHORN-1122-IM-BUILD
+  - LONGHORN-1122-IM-LINK
+  - LONGHORN-1122-DEP-IDENTITY
+  - LONGHORN-1122-DEPENDENCIES
+  rationale: 采用受维护1.12线稳定patch1.12.2，处理节点drain/rebuild直接相关丢写；不引入1.13新minor。完整官方Chart13镜像配套；manager/IM4个未上游化修复分别继承为-kubeauto.1，其余按官方tag。先控制面1.34，再V2卸载维护窗口升级Longhorn，最后逐节点drain；不支持Longhorn成功后的Helm/二进制降级。
+  transition_edges:
+  - edge_id: longhorn-1121-to-1122-before-node-drain
+    source: 1.12.1 manager-kubeauto.2/IM-kubeauto.3 on target API1.34 with source nodes1.33
+    target: 1.12.2 manager/IM-kubeauto.1 with exact official Chart13 image pairing
+    bridge: null
+    depends_on:
+    - UPG-03
+    - UPG-05
+    - UPG-06
+    official_source_ids:
+    - LONGHORN-1122-RELEASE
+    - LONGHORN-1122-UPGRADE
+    - LONGHORN-1122-MAINTENANCE
+    - LONGHORN-1122-PLATFORM
+    - LONGHORN-1122-CHART-COMPOSITION
+    - LONGHORN-1122-CHART-INDEX
+    product_entry: config.yml + kubecli upgrade的Longhorn定点handoff；复用现有role内原生检查与engine upgrade路径，禁止setup07全附件重放
+    preconditions:
+    - 全部API1.34健康；K8s节点仍源1.33；原Longhorn1.12.1精确健康、卷/节点/磁盘/Secret/CRD所有权与源账本完整
+    - UPG-03全部13变化制品和复用snapshot-controller已准入；4个自有补丁固定目标源码Go合同通过
+    - SystemBackup Ready且精确源版本1.12.1，业务备份/恢复点身份已验证；成功后无直接降级出口
+    - V2全部卷detach并核engine/replica stopped、业务已按声明维护窗口停止写入；不修改last-replica/PDB策略；无failed BackingImage、faulted卷、正在purge/deletion或重建
+    - 每卷真实独立健康副本、剩余CPU/hugepages/磁盘/放置容量满足逐节点迁移
+    steps:
+    - 保留全部资源UID与确认数据账本；V2按产品工作负载入口停写卸载，源备份状态与实例停止复验
+    - 用原生升级检查、完整官方Chart1.12.2及保留补丁的精确镜像收敛manager/CSI/IM，随后按现有产品路径完成engine升级，不直接改卷内部文件
+    - V2恢复原工作负载，先读原账本，再新增确认写；V1结合节点drain以并发512B账本覆盖修复触达的rebuild路径
+    - 所有卷目标engine就绪、账本及原保护策略成立后，才允许UPG-07逐节点K8s/runtime维护；每节点后再核副本/卷/CSI与业务
+    success_conditions:
+    - V1/V2原卷/快照/PVC/Secret身份与确认写保持；目标manager/IM自有4补丁语义保留，未误用未修订镜像
+    - CPU isolation/独占CPU/iobuf/监控/磁盘退役等原功能未因版本硬判断消失；官方配套、CRD和驱动所有权正确
+    - 无盲目删除PDB/实例管理器/最后副本、未扩大清理；每批后健康和业务账本成立
+    irreversible_point: Longhorn1.12.2成功后官方不支持降级；V2 detach造成声明的业务维护窗口，不能以Helm --atomic/rollback保证恢复全部升级后的CRD/引擎与业务数据
+    recovery: 首失败停在本层、保留日志与源备份；成功前按官方可恢复边界处理，成功后向前修复或使用已验证SystemBackup+业务备份恢复到独立干净边界，不能在原集群直接降级；UPG-12须证明精确恢复出口
+    cleanup: 仅回收升级自有探针/临时故障与cordon，保留原客户卷/快照/副本/证书/备份，不清空真实存储盘
+  acceptance_refs:
+  - UPG-03
+  - UPG-07
+  - UPG-09
+  - UPG-12
 - component_id: monitoring
-  decision: investigate
+  decision: keep
   source: upgrade/v1.33.6/inventory.yaml
-  target_pins: null
-  source_ids: []
-  rationale: 逐具体版本完成官方增量、依赖、配套与维护期检查，再决定保持或最小更新。
-  transition_edges: []
-  acceptance_refs: []
+  target_pins:
+    v_promchart: 88.0.0
+    v_prometheus_operator: v0.93.0
+    v_prometheus_config_reloader: v0.93.0
+    v_prometheus_admission_webhook: v0.93.0
+    v_prometheus: v3.13.1-distroless
+    v_alertmanager: v0.33.1
+    v_node_exporter: v1.12.1
+    v_kube_state_metrics: v2.18.0
+    v_grafana: 13.1.1
+    v_k8s_sidecar: 1.30.5
+    v_prometheus_webhook_certgen: 1.8.5
+    v_thanos: v0.41.0
+    v_prometheus_adapter: v0.12.0
+    v_blackbox_exporter: v0.27.0
+    vendored_charts_sha256:
+      roles/cluster-addon/files/kube-prometheus-stack-88.0.0.tgz: f96cb0a0999f7375b2899e4b60e6ec0e8f7133e5847f39ac87d53baea765eb32
+  source_ids: &id012
+  - PROM-093-REQUIREMENTS
+  - PROM-STACK-880-PINS
+  - PROM-093-COMPATIBILITY
+  - KSM-218-K8S134-MATRIX
+  - KSM-LATEST-RELEASE-OBSERVATION
+  - PROM-ADAPTER-012-API
+  rationale: 固定Operator0.93支持K8s>=1.25、Prometheus2+/Alertmanager0.15+/Thanos0.10+，项目Prometheus3.13.1/AM0.33.1与上游e2e默认一致；KSM2.18官方client-go1.34行覆盖目标接口。保持已GA
+    Chart88.0.0及明确覆盖的镜像组合，不升级引擎/CRD/规则。真实values在1.33.6和1.34.13的130对象及Thanos132对象逐对象/逐字节相同，无需重放安装链。KSM2.18非当前latest且非上游常规维护，本交付仍为短期迁移桥梁；官方API/支持下限与项目目标接口验证分别表述。
+  transition_edges:
+  - edge_id: monitoring-unchanged-platform-integration
+    source: Existing Chart88.0.0/Operator0.93.0 and reviewed image overrides on source K8s
+    target: Same monitoring objects and images on K8s1.34.13
+    bridge: null
+    depends_on:
+    - UPG-06
+    - UPG-07
+    official_source_ids: *id012
+    product_entry: config.yml + kubecli upgrade; retain existing monitoring resources, not full setup07 replay
+    preconditions:
+    - Source release/CRD/Secret/PV identities and exact image overrides recorded; original scrape/metric/alert assertions
+      reused at unchanged inputs
+    - No concurrent monitoring chart/CRD/config or storage engine change
+    steps:
+    - Preserve all existing monitoring objects, images, CRDs/rules and data; only product config target metadata
+      advances
+    - Use the shared migration main chain to query actual target scrape endpoints and resource/business metrics,
+      one alert and optional APIService/HPA path
+    success_conditions:
+    - Original resource/Secret/PV identities, time series and source business ledger retained
+    - Actual target TLS scrapes/metrics and declared alert/optional APIService assertions pass
+    irreversible_point: No monitoring data/CRD/engine format migration in this edge; changing unrelated chart/engine
+      versions would require separate assessment
+    recovery: Stop the owning interface at first failure, preserve diagnostics and existing monitoring data/config;
+      repair only the proven affected endpoint/authorization, never reinstall to hide it
+    cleanup: Only run-owned temporary metric/alert/HPA probes; no deletion of source rules/series/PVs/Secrets
+  acceptance_refs:
+  - UPG-02
+  - UPG-04
+  - UPG-11
 - component_id: logging
-  decision: investigate
+  decision: keep
   source: upgrade/v1.33.6/inventory.yaml
-  target_pins: null
-  source_ids: []
-  rationale: 逐具体版本完成官方增量、依赖、配套与维护期检查，再决定保持或最小更新。
-  transition_edges: []
-  acceptance_refs: []
+  target_pins:
+    eck_operator: 3.5.0
+    elasticsearch: 9.5.1
+    kibana: 9.5.1
+    fluent_bit: 5.1.1
+    loki: 3.7.6
+    loki_chart: 18.9.0
+    alloy: 1.18.1
+    alloy_chart: 1.11.1
+  source_ids:
+  - ECK-350-SUPPORTED
+  - ALLOY1181-KUBERNETES-DISCOVERY
+  - ALLOY1181-KUBERNETES-LOGS
+  - LOKI1890-CHART
+  - ALLOY1111-CHART
+  - HELM319-CHART-DEPENDENCY
+  rationale: 保持已GA日志组合与已核渲染输入；ECK官方支持Kubernetes1.32–1.36，Loki/Alloy使用稳定Kubernetes发现与日志API，但没有项目跨minor业务认证。目标只补Operator协调、日志采集/写入/查询和原存储身份，不升级ES/Loki数据格式，不扩大为全量日志长稳。
+  transition_edges:
+  - edge_id: logging-preserved-platform-integration
+    source: exact ECK/Elasticsearch/Kibana/Fluent Bit/Loki/Alloy pins on source v1.33.6
+    target: same exact logging pins on target v1.34.13
+    bridge: null
+    depends_on:
+    - UPG-02
+    - UPG-06
+    - UPG-07
+    official_source_ids:
+    - ECK-350-SUPPORTED
+    - ALLOY1181-KUBERNETES-DISCOVERY
+    - ALLOY1181-KUBERNETES-LOGS
+    - LOKI1890-CHART
+    - ALLOY1111-CHART
+    - HELM319-CHART-DEPENDENCY
+    product_entry: config.yml + kubecli logging path
+    preconditions:
+    - 核实ECK/ES/Kibana/Loki/Alloy对象、PVC/Secret/索引与原日志账本；保持原渲染fingerprint
+    - 不引入新的数据格式、采集规则或共享存储迁移
+    steps:
+    - 随平台受控迁移保留所有日志组件和数据身份
+    - 验证节点日志采集、写入、查询、断点重连和原TLS/权限
+    success_conditions:
+    - 最小日志读写和查询成立，原对象/数据/PVC/Secret身份保持
+    - 明确官方支持声明与项目最小集成证据边界，不写成逐版上游认证
+    irreversible_point: 本跳不改变日志数据格式或引擎版本；K8s恢复按UPG-12
+    recovery: 失败限定在日志采集/查询边界，保留原数据和组件，按平台恢复出口处理
+    cleanup: 仅删除本run日志探针和临时索引，不删除客户索引、PVC、Secret或规则
+  acceptance_refs:
+  - UPG-02
+  - UPG-09
+  - UPG-10
+  - UPG-11
 - component_id: elasticsearch
-  decision: investigate
+  decision: keep
   source: upgrade/v1.33.6/inventory.yaml
-  target_pins: null
-  source_ids: []
-  rationale: 唯一共享 ECK 的版本/CRD/转换/准入必须覆盖业务 ES 与日志消费者，不自动升级引擎。
-  transition_edges: []
-  acceptance_refs: []
+  target_pins:
+    v_eck_operator: 3.5.0
+    v_elasticsearch: 9.5.1
+    v_business_elasticsearch: 9.5.6
+    v_elasticsearch_upgrade_source: 9.5.5
+    v_elasticsearch_exporter: v1.11.0
+    v_elasticsearch_client: 9.5.1-kubeauto.1
+    v_elasticsearch_rally: 2.13.0-kubeauto.1
+  source_ids:
+  - ECK-350-SUPPORTED
+  - ECK-LATEST-RELEASE
+  rationale: 共享ECK3.5.0已是latest且固定官方支持1.32–1.36及9+引擎；保持业务ES/Kibana9.5.6与smartcn自有镜像、客户端/恢复语义，不为平台升级重跑原恢复/性能全链。日志引擎9.5.1是另一消费者，不能静默统一。
+  transition_edges:
+  - edge_id: eck-unchanged-shared-controller
+    source: ECK3.5.0; business ES/Kibana9.5.6
+    target: same exact pins and project patch images
+    bridge: null
+    depends_on:
+    - UPG-06
+    - UPG-07
+    official_source_ids:
+    - ECK-LATEST-RELEASE
+    - ECK-350-SUPPORTED
+    product_entry: config.yml + kubecli upgrade；不调用eck-platform版本升级
+    preconditions:
+    - UPG-05核实唯一ECK、两个消费者UID/版本/watch与原业务账本
+    - 实际drain尊重各消费者PDB和副本容量
+    steps:
+    - 保持ECK/CRD/业务ES与日志消费者版本、共享所有权
+    - 随节点迁移核对协调、TLS与原索引账本
+    success_conditions:
+    - ECK observedGeneration/Ready及ReconciliationComplete与原生产条件一致
+    - 业务索引UUID/内容及日志写入查询保持，共享控制器/CRD身份无外来接管
+    irreversible_point: 本组件无版本/数据格式变更；平台恢复遵从UPG-12
+    recovery: K8s限定恢复出口；原业务恢复证据保留，不新增引擎降级承诺
+    cleanup: 仅本次探针与实验室租约边界
+  acceptance_refs:
+  - UPG-02
+  - UPG-10
+  - UPG-11
 - component_id: mysql
-  decision: investigate
+  decision: keep
   source: upgrade/v1.33.6/inventory.yaml
-  target_pins: null
-  source_ids: []
-  rationale: 逐具体版本完成官方增量、依赖、配套与维护期检查，再决定保持或最小更新。
-  transition_edges: []
-  acceptance_refs: []
+  target_pins:
+    v_pxc_operator: 1.20.0
+    v_pxc: 8.4.8-8.1
+    v_pxc_xtrabackup: 8.4.0-5.1
+    v_pxc_haproxy: 2.8.18-1
+    v_pxc_fluentbit: 5.0.6-1
+    v_pxc_operator_chart_sha256: b8bff81d0f9691b1e495f958fba1bb268e48838cf548adf6ae6570ea0e0059cf
+  source_ids: &id013
+  - PXC-120-FIRST-HOP
+  - PXC-LATEST-RELEASE
+  rationale: 当前Operator1.20.0已是官方latest；认证软件表逐项包含现有PXC/backup/HAProxy/fluentbit，官方测试覆盖目标1.34；保持既有Chart与五组件组合。新minor只补Operator/API协调、主链drain中的SQL账本及重连断言，不重跑原PITR/性能/故障深测。
+  transition_edges:
+  - edge_id: mysql-unchanged-platform-transition
+    source: upgrade/v1.33.6/inventory.yaml
+    target: same exact component pins
+    bridge: null
+    depends_on:
+    - UPG-06
+    - UPG-07
+    official_source_ids: *id013
+    product_entry: config.yml + kubecli upgrade；不重新执行组件全量安装/升级链
+    preconditions:
+    - 组件运行身份和原功能证据按实际依赖核验
+    - UPG-05建立业务账本并证明副本/容量/PDB
+    steps:
+    - 保留组件/CRD/引擎版本
+    - 随K8s受控迁移检查协调和业务账本
+    success_conditions:
+    - 目标API协调与原数据账本保持
+    - 新的业务读写和重连断言成立
+    irreversible_point: 本组件无版本/数据格式变更；K8s恢复遵从UPG-12
+    recovery: 保留原组件恢复证据；实际迁移中断使用所属节点/控制面恢复出口
+    cleanup: 仅本次集成探针与自有实验室，原GA记录不改写
+  acceptance_refs:
+  - UPG-02
+  - UPG-10
 - component_id: kafka
-  decision: investigate
+  decision: keep
   source: upgrade/v1.33.6/inventory.yaml
-  target_pins: null
+  target_pins:
+    v_strimzi_operator: 1.2.0
+    v_kafka: 4.3.1
+    v_kafka_metadata: 4.3-IV0
+    v_strimzi_drain_cleaner: 1.6.1
+    v_strimzi_operator_chart_sha256: 0f8a50b2f19bd99482f9fd6e17cf42902f72f9e594a136813ac3f0b7af422efd
+    v_strimzi_drain_cleaner_chart_sha256: ce84b8ddcd105f1b10d085fe69ed0d9185f798d009de3fba967386af2b8f6fdd
   source_ids:
   - STRIMZI-120
-  rationale: 现有Strimzi1.2.0支持K8s1.30–1.36且配套Kafka4.3.1；优先保留不变业务深测，核对CRD/Drain Cleaner等实际差异。
-  transition_edges: []
-  acceptance_refs: []
+  - STRIMZI-131-RELEASE-DELTA
+  - STRIMZI-131-SUPPORTED-UPGRADE-PATH
+  - STRIMZI-131-UPGRADE-SEQUENCE
+  - STRIMZI-131-OPERATOR-PRESERVATION
+  - STRIMZI-131-CHART-FEATURE-GATES
+  - STRIMZI-131-KAFKA-PINS
+  - KAFKA-432-STABLE-CHECKSUM
+  - KAFKA-432-RELEASE-DELTA
+  - KAFKA-43-UPGRADE-CONTRACT
+  - STRIMZI-DRAIN-161-BEHAVIOR
+  - STRIMZI-DRAIN-LATEST
+  - K8S-13413-CHANGELOG
+  rationale: 源Strimzi1.2.0官方表覆盖K8s1.30–1.36并配套Kafka4.3.1；保持精确Operator/CRD/两Chart/Kafka/metadata/Drain Cleaner组合。1.3.1与Cleaner1.8是已研究替代项，不是K8s1.34强制前置；本跳只补实际目标API协调、逐节点drain、quorum/ISR与确认消息账本，不重跑历史恢复/性能/故障全链。
+  transition_edges:
+  - edge_id: kafka-unchanged-platform-transition
+    source: Strimzi1.2.0/Kafka4.3.1/metadata4.3-IV0/DrainCleaner1.6.1 on v1.33.6
+    target: same exact pins on v1.34.13
+    bridge: null
+    depends_on:
+    - UPG-05
+    - UPG-06
+    - UPG-07
+    official_source_ids:
+    - STRIMZI-120
+    - STRIMZI-DRAIN-161-BEHAVIOR
+    - K8S-13413-CHANGELOG
+    product_entry: 既有config.yml + kubecli upgrade；保留Kafka资源与卷，不重跑整个setup07
+    preconditions:
+    - UPG-05核实运行Operator、CRD、两Chart/镜像、Kafka和metadata精确身份及CA/凭据对象UID
+    - UPG-03按源制品身份核验复用；Chart摘要不替代双端digest
+    - 记录已确认消息ID/分区序/offset/hash，检查quorum、ISR、PDB、webhook、反亲和与剩余容量；无空闲调度容量则拒绝drain
+    steps:
+    - 先升级控制面并核对API协调，保持Kafka/Operator/CRD/metadata及所有权
+    - 按真实节点顺序drain；识别Cleaner预期拒绝和注解，由Operator逐Pod协调；有界复验后再继续，不关闭eviction安全机制
+    - 每节点和目标汇总检查确认消息、事务可见性/消费者续读、quorum/ISR及PVC身份，源账本只读对比
+    success_conditions:
+    - 无非计划控制面升级触发的Kafka滚动；节点迁移按Operator控制逐Pod完成
+    - 原确认消息未丢失/乱序，读回hash/offset成立，事务隔离及新写入成立，最终全部ISR恢复且无offline partitions
+    - 无残留cordon/故障注入，PDB/webhook/证书与源配置保持；metadata仍4.3-IV0
+    irreversible_point: 不升级Kafka binary/metadata和格式，不启用新Operator gate；K8s及业务写入恢复窗口由UPG-12界定，不承诺K8s二进制降级
+    recovery: 失败停在所属节点，按journal恢复其调度/进程和健康前置；不删除Kafka CR/PVC或覆盖源账本；平台不可恢复时用UPG-12已验证恢复点
+    cleanup: 只清理本轮探针topic/user、客户端和自有故障/cordon；保留客户原topic/offset/Secret/证书/PVC
+  acceptance_refs:
+  - UPG-07
+  - UPG-10
 - component_id: mongodb
-  decision: investigate
+  decision: keep
   source: upgrade/v1.33.6/inventory.yaml
-  target_pins: null
-  source_ids: []
-  rationale: 逐具体版本完成官方增量、依赖、配套与维护期检查，再决定保持或最小更新。
-  transition_edges: []
-  acceptance_refs: []
+  target_pins:
+    v_mongodb_operator: 1.23.1
+    v_mongodb_operator_chart: 1.23.2
+    v_mongodb_operator_chart_sha256: 80e629dc31f8cfe2615a5efb8b0d1d2ed418f25e8c0b168f981412c8594a07e9
+    v_mongodb: 8.0.32-14
+    v_mongodb_backup: 2.15.0
+    v_mongodb_fluentbit: 5.1.2-1
+    v_mongodb_exporter: 0.53.0
+  source_ids: &id014
+  - MONGODB-REQUIREMENTS-FIRST-HOP
+  - MONGODB-1231-FIRST-HOP
+  - MONGODB-LATEST-RELEASE
+  rationale: 当前Operator1.23.1已是官方latest，现有Chart1.23.2实际appVersion1.23.1；支持软件表包含现有Mongo/PBM/fluentbit，目标1.34有上游测试覆盖。源1.33官方未列不撤销项目原GA；保持组合，复用原业务/恢复与CPU资格，仅补目标协调/数据保持。
+  transition_edges:
+  - edge_id: mongodb-unchanged-platform-transition
+    source: upgrade/v1.33.6/inventory.yaml
+    target: same exact component pins
+    bridge: null
+    depends_on:
+    - UPG-06
+    - UPG-07
+    official_source_ids: *id014
+    product_entry: config.yml + kubecli upgrade；不重新执行组件全量安装/升级链
+    preconditions:
+    - 组件运行身份和原功能证据按实际依赖核验
+    - UPG-05建立业务账本并证明副本/容量/PDB
+    steps:
+    - 保留组件/CRD/引擎版本
+    - 随K8s受控迁移检查协调和业务账本
+    success_conditions:
+    - 目标API协调与原数据账本保持
+    - 新的业务读写和重连断言成立
+    irreversible_point: 本组件无版本/数据格式变更；K8s恢复遵从UPG-12
+    recovery: 保留原组件恢复证据；实际迁移中断使用所属节点/控制面恢复出口
+    cleanup: 仅本次集成探针与自有实验室，原GA记录不改写
+  acceptance_refs:
+  - UPG-02
+  - UPG-10
 - component_id: redis
-  decision: investigate
+  decision: keep
   source: upgrade/v1.33.6/inventory.yaml
-  target_pins: null
-  source_ids: []
-  rationale: 保持受保护 Operator 与 Cluster ASM 修订的修复语义；不能用原生镜像替换而丢补丁。
-  transition_edges: []
-  acceptance_refs: []
+  target_pins:
+    v_redis_operator: 0.27.0
+    v_redis_operator_image: 0.27.0-kubeauto.2
+    v_redis: 8.10.2
+    v_redis_cluster_image: 8.10.2-kubeauto.1
+    v_redis_exporter: v1.93.0
+    v_redis_operator_chart_sha256: 4eabe2cde88657f8b7b21c2ec5ddafa3a305d35c9877021f9be89ac3beeb0f7f
+  source_ids: &id015
+  - REDIS-027-CI-SCOPE
+  - REDIS-027-CHART-CI
+  - REDIS-027-CLIENT-DEPENDENCIES
+  - REDIS-027-README
+  - REDIS-027-CHART
+  - REDIS-INSTALLATION-MINIMUM
+  - REDIS-027-RBAC-API
+  rationale: 官方最新Operator仍0.27.0；现行安装要求K8s>1.18和双架构stable，与固定RBAC/API契约共同支持保持源配套。无0.27×1.34官方逐版实测声明，不伪造矩阵。保持保护修订0.27.0-kubeauto.2、8.10.2-kubeauto.1及原Chart/CRD/引擎/Exporter；上游GA仅覆盖条件，目标平台按UPG-10做最小集成，不重跑Redis全故障/备份/长稳矩阵。
+  transition_edges:
+  - edge_id: redis-platform-preservation
+    source: same frozen Redis combination on K8s1.33.6
+    target: same combination on mixed1.33/1.34 and K8s1.34.13
+    bridge: null
+    depends_on:
+    - UPG-03
+    - UPG-05
+    - UPG-06
+    - UPG-07
+    official_source_ids: *id015
+    product_entry: config.yml + kubecli upgrade迁移K8s；保持原Redis workload与Operator，不重新调用初始化/CRD升级分支
+    preconditions:
+    - 核实原release/CR/PVC/PV/Secret/StatefulSet UID、实际镜像和业务确认账本、PDB/副本健康；双端复用制品及补丁fingerprint已核
+    - 源GA证据副本按实际输入与场景核复用；不以副本当目标实测
+    - 原protected Cluster逻辑/ASM状态修复和安全配置保持，禁止用上游原镜像覆盖下游修订
+    steps:
+    - 保持原Operator/CRD/engine/Service/存储声明，随K8s受控逐节点drain迁移；尊重PDB，不强制删除持久数据或用空主库重同步
+    - 同一目标集成探针核对原确认数据、角色/拓扑、认证/TLS与Operator协调；按实例接口差异分配最小覆盖，不重复历史故障/灾备/长稳
+    - 复核原UID/制品及存储绑定、仅删除本轮自有探针
+    success_conditions:
+    - 原确认数据、CR/PVC/PV/Secret身份及生产角色保持，目标平台Redis业务与协调正常
+    - 保护修订和原Operator/Chart/CRD精确未变，无缩容/空主复制/重新初始化
+    irreversible_point: 本跳无Redis版本/格式/CRD升级，K8s恢复仍按UPG-12；etcd快照不等于Redis数据一致性备份
+    recovery: K8s迁移失败停在所属边界，保持健康Redis对象与数据；中断恢复按UPG-12，确有数据缺口才用已核Redis恢复证据，不重建或清空全部Redis实例
+    cleanup: 仅本次临时业务key/探针连接及自有namespace，不删原CR/PVC/PV/Secret或改写历史证据
+  acceptance_refs:
+  - UPG-02
+  - UPG-03
+  - UPG-10
 - component_id: minio
-  decision: investigate
+  decision: keep
   source: upgrade/v1.33.6/inventory.yaml
-  target_pins: null
-  source_ids: []
-  rationale: 逐具体版本完成官方增量、依赖、配套与维护期检查，再决定保持或最小更新。
-  transition_edges: []
-  acceptance_refs: []
+  target_pins:
+    operator_chart: 7.1.1
+    tenant_chart: 7.1.1
+    v_miniooperator: 7.1.1
+    minio_server: RELEASE.2025-04-08T15-41-24Z
+  source_ids:
+  - MINIO-711-LATEST
+  - MINIO-711-REQUIREMENTS
+  - MINIO-711-CI-SCOPE
+  rationale: 当前Operator7.1.1已是官方最新稳定；同版官方Tenant Chart默认Server与源GA精确一致。官方要求K8s>=1.30覆盖本次最低条件，不将其或kind CI冒称1.34逐版测试。保持Operator/CRD/两Chart/Server，目标仅补API协调、CSR/TLS、源对象账本与节点迁移数据保持；不引入引擎升级。
+  transition_edges:
+  - edge_id: minio-unchanged-platform-transition
+    source: Operator/Chart7.1.1 + RELEASE.2025-04-08T15-41-24Z on v1.33.6
+    target: same exact pins on v1.34.13
+    bridge: null
+    depends_on:
+    - UPG-06
+    - UPG-07
+    official_source_ids:
+    - MINIO-711-LATEST
+    - MINIO-711-REQUIREMENTS
+    - MINIO-711-CI-SCOPE
+    product_entry: 既有config.yml + kubecli upgrade；保持已部署Tenant，不调用MinIO引擎更新或重建租户
+    preconditions:
+    - UPG-05核实Operator/CRD/Tenant/PVC和现有Server精确身份
+    - 记录源对象key/versionId/content hash、TLS身份与分布式quorum，验证PDB和剩余容量
+    - 同版两Chart已读配套不等于镜像准入，UPG-03仍核双端digest
+    - 实际API/CRD不命中目标移除接口，未知外部扩展停止对应路径
+    steps:
+    - 保留MinIO版本、存储类、卷与租户所有权，随受控节点迁移运行同一最小S3账本探针
+    - 目标核Operator协调/Tenant健康、TLS/CSR路径及升级前写入对象的读回，再确认新写入
+    success_conditions:
+    - 原Tenant/PVC和对象身份不变，已确认对象字节校验及新读写成立
+    - Operator已观察当前代次且Tenant健康，TLS校验通过；不以Running代替S3行为
+    irreversible_point: MinIO版本/格式不变；源对象账本只读到验证完成，不预先覆写；K8s恢复边界按UPG-12
+    recovery: 按失败节点/平台限定恢复；保留MinIO原恢复证据，不用删除PVC或重建Tenant掩盖失败
+    cleanup: 只清除本次自有探针对象/临时客户端和实验室租约；不删除原对象、Tenant、PVC、CSR或证书
+  acceptance_refs:
+  - UPG-02
+  - UPG-09
+  - UPG-10
+  - UPG-11
 - component_id: nacos
-  decision: investigate
+  decision: keep
   source: upgrade/v1.33.6/inventory.yaml
-  target_pins: null
-  source_ids: []
-  rationale: 逐具体版本完成官方增量、依赖、配套与维护期检查，再决定保持或最小更新。
-  transition_edges: []
-  acceptance_refs: []
+  target_pins:
+    nacos_server: 2.4.3
+    peer_finder_plugin: '1.1'
+    mysql: 8.0.46
+    connector_j: 8.2.0
+  source_ids:
+  - NACOS-DOCKER-243-README
+  - NACOS-DOCKER-243-DOCKERFILE
+  - NACOS-243-COMPATIBLE
+  - K8S134-DEPRECATION-GUIDE
+  - K8S134-DEPRECATION-POLICY
+  - NACOS-PEERFINDER-130-MAIN
+  - NACOS-PEERFINDER-130-README
+  - NACOS-K8S-PLUGIN-DOCKERFILE
+  - NACOS-243-SCHEMA
+  - NACOS24-TAGS
+  - NACOS243-RELEASE
+  rationale: 保留已GA Nacos 2.4.3、peer-finder 1.1及数据库配套。官方源码/配置证明本项目走DNS SRV稳定路径，不消费Kubernetes alpha API；没有1.34逐版认证，目标只补集群发现、配置读写、发布/回滚和数据库连接的最小项目集成。安全/维护期缺口明确记录，不借K8s升级顺带更换Nacos。
+  transition_edges:
+  - edge_id: nacos-preserved-dns-peer-platform
+    source: Nacos 2.4.3/peer-finder 1.1/MySQL 8.0.46 on source v1.33.6
+    target: same exact Nacos combination on target v1.34.13
+    bridge: null
+    depends_on:
+    - UPG-02
+    - UPG-06
+    - UPG-07
+    official_source_ids:
+    - NACOS-DOCKER-243-README
+    - NACOS-DOCKER-243-DOCKERFILE
+    - NACOS-243-COMPATIBLE
+    - K8S134-DEPRECATION-GUIDE
+    - K8S134-DEPRECATION-POLICY
+    - NACOS-PEERFINDER-130-MAIN
+    - NACOS-PEERFINDER-130-README
+    - NACOS-K8S-PLUGIN-DOCKERFILE
+    - NACOS-243-SCHEMA
+    - NACOS24-TAGS
+    - NACOS243-RELEASE
+    product_entry: config.yml + kubecli Nacos path
+    preconditions:
+    - 核实DNS SRV成员发现、Nacos/MySQL/Secret/PVC身份和源配置账本；未评审K8s插件路径拒绝
+    - 保留原认证、TLS和数据库备份/恢复出口
+    steps:
+    - 随平台逐节点迁移保持Nacos成员和数据身份
+    - 验证成员协调、配置发布读回、客户端重连和数据库读写；不触发全量故障/性能回归
+    success_conditions:
+    - 原配置/数据/成员身份保持，最小协调与业务读写通过
+    - 明确官方API/源码契约和项目证据边界，不写成1.34上游认证
+    irreversible_point: 本跳不改变Nacos数据格式或数据库版本
+    recovery: 失败保留原Nacos/MySQL对象和备份，按平台恢复出口处理，不清空配置库
+    cleanup: 仅清理本run配置探针和临时租约，不删除客户配置、数据库、PVC或Secret
+  acceptance_refs:
+  - UPG-02
+  - UPG-09
+  - UPG-10
+  - UPG-12
 - component_id: rocketmq
-  decision: investigate
+  decision: keep
   source: upgrade/v1.33.6/inventory.yaml
-  target_pins: null
-  source_ids: []
-  rationale: 当前 operator:latest 不能进入新冻结组合；需查固定官方版本与支持依据。
-  transition_edges: []
-  acceptance_refs: []
+  target_pins:
+    operator_chart: 0.1.0
+    operator_image_index_digest: sha256:66516b068aa9b73bee2b218556f551111fc75721a32aa183f655106ef10bcfdf
+    broker: 4.5.0-alpine-operator-0.3.0
+    nameserver: 4.5.0-alpine-operator-0.3.0
+    console: 2.0.0
+  source_ids:
+  - ROCKETMQ-030-FIRST-HOP
+  - ROCKETMQ-OP-LATEST-RELEASE
+  - ROCKETMQ-030-GO-DEPS
+  - ROCKETMQ-CURRENT-OFFICIAL-BUILD
+  - CLIENTGO-0221-SHARED-API
+  - CONTROLLER-RUNTIME-010-VERSIONING-ENTRY
+  - CONTROLLER-RUNTIME-010-REST-POLICY
+  - ROCKETMQ-030-API-AND-EXEC-BOUNDARY
+  rationale: 保留原制品并固定当前AMD64/ARM64不可变operator index digest；官方0.3.0仅给Kubernetes最低版本与稳定API/REST契约，没有1.34逐版测试表，实际binary没有可核验VCS commit。首跳只做最小业务/协调验证，覆盖Broker/NameService/Console、SPDY exec、full-object Update和现存TopicTransfer盘点，不把模块一致性写成exact source或上游认证。
+  transition_edges:
+  - edge_id: rocketmq-preserved-digest-minimum-coordination
+    source: exact RocketMQ operator/broker/nameserver/console artifacts on source v1.33.6
+    target: same exact artifacts by immutable operator index digest on target v1.34.13
+    bridge: null
+    depends_on:
+    - UPG-02
+    - UPG-03
+    - UPG-06
+    - UPG-07
+    - UPG-10
+    official_source_ids:
+    - ROCKETMQ-030-FIRST-HOP
+    - ROCKETMQ-OP-LATEST-RELEASE
+    - ROCKETMQ-030-GO-DEPS
+    - ROCKETMQ-CURRENT-OFFICIAL-BUILD
+    - CLIENTGO-0221-SHARED-API
+    - CONTROLLER-RUNTIME-010-VERSIONING-ENTRY
+    - CONTROLLER-RUNTIME-010-REST-POLICY
+    - ROCKETMQ-030-API-AND-EXEC-BOUNDARY
+    product_entry: config.yml + kubecli RocketMQ path
+    preconditions:
+    - 核实operator index双架构digest、Broker/NameService/Console对象与消息账本；发现外来TopicTransfer或未审迁移状态立即停止
+    - 保留消息持久化、认证、TLS、存储和可验证恢复点
+    steps:
+    - 随平台迁移保持原工作负载和制品digest，不触发TopicTransfer迁移或删除
+    - 验证消息生产消费、Broker/NameService协调、API更新和最小exec路径
+    success_conditions:
+    - 原消息账本、对象身份和协调状态保持，双架构digest一致
+    - 证据明确是官方稳定API契约加项目最小集成，不宣称1.34逐版认证
+    irreversible_point: 本跳不改变RocketMQ数据格式或触发TopicTransfer迁移
+    recovery: 首失败保留消息和诊断，按平台/组件已核恢复点处理，不自动重启迁移控制器
+    cleanup: 仅删除本run消息/协调探针，不删除Broker数据、PVC、Topic、Group或TopicTransfer对象
+  acceptance_refs:
+  - UPG-02
+  - UPG-03
+  - UPG-09
+  - UPG-10
+  - UPG-12
 - component_id: registry
-  decision: investigate
+  decision: keep
   source: upgrade/v1.33.6/inventory.yaml
-  target_pins: null
-  source_ids: []
-  rationale: 逐具体版本完成官方增量、依赖、配套与维护期检查，再决定保持或最小更新。
-  transition_edges: []
-  acceptance_refs: []
+  target_pins:
+    harbor: v2.13.0
+    distribution: v2.8.3
+    product_registry_tag: 2.8.3
+  source_ids:
+  - HARBOR-213-INSTALL-PREREQS
+  - DISTRIBUTION-283-RELEASE
+  rationale: 首跳保留已GA Harbor 2.13 Compose/offline与精确Distribution 2.8.3目录，明确Harbor官方已停止支持，属于受限过渡而非长期维护承诺；不把K8s平台升级扩大为Harbor替换或数据迁移。浮动registry:2不进入目标组合，使用已核精确2.8.3并在UPG-03复核双端digest。
+  transition_edges:
+  - edge_id: registry-preserved-compose-platform
+    source: Harbor v2.13.0 Compose/offline and Distribution v2.8.3 test registry on source v1.33.6
+    target: same exact registry artifacts while Kubernetes reaches v1.34.13
+    bridge: Harbor EOL retained as a first-hop bridge; replacement and data migration are separate work
+    depends_on:
+    - UPG-02
+    - UPG-03
+    - UPG-06
+    official_source_ids:
+    - HARBOR-213-INSTALL-PREREQS
+    - DISTRIBUTION-283-RELEASE
+    product_entry: config.yml + kubecli registry image path
+    preconditions:
+    - 核实Compose服务、存储卷、凭据、Harbor/Distribution精确镜像及双端digest；拒绝浮动tag
+    - 保留镜像仓库数据、TLS和恢复出口，禁止连接未授权registry主机
+    steps:
+    - 保持Registry独立于Kubernetes控制面升级，持续提供目标平台所需镜像拉取
+    - 验证推送、拉取、签名/凭据和目标节点镜像消费，不执行Harbor替换
+    success_conditions:
+    - 原仓库数据、认证、TLS和精确制品身份保持，目标节点可拉取必要镜像
+    - 输出明确EOL限制，不把当前可运行写成上游维护承诺
+    irreversible_point: 本跳不迁移Harbor数据或改变仓库拓扑
+    recovery: 平台失败保留Registry服务和卷，按现有Harbor/Distribution恢复出口处理
+    cleanup: 仅清理本run临时镜像/测试仓库内容，不删除客户仓库、卷、凭据或证书
+  acceptance_refs:
+  - UPG-02
+  - UPG-03
+  - UPG-06
+  - UPG-12
 - component_id: control-client
-  decision: investigate
+  decision: keep
   source: upgrade/v1.33.6/inventory.yaml
-  target_pins: null
-  source_ids: []
-  rationale: 逐具体版本完成官方增量、依赖、配套与维护期检查，再决定保持或最小更新。
-  transition_edges: []
-  acceptance_refs: []
+  target_pins:
+    kubernetes-python: 35.0.0
+  source_ids:
+  - PYTHONCLIENT-350-COMPATIBILITY
+  rationale: 保留已验证SDK35.0.0，官方共享API规则覆盖当前CoreV1/RbacAuthorizationV1调用，目标接口需集成验证；无35专属API消费，不更换整套控制端依赖。
+  transition_edges:
+  - edge_id: python-client-shared-stable-apis
+    source: SDK35.0.0 on source platform
+    target: same SDK on v1.34.13
+    bridge: null
+    depends_on:
+    - UPG-06
+    - UPG-07
+    official_source_ids:
+    - PYTHONCLIENT-350-COMPATIBILITY
+    product_entry: 既有config.yml + kubecli节点/RBAC产品入口
+    preconditions:
+    - 源固定requirements和实际SDK身份一致
+    - 不引入目标未提供的alpha/新API
+    steps:
+    - 保留SDK与控制环境
+    - 核对现有CoreV1/RBAC调用的实际目标返回
+    success_conditions:
+    - 节点发现/RBAC目标调用成功且保持原权限边界
+    irreversible_point: 无SDK/持久数据版本变化
+    recovery: 保留原控制环境，平台失败走UPG-12；不以更新SDK遮掩API错误
+    cleanup: 只回收本次自有节点/RBAC探针
+  acceptance_refs:
+  - UPG-02
+  - UPG-04
+  - UPG-11
 - component_id: test-infrastructure
-  decision: investigate
+  decision: keep
   source: upgrade/v1.33.6/inventory.yaml
-  target_pins: null
-  source_ids: []
-  rationale: 逐具体版本完成官方增量、依赖、配套与维护期检查，再决定保持或最小更新。
-  transition_edges: []
-  acceptance_refs: []
+  target_pins:
+    ansible_core: 2.18.6
+    ansible_core_py314: 2.20.9
+    pyinstaller: v6.16.0
+    runner_contract: upgrade/validate.py:v1
+    lab_authority: AGENTS.md-fixed-whitelist
+  source_ids:
+  - K8S-SKEW
+  - K8S-API-HEALTH-CONTRACT
+  - K8S-13413-VERSION-CONTRACT
+  - ACTIONS-PRODUCT-RELEASE-SCOPE
+  - PYINSTALLER-616-UPGRADE-DATA
+  - ANSIBLE-UPGRADE-INVENTORY-CONTRACT
+  rationale: 保留源GA测试/runner边界并固定Ansible、PyInstaller和只读validator身份；升级只增加首跳必要合同与独立证据目录，不扩大到无关全量回归。官方版本偏差、inventory和workflow资料用于门禁设计，实验室现场仍必须由固定runner、租约、清理和durable evidence证明。
+  transition_edges:
+  - edge_id: test-infrastructure-preserved-scoped-runner
+    source: fixed runner/Ansible/PyInstaller and lab whitelist on source v1.33.6
+    target: same runner identities with v1.34.13 upgrade matrix and independent evidence
+    bridge: null
+    depends_on:
+    - UPG-02
+    - UPG-04
+    official_source_ids:
+    - K8S-SKEW
+    - K8S-API-HEALTH-CONTRACT
+    - K8S-13413-VERSION-CONTRACT
+    - ACTIONS-PRODUCT-RELEASE-SCOPE
+    - PYINSTALLER-616-UPGRADE-DATA
+    - ANSIBLE-UPGRADE-INVENTORY-CONTRACT
+    product_entry: 固定tests/run_enterprise_regression.sh与upgrade/validate.py入口
+    preconditions:
+    - 运行前完成静态合同、组合冻结、主机租约、容量、恢复点和允许发布集合核对
+    - runner必须保留首失败、durable rc、清理标记和源/目标证据身份
+    steps:
+    - 先执行静态/聚焦合同，再按矩阵缺口调用最小现场分支
+    - 失败只回收本run资源并保留诊断，独立分支继续需证明共享边界健康
+    success_conditions:
+    - 每个现场父项都有当前run证据，最终回归满足固定终止标记和LAB_CLEAN_VERIFY_PASS
+    - tools保持独立矩阵，不被核心或middleware证据隐式签署
+    irreversible_point: runner或矩阵合同错误会污染实验室状态，未通过静态门禁不得变更现场
+    recovery: 按durable状态和资源租约恢复最小边界，不能用重跑覆盖首失败
+    cleanup: 每个分支验证声明清理范围，最终执行固定lab-wipe verify并保留白名单观察证据
+  acceptance_refs:
+  - UPG-02
+  - UPG-04
+  - UPG-05
+  - UPG-15
 - component_id: tools
-  decision: investigate
+  decision: keep
   source: upgrade/v1.33.6/inventory.yaml
-  target_pins: null
-  source_ids: []
-  rationale: 先查是否消费变化的 API/依赖；不启动独立 tools 全量，也不借用其旧 PASS。
-  transition_edges: []
-  acceptance_refs: []
+  target_pins:
+    scripts_sha256:
+      CalicoPolicyCli: 8b172fcdd8a13110e24327d7ed720fc812191aae67607dc3132ec74da5c9f137
+      KubeBackupCli: ce1a03afaaac8e6ccd7b61256265fade8e51780214b8f1ae9b7f14fa6b281d00
+      KubePublishCli: df122fe8d2d0a02258085bfe9818c923cd6ddb4ce65b68e6a34417452af8187b
+    kubernetes_python: 35.0.0
+    nerdctl: 2.3.4
+    docker: 28.5.2
+    calicoctl_target: v3.32.4
+    calicoctl_bridge: v3.31.7
+  source_ids: &id016
+  - PYTHONCLIENT-350-COMPATIBILITY
+  - K8S134-DEPRECATION-GUIDE
+  - K8S134-DEPRECATION-POLICY
+  - CALICO3324-HOSTENDPOINT-API
+  - CALICO3324-GLOBALNETWORKPOLICY-API
+  - NERDCTL-234-COMPATIBILITY
+  - NERDCTL234-CLI-REFERENCE
+  rationale: 三个脚本与源GA逐字节相同；分别消费Calico/K8s API、PythonSDK稳定API、运行时save/load CLI，不能笼统说都走kubectl。官方固定API/CLI契约已核，保持工具及控制环境；仅变化依赖补最小目标集成，独立tools矩阵和签署边界保留，不全工具重建/全量回归。
+  transition_edges:
+  - edge_id: unchanged-tools-on-updated-api-and-runtime
+    source: GA script SHA + SDK35.0.0/nerdctl2.3.4/Docker28.5.2 on v1.33.6
+    target: Same scripts/dependencies on v1.34.13; calicoctl matches each actual server edge
+    bridge: calicoctl3.31.7 only while source network bridge exists
+    depends_on:
+    - UPG-06
+    - UPG-07
+    - UPG-08
+    official_source_ids: *id016
+    product_entry: 独立工具自身CLI；不由主项目调用或继承主矩阵PASS
+    preconditions:
+    - 精确源脚本/原tools证据与运行依赖身份相符；保留显式context/namespace/datastore和最小权限
+    - 使用旧GA功能，不导入35专属API或未经发现的自定义CR；Calico客户端与服务端匹配
+    steps:
+    - 保留脚本和依赖制品，不启动全工具构建
+    - 只在所属tools准入内补受影响policy/API备份和containerd归档路径；原未变化深测按输入与场景复用
+    success_conditions:
+    - 同一工具CLI的受影响接口及数据读回成立、权限/归属/清理符合原工具契约
+    - 工具验收引用所属矩阵，不能将升级集成或源码检查冒签完整TOOLS PASS
+    irreversible_point: 无脚本或归档格式升级；实际restore/apply仍是原工具显式变更，不自动迁移客户数据
+    recovery: 失败保留独立工具首错误和自有夹具；不回退健康集群或改原证据
+    cleanup: 仅所属工具临时命名空间/策略/归档/镜像；不清全机运行时、Calico策略或外来集群资源
+  acceptance_refs:
+  - UPG-02
+  - UPG-04
+  - UPG-11
+  local_applicability_evidence: upgrade/v1.34.13/evidence/tools-source-applicability.json
 migration_edges: []
 recovery_plan:
   verified: false
@@ -354,7 +1910,7 @@ gaps:
 - id: GAP-05
   name: Calico 过渡
   blocks_through: P2
-  exit: 找到官方覆盖源/目标的稳定组合及升级链，保持本项目 etcdv3 路径。
+  exit: 已冻结3.31.7源桥接与3.32.4目标选择、明确RHEL8回移/通用5.10边界并通过目标模板合同；剩余calicoctl/镜像制品、真实handoff、实际宿主资格和策略/IPAM数据面验收按UPG-03/05/08/12，不增加无依据3.30桥接。
 - id: GAP-06
   name: 运行时维护与生态退役
   blocks_through: P2
@@ -366,7 +1922,7 @@ gaps:
 - id: GAP-08
   name: 供应链范围与完整性
   blocks_through: P5
-  exit: 精确选择 k8s-bin 构建，官方下载校验/原子落盘，双端双架构回读，拒绝范围越界。
+  exit: Kubernetes目标六二进制的精确构建/官方内容/双端双架构已完成；其余实际消费制品按复用/变化集合继续准入，不重复已合格批次。
 - id: GAP-09
   name: 证据复用及矩阵映射
   blocks_through: P3
@@ -388,3 +1944,124 @@ baseline_inheritance:
   record: upgrade/v1.33.6/release.yaml
   evidence_manifest: upgrade/v1.33.6/evidence-manifest.yaml
   decision_semantics: investigate是目标选型/适用性待判断，不表示旧GA失效或每组件需现场全量回归
+implementation_baseline:
+  branch: v1.34.13
+  plan_commit: 02490813a11f945b3ac2423b1fc4550f517d317f
+  source_product_tag: v0.1.8
+  source_product_sha: 940c9020144a88b370cba36793a4d7fad6a347ab
+  basis: 已核对本地tag与源码快照；不虚构客户具体集群配置身份
+authorization:
+  scope: 用户授权首跳逐minor实现与GA验收，问题反馈方案；无后续minor或无关全量构建授权
+  live_prerequisites: 按官方组合、最小制品和合同阶梯准入；不因本授权自动跳过未闭合前置
+implementation_progress:
+  local_contract_record: upgrade/v1.34.13/evidence/local-contracts.json
+  artifact_discovery: upgrade/v1.34.13/evidence/registry-discovery.json
+  live_execution_started: false
+  environment_observations:
+  - hosts:
+    - 192.168.47.130
+    - 192.168.47.138
+    observed_on: '2026-11-14'
+    result: 首次No route to host；复查BatchMode SSH true均rc=0
+    meaning: 只证明连接恢复，不是租约、资源资格或现场测试PASS
+  - hosts:
+    - 192.168.122.2
+    observed_on: '2026-11-14'
+    result: 复查SSH连接超时
+    meaning: 环境网络问题，仅影响该池，不将其归为产品失败或全池阻断
+  - hosts:
+    - 192.168.122.2
+    - 192.168.122.217
+    - 192.168.122.243
+    - 192.168.122.246
+    - 192.168.122.193
+    - 192.168.122.210
+    - 192.168.122.216
+    observed_on: '2026-11-14'
+    result: 固定inventory已连通；.2上runtime/etcd/kubelet活跃，另六台约16GiB且相关服务inactive
+    meaning: .2原集群不接管；六台可作租约候选，inactive不等于已干净或已获租约
+  - hosts:
+    - 192.168.47.137
+    - 192.168.47.138
+    - 192.168.47.128
+    observed_on: '2026-11-14'
+    result: 137/138实际内存约4GiB；128仍No route to host，固定只读inventory整体rc=1
+    meaning: 不沿旧16GiB记录安排大内存场景；128不可达只影响该主机，不把盘点rc=1归为产品失败
+  - hosts:
+    - 192.168.47.128
+    observed_on: '2026-11-14'
+    result: 交付负责人恢复后固定只读inventory rc=0，26/26可达；Debian13/6.12.86、约4GiB、相关集群服务inactive
+    meaning: 原rc=1与失败记录保留；恢复不是租约或干净资格，见pool-discovery.json followup
+  - hosts:
+    - 192.168.47.128
+    observed_on: '2026-11-15'
+    result: 本轮BatchMode只读hostname/uname/os-release rc=0；Debian13.5、6.12.86+deb13-amd64
+    meaning: 仅确认连通与OS/内核；未取得租约、未清理或创建集群，不是现场PASS
+  remaining_prerequisites:
+  - 官方组合与各模式迁移闭包
+  - 目标源码及最小制品范围冻结、双端双架构取证
+  - 真实升级runner与产品入口handoff合同
+  - 最小场景/成本上界、租约与恢复出口
+  pool_inventory: upgrade/v1.34.13/evidence/pool-discovery.json
+  publication_access:
+    git_read: SSH ls-remote origin dev成功，SHA=b9c52d89684a05d6072eab0bc4f6c84ff135ebdd
+    actions_read: 2026-11-14按github_token命名字段读取后，user/目标仓metadata/workflow/runs全部HTTP200；Actions监督入口已验证，先前404已解除
+    next_exit: Kubernetes六二进制批次双端当前索引/子manifest及私库12文件内容核验已完成；继续其余消费制品复用和目标组合，UPG-03父项未完成。
+  platform_api_impact: upgrade/v1.34.13/evidence/platform-api-impact.json
+  minio_combination: upgrade/v1.34.13/evidence/minio-combination.json
+  source_preflight_contract: upgrade/v1.34.13/evidence/source-preflight-contract.json
+  kafka_combination: upgrade/v1.34.13/evidence/kafka-combination.json
+  ceph_csi_combination: upgrade/v1.34.13/evidence/ceph-csi-combination.json
+  longhorn_patch_carry: upgrade/v1.34.13/evidence/longhorn-patch-carry.json
+  ceph_csi_publication: upgrade/v1.34.13/evidence/ceph-csi-publication.json
+  longhorn_local_contracts: upgrade/v1.34.13/evidence/longhorn-local-contracts.json
+  longhorn_artifact_plan: upgrade/v1.34.13/evidence/longhorn-artifact-plan.json
+  control_plane_local_contracts: upgrade/v1.34.13/evidence/control-plane-local-contracts.json
+  migration_local_contracts: upgrade/v1.34.13/evidence/migration-local-contracts.json
+  ingress_artifact_plan: upgrade/v1.34.13/evidence/ingress-artifact-plan.json
+  ingress_local_contracts: upgrade/v1.34.13/evidence/ingress-local-contracts.json
+official_kubernetes_artifact_expectations:
+  version: v1.34.13
+  observed_on: '2026-11-14'
+  binary_sha256:
+    amd64:
+      kube-apiserver: fffa58212674ad52c8d51e6a4a0bdbe229b4e15a496b9d6e253a5347ac5c4ab4
+      kubelet: eb5f718b6cd848ff14e6be89933ef96856f12e3b64a68504b49748afbfe7c0c0
+      kube-controller-manager: 61c0eaa375ff53fd62998c0419f6d3c1e9bc7db69b85147e319ecdbb913dff28
+      kubectl: b4bb494e9466a7a94bb851414548bc0d3e2f8da90757e6eccc3371e648648591
+      kube-proxy: 4b1d48b6c93df3abfe576d0f3035459ea2cadb4da16173ddc0bba150ccf9143d
+      kube-scheduler: 00e98cbb2d13b7fce68a2cdaeeceabf5777b149d7e6b64f45cd1b6c1c1dd31ab
+    arm64:
+      kube-apiserver: 38b6b6e767fee44e9f9e5d3791b88c1d8e330b511c3259f7c57c171869ae6701
+      kubelet: 170c87e456b4e987ebbfd13fc75b28317a7cb4f5dedb10de48c2ffb4cb9b2f11
+      kube-scheduler: 74d094bcacbbb833380aa080ded5ec52288e5a58c0bcdc974926f941a27898f8
+      kube-proxy: 241ecae6f5b24abce1df66bc24a6b1488d07ddd97c5eeff51597b80636fc09b3
+      kube-controller-manager: 35cbc17d32372fe7fb7e01d88475495d28702c89c75fd65b0243e034b058fa94
+      kubectl: 66e8283d52d9bc1f9c0e9daade7c971cd20db5a379306862897dfb25395f3e03
+  acceptance_boundary: 仅官方期望值，不是项目镜像实测内容或双端回读
+  source_ids:
+  - K8S-13413-AMD64-KUBE-APISERVER
+  - K8S-13413-AMD64-KUBELET
+  - K8S-13413-AMD64-KUBE-CONTROLLER-MANAGER
+  - K8S-13413-AMD64-KUBECTL
+  - K8S-134-STABLE-RECHECK
+  - K8S-13413-AMD64-KUBE-PROXY
+  - K8S-13413-AMD64-KUBE-SCHEDULER
+  - K8S-13413-RELEASE
+  - K8S-13413-ARM64-KUBE-APISERVER
+  - K8S-13413-ARM64-KUBELET
+  - K8S-13413-ARM64-KUBE-SCHEDULER
+  - K8S-13413-ARM64-KUBE-PROXY
+  - K8S-13413-ARM64-KUBE-CONTROLLER-MANAGER
+  - K8S-13413-ARM64-KUBECTL
+  - K8S-13413-CHANGELOG
+implementation_evidence:
+  kubernetes_handoff: *id017
+  kubernetes_fixture_lock: upgrade/v1.34.13/evidence/kubernetes-fixture-lock-contracts.json
+  flannel_handoff: upgrade/v1.34.13/evidence/flannel-handoff-contracts.json
+  metrics_handoff: upgrade/v1.34.13/evidence/metrics-stage-contracts.json
+  offline_integration_with_metrics: upgrade/v1.34.13/evidence/offline-integration-with-metrics.json
+  rocketmq_binary_identity: upgrade/v1.34.13/evidence/rocketmq-binary-identity.json
+  local_path_handoff: upgrade/v1.34.13/evidence/localpath-stage-contracts.json
+  legacy_upgrade_boundary: upgrade/v1.34.13/evidence/legacy-upgrade-boundary-contracts.json
+  inventory_source_observation: upgrade/v1.34.13/evidence/inventory-source-contracts.json

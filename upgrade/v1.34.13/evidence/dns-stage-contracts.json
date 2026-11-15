@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "observed_on": "2026-11-15",
+  "matrix_ids": [
+    "UPG-04",
+    "UPG-08",
+    "UPG-12"
+  ],
+  "classification": "product internal stage plus test-gate contracts",
+  "product_entry": "config.yml + kubecli upgrade (outer handoff not yet connected)",
+  "command": ".venv/bin/python -B -m unittest upgrade.tests.test_dns_stage -v",
+  "rc": 0,
+  "tests": 11,
+  "inputs_sha256": {
+    "upgrade/product/dns_stage.py": "eb6d1e1400860a9c237b6cd284cf3da788377b44017bcc37cc39448a3eb75e2c",
+    "upgrade/tests/test_dns_stage.py": "4d2f1d2f8277edf7e793e730971b72e49ccee247a451d8d95f1bd9d3d217839f",
+    "roles/cluster-addon/templates/dns/coredns.yaml.j2": "d484d6a653c07a1ce0a2b371d3960dd2048cc4ee36bd9e1c2b168e7913e8c662",
+    "roles/cluster-addon/templates/dns/nodelocaldns-ipvs.yaml.j2": "7cacbfd895c52538b4501fef02addc6851b78c5543b7a671551f5413048d3706",
+    "roles/cluster-addon/templates/dns/nodelocaldns-iptables.yaml.j2": "86c45a7abcb1d41bad296d405c3d8e672b5bd2de74aeaa171c813fb314a5d8a2"
+  },
+  "source_ids": [
+    "K8S134-JSON-PATCH",
+    "K8S134-API-CONCURRENCY"
+  ],
+  "scope": [
+    "Actual product template fixtures in IPVS/iptables/core-only profiles",
+    "Real subprocess path: complete target API/node barrier; UID/configuration/Service/RBAC preservation; image-only JSON Patch with UID/resourceVersion/source tests",
+    "CoreDNS rollout and caller-owned actual query gate before NodeLocal; conflict/query/configuration/time-window first-failure stops",
+    "Interrupted target observation rechecks convergence and query without repatching or automatic rollback"
+  ],
+  "parent_acceptance": false,
+  "live_lab_execution": false,
+  "cleanup": "Only private TemporaryDirectory fixtures; no remote mutation",
+  "remaining": [
+    "Frozen image receipts and outer product/journal handoff",
+    "Actual DNS query ledger implementation and scoped live test; readiness alone is not business evidence"
+  ]
+}

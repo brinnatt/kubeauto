@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "observed_on": "2026-11-15",
+  "matrix_ids": [
+    "UPG-04",
+    "UPG-05",
+    "UPG-06",
+    "UPG-12"
+  ],
+  "classification": "product internal stage and offline contracts",
+  "scope": "Exact same-minor etcd 3.6.4 to 3.6.16 rolling member replacement; real Ansible assertions/serial/includes; recording external operations with all connections forbidden; final stage reobserves all completed members and rejects regression before UPGRADE_ETCD_STAGE_PASS",
+  "checks": [
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/kubeauto-upgrade-etcd-contracts-final.log",
+      "sha256": "6ba8900d3b746cdef8fba0248786b3d1f4a3a87657438976d0282091058214cf",
+      "tests": 14,
+      "rc": 0,
+      "skipped": 0,
+      "elapsed_seconds": 17.146,
+      "ansible_core": "2.18.6"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/kubeauto-upgrade-etcd-220-contracts-final.log",
+      "sha256": "1d72bb80e8fcd7670a89e426f7cfa162cfe2475f55b94a0a08c45f9dbb9e2124",
+      "tests": 12,
+      "rc": 0,
+      "skipped": 0,
+      "elapsed_seconds": 19.612,
+      "ansible_core": "2.20.9"
+    }
+  ],
+  "inputs": {
+    "upgrade/product/etcd.yml": "5c890ceb5d13287f5bb7716b1f95156107afc45975a2863233b39a1aad772821",
+    "upgrade/product/etcd-observe.yml": "2461f93ee6f1ee755c331f2a88c3c14906d2ad61eead00efb07f69e9bdda83fd",
+    "upgrade/tests/test_etcd_stage.py": "3ca8556ec89007ff64836d06993913fc321ea7db5bbbaed258f5163869640bab",
+    "upgrade/tests/fixtures/etcd_action.py": "5ab7b3d9eac18d38a460591799aec5f653179bc175f5e424cb46429325c37d06"
+  },
+  "parent_acceptance": false,
+  "live_lab_execution": false,
+  "preserved": [
+    "member and cluster IDs",
+    "client/peer URLs and member names",
+    "data/WAL directories",
+    "TLS files and base service definition",
+    "membership and user keys"
+  ],
+  "refusal_cases": [
+    "unverified recovery",
+    "stale target/client artifact",
+    "foreign endpoint",
+    "cluster/member identity or revision regression",
+    "learner/alarm/unknown leader",
+    "unreviewed systemd drop-in",
+    "base unit or process/server version mismatch",
+    "post-restart failure blocks every next member",
+    "target version or unit drift",
+    "unowned target without journal resume"
+  ],
+  "remaining": [
+    "full CLI orchestration, frozen per-architecture artifact and recovery/lease admission",
+    "actual quorum and API/business-ledger continuity",
+    "verified external recovery point and owned interrupted-stage resume"
+  ]
+}

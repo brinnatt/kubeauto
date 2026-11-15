@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "scope": "current TalkEdu manifest and architecture child digest readback; not Docker Hub readback or binary content extraction",
+  "image": "hub.talkedu.cn/kubeauto/kubeauto-k8s-bin:v1.34.13",
+  "digest": "sha256:102ab56b22ea78c726949ff18c6798f6d7a1a53dd7debc07384373985e153d35",
+  "children": [
+    {
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux"
+      },
+      "digest": "sha256:4e494547894ccd9009383a1acae091a4f4d9036bb57457450fe7d061d25b4813",
+      "config": {
+        "mediaType": "application/vnd.oci.image.config.v1+json",
+        "digest": "sha256:9dc0bed68a98a1df8503dc0c8e8fa2f0b0c785fb9fb03e80a40d96bae7a6bf22",
+        "size": 1944
+      },
+      "layers": [
+        {
+          "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+          "digest": "sha256:a88dc8b54e91eb6b19695ef7e04865926d4df23004f414a3ee86978617492d4d",
+          "size": 2807837
+        },
+        {
+          "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+          "digest": "sha256:03a5a59b66ea37bee4750be0bbb15753b1b92450df0646598ccb828fba7e55a2",
+          "size": 987
+        },
+        {
+          "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+          "digest": "sha256:3f5369123645065fa7bd66de61f1e5b8e9302057db285de92a37f71c64808a37",
+          "size": 116388845
+        }
+      ]
+    },
+    {
+      "platform": {
+        "architecture": "arm64",
+        "os": "linux"
+      },
+      "digest": "sha256:56cf124d1c5e810eeb1b9d327cc1d59a7ac59b764fa06e3e728edf8aeccb0d1c",
+      "config": {
+        "mediaType": "application/vnd.oci.image.config.v1+json",
+        "digest": "sha256:aac772eed35eb66adf76937ff06feafff5a40e946b4195d2fe3b554f4fecf33c",
+        "size": 1945
+      },
+      "layers": [
+        {
+          "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+          "digest": "sha256:550f8bf8502cef18df2424ad36edbc4cc08c7ef11b44f493af59029aab98f61d",
+          "size": 2708283
+        },
+        {
+          "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+          "digest": "sha256:03a5a59b66ea37bee4750be0bbb15753b1b92450df0646598ccb828fba7e55a2",
+          "size": 987
+        },
+        {
+          "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+          "digest": "sha256:fb2b1753fad265d0da3a6fde98e35a5dfca6744cc189176ab2bf15d031aca147",
+          "size": 103502711
+        }
+      ]
+    }
+  ],
+  "matches_actions_digest": true
+}

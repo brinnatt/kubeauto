@@ -1,0 +1,156 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-11-14T21:33:40.521120+00:00",
+  "matrix_ids": [
+    "UPG-02",
+    "UPG-04",
+    "UPG-11"
+  ],
+  "method": "source identity and official API/CLI applicability",
+  "source_ga_commit": "940c9020144a88b370cba36793a4d7fad6a347ab",
+  "source_files": {
+    "tools/k8stools/CalicoPolicyCli.py": {
+      "sha256": "8b172fcdd8a13110e24327d7ed720fc812191aae67607dc3132ec74da5c9f137",
+      "source_ga_sha256": "8b172fcdd8a13110e24327d7ed720fc812191aae67607dc3132ec74da5c9f137",
+      "byte_equal": true
+    },
+    "tools/k8stools/KubeBackupCli.py": {
+      "sha256": "ce1a03afaaac8e6ccd7b61256265fade8e51780214b8f1ae9b7f14fa6b281d00",
+      "source_ga_sha256": "ce1a03afaaac8e6ccd7b61256265fade8e51780214b8f1ae9b7f14fa6b281d00",
+      "byte_equal": true
+    },
+    "tools/k8stools/KubePublishCli.py": {
+      "sha256": "df122fe8d2d0a02258085bfe9818c923cd6ddb4ce65b68e6a34417452af8187b",
+      "source_ga_sha256": "df122fe8d2d0a02258085bfe9818c923cd6ddb4ce65b68e6a34417452af8187b",
+      "byte_equal": true
+    }
+  },
+  "backup_resource_api_mapping": {
+    "deployments": [
+      [
+        "apps/v1",
+        "Deployment"
+      ]
+    ],
+    "daemonsets": [
+      [
+        "apps/v1",
+        "DaemonSet"
+      ]
+    ],
+    "statefulsets": [
+      [
+        "apps/v1",
+        "StatefulSet"
+      ]
+    ],
+    "jobs": [
+      [
+        "batch/v1",
+        "Job"
+      ]
+    ],
+    "cronjobs": [
+      [
+        "batch/v1",
+        "CronJob"
+      ]
+    ],
+    "persistentvolumes": [
+      [
+        "v1",
+        "PersistentVolume"
+      ]
+    ],
+    "persistentvolumeclaims": [
+      [
+        "v1",
+        "PersistentVolumeClaim"
+      ]
+    ],
+    "services": [
+      [
+        "v1",
+        "Service"
+      ]
+    ],
+    "configmaps": [
+      [
+        "v1",
+        "ConfigMap"
+      ]
+    ],
+    "secrets": [
+      [
+        "v1",
+        "Secret"
+      ]
+    ],
+    "ingresses": [
+      [
+        "networking.k8s.io/v1",
+        "Ingress"
+      ]
+    ],
+    "customresourcedefinitions": [
+      [
+        "apiextensions.k8s.io/v1",
+        "CustomResourceDefinition"
+      ]
+    ],
+    "roles": [
+      [
+        "rbac.authorization.k8s.io/v1",
+        "Role"
+      ]
+    ],
+    "rolebindings": [
+      [
+        "rbac.authorization.k8s.io/v1",
+        "RoleBinding"
+      ]
+    ],
+    "clusterroles": [
+      [
+        "rbac.authorization.k8s.io/v1",
+        "ClusterRole"
+      ]
+    ],
+    "clusterrolebindings": [
+      [
+        "rbac.authorization.k8s.io/v1",
+        "ClusterRoleBinding"
+      ]
+    ],
+    "storageclasses": [
+      [
+        "storage.k8s.io/v1",
+        "StorageClass"
+      ]
+    ]
+  },
+  "actual_dependencies": {
+    "CalicoPolicyCli": "Explicit kubectl plus datastore-specific, server-matched calicoctl; projectcalico.org/v3 HEP/GNP and networking.k8s.io/v1 NetworkPolicy",
+    "KubeBackupCli": "Python SDK35.0.0 CoreV1/AppsV1/BatchV1/VersionApi/DynamicClient; 17 stable built-in API mappings; custom resources require actual discovery",
+    "KubePublishCli": "Docker28.5.2 or nerdctl2.3.4 namespace/save/load plus existing SSH transport; no Kubernetes resource API"
+  },
+  "official_source_ids": [
+    "PYTHONCLIENT-350-COMPATIBILITY",
+    "K8S134-DEPRECATION-GUIDE",
+    "K8S134-DEPRECATION-POLICY",
+    "CALICO3324-HOSTENDPOINT-API",
+    "CALICO3324-GLOBALNETWORKPOLICY-API",
+    "NERDCTL-234-COMPATIBILITY",
+    "NERDCTL234-CLI-REFERENCE"
+  ],
+  "decision": "Keep these byte-identical tools and dependencies; new Kubernetes/calicoctl/runtime identities need only affected API/CLI integration through their own tools entry point.",
+  "reuse_boundary": "No tools implementation or build change; no inherited upgrade PASS relabelled as TOOLS delivery PASS. Existing tools matrix remains authoritative; no full tools build/regression prerequisite for core upgrade.",
+  "minimal_gaps": [
+    "CalicoPolicyCli existing policy plan/validate and allow/deny against matched calicoctl after target network convergence",
+    "KubeBackupCli small isolated stable-resource backup/restore including resource identity and SDK VersionApi; custom CR discovery only if source configuration uses it",
+    "KubePublishCli one small image save/load/readback for changed containerd path with retained nerdctl; unchanged Docker deep transport scenarios inherited by applicability"
+  ],
+  "live_execution": false,
+  "parent_acceptance": false,
+  "tools_delivery_pass": false
+}

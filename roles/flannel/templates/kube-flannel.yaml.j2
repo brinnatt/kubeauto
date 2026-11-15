@@ -55,7 +55,7 @@ data:
   cni-conf.json: |
     {
       "name": "cbr0",
-      "cniVersion": "0.3.1",
+      "cniVersion": "{{ '1.0.0' if flannel_ver == 'v0.28.10' else '0.3.1' }}",
       "plugins": [
         {
           "type": "flannel",
@@ -126,6 +126,24 @@ spec:
       - args:
         - --ip-masq
         - --kube-subnet-mgr
+{% if flannel_ver == 'v0.28.10' %}
+        - --healthz-ip=127.0.0.1
+        - --healthz-port=8081
+        livenessProbe:
+          httpGet:
+            host: 127.0.0.1
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            host: 127.0.0.1
+            path: /readyz
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 10
+{% endif %}
         command:
         - /opt/bin/flanneld
         env:
@@ -175,11 +193,17 @@ spec:
         - mountPath: /opt/cni/bin
           name: cni-plugin
       - args:
+{% if flannel_ver != 'v0.28.10' %}
         - -f
+{% endif %}
         - /etc/kube-flannel/cni-conf.json
         - /etc/cni/net.d/10-flannel.conflist
         command:
+{% if flannel_ver == 'v0.28.10' %}
+        - /opt/bin/install-conf
+{% else %}
         - cp
+{% endif %}
         image: registry.talkschool.cn:5000/brinnatt/flannel:{{ flannel_ver }}
         name: install-cni
         volumeMounts:

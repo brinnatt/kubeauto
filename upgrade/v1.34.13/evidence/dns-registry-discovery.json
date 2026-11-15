@@ -1,0 +1,10 @@
+[
+  {
+    "image": "coredns:1.15.0",
+    "http": 404
+  },
+  {
+    "image": "k8s-dns-node-cache:1.26.8",
+    "http": 404
+  }
+]

@@ -1,0 +1,57 @@
+{
+  "image": "kubeauto/nacos-peer-finder-plugin:1.1",
+  "index_digest": "sha256:0c80880edbd32f8206c9eaa239063d3b50333882e8bbac5950ed0d059e22e48a",
+  "registry": "hub.talkedu.cn",
+  "platforms": {
+    "amd64": {
+      "manifest_digest": "sha256:1032ca2cd00531f635f3cd865524f3983e178542c56ceb626f44a9cd8522ad27",
+      "scripts": {
+        "install.sh": {
+          "sha256": "cc198d0366e2360fabfc539ec2fbab4656f6cdc0fa7dfaa42139372ff5d3ad5e",
+          "bytes": 310,
+          "text": "#! /bin/bash\nWORKDIR_VOLUME=\"/home/nacos/plugins/peer-finder\"\n\necho installing config scripts into \"${WORKDIR_VOLUME}\"\n\nmkdir -p \"${WORKDIR_VOLUME}\"\ncp -f /on-start.sh \"${WORKDIR_VOLUME}\"/\ncp -f /on-change.sh \"${WORKDIR_VOLUME}\"/\ncp -f /plugin.sh \"${WORKDIR_VOLUME}\"/\ncp -f /peer-finder \"${WORKDIR_VOLUME}\"/\n\n\n"
+        },
+        "on-change.sh": {
+          "sha256": "d0f7d1218103518b310ab2646f646c0eec1ff3edaa65aa26c85b0c1c0f6c2dc8",
+          "bytes": 432,
+          "text": "#!/bin/bash\n\n\nNACOS_APPLICATION_PORT=${NACOS_APPLICATION_PORT:-8848}\n\nwhile read -ra LINE; do\n    PEERS=(\"${PEERS[@]}\" $LINE)\ndone\n\nif [ ${#PEERS[@]} -eq 1 ]; then\n\n    echo \"${PEERS[0]}:$NACOS_APPLICATION_PORT\" > \"${CLUSTER_CONF}\"\n    exit\nfi\nCONTENT=\"\"\nfor peer in \"${PEERS[@]}\"; do\n CONTENT=\"${CONTENT}${peer}:$NACOS_APPLICATION_PORT\\n\"\ndone\n\necho -e \"${CONTENT%\\\\n}\" > \"${CLUSTER_CONF}\"\necho \"on change write peers:\"${PEERS[@]}\n"
+        },
+        "on-start.sh": {
+          "sha256": "1592d57ef893fbe54ed126dafd5b0f0c1949af96b5fc148bde3afb71e29a06af",
+          "bytes": 260,
+          "text": "#!/bin/bash\n\n\nNACOS_APPLICATION_PORT=${NACOS_APPLICATION_PORT:-8848}\n\nwhile read -ra LINE; do\n    PEERS=(\"${PEERS[@]}\" $LINE)\ndone\n\necho \"\" > \"${CLUSTER_CONF}\"\n\n\nfor peer in \"${PEERS[@]}\"; do\n echo \"${peer}:$NACOS_APPLICATION_PORT\" >> \"${CLUSTER_CONF}\"\ndone\n\n\n"
+        },
+        "plugin.sh": {
+          "sha256": "49535de10307070598bbd6e9a5f4b994300039484a731ced69d3642e5f07f05d",
+          "bytes": 373,
+          "text": "#!/usr/bin/env bash\nPEER_FINDER_DIR=\"/home/nacos/plugins/peer-finder\"\ncp /etc/hosts ~/hosts.new && sed -i 's/cluster.local.[][]*/cluster.local /g' ~/hosts.new && cp -f ~/hosts.new /etc/hosts\n\ncd ${PEER_FINDER_DIR} && ./peer-finder -on-start=${PEER_FINDER_DIR}/on-start.sh -on-change=${PEER_FINDER_DIR}/on-change.sh -service=${SERVICE_NAME} -domain=${DOMAIN_NAME} || exit &\n"
+        }
+      }
+    },
+    "arm64": {
+      "manifest_digest": "sha256:3758b934645ba8b8e28b0ddeca6b3e6ae4c0e9e84bb92c6a7cfede0c32b96d19",
+      "scripts": {
+        "install.sh": {
+          "sha256": "cc198d0366e2360fabfc539ec2fbab4656f6cdc0fa7dfaa42139372ff5d3ad5e",
+          "bytes": 310,
+          "text": "#! /bin/bash\nWORKDIR_VOLUME=\"/home/nacos/plugins/peer-finder\"\n\necho installing config scripts into \"${WORKDIR_VOLUME}\"\n\nmkdir -p \"${WORKDIR_VOLUME}\"\ncp -f /on-start.sh \"${WORKDIR_VOLUME}\"/\ncp -f /on-change.sh \"${WORKDIR_VOLUME}\"/\ncp -f /plugin.sh \"${WORKDIR_VOLUME}\"/\ncp -f /peer-finder \"${WORKDIR_VOLUME}\"/\n\n\n"
+        },
+        "on-change.sh": {
+          "sha256": "d0f7d1218103518b310ab2646f646c0eec1ff3edaa65aa26c85b0c1c0f6c2dc8",
+          "bytes": 432,
+          "text": "#!/bin/bash\n\n\nNACOS_APPLICATION_PORT=${NACOS_APPLICATION_PORT:-8848}\n\nwhile read -ra LINE; do\n    PEERS=(\"${PEERS[@]}\" $LINE)\ndone\n\nif [ ${#PEERS[@]} -eq 1 ]; then\n\n    echo \"${PEERS[0]}:$NACOS_APPLICATION_PORT\" > \"${CLUSTER_CONF}\"\n    exit\nfi\nCONTENT=\"\"\nfor peer in \"${PEERS[@]}\"; do\n CONTENT=\"${CONTENT}${peer}:$NACOS_APPLICATION_PORT\\n\"\ndone\n\necho -e \"${CONTENT%\\\\n}\" > \"${CLUSTER_CONF}\"\necho \"on change write peers:\"${PEERS[@]}\n"
+        },
+        "on-start.sh": {
+          "sha256": "1592d57ef893fbe54ed126dafd5b0f0c1949af96b5fc148bde3afb71e29a06af",
+          "bytes": 260,
+          "text": "#!/bin/bash\n\n\nNACOS_APPLICATION_PORT=${NACOS_APPLICATION_PORT:-8848}\n\nwhile read -ra LINE; do\n    PEERS=(\"${PEERS[@]}\" $LINE)\ndone\n\necho \"\" > \"${CLUSTER_CONF}\"\n\n\nfor peer in \"${PEERS[@]}\"; do\n echo \"${peer}:$NACOS_APPLICATION_PORT\" >> \"${CLUSTER_CONF}\"\ndone\n\n\n"
+        },
+        "plugin.sh": {
+          "sha256": "49535de10307070598bbd6e9a5f4b994300039484a731ced69d3642e5f07f05d",
+          "bytes": 373,
+          "text": "#!/usr/bin/env bash\nPEER_FINDER_DIR=\"/home/nacos/plugins/peer-finder\"\ncp /etc/hosts ~/hosts.new && sed -i 's/cluster.local.[][]*/cluster.local /g' ~/hosts.new && cp -f ~/hosts.new /etc/hosts\n\ncd ${PEER_FINDER_DIR} && ./peer-finder -on-start=${PEER_FINDER_DIR}/on-start.sh -on-change=${PEER_FINDER_DIR}/on-change.sh -service=${SERVICE_NAME} -domain=${DOMAIN_NAME} || exit &\n"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "observed_on": "2026-11-14",
+  "matrix_ids": [
+    "UPG-02",
+    "UPG-10"
+  ],
+  "method": "源归档配套和实际生产入口只读核对",
+  "official_source_ids": [
+    "MINIO-711-LATEST",
+    "MINIO-711-REQUIREMENTS",
+    "MINIO-711-CI-SCOPE"
+  ],
+  "inputs": {
+    "roles/cluster-addon/files/operator-7.1.1.tgz": "94f8124e2ecbc62f9cdcbe0519e8980f5992073638f5f63bd2b3ecac4f0ce7ca",
+    "roles/cluster-addon/files/tenant-7.1.1.tgz": "931dfbbf19871ffd687b4eca1ed23b977928b52fc9710bb3250cb381716fc0ea",
+    "roles/cluster-addon/tasks/minio.yml": "091e55c13508a2f0b0c07d5a7f9fdf21f026c8a08884492114202ecaae06eb0b",
+    "roles/cluster-addon/templates/minio/tenant-values.yaml.j2": "e01127bf0decc4e956886be49bdb494ea1f24ba14f017950cf583c47123afa01",
+    "roles/cluster-addon/templates/minio/operator-values.yaml.j2": "e47bff234758f554edcc98d269880ab073c2e247dd0c1cb0453b164ee417090f"
+  },
+  "pins": {
+    "operator_chart": "7.1.1",
+    "tenant_chart": "7.1.1",
+    "v_miniooperator": "7.1.1",
+    "minio_server": "RELEASE.2025-04-08T15-41-24Z"
+  },
+  "upstream_evidence_level": "minimum and source-pin; not target tested",
+  "result": "component-retention-decision",
+  "parent_acceptance": false,
+  "live_execution": false,
+  "supply_chain_acceptance": false
+}

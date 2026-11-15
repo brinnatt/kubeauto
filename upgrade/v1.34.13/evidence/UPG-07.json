@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "accepted": true,
+  "source": "v1.33.6",
+  "target": "v1.34.13",
+  "case_ids": [
+    "UPG-07"
+  ],
+  "method": "live",
+  "claim": "通过产品 config.yml + kubecli upgrade 入口在同一已完成 UPG-06 的六节点 HA source 集群上逐节点完成首跳。三台 master 保留原始 SchedulingDisabled，三台 worker 在 drain 后恢复可调度；每台节点均完成 containerd 2.1.4→2.2.10→2.3.7 两条相邻桥接、CRI RuntimeReady/NetworkReady、ready sandbox 保持、kubelet/kube-proxy v1.34.13 与 Ready 检查。首次运行中的运行时 YAML 门禁、原始调度状态边界和 metrics-server emptyDir drain 阻断均保留在 journal/原始日志；修复或现场清理后按 active journal 顺序续跑。该证据签署 UPG-07 节点阶段，不签网络、存储、中间件或整套 GA。",
+  "covered_subcases": [
+    "all-six-nodes-exact-target-and-ready",
+    "runtime-adjacent-bridge-cri-health-and-sandbox-retention",
+    "master-cordon-and-worker-uncordon-original-state",
+    "eviction-pdb-and-local-data-protection-stop",
+    "journal-ordered-resume-and-first-failure-preservation"
+  ],
+  "inputs": {
+    "upgrade/product/coordinator.py": "70a144886360619577cab4ed5c0e69b9674184d8deb584d1766b46ab3148914a",
+    "upgrade/product/kubernetes_stage.py": "2ba79ccd8916981ba28559f1c56e45c67eafe1e74dc2ba6619a2ee64ddb0417e",
+    "upgrade/product/node.yml": "08776e6b26d092e6710466f0709a4963c28ec40ba463ac0402d8fd25899e51c4",
+    "upgrade/product/containerd.yml": "82070a01673cf3768ff0a1af0b214642356b7f4e874c7b8f50a4e254a60157de",
+    "upgrade/product/containerd-edge.yml": "a2461a62f93a2d73a2f64f2ae450d3873f89a609140a3bb179a936b4c7d3af4c",
+    "upgrade/product/journal.py": "ff445ee4356712256d146f5d28cd298a83aa0ce08072e14ade3e23f1df67e87d",
+    "upgrade/v1.34.13/release.yaml": "cfdcd0a7d3b168c6c607d27392c6942cf780007e49febf72add154f0c5ef0143",
+    "upgrade/v1.34.13/evidence/UPG-06.json": "48d5c33df43e343af43a79c36d8042b8818f4edc698e5d2ff223cc078a953f67"
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/kubeauto-upgrade-v1336-source-full-stage.run.log",
+      "sha256": "6a0f4c7d249f5709a3652064e74d400cc262eaa88198f3f021f6e985f9cfc856"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/full-stage.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/full-stage.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/full-stage-journal.json",
+      "sha256": "ff9dc49ddc0986138b2a24d7b680d05c07f0f5625f362408d8915536a14d23e0"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/full-stage-result.json",
+      "sha256": "8acb2c689dda5b5343e92d84a4c61645bf9bbce5f6b186ccf1eae7c9aaf6f28a"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/worker-133-local-storage-repair-20261115.log",
+      "sha256": "a16cd2e1d2c9c616a080a3198e856c9982d42053e2c5e3f865f92b7ad3840aa7"
+    }
+  ],
+  "official_source_ids": [
+    "K8S-SKEW"
+  ],
+  "run_id": "k8s-v1336-to-v13413",
+  "durable_rc": 0,
+  "finalized_rc": 0,
+  "failure_markers": 0,
+  "log": {
+    "path": "upgrade/v1.34.13/evidence/raw/kubeauto-upgrade-v1336-source-full-stage.run.log",
+    "sha256": "6a0f4c7d249f5709a3652064e74d400cc262eaa88198f3f021f6e985f9cfc856"
+  },
+  "durable_exit": {
+    "path": "upgrade/v1.34.13/evidence/raw/full-stage.exit",
+    "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+  },
+  "durable_finalized": {
+    "path": "upgrade/v1.34.13/evidence/raw/full-stage.finalized",
+    "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+  },
+  "success_marker": "UPGRADE_KUBERNETES_STAGE_PASS",
+  "cleanup_marker": "KUBERNETES_STAGE_SCOPE_VERIFY_PASS",
+  "business_assertions": [
+    "six nodes observed Ready with kubelet v1.34.13",
+    "six nodes observed containerd 2.3.7 and CRI RuntimeReady/NetworkReady",
+    "three masters retained SchedulingDisabled and three workers were uncordoned",
+    "no Failed Pods and all three API backends passed readyz after completion",
+    "journal completed the exact seven-step Kubernetes order with active null",
+    "first failures and scoped metrics-server emptyDir repair are preserved as separate evidence"
+  ],
+  "customer_signoff": null,
+  "live_execution": true,
+  "completed_ladder": 4
+}

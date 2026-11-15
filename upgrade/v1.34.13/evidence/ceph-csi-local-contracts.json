@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "observed_on": "2026-11-15",
+  "matrix_ids": [
+    "UPG-03",
+    "UPG-04"
+  ],
+  "classification": "product version admission + release-gate branch isolation",
+  "product_entry": "config.yml + kubecli (owning roles/ceph/tasks/csi.yml); full minor handoff not yet wired",
+  "expected_marker": "本地合同OK；不替代CSI现场业务标志",
+  "minimal_disproof": ".venv/bin/python -B -m unittest upgrade.tests.test_ceph_csi_patch -v",
+  "first_failure": "目标v3.17.2被源精确版本guard拒绝；独立本地合同先复现，未进行现场试错",
+  "inputs": {
+    "roles/ceph/tasks/csi.yml": "10e4727ab17a480e4da720d0a0e1568e43be07c224810ac78548282d2e4e7459",
+    "roles/ceph/templates/csi-rbd-values.yml.j2": "499e3c2c18495ef32734b5d2675b143398b0d38ec63fa82207311ef3b021f78e",
+    "roles/ceph/templates/csi-cephfs-values.yml.j2": "d19b9f88d01a103f59833aca5b7f29b32578006306d450b10f9d7e75dc4dfc10",
+    "upgrade/tests/test_ceph_csi_patch.py": "cc4ba3c30a648c78d33b135b324ed64bdb9770c6e37db4f567fcebe9a6d07cf8"
+  },
+  "checks": [
+    {
+      "command": "python3 scripts/validate_catalog.py",
+      "rc": 0,
+      "result": "179 rows/179 Dockerfiles"
+    },
+    {
+      "command": "python3 -B -m unittest discover -s tests -v",
+      "rc": 0,
+      "result": "91 tests PASS; focused history recheck 24 PASS after readability edit"
+    },
+    {
+      "command": ".venv/bin/python -B -m unittest upgrade.tests.test_ceph_csi_patch -v",
+      "rc": 0,
+      "result": "4 tests PASS; actual input guards and RBD/CephFS values"
+    },
+    {
+      "command": "python3 scripts/image_release.py plan --mode selected --selected brinnatt/cephcsi:v3.17.2 --head ff8e69f3e6a2eb8ee7f2f0a8c018e970df5b2d1e",
+      "rc": 0,
+      "result": "1 image/1 shard; unchanged build-policy"
+    }
+  ],
+  "publication_plan": {
+    "batch_id": "cephcsi-3172",
+    "repository": "kubeauto-ext-images-dockerfile",
+    "branch": "v1.34.13",
+    "sha": "ff8e69f3e6a2eb8ee7f2f0a8c018e970df5b2d1e",
+    "mode": "selected",
+    "images": [
+      "brinnatt/cephcsi:v3.17.2"
+    ],
+    "image_count": 1,
+    "platforms": [
+      "linux/amd64",
+      "linux/arm64"
+    ],
+    "fingerprint": "812f39e1fe2705767ec1b950c9128463348a72c9f8e88e6d0bfdaa0b2b9ea305",
+    "reason": "受维护3.17线patch；官方仅driver变化，保留Ceph及全部sidecar/Chart；与本跳CSI目标集成、恢复/删除语义相关",
+    "state": "local-plan-qualified-not-yet-dispatched",
+    "allowed_publish_set": [
+      "hub.talkedu.cn/kubeauto/cephcsi:v3.17.2",
+      "docker.io/brinnatt/cephcsi:v3.17.2"
+    ],
+    "completed_ladder": 1,
+    "next": "只发布本批一个镜像；收取双端双架构、原始日志和durable rc",
+    "checks": [
+      {
+        "command": "python3 scripts/validate_catalog.py",
+        "rc": 0,
+        "result": "179 rows/179 Dockerfiles"
+      },
+      {
+        "command": "python3 -B -m unittest discover -s tests -v",
+        "rc": 0,
+        "result": "91 tests PASS; focused history recheck 24 PASS after readability edit"
+      },
+      {
+        "command": ".venv/bin/python -B -m unittest upgrade.tests.test_ceph_csi_patch -v",
+        "rc": 0,
+        "result": "4 tests PASS; actual input guards and RBD/CephFS values"
+      },
+      {
+        "command": "python3 scripts/image_release.py plan --mode selected --selected brinnatt/cephcsi:v3.17.2 --head ff8e69f3e6a2eb8ee7f2f0a8c018e970df5b2d1e",
+        "rc": 0,
+        "result": "1 image/1 shard; unchanged build-policy"
+      }
+    ],
+    "cleanup": "仅CI临时runner/登录及本批ci临时tag由固定流程拥有；没有实验室变更；旧正式tag保持"
+  },
+  "parent_acceptance": false,
+  "live_execution": false
+}

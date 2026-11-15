@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-11-14T22:06:09.518637+00:00",
+  "matrix_ids": [
+    "UPG-04",
+    "UPG-08",
+    "UPG-12"
+  ],
+  "classification": "product internal stage + offline test-gate",
+  "product_entry": "config.yml + kubecli upgrade; outer CLI/journal/artifact/lease/recovery admission remains to be connected",
+  "official_source_ids": [
+    "CALICO-331-UPGRADE",
+    "CALICO-332-UPGRADE",
+    "CALICO-3317-MANIFEST",
+    "CALICO-3324-MANIFEST",
+    "K8S134-JSON-PATCH",
+    "K8S134-API-CONCURRENCY",
+    "K8S134-CORE-DEFAULTS",
+    "K8S1336-CORE-DEFAULTS"
+  ],
+  "inputs_sha256": {
+    "upgrade/product/calico_stage.py": "0d63235b4ebb7f38dcae53e4161ef9ace06517264a1b1dd3eba7ff6a602efc0f",
+    "upgrade/tests/test_calico_stage.py": "4a9d1398184d5658a09b2fa784cf54c3a0ced6fc8e6b3fabf6a5c1a56483aaff",
+    "upgrade/tests/fixtures/calico_kubectl.py": "0c0b9584a6aad99eaa9071ab062cb95d451750a4d62a26b48f615c682097a7b6",
+    "roles/calico/templates/calico-v3.28.yaml.j2": "6aa4f63276965bd6a3a997e39c27ee2690756b1ac687db51a567efcbfc8099dc",
+    "roles/calico/templates/calico-v3.31.yaml.j2": "4320fb44238cdc23e4b1ecb3dbf4ececdd1ad66d2b0ba39b3207a3a49591dd66",
+    "roles/calico/templates/calico-v3.32.yaml.j2": "4320fb44238cdc23e4b1ecb3dbf4ececdd1ad66d2b0ba39b3207a3a49591dd66",
+    "upgrade/tests/test_calico.py": "bd4f4efb9a929c14ad38273b604c8447c631973afe2ca18ca366a85cdd7d34a5",
+    "upgrade/product/kubernetes_preflight.py": "7668c49f5e523137b58a62df885b90ed7ef973896dfca4928364b9bb05cc440d"
+  },
+  "command": ".venv/bin/python -B -m unittest upgrade.tests.test_calico_stage upgrade.tests.test_calico upgrade.tests.test_records upgrade.tests.test_product_release_scope -v",
+  "rc": 0,
+  "tests": 20,
+  "calico_handoff_tests": 11,
+  "logs": {
+    "first-attempt": {
+      "path": "upgrade/v1.34.13/evidence/raw/calico-handoff/first-attempt.log",
+      "sha256": "68c461ab04ccc81ac007e45a057f7f04c7addf83aa9fb67200a8ae260b22f274",
+      "bytes": 13340,
+      "rc": 1
+    },
+    "focused-repair": {
+      "path": "upgrade/v1.34.13/evidence/raw/calico-handoff/focused-repair.log",
+      "sha256": "9525755384ecdac1af9d2c4b0a914ff738e991b1c6364e1f0d2994187b421185",
+      "bytes": 2070,
+      "rc": 0
+    },
+    "qualified": {
+      "path": "upgrade/v1.34.13/evidence/raw/calico-handoff/qualified.log",
+      "sha256": "4a83ee5fa963cc1d1a640c8e3813273e3456047f9d192e3ff7cd840ef3bd16c9",
+      "bytes": 4829,
+      "rc": 0
+    }
+  },
+  "scope": [
+    "Both exact etcdv3 edges: source3.28.4 -> bridge3.31.7 before API; bridge3.31.7 -> target3.32.4 only after all API/nodes1.34.13",
+    "Render actual product templates; preserve full private source objects, Secret, UIDs, server defaults, networking state, selectors, etcdv3, BGP/backend and original controller feature scope",
+    "Qualify every changed patch/create through server dry-run before writes; JSON Patch tests UID/resourceVersion/original field; unknown admission/default mutation refuses",
+    "Create official new tier-getter RBAC with deterministic run/cluster/input ownership; foreign same-name resources refuse adoption, never delete",
+    "Order: new RBAC -> controller permissions -> CNI ConfigMap -> node rolling rollout -> controller rolling rollout -> same-version calicoctl; full identity/host/datastore/traffic gates at boundaries",
+    "Exact saved prefix resume observes state and refuses drift, nonprefix progress, changed credentials, API/node health or ownership, foreign cordon, command failure and bounded rollout timeout; no install-role replay or automatic rollback"
+  ],
+  "first_failure": {
+    "classification": "new internal product implementation omission",
+    "rc": 1,
+    "cause": "Official3.31 manifest adds tier-getter ClusterRole/Binding; a patch-only same-object-set assumption refused the source edge. No source GA product failure or lab run occurred.",
+    "fix": "Explicitly admit these two official additions, qualify every create by server dry-run, bind exact content and ownership to run/cluster/inputs, refuse foreign objects and test full source-edge creation order/resume.",
+    "live_lab_consumed": false
+  },
+  "completed_ladder": 2,
+  "live_execution": false,
+  "parent_acceptance": false,
+  "cleanup": "TemporaryDirectory-only serial subprocess fixtures; no remote host or cluster mutation",
+  "remaining": [
+    "Complete config+kubecli outer admission, lease/recovery/journal binding",
+    "Actual per-host kernel/features qualification and exact calicoctl installation",
+    "Actual policies/IPAM datastore and traffic callbacks, matching artifacts and final limited-scope live acceptance"
+  ]
+}

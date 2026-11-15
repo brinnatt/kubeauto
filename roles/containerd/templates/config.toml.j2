@@ -1,4 +1,4 @@
-version = 2
+version = {{ CONTAINERD_CONFIG_VERSION | default(2) }}
 root = '{{ CONTAINERD_STORAGE_DIR }}'
 state = '/run/containerd'
 temp = ''

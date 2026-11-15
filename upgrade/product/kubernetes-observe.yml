@@ -1,0 +1,70 @@
+# Read-only process identity check on initial entry and journal-bound resume.
+# An API Node reports kubeletVersion, not the running kube-proxy/controller build.
+- name: Admit the complete process observation inventory
+  hosts: localhost
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - name: Require the exact reviewed hosts and version sets
+      ansible.builtin.assert:
+        that:
+          - UPGRADE_SOURCE_VERSION == 'v1.33.6'
+          - K8S_VER == 'v1.34.13'
+          - UPGRADE_EXPECTED_NODE_VERSIONS.keys() | list | sort == (groups['kube_master'] + groups['kube_node']) | unique | sort
+          - UPGRADE_EXPECTED_CONTROLLER_VERSIONS | length > 0
+          - UPGRADE_EXPECTED_CONTROLLER_VERSIONS | difference([UPGRADE_SOURCE_VERSION, K8S_VER]) | length == 0
+
+    - name: Require each node's allowed versions within the exact transition
+      ansible.builtin.assert:
+        that:
+          - item.value | length > 0
+          - item.value | difference([UPGRADE_SOURCE_VERSION, K8S_VER]) | length == 0
+      loop: "{{ UPGRADE_EXPECTED_NODE_VERSIONS | dict2items }}"
+
+- name: Observe all running controllers without replacing binaries
+  hosts: kube_master
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - name: Read each running controller executable
+      ansible.builtin.shell: |
+        set -eu
+        systemctl is-active --quiet {{ item }}
+        upgrade_pid=$(systemctl show --property=MainPID --value {{ item }})
+        test "$upgrade_pid" -gt 0
+        "/proc/$upgrade_pid/exe" --version
+      args:
+        executable: /bin/bash
+      loop: [kube-controller-manager, kube-scheduler]
+      register: upgrade_observed_controller
+      changed_when: false
+
+    - name: Require controllers at the journal-owned boundary
+      ansible.builtin.assert:
+        that:
+          - item.stdout in UPGRADE_EXPECTED_CONTROLLER_VERSIONS | map('regex_replace', '^', 'Kubernetes ') | list
+      loop: "{{ upgrade_observed_controller.results }}"
+
+- name: Observe every running node executable without maintenance
+  hosts: kube_master:kube_node
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - name: Read each running node executable
+      ansible.builtin.shell: |
+        set -eu
+        systemctl is-active --quiet {{ item }}
+        upgrade_pid=$(systemctl show --property=MainPID --value {{ item }})
+        test "$upgrade_pid" -gt 0
+        "/proc/$upgrade_pid/exe" --version
+      args:
+        executable: /bin/bash
+      loop: [kubelet, kube-proxy]
+      register: upgrade_observed_node_process
+      changed_when: false
+
+    - name: Require node processes at their journal-owned boundary
+      ansible.builtin.assert:
+        that:
+          - item.stdout in UPGRADE_EXPECTED_NODE_VERSIONS[inventory_hostname] | map('regex_replace', '^', 'Kubernetes ') | list
+      loop: "{{ upgrade_observed_node_process.results }}"

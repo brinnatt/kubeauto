@@ -1,0 +1,130 @@
+# Failure deliberately leaves the node cordoned. There is no automatic binary
+# downgrade, metadata deletion, shim restart, or continuation to the next node.
+- name: Stage the reviewed configuration in the runtime directory
+  ansible.builtin.copy:
+    src: "{{ UPGRADE_CONTAINERD_CONFIG.path }}"
+    dest: "/etc/containerd/.kubeauto-{{ UPGRADE_RUN_ID }}.toml"
+    owner: root
+    group: root
+    mode: '0600'
+
+- name: Install only the admitted runtime executables atomically
+  ansible.builtin.copy:
+    src: "{{ UPGRADE_CONTAINERD_BUNDLES[upgrade_runtime_target].directory }}/{{ item }}"
+    dest: "{{ bin_dir }}/{{ item }}"
+    owner: root
+    group: root
+    mode: '0755'
+  loop: [containerd, containerd-shim-runc-v2, ctr, runc]
+
+- name: Verify every installed executable against the frozen bundle
+  ansible.builtin.stat:
+    path: "{{ bin_dir }}/{{ item }}"
+    checksum_algorithm: sha256
+    follow: false
+  loop: [containerd, containerd-shim-runc-v2, ctr, runc]
+  register: upgrade_runtime_installed
+
+- name: Refuse changed runtime executables before restart
+  ansible.builtin.assert:
+    that:
+      - item.stat.isreg | default(false)
+      - item.stat.checksum | default('') == UPGRADE_CONTAINERD_BUNDLES[upgrade_runtime_target].sha256[item.item]
+  loop: "{{ upgrade_runtime_installed.results }}"
+
+- name: Decode the staged configuration with the actual target binary before activation
+  ansible.builtin.command:
+    argv: ["{{ bin_dir }}/containerd", --config, "/etc/containerd/.kubeauto-{{ UPGRADE_RUN_ID }}.toml", config, dump]
+  changed_when: false
+  no_log: true
+
+- name: Observe the staged configuration digest before activation
+  ansible.builtin.stat:
+    path: "/etc/containerd/.kubeauto-{{ UPGRADE_RUN_ID }}.toml"
+    checksum_algorithm: sha256
+    follow: false
+  register: upgrade_runtime_staged_config
+
+- name: Refuse staged configuration drift before activation
+  ansible.builtin.assert:
+    that:
+      - upgrade_runtime_staged_config.stat.isreg | default(false)
+      - not (upgrade_runtime_staged_config.stat.islnk | default(false))
+      - upgrade_runtime_staged_config.stat.checksum | default('') == UPGRADE_CONTAINERD_CONFIG.sha256
+
+- name: Activate only the reviewed runtime configuration
+  ansible.builtin.copy:
+    src: "{{ UPGRADE_CONTAINERD_CONFIG.path }}"
+    dest: /etc/containerd/config.toml
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Observe the activated configuration before daemon restart
+  ansible.builtin.stat:
+    path: /etc/containerd/config.toml
+    checksum_algorithm: sha256
+    follow: false
+  register: upgrade_runtime_activated_config
+
+- name: Refuse activated configuration drift before daemon restart
+  ansible.builtin.assert:
+    that:
+      - upgrade_runtime_activated_config.stat.isreg | default(false)
+      - not (upgrade_runtime_activated_config.stat.islnk | default(false))
+      - upgrade_runtime_activated_config.stat.checksum | default('') == UPGRADE_CONTAINERD_CONFIG.sha256
+
+- name: Restart only the containerd daemon preserving existing shims
+  ansible.builtin.systemd_service:
+    name: containerd
+    state: restarted
+
+- name: Wait for the exact runtime version over the unchanged CRI socket
+  ansible.builtin.command:
+    argv: ["{{ bin_dir }}/crictl", "--runtime-endpoint=unix:///run/containerd/containerd.sock", "--timeout=10s", version]
+  register: upgrade_runtime_live_version
+  changed_when: false
+  until: >-
+    upgrade_runtime_live_version.rc == 0 and
+    upgrade_runtime_live_version.stdout is search('RuntimeName:\s+containerd') and
+    upgrade_runtime_live_version.stdout is search('RuntimeVersion:\s+v?' ~ (upgrade_runtime_target | regex_escape)) and
+    upgrade_runtime_live_version.stdout is search('RuntimeApiVersion:\s+v1')
+  retries: 15
+  delay: 2
+
+- name: Wait for both CRI health conditions after this edge
+  ansible.builtin.command:
+    argv: ["{{ bin_dir }}/crictl", "--runtime-endpoint=unix:///run/containerd/containerd.sock", "--timeout=10s", info, -o, json]
+  register: upgrade_runtime_edge_health
+  changed_when: false
+  until: >-
+    upgrade_runtime_edge_health.rc == 0 and
+    ((upgrade_runtime_edge_health.stdout | from_json).status.conditions |
+     selectattr('type', 'equalto', 'RuntimeReady') | map(attribute='status') | list) == [true] and
+    ((upgrade_runtime_edge_health.stdout | from_json).status.conditions |
+     selectattr('type', 'equalto', 'NetworkReady') | map(attribute='status') | list) == [true]
+  retries: 15
+  delay: 2
+
+- name: Read back ready sandboxes retained by this edge
+  ansible.builtin.command:
+    argv: ["{{ bin_dir }}/crictl", "--runtime-endpoint=unix:///run/containerd/containerd.sock", "--timeout=10s", pods, --state=ready, -o, json]
+  register: upgrade_runtime_retained_sandboxes
+  changed_when: false
+
+- name: Refuse lost ready sandboxes before advancing the runtime boundary
+  ansible.builtin.assert:
+    that:
+      - >-
+        ((upgrade_runtime_sandboxes.stdout | from_json)['items'] | default([]) | map(attribute='id') | list |
+         difference((upgrade_runtime_retained_sandboxes.stdout | from_json)['items'] | default([]) |
+                    map(attribute='id') | list) | length) == 0
+
+- name: Accept only this successfully observed runtime edge
+  ansible.builtin.set_fact:
+    upgrade_runtime_current: "{{ upgrade_runtime_target }}"
+
+- name: Remove only the owned staged configuration after the accepted edge
+  ansible.builtin.file:
+    path: "/etc/containerd/.kubeauto-{{ UPGRADE_RUN_ID }}.toml"
+    state: absent

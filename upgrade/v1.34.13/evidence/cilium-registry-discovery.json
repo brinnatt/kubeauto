@@ -1,0 +1,40 @@
+{
+  "observed_on": "2026-11-15",
+  "registry": "hub.talkedu.cn",
+  "authenticated": true,
+  "results": [
+    {
+      "image": "cilium:v1.19.10",
+      "http": 404
+    },
+    {
+      "image": "cilium-operator-generic:v1.19.10",
+      "http": 404
+    },
+    {
+      "image": "hubble-relay:v1.19.10",
+      "http": 404
+    },
+    {
+      "image": "cilium:v1.20.4",
+      "http": 404
+    },
+    {
+      "image": "cilium-operator-generic:v1.20.4",
+      "http": 404
+    },
+    {
+      "image": "hubble-relay:v1.20.4",
+      "http": 404
+    },
+    {
+      "image": "hubble-ui:v0.13.6",
+      "http": 404
+    },
+    {
+      "image": "hubble-ui-backend:v0.13.6",
+      "http": 404
+    }
+  ],
+  "meaning": "Only exact authenticated 404 establishes missing; no Docker Hub network inference"
+}

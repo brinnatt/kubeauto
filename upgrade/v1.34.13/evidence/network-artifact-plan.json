@@ -1,0 +1,40 @@
+{
+  "repository": "kubeauto-ext-images-dockerfile",
+  "branch": "v1.34.13",
+  "sha": "21abf01955d5c2f4af46fbd2f506a354e2115400",
+  "mode": "selected",
+  "images": [
+    "brinnatt/cilium:v1.19.10",
+    "brinnatt/cilium-operator-generic:v1.19.10",
+    "brinnatt/hubble-relay:v1.19.10",
+    "brinnatt/cilium:v1.20.4",
+    "brinnatt/cilium-operator-generic:v1.20.4",
+    "brinnatt/hubble-relay:v1.20.4",
+    "brinnatt/hubble-ui:v0.13.6",
+    "brinnatt/hubble-ui-backend:v0.13.6",
+    "brinnatt/flannel:v0.28.10",
+    "brinnatt/flannel-cni-plugin:v1.9.1-flannel3"
+  ],
+  "image_count": 10,
+  "qualified_batches": [
+    "cilium-11910-1204",
+    "flannel-02810"
+  ],
+  "fingerprints": {
+    "brinnatt/cilium:v1.19.10": "7c35544bb88ec80c03e8ec4839f9c73f5465bbf0544b8b9d634c962ba245bcfd",
+    "brinnatt/cilium-operator-generic:v1.19.10": "0b089f83c9a2b13d0b52a3945ed9b9c3a6636291ae2d9afabeeb95bd2e8510a1",
+    "brinnatt/hubble-relay:v1.19.10": "44489e2036fd12967b20a62df53e65811dde8c8885e8eae7abb83522dca218e2",
+    "brinnatt/cilium:v1.20.4": "be6d7d27bad6342af01bb175bfac6d2b91052318570d595ca12770da2d3e2542",
+    "brinnatt/cilium-operator-generic:v1.20.4": "79664a6e8d8ce0d1aede339dd8f90d62b145c53f3277cb49bc5e4ee4d35b4ae6",
+    "brinnatt/hubble-relay:v1.20.4": "17c9b52b85cc9e887afd86dab785b94aedef61cdf134ddaabab49d3f28820b7a",
+    "brinnatt/hubble-ui:v0.13.6": "f58629a282d82ad4a3ec0a73148902476e4e79e5bec4247d30ce0860c0cbd621",
+    "brinnatt/hubble-ui-backend:v0.13.6": "8bee52e8991a25624d4c610cae8660082418d2a1a5c09a861e4241377937e9f7",
+    "brinnatt/flannel:v0.28.10": "be43479e07cb0ef761f34e129f3016972d55a49e95a81d594bde9505b1885cfc",
+    "brinnatt/flannel-cni-plugin:v1.9.1-flannel3": "46e3b5076de6bce62bcdb00d894d74dfa5135ee27c5174a055719bc16e5e6d87"
+  },
+  "state": "published-dual-readback-qualified",
+  "next": "Ingress离开pending后才进入发布准入；不得替换现有pending任务。",
+  "run_id": "43638919365",
+  "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/43638919365",
+  "evidence": "upgrade/v1.34.13/evidence/network-publication.json"
+}

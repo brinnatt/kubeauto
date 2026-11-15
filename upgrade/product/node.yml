@@ -1,0 +1,310 @@
+# Internal single-node stage. The caller owns the frozen combination, binary
+# hashes, cluster-wide lease/journal, data recovery point and storage maintenance.
+# CNI/etcd installation roles deliberately do not belong to this stage.
+- name: Admit the single journal-owned node and all API backends
+  hosts: localhost
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - name: Require admitted single-node inputs before any command
+      ansible.builtin.assert:
+        that:
+          - UPGRADE_PRECONDITIONS_VERIFIED | default(false) | bool
+          - UPGRADE_SOURCE_VERSION | default('') == 'v1.33.6'
+          - K8S_VER == 'v1.34.13'
+          - UPGRADE_RUN_ID | default('') is match('^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,95}$')
+          - UPGRADE_NODE_HOST | default('') in (groups['kube_master'] + groups['kube_node'])
+          - UPGRADE_NODE_NAME == hostvars[UPGRADE_NODE_HOST].k8s_nodename
+          - UPGRADE_NODE_UID | default('') | length > 0
+          - UPGRADE_ORIGINALLY_SCHEDULABLE is boolean
+          - UPGRADE_DRAIN_TIMEOUT_SECONDS | int >= 30
+          - UPGRADE_DRAIN_TIMEOUT_SECONDS | int <= 1800
+          - UPGRADE_API_BACKENDS | unique | length == groups['kube_master'] | length
+          - UPGRADE_API_BACKENDS | length == groups['kube_master'] | length
+          - SECURE_PORT | int > 0
+          - SECURE_PORT | int <= 65535
+
+    - name: Require each actual master in the backend set
+      ansible.builtin.assert:
+        that:
+          - ('https://' ~ item ~ ':' ~ (SECURE_PORT | string)) in UPGRADE_API_BACKENDS
+      loop: "{{ groups['kube_master'] }}"
+
+    - name: Refuse a source API before any drain or node replacement
+      ansible.builtin.command:
+        argv:
+          - "{{ base_dir }}/kube-bin/kubectl"
+          - "--kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+          - "--server={{ item }}"
+          - --insecure-skip-tls-verify=false
+          - --request-timeout=10s
+          - get
+          - --raw=/version
+      loop: "{{ UPGRADE_API_BACKENDS }}"
+      register: upgrade_node_api
+      changed_when: false
+      failed_when: >-
+        upgrade_node_api.rc != 0 or
+        (upgrade_node_api.stdout | from_json).gitVersion != K8S_VER
+
+    - name: Require all API backends ready before node maintenance
+      ansible.builtin.command:
+        argv:
+          - "{{ base_dir }}/kube-bin/kubectl"
+          - "--kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+          - "--server={{ item }}"
+          - --insecure-skip-tls-verify=false
+          - --request-timeout=10s
+          - get
+          - --raw=/readyz
+      loop: "{{ UPGRADE_API_BACKENDS }}"
+      changed_when: false
+
+    - name: Read current node identity and scheduling state
+      ansible.builtin.command:
+        argv:
+          - "{{ base_dir }}/kube-bin/kubectl"
+          - "--kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+          - "--server={{ UPGRADE_API_BACKENDS[0] }}"
+          - --insecure-skip-tls-verify=false
+          - --request-timeout=10s
+          - get
+          - node
+          - "{{ UPGRADE_NODE_NAME }}"
+          - -o
+          - json
+      register: upgrade_node_observation
+      changed_when: false
+
+    - name: Reject replaced unhealthy or foreign-cordoned nodes
+      vars:
+        upgrade_observed_node: "{{ upgrade_node_observation.stdout | from_json }}"
+      ansible.builtin.assert:
+        that:
+          - upgrade_observed_node.metadata.uid == UPGRADE_NODE_UID
+          - upgrade_observed_node.metadata.name == UPGRADE_NODE_NAME
+          - upgrade_observed_node.metadata.deletionTimestamp | default(none) == none
+          - >-
+            (upgrade_observed_node.status.conditions | selectattr('type', 'equalto', 'Ready') |
+             map(attribute='status') | list) == ['True']
+          - >-
+            upgrade_observed_node.status.nodeInfo.kubeletVersion == UPGRADE_SOURCE_VERSION or
+            (UPGRADE_NODE_RESUME | default(false) | bool and
+             upgrade_observed_node.status.nodeInfo.kubeletVersion == K8S_VER)
+          - >-
+            not (upgrade_observed_node.spec.unschedulable | default(false) | bool) or
+            UPGRADE_NODE_RESUME | default(false) | bool or
+            not (UPGRADE_ORIGINALLY_SCHEDULABLE | bool)
+
+    - name: Read eviction API discovery instead of allowing drain delete fallback
+      ansible.builtin.command:
+        argv:
+          - "{{ base_dir }}/kube-bin/kubectl"
+          - "--kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+          - "--server={{ UPGRADE_API_BACKENDS[0] }}"
+          - --insecure-skip-tls-verify=false
+          - --request-timeout=10s
+          - get
+          - --raw=/api/v1
+      register: upgrade_eviction_discovery
+      changed_when: false
+
+    - name: Require policy v1 eviction support before maintenance
+      vars:
+        upgrade_eviction_resources: >-
+          {{ (upgrade_eviction_discovery.stdout | from_json).resources |
+             selectattr('name', 'equalto', 'pods/eviction') | list }}
+      ansible.builtin.assert:
+        that:
+          - upgrade_eviction_resources | length == 1
+          - upgrade_eviction_resources[0].kind == 'Eviction'
+          - upgrade_eviction_resources[0].group == 'policy'
+          - upgrade_eviction_resources[0].version == 'v1'
+
+    - name: Refuse unknown runtime branches before drain
+      ansible.builtin.assert:
+        that:
+          - CONTAINER_RUNTIME | default('') in ['containerd', 'docker']
+        fail_msg: Only a reviewed implemented runtime path may proceed.
+
+    - name: Admit containerd bundles before any node maintenance
+      ansible.builtin.import_tasks: containerd-admission.yml
+      when: CONTAINER_RUNTIME == 'containerd'
+
+    - name: Admit Docker adapter before any node maintenance
+      ansible.builtin.import_tasks: docker-admission.yml
+      when: CONTAINER_RUNTIME == 'docker'
+
+- name: Drain and advance only the admitted node
+  hosts: "{{ UPGRADE_NODE_HOST | default('upgrade-unadmitted') }}"
+  gather_facts: false
+  serial: 1
+  any_errors_fatal: true
+  tasks:
+    - name: Read actual running node executables before maintenance
+      ansible.builtin.shell: |
+        set -eu
+        systemctl is-active --quiet {{ item }}
+        upgrade_pid=$(systemctl show --property=MainPID --value {{ item }})
+        test "$upgrade_pid" -gt 0
+        "/proc/$upgrade_pid/exe" --version
+      args:
+        executable: /bin/bash
+      loop: [kubelet, kube-proxy]
+      register: upgrade_prior_node_processes
+      changed_when: false
+
+    - name: Reject unexpected running node versions before drain
+      ansible.builtin.assert:
+        that:
+          - item.stdout in ['Kubernetes ' ~ UPGRADE_SOURCE_VERSION, 'Kubernetes ' ~ K8S_VER]
+          - >-
+            item.stdout == 'Kubernetes ' ~ UPGRADE_SOURCE_VERSION or
+            UPGRADE_NODE_RESUME | default(false) | bool
+      loop: "{{ upgrade_prior_node_processes.results }}"
+
+    # kubectl retries PDB HTTP 429 internally until the declared timeout. Other
+    # failures stop here. A Cleaner webhook denial needs caller-owned diagnosis
+    # and reconciliation before a journal-bound retry, never a blanket retry.
+    - name: Drain with eviction PDB and local-data protection
+      ansible.builtin.command:
+        argv:
+          - "{{ base_dir }}/kube-bin/kubectl"
+          - "--kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+          - "--server={{ UPGRADE_API_BACKENDS[0] }}"
+          - --insecure-skip-tls-verify=false
+          - --request-timeout=10s
+          - drain
+          - "{{ UPGRADE_NODE_NAME }}"
+          - --ignore-daemonsets
+          - "--timeout={{ UPGRADE_DRAIN_TIMEOUT_SECONDS | int }}s"
+      delegate_to: localhost
+
+    - name: Advance the drained node runtime before replacing kubelet
+      ansible.builtin.include_tasks: containerd.yml
+      when: CONTAINER_RUNTIME == 'containerd'
+
+    - name: Advance the drained Docker node adapter before replacing kubelet
+      ansible.builtin.include_tasks: docker.yml
+      when: CONTAINER_RUNTIME == 'docker'
+
+    - name: Replace only the drained node executables
+      ansible.builtin.copy:
+        src: "{{ base_dir }}/kube-bin/{{ item }}"
+        dest: "{{ bin_dir }}/{{ item }}"
+        mode: '0755'
+      loop: [kubelet, kube-proxy]
+      when: >-
+        (upgrade_prior_node_processes.results | selectattr('item', 'equalto', item) |
+         first).stdout != 'Kubernetes ' ~ K8S_VER
+
+    - name: Restart only changed node services
+      ansible.builtin.systemd_service:
+        name: "{{ item }}"
+        state: restarted
+      loop: [kubelet, kube-proxy]
+      when: >-
+        (upgrade_prior_node_processes.results | selectattr('item', 'equalto', item) |
+         first).stdout != 'Kubernetes ' ~ K8S_VER
+
+    - name: Verify the exact target of each running node process
+      ansible.builtin.shell: |
+        set -eu
+        systemctl is-active --quiet {{ item }}
+        upgrade_pid=$(systemctl show --property=MainPID --value {{ item }})
+        test "$upgrade_pid" -gt 0
+        "/proc/$upgrade_pid/exe" --version
+      args:
+        executable: /bin/bash
+      loop: [kubelet, kube-proxy]
+      register: upgrade_running_node
+      changed_when: false
+      until: upgrade_running_node.rc == 0 and upgrade_running_node.stdout == 'Kubernetes ' ~ K8S_VER
+      retries: 15
+      delay: 2
+
+    - name: Wait for the same node Ready with the exact target kubelet
+      ansible.builtin.command:
+        argv:
+          - "{{ base_dir }}/kube-bin/kubectl"
+          - "--kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+          - "--server={{ UPGRADE_API_BACKENDS[0] }}"
+          - --insecure-skip-tls-verify=false
+          - --request-timeout=10s
+          - get
+          - node
+          - "{{ UPGRADE_NODE_NAME }}"
+          - -o
+          - json
+      delegate_to: localhost
+      register: upgrade_target_node
+      changed_when: false
+      until: >-
+        upgrade_target_node.rc == 0 and
+        (upgrade_target_node.stdout | from_json).metadata.uid == UPGRADE_NODE_UID and
+        (upgrade_target_node.stdout | from_json).status.nodeInfo.kubeletVersion == K8S_VER and
+        ((upgrade_target_node.stdout | from_json).status.conditions |
+         selectattr('type', 'equalto', 'Ready') | map(attribute='status') | list) == ['True']
+      retries: 60
+      delay: 5
+
+    - name: Return the originally schedulable owned node to service
+      ansible.builtin.command:
+        argv:
+          - "{{ base_dir }}/kube-bin/kubectl"
+          - "--kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+          - "--server={{ UPGRADE_API_BACKENDS[0] }}"
+          - --insecure-skip-tls-verify=false
+          - --request-timeout=10s
+          - uncordon
+          - "{{ UPGRADE_NODE_NAME }}"
+      delegate_to: localhost
+      when: UPGRADE_ORIGINALLY_SCHEDULABLE | bool
+
+    - name: Read back the same schedulable node after uncordon
+      ansible.builtin.command:
+        argv:
+          - "{{ base_dir }}/kube-bin/kubectl"
+          - "--kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+          - "--server={{ UPGRADE_API_BACKENDS[0] }}"
+          - --insecure-skip-tls-verify=false
+          - --request-timeout=10s
+          - get
+          - node
+          - "{{ UPGRADE_NODE_NAME }}"
+          - -o
+          - json
+      delegate_to: localhost
+      register: upgrade_uncordoned_node
+      changed_when: false
+      failed_when: >-
+        upgrade_uncordoned_node.rc != 0 or
+        (upgrade_uncordoned_node.stdout | from_json).metadata.uid != UPGRADE_NODE_UID or
+        (upgrade_uncordoned_node.stdout | from_json).spec.unschedulable | default(false) | bool
+      when: UPGRADE_ORIGINALLY_SCHEDULABLE | bool
+
+    - name: Preserve the originally unschedulable owned node boundary
+      ansible.builtin.command:
+        argv:
+          - "{{ base_dir }}/kube-bin/kubectl"
+          - "--kubeconfig={{ cluster_dir }}/kubectl.kubeconfig"
+          - "--server={{ UPGRADE_API_BACKENDS[0] }}"
+          - --insecure-skip-tls-verify=false
+          - --request-timeout=10s
+          - get
+          - node
+          - "{{ UPGRADE_NODE_NAME }}"
+          - -o
+          - json
+      delegate_to: localhost
+      register: upgrade_preserved_cordon
+      changed_when: false
+      failed_when: >-
+        upgrade_preserved_cordon.rc != 0 or
+        (upgrade_preserved_cordon.stdout | from_json).metadata.uid != UPGRADE_NODE_UID or
+        not ((upgrade_preserved_cordon.stdout | from_json).spec.unschedulable | default(false) | bool)
+      when: not (UPGRADE_ORIGINALLY_SCHEDULABLE | bool)
+
+    - name: Report the single-node stage boundary
+      ansible.builtin.debug:
+        msg: "UPGRADE_NODE_STAGE_PASS node={{ UPGRADE_NODE_NAME }} uid={{ UPGRADE_NODE_UID }}"

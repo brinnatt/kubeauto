@@ -1,0 +1,89 @@
+
+<h1>Release Notes - Kafka - Version 4.3.2</h1>
+<p>
+    Below is a summary of the JIRA issues addressed in the 4.3.2
+    release of Kafka. For full documentation of the release, a guide
+    to get started, and information about the project, see the
+    <a href="https://kafka.apache.org/">Kafka project site</a>.
+</p>
+<p>
+    <b>Note about upgrades:</b> Please carefully review the
+    <a href="https://kafka.apache.org/43/documentation.html#upgrade">
+    upgrade documentation</a> for this release thoroughly before upgrading
+    your cluster. The upgrade notes discuss any critical information about
+    incompatibilities and breaking changes, performance changes, and any
+    other changes that might impact your production deployment of Kafka.
+</p>
+<p>
+    The documentation for the most recent release can be found at
+    <a href="https://kafka.apache.org/documentation.html">https://kafka.apache.org/documentation.html</a>.
+</p>
+
+<h2>Improvement</h2>
+</ul>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-13499">KAFKA-13499</a>] - Avoid restoring outdated records</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20354">KAFKA-20354</a>] - Add missing Control Batch types in documentation</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20916">KAFKA-20916</a>] - message protocol document missing new control record types</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20940">KAFKA-20940</a>] - Windowed changelog restore optimization is skipped whenever a checkpointed offset exists</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-21196">KAFKA-21196</a>] - Release memory held by CoordinatorExecutorImpl tasks when cancelled</li>
+</ul>
+<h2>Bug</h2>
+</ul>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-14597">KAFKA-14597</a>] - [Streams] record-e2e-latency-max is not reporting correct metrics </li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20187">KAFKA-20187</a>] - AsyncKafkaConsumer does not clear endOffsetRequested flag on failed LIST_OFFSETS calls</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20253">KAFKA-20253</a>] - High CPU loop on consumer after failed re-authentication</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20312">KAFKA-20312</a>] - KafkaConsumer poll may happens NullPointerException</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20393">KAFKA-20393</a>] - Kafka client send to wong IP caused by stickyNode in TelemetrySender</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20416">KAFKA-20416</a>] - RocksDB loses entries during broker patches.</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20434">KAFKA-20434</a>] - Consumer group does not recompute assignment when static members rejoin with different assignor</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20442">KAFKA-20442</a>] - Consumer/Share/Streams group assignment epoch is not updated when the last member leaves</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20449">KAFKA-20449</a>] - OffsetFetcherUtils.updateSubscriptionState logs at WARN for benign race condition during rebalance</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20450">KAFKA-20450</a>] - SafeObjectInputStream uses denylist based approach</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20464">KAFKA-20464</a>] - Linking stores using ConnectedStoreProvider causes corrupt topology</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20533">KAFKA-20533</a>] - ShareFetch returns UNKNOWN_SERVER_ERROR when topic is deleted during active share consumption</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20555">KAFKA-20555</a>] - JaasBasicAuthFilter should use jakarta.annotation</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20570">KAFKA-20570</a>] - Catch RuntimeException in ConsumerProtocol deserialization in group coordinator</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20601">KAFKA-20601</a>] - ConsumerGroup static member rejoin can fail with GroupMaxSizeReachedException at max size</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20662">KAFKA-20662</a>] - Proper error code for malformed request during online migration</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20691">KAFKA-20691</a>] - PersisterStateBatchCombiner.combineStateBatches() is O(n^2) worst-case; replace TreeSet-based iterative merge with single-pass sweep-line</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20700">KAFKA-20700</a>] - AllowedPaths should resolve symlinks before validating paths against allowed.paths</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20711">KAFKA-20711</a>] - Streams task restore-remaining-records metric never reaches 0</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20721">KAFKA-20721</a>] - Streams: "Task not found in the state updater. This indicates a bug." after a state updater remove times out during cold start rebalancing</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20726">KAFKA-20726</a>] - Don't reuse the BufferSupplier in kraft state machine</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20732">KAFKA-20732</a>] - Data loss: tiered size-retention deletes in-retention data from both tiers after leader election when highestOffsetInRemoteStorage is unset (-1)</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20746">KAFKA-20746</a>] - NPE in MetadataCache#toCluster</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20765">KAFKA-20765</a>] - AsyncKafkaConsumer: OffsetFetch retry on STALE_MEMBER_EPOCH can spin in dedup loop and never complete the application future</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20767">KAFKA-20767</a>] - [CVE-2026-54513] , [CVE-2026-54512] [jackson-databind] [2.21.2]</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20769">KAFKA-20769</a>] - ListDeserializer can silently deserialize a corrupted entry when the input is truncated mid-entry</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20773">KAFKA-20773</a>] - [CVE-2026-54515][jackson-databind]</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20780">KAFKA-20780</a>] - syncKafkaConsumer does not keep a fetch request pending on the broker, causing latency and throughput regressions vs the classic consumer</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20782">KAFKA-20782</a>] - IQ returns incorrect metadata when Streams protocol and N threads</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20785">KAFKA-20785</a>] - Unexpected InvalidTxnStateException on EndTxn when commit races with transaction timeout</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20791">KAFKA-20791</a>] - Bump log4j to 2.25.5</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20805">KAFKA-20805</a>] - State directory cleaned prematurely under KIP-1035, forcing from-scratch restore </li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20808">KAFKA-20808</a>] - StreamThread dies with fatal InvalidStateStoreException after TaskCorruptedException</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20815">KAFKA-20815</a>] - Security : [jline-remote-telnet] [3.30.4] </li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20827">KAFKA-20827</a>] - StreamThread dies with IllegalStateException: Attempted to create an standby task that we already own during a standby/active recycle</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20832">KAFKA-20832</a>] - Cordoned log dirs are not enforced when creating topics/partitions with explicit assignment</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20840">KAFKA-20840</a>] - Bump jetty to 12.0.37</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20842">KAFKA-20842</a>] - Bump lz4 to 1.11.1</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20845">KAFKA-20845</a>] - Consumer group downgrades can leave group in invalid state when classic group metadata is very large</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20861">KAFKA-20861</a>] - Kafka Streams should handle corrupted assignment pro-actively</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20873">KAFKA-20873</a>] - KafkaStreams.removeStreamThread can deadlock with a concurrent REPLACE_THREAD uncaught-exception handler</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20874">KAFKA-20874</a>] - SslFactory not closed after extracting SSLSocketFactory</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20875">KAFKA-20875</a>] - Headers store adapters bypass the `WrappedStateStore` chain</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20876">KAFKA-20876</a>] - Windowed restore optimisation gives up when `endOffset-1` is a transaction control record</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20877">KAFKA-20877</a>] - Streams task-level restore-rate and update-rate incorrect</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20885">KAFKA-20885</a>] - Incorrect IQ metadata in "streams" protocol</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20893">KAFKA-20893</a>] - KafkaStreams incorrectly reports task-offsets (ie state) for non-existing (previously owned) in-memory stores to the task assignor</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20899">KAFKA-20899</a>] - StickyTaskAssignor not sticky for standby tasks ("streams" protocol)</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20977">KAFKA-20977</a>] -  RemoteCopyLagSegments/RemoteCopyLagBytes report a phantom lag of 1 on low-throughput partitions (single-record segments)</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20979">KAFKA-20979</a>] - Potential data loss caused by time index truncation</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-21004">KAFKA-21004</a>] - [CVE-2026-68497][jackson-databind]</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-21096">KAFKA-21096</a>] - SharePartition instances pending cleanup even when fenced</li>
+</ul>
+<h2>Task</h2>
+</ul>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-20936">KAFKA-20936</a>] - Bump lz4 to 1.11.2</li>
+<li>[<a href="https://issues.apache.org/jira/browse/KAFKA-21174">KAFKA-21174</a>] - Update lz4 to 1.11.4</li>
+</ul>

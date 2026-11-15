@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-11-14T21:20:01.535064+00:00",
+  "matrix_ids": [
+    "UPG-04",
+    "UPG-05",
+    "UPG-06",
+    "UPG-07",
+    "UPG-12"
+  ],
+  "classification": "product internal stage and test-gate contracts",
+  "product_entry": "config.yml + kubecli upgrade (outer combination/lease/recovery/final runner not yet connected)",
+  "command": ".venv/bin/python -B -m unittest upgrade.tests.test_kubernetes_stage -v",
+  "rc": 0,
+  "tests": 7,
+  "inputs_sha256": {
+    "upgrade/product/kubernetes_stage.py": "c6fbe42e1baf11730616ee6cd920a2c0821b6af59cce222ecdb61dc5545eb73b",
+    "upgrade/product/kubernetes-observe.yml": "fa74197688fa69da67abc01abb914e22372f88126e5fd8f169864bed852ad8bd",
+    "upgrade/product/kubernetes_preflight.py": "7668c49f5e523137b58a62df885b90ed7ef973896dfca4928364b9bb05cc440d",
+    "upgrade/product/journal.py": "ff445ee4356712256d146f5d28cd298a83aa0ce08072e14ade3e23f1df67e87d",
+    "upgrade/product/control-plane.yml": "25d1d26d5ca2919715a5f080a51cbc9143c07ee8ef4a3d445bfd95f116b94101",
+    "upgrade/product/node.yml": "7c1e65e3bd7646fc58b52969ac2a2bfb155ebef3c56d026de12edb37fd148ec6",
+    "upgrade/product/docker-admission.yml": "ccecc215795b9b597460d792312f479ea79fb0c8fea845ada8b754922c26a2d4",
+    "upgrade/product/docker.yml": "7da6f05b0c6b456ad4a348203623c9f5b09bd848247c84f28ce5917676f87163",
+    "upgrade/tests/test_kubernetes_stage.py": "68686cc519eb2d54aff9296bd9f27cc132b8632b5553a3fe4f8526bc122edf5d",
+    "upgrade/tests/fixtures/kubernetes_action.py": "89eef603b381a2d9c45e498a3421e3083e432a3c9470870337c900ac04cad8a6"
+  },
+  "raw_log": {
+    "path": "upgrade/v1.34.13/evidence/raw/kubernetes-handoff/kubernetes-handoff.log",
+    "sha256": "c4b852833107b6d470aac70f04ea08b2261f8db4228e3e9f57ef96077c7fe1a9",
+    "bytes": 1770
+  },
+  "scope": [
+    "Actual source observer receipt consumed by the real stage; real Ansible conditions/includes/loops/assertions around offline external-operation adapters",
+    "Normalized config K8S_VER without v to exact internal target; complete cluster/node identity reobserved before and after each boundary",
+    "Read-only actual running controller/proxy version checks on resume; completed journal prefix never substitutes for current health",
+    "HA partial API failure never drains; resume retains healthy target API without copy/restart; all-API barrier precedes controllers and node work",
+    "Successful policy/v1 drain precedes actual Docker adapter include and kubelet/proxy; failure retains cordon/first durable exit and does not advance next node",
+    "Business boundary failure prevents next stage; matching journal/config/client/process/code fingerprints required; successful completed resume only observes"
+  ],
+  "official_source_ids": [
+    "K8S-SKEW",
+    "K8S-13413-NODE-CONTRACT",
+    "K8S134-OBJECT-META",
+    "K8S-13413-DRAIN-COMMAND",
+    "K8S-13413-DRAIN-LIBRARY"
+  ],
+  "parent_acceptance": false,
+  "live_execution": false,
+  "completed_ladder": 2,
+  "cleanup": "TemporaryDirectory-only API/Ansible/action fixtures; forbidden real connections; no lab mutation",
+  "remaining": [
+    "Frozen overall combination/artifact admission and complete backend discovery",
+    "Outer product CLI/journal/lease/recovery point and storage maintenance admission",
+    "Live business ledger and actual scoped lab gates"
+  ],
+  "first_failure": {
+    "classification": "test-gate fixture ownership",
+    "rc": 1,
+    "cause": "Wrong-order rejection test wrote its intentionally different plan into normal journal directory; subsequent matching-binding test correctly refused that foreign plan.",
+    "fix": "Use independently owned wrong-order fixture directory; narrow contract passed before the complete current seven-test suite.",
+    "product_change_for_failure": false,
+    "live_lab_consumed": false
+  }
+}

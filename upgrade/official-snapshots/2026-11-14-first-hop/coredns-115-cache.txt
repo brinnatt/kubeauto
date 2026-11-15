@@ -1,0 +1,181 @@
+# cache
+
+## Name
+
+*cache* - enables a frontend cache.
+
+## Description
+
+With *cache* enabled, all records except zone transfers and metadata records will be cached for up to
+3600s. Caching is mostly useful in a scenario when fetching data from the backend (upstream,
+database, etc.) is expensive.
+
+*Cache* will pass DNSSEC (DNSSEC OK; DO) options through the plugin for upstream queries.
+
+This plugin can only be used once per Server Block.
+
+## Syntax
+
+~~~ txt
+cache [TTL] [ZONES...]
+~~~
+
+* **TTL** max TTL in seconds. If not specified, the maximum TTL will be used, which is 3600 for
+    NOERROR responses and 1800 for denial of existence ones.
+    Setting a TTL of 300: `cache 300` would cache records up to 300 seconds.
+* **ZONES** zones it should cache for. If empty, the zones from the configuration block are used.
+
+Each element in the cache is cached according to its TTL (with **TTL** as the max).
+Note that **TTL** only caps the cache duration and does not extend it. A record with a 30s TTL
+will still be cached for 30s even with `cache 600`. The minimum cache duration defaults to 5
+seconds and can be adjusted per cache type using **MINTTL** in the `success` or `denial` directives.
+
+A cache is divided into 256 shards, each holding up to 39 items by default - for a total size
+of 256 * 39 = 9984 items.
+
+If you want more control:
+
+~~~ txt
+cache [TTL] [ZONES...] {
+    success CAPACITY [TTL] [MINTTL]
+    denial CAPACITY [TTL] [MINTTL]
+    prefetch AMOUNT [[DURATION] [PERCENTAGE%]]
+    serve_stale [DURATION] [immediate [RESPONSE_TTL [FAILURE_RECHECK]] | verify [VERIFY_TIMEOUT [RESPONSE_TTL [FAILURE_RECHECK]]]]
+    serve_stale_policy prefer_positive
+    servfail DURATION
+    disable success|denial [ZONES...]
+    keepttl
+}
+~~~
+
+* **TTL**  and **ZONES** as above.
+* `success`, override the settings for caching successful responses. **CAPACITY** indicates the maximum
+  number of packets we cache before we start evicting (*randomly*). **TTL** overrides the cache maximum TTL.
+  **MINTTL** overrides the cache minimum TTL (default 5), which can be useful to limit queries to the backend.
+* `denial`, override the settings for caching denial of existence responses. **CAPACITY** indicates the maximum
+  number of packets we cache before we start evicting (LRU). **TTL** overrides the cache maximum TTL.
+  **MINTTL** overrides the cache minimum TTL (default 5), which can be useful to limit queries to the backend.
+  There is a third category (`error`) but those responses are never cached.
+* `prefetch` will prefetch popular items when they are about to be expunged from the cache.
+  Popular means **AMOUNT** queries have been seen with no gaps of **DURATION** or more between them.
+  **DURATION** defaults to 1m. Prefetching will happen when the TTL drops below **PERCENTAGE**,
+  which defaults to `10%`, or latest 1 second before TTL expiration. Values should be in the range `[10%, 90%]`.
+  Note the percent sign is mandatory. **PERCENTAGE** is treated as an `int`.
+  Concurrent requests that trigger a prefetch for the same cache entry dispatch at most one
+  background fetch, so prefetch load scales with the number of distinct eligible entries rather
+  than request rate.
+* `serve_stale`, when serve\_stale is set, cache will always serve an expired entry to a client if there is one
+  available as long as it has not been expired for longer than **DURATION** (default 1 hour). By default, the _cache_ plugin will
+  attempt to refresh the cache entry after sending the expired cache entry to the client. The
+  responses have a TTL of 0 by default for backward compatibility. **REFRESH_MODE** controls the timing of the expired cache entry refresh.
+  For a request that starts its own refresh, `verify` checks the source before sending a stale entry.
+  If it receives an accepted updated response, that request uses the update. A positive **VERIFY_TIMEOUT**
+  permits the request to fall back to the stale entry when the wait expires. A positive **FAILURE_RECHECK**
+  lets concurrent requests return stale immediately while a verify is in flight, even if that verify later succeeds.
+  `immediate` will immediately send the expired entry to the client before
+  checking to see if the entry is available from the source. **REFRESH_MODE** defaults to `immediate`. Setting this
+  value to `verify` can lead to increased latency for requests that wait for an upstream refresh.
+  In `immediate` mode, concurrent requests for the same expired entry dispatch at most one
+  background refresh.
+  **VERIFY_TIMEOUT** is only valid with `verify` and bounds how long the cache waits for the upstream
+  verify before falling back to the stale entry. The verify continues in the background and refreshes the
+  cache when it eventually succeeds, so subsequent queries see the fresh entry. The default of `0` means
+  wait until the upstream's own timeout (the original `verify` behavior). Example: `serve_stale 1h verify 100ms`.
+  **RESPONSE_TTL** sets the TTL returned with expired entries and defaults to `0`. RFC 8767 requires stale
+  responses to use a TTL greater than zero and recommends `30s`. In `immediate` mode it follows the mode,
+  for example `serve_stale 1h immediate 30s`. In `verify` mode it follows **VERIFY_TIMEOUT**, for example
+  `serve_stale 1h verify 100ms 30s`; use `0` as the timeout to wait for the upstream while setting a response
+  TTL, as in `serve_stale 1h verify 0 30s`. The response TTL must be a whole number of seconds.
+  **FAILURE_RECHECK** follows **RESPONSE_TTL** and limits how frequently a failed refresh is attempted again
+  for the same cache entry. While a refresh is in flight or its failure recheck period is active, the stale
+  entry is served immediately without another upstream request. A failed refresh leaves the stale cache entry
+  intact. The default of `0` preserves the existing retry behavior. RFC 8767 recommends `30s` and says this
+  value should not exceed 5 minutes. Examples: `serve_stale 1h immediate 30s 30s` and
+  `serve_stale 1h verify 100ms 30s 30s`.
+* `serve_stale_policy` controls cache selection while `serve_stale` is enabled. The only supported policy is
+  `prefer_positive`. It checks the success cache before the denial cache and returns an eligible positive response
+  when it actually answers the question, even when a cached NXDOMAIN, NODATA, SERVFAIL, or NOTIMP response also
+  exists. The positive response must be unexpired or within the configured `serve_stale` duration.
+  The positive response is retained independently when a later NOERROR response does not answer the question (for example, an empty response
+  without SOA, a referral, or a response carrying data only in the additional section), so such a refresh cannot
+  destroy the last-known-good answer. A usable positive refresh replaces the retained answer.
+  The policy is disabled by default because it can mask legitimate record deletion or removal until the positive response exceeds
+  the stale duration or is evicted. In `immediate` mode, the stale positive response is returned first and the cache
+  refreshes in the background. In `verify` mode, only a refreshed positive answer replaces the stale response.
+* `servfail` cache SERVFAIL responses for **DURATION**.  Setting **DURATION** to 0 will disable caching of SERVFAIL
+  responses.  If this option is not set, SERVFAIL responses will be cached for 5 seconds.  **DURATION** may not be
+  greater than 5 minutes.
+* `disable`  disable the success or denial cache for the listed **ZONES**.  If no **ZONES** are given, the specified
+  cache will be disabled for all zones.
+* `keepttl` do not age TTL when serving responses from cache. The entry will still be removed from cache
+  when the TTL expires as normal, but until it expires responses will include the original TTL instead
+  of the remaining TTL. This can be useful if CoreDNS is used as an authoritative server and you want
+  to serve a consistent TTL to downstream clients. This is **NOT** recommended when CoreDNS is caching
+  records it is not authoritative for because it could result in downstream clients using stale answers.
+
+## Capacity and Eviction
+
+If **CAPACITY** _is not_ specified, the default cache size is 9984 per cache. The minimum allowed cache size is 1024.
+If **CAPACITY** _is_ specified, the actual cache size used will be rounded down to the nearest number divisible by 256 (so all shards are equal in size).
+
+Eviction is done per shard. In effect, when a shard reaches capacity, items are evicted from that shard.
+Since shards don't fill up perfectly evenly, evictions will occur before the entire cache reaches full capacity.
+Each shard capacity is equal to the total cache size / number of shards (256). Eviction is random, not TTL based.
+Entries with 0 TTL will remain in the cache until randomly evicted when the shard reaches capacity.
+
+## Metrics
+
+If monitoring is enabled (via the *prometheus* plugin) then the following metrics are exported:
+
+* `coredns_cache_entries{server, type, zones, view}` - Total elements in the cache by cache type.
+* `coredns_cache_hits_total{server, type, zones, view}` - Counter of cache hits by cache type.
+* `coredns_cache_misses_total{server, zones, view}` - Counter of cache misses. - Deprecated, derive misses from cache hits/requests counters.
+* `coredns_cache_requests_total{server, zones, view}` - Counter of cache requests.
+* `coredns_cache_prefetch_total{server, zones, view}` - Counter of times the cache has prefetched a cached item.
+* `coredns_cache_drops_total{server, zones, view}` - Counter of responses excluded from the cache due to request/response question name mismatch.
+* `coredns_cache_served_stale_total{server, zones, view}` - Counter of requests served from stale cache entries.
+* `coredns_cache_evictions_total{server, type, zones, view}` - Counter of cache evictions.
+
+Cache types are either "denial" or "success". `Server` is the server handling the request, see the
+prometheus plugin for documentation.
+
+## Examples
+
+Enable caching for all zones, but cap everything to a TTL of 10 seconds:
+
+~~~ corefile
+. {
+    cache 10
+    whoami
+}
+~~~
+
+Proxy to Google Public DNS and only cache responses for example.org (or below).
+
+~~~ corefile
+. {
+    forward . 8.8.8.8:53
+    cache example.org
+}
+~~~
+
+Enable caching for `example.org`, keep a positive cache size of 5000 and a negative cache size of 2500:
+
+~~~ corefile
+example.org {
+    cache {
+        success 5000
+        denial 2500
+    }
+}
+~~~
+
+Enable caching for `example.org`, but do not cache denials in `sub.example.org`:
+
+~~~ corefile
+example.org {
+    cache {
+        disable denial sub.example.org
+    }
+}
+~~~

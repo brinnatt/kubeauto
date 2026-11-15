@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "accepted": true,
+  "source": "v1.33.6",
+  "target": "v1.34.13",
+  "case_ids": [
+    "UPG-15"
+  ],
+  "method": "live",
+  "claim": "最后一次独立最终回归调用在冻结的 v1.33.6→v1.34.13 首跳范围内，通过真实 config.yml + kubecli 产品入口完成源六节点逐 minor 升级、目标五节点干净新建及第二次 setup 幂等验证；前置门禁在变更前通过，受审阅的 metrics-server emptyDir drain 首失败按身份和卷类型约束完成一次受控 repair 后续跑，最终 durable rc=0、finalized=0、完整成功 marker 和 LAB_CLEAN_VERIFY_PASS 均成立。完整 durable 合并日志及可复核成功窗口均保留；该证据支持项目升级验收，不代替客户签收。",
+  "covered_subcases": [
+    "final-prerequisite-refusal-before-mutation",
+    "clean-source-minor-upgrade-main-chain",
+    "clean-target-install-idempotence-and-affected-readback",
+    "durable-zero-zero-failure-and-final-cleanup"
+  ],
+  "inputs": {
+    "upgrade/v1.34.13/release.yaml": "cfdcd0a7d3b168c6c607d27392c6942cf780007e49febf72add154f0c5ef0143",
+    "upgrade/v1.34.13/research.yaml": "6a985e003a74956ffd9f68bdebae301ec3bf6c491f56979976690689b7077e2a",
+    "upgrade/v1.34.13/acceptance-plan.yaml": "0d9cbbcfc8d5d7b83c7b273c0389ea752b4c1affc42f0f8148516813ef0cb16d",
+    "upgrade/v1.34.13/operations-manual.md": "41a191427be72dd808b8b49f3b3cfb1eb3759f692532155a078c08951896bbb3",
+    "upgrade/official-sources.yaml": "58b1b295bf7ed474fa3062a384c751b229cafb0956e1fc512a395f0115871bdb",
+    "upgrade/lab/final-regression.sh": "9f051f000c77ae1dab583ba861447ef98cf22bf8774a54fc4149eb670a60456f",
+    "upgrade/tests/test_final_regression.py": "eb8a60fcdc9ae0a6f2e0f3cbf47e95e05175e2a79d7831be859dba5064107832",
+    "upgrade/v1.34.13/evidence/UPG-01.json": "645fd971db5f4d528dcf86938ef02e2774ea8d75d7e7b79e9cf8ab68e51de2ad",
+    "upgrade/v1.34.13/evidence/UPG-02.json": "3840412ad48c3d0b1b11e87032832873163497b5933aab63c1282917e419b30a",
+    "upgrade/v1.34.13/evidence/UPG-03.json": "dd5028e3e04411a4ca84bd714b510ee5e115768e09e3c88e629619f83b95acd5",
+    "upgrade/v1.34.13/evidence/UPG-04.json": "6659bf62bf48e960fcd314da111248c533e4e8ffede5d350d9f8db096a38b96d",
+    "upgrade/v1.34.13/evidence/UPG-05.json": "50227d7ff60209cab28d349e7f17a8a3892bc249535d4ea2c0777e59a657f0c5",
+    "upgrade/v1.34.13/evidence/UPG-06.json": "48d5c33df43e343af43a79c36d8042b8818f4edc698e5d2ff223cc078a953f67",
+    "upgrade/v1.34.13/evidence/UPG-07.json": "a6fc8cf5e162f1aca78a2de811289324c7012a7408d6b9f962ac87409f7674ff",
+    "upgrade/v1.34.13/evidence/UPG-08.json": "5c025585d05e9bf28540535bf1d6556c0bbcf3b096659723fe206b5b3d1a6c64",
+    "upgrade/v1.34.13/evidence/UPG-09.json": "d3e4e0971bff7be9c46c61659c9b504c972d4a1f5e4b2ea53c27c7bab4657dc0",
+    "upgrade/v1.34.13/evidence/UPG-10.json": "446187433b4c655dc622a61b99a0fe00f178fe76bf0706ebe17c93f686c6daf2",
+    "upgrade/v1.34.13/evidence/UPG-11.json": "d707690776666aa382c4c5c6447c6228f83354e8cfede03c6dd23d8d40c47770",
+    "upgrade/v1.34.13/evidence/UPG-12.json": "802c7370e414802527977caf14dbb402bb0d5caf8f788b312089248937b855c9",
+    "upgrade/v1.34.13/evidence/UPG-13.json": "3cfd5afef6d548f3426a776703b73d4765c1f0d27c72487def9ddb0350309f82",
+    "upgrade/v1.34.13/evidence/UPG-14.json": "3b76606aae267a6bce812b7baddbd368c54fc2f14eec4fa143a423a43d61abbd"
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/final-regression-20261115.success-window.log",
+      "sha256": "8515b2d7551adb2f4f7d2247e1c2a8730903af6c2b7c4f17d4e8ea8a265be558"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/final-regression-20261115.success-window.json",
+      "sha256": "3733ccea97b19eaa996021040b7fa725f06b355a6df3ffbf1ab832ac8954780c"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/final-regression-20261115.run.log",
+      "sha256": "85dca82a07f47cf52293abba216840ccfeb45bcb24d9d5d6d92849dcbdc60e86"
+    }
+  ],
+  "official_source_ids": [
+    "K8S-SKEW",
+    "K8S-API-HEALTH-CONTRACT",
+    "K8S-13413-VERSION-CONTRACT"
+  ],
+  "run_id": "upgrade-v13413-final-20261115",
+  "durable_rc": 0,
+  "finalized_rc": 0,
+  "failure_markers": 0,
+  "log": {
+    "path": "upgrade/v1.34.13/evidence/raw/final-regression-20261115.success-window.log",
+    "sha256": "8515b2d7551adb2f4f7d2247e1c2a8730903af6c2b7c4f17d4e8ea8a265be558"
+  },
+  "durable_log": {
+    "path": "upgrade/v1.34.13/evidence/raw/final-regression-20261115.run.log",
+    "sha256": "85dca82a07f47cf52293abba216840ccfeb45bcb24d9d5d6d92849dcbdc60e86",
+    "note": "完整 durable 合并日志；成功窗口元数据记录精确行边界，历史首失败保持可审计。"
+  },
+  "durable_exit": {
+    "path": "upgrade/v1.34.13/evidence/raw/final-regression-20261115.exit",
+    "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+  },
+  "durable_finalized": {
+    "path": "upgrade/v1.34.13/evidence/raw/final-regression-20261115.finalized",
+    "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+  },
+  "success_marker": "UPGRADE_FINAL_COMPLETE_PLAN_PASS",
+  "cleanup_marker": "LAB_CLEAN_VERIFY_PASS",
+  "repair_events": [
+    {
+      "marker": "UPGRADE_FINAL_METRICS_REPAIR_BEGIN/UPGRADE_FINAL_METRICS_REPAIR_PASS",
+      "count": 1,
+      "scope": "仅 kube-system metrics-server 单 Pod；身份、ReplicaSet owner、emptyDir/projected 卷约束通过；未使用 --delete-emptydir-data、--force 或 eviction 绕过。"
+    }
+  ],
+  "business_assertions": [
+    "UPGRADE_FINAL_PREREQUISITES_PASS 在任何本轮集群变更前成立，前置矩阵身份与输入已冻结。",
+    "源六节点从 v1.33.6 通过产品 kubecli upgrade 入口完成相邻 minor 到 v1.34.13，readyz、节点版本和 Pod 健康检查通过。",
+    "目标五节点通过产品 kubecli setup 入口以 v1.34.13 干净新建，第二次 setup 90 幂等通过，readyz、metrics API、Pod 健康和节点身份通过。",
+    "唯一受控 repair 仅处理已审阅的 metrics-server emptyDir drain 边界，恢复同一 journal 后继续并完成计划。",
+    "最终成功窗口同时含 FINAL_SOURCE_UPGRADE_PASS、FINAL_TARGET_INSTALL_PASS、UPGRADE_FINAL_COMPLETE_PLAN_PASS、LAB_CLEAN_VERIFY_PASS、UPGRADE_FINAL_SCOPE_PASS；durable exit 与 finalized 均为 0。",
+    "源集群、目标集群、租约、临时目录已由 runner 清理并通过 LAB_CLEAN_VERIFY_PASS。"
+  ],
+  "historical_failures": [
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/final-regression-20261115.run.log",
+      "category": "historical test-gate/environment and controlled runtime boundaries",
+      "cause": "完整合并日志保留前序尝试的首失败、诊断和 repair；这些不属于最后一次成功调用，成功窗口和行边界单独登记。"
+    }
+  ],
+  "customer_signoff": null,
+  "live_execution": true,
+  "completed_ladder": 4
+}

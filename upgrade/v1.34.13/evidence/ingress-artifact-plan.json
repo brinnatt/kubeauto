@@ -1,0 +1,57 @@
+{
+  "batch_id": "ingress-1151",
+  "repository": "kubeauto-ext-images-dockerfile",
+  "branch": "v1.34.13",
+  "sha": "988e4167308d2f830f81b4808494366ddbb3781b",
+  "mode": "selected",
+  "images": [
+    "brinnatt/ingress-nginx-controller:v1.15.1",
+    "brinnatt/kube-webhook-certgen:v1.6.9"
+  ],
+  "image_count": 2,
+  "platforms": [
+    "linux/amd64",
+    "linux/arm64"
+  ],
+  "fingerprints": {
+    "brinnatt/ingress-nginx-controller:v1.15.1": "8f357f8f284dbd8f7a614e6a5362856a2a56ea5a7c38e817a56f68865781ffca",
+    "brinnatt/kube-webhook-certgen:v1.6.9": "511f1ea8ece2adba87bcb7db758081adcdc692df35adeab79e6ae8fdc2c76247"
+  },
+  "reason": "源controller不覆盖K8s1.34；官方Chart完整配套两新tag，认证私库确认两项404；不修改旧tag或其它certgen。",
+  "state": "published-dual-readback-qualified",
+  "allowed_publish_set": [
+    "hub.talkedu.cn/kubeauto/ingress-nginx-controller:v1.15.1",
+    "docker.io/brinnatt/ingress-nginx-controller:v1.15.1",
+    "hub.talkedu.cn/kubeauto/kube-webhook-certgen:v1.6.9",
+    "docker.io/brinnatt/kube-webhook-certgen:v1.6.9"
+  ],
+  "completed_ladder": 2,
+  "checks": [
+    {
+      "command": "python3 scripts/validate_catalog.py",
+      "rc": 0,
+      "result": "194/194"
+    },
+    {
+      "command": "python3 -B -m unittest discover -s tests -v",
+      "rc": 0,
+      "tests": 98
+    },
+    {
+      "command": ".venv/bin/python -B -m unittest upgrade.tests.test_ingress -v",
+      "rc": 0,
+      "tests": 5,
+      "helm": "3.19.0; four actual source/target × metrics render combinations, zero skip",
+      "ansible_core": "2.18.6; actual role refuses unknown Chart before commands or filesystem mutation"
+    }
+  ],
+  "cleanup": "固定CI拥有临时runner/登录/发布临时tag；无实验室变更，旧正式tag保持",
+  "next": "Await existing global release queue, then verify actual CI plan and collect two-image dual readback",
+  "run_id": "43623197988",
+  "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/43623197988",
+  "evidence": "upgrade/v1.34.13/evidence/ingress-publication.json",
+  "accepted_images": [
+    "brinnatt/kube-webhook-certgen:v1.6.9",
+    "brinnatt/ingress-nginx-controller:v1.15.1"
+  ]
+}

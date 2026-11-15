@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "scope": "read-only current private image layer content; no extraction to disk and no binary execution",
+  "image": "hub.talkedu.cn/kubeauto/kubeauto-k8s-bin:v1.34.13",
+  "digest": "sha256:102ab56b22ea78c726949ff18c6798f6d7a1a53dd7debc07384373985e153d35",
+  "architectures": [
+    {
+      "architecture": "amd64",
+      "manifest_digest": "sha256:4e494547894ccd9009383a1acae091a4f4d9036bb57457450fe7d061d25b4813",
+      "files": {
+        "kube-apiserver": {
+          "sha256": "fffa58212674ad52c8d51e6a4a0bdbe229b4e15a496b9d6e253a5347ac5c4ab4",
+          "mode": "0o755",
+          "bytes": 85577890
+        },
+        "kube-controller-manager": {
+          "sha256": "61c0eaa375ff53fd62998c0419f6d3c1e9bc7db69b85147e319ecdbb913dff28",
+          "mode": "0o755",
+          "bytes": 72380578
+        },
+        "kube-proxy": {
+          "sha256": "4b1d48b6c93df3abfe576d0f3035459ea2cadb4da16173ddc0bba150ccf9143d",
+          "mode": "0o755",
+          "bytes": 45297826
+        },
+        "kube-scheduler": {
+          "sha256": "00e98cbb2d13b7fce68a2cdaeeceabf5777b149d7e6b64f45cd1b6c1c1dd31ab",
+          "mode": "0o755",
+          "bytes": 49684642
+        },
+        "kubectl": {
+          "sha256": "b4bb494e9466a7a94bb851414548bc0d3e2f8da90757e6eccc3371e648648591",
+          "mode": "0o755",
+          "bytes": 61284514
+        },
+        "kubelet": {
+          "sha256": "eb5f718b6cd848ff14e6be89933ef96856f12e3b64a68504b49748afbfe7c0c0",
+          "mode": "0o755",
+          "bytes": 60190985
+        },
+        "official.sha256": {
+          "sha256": "34fc00371f44e3256db7d6b4a10053810b0bf55f04a3885d290e8d1c140d1f35",
+          "mode": "0o644",
+          "bytes": 477
+        }
+      },
+      "official_hashes_match": true,
+      "elf_architecture_match": true,
+      "elapsed_seconds": 16.07
+    },
+    {
+      "architecture": "arm64",
+      "manifest_digest": "sha256:56cf124d1c5e810eeb1b9d327cc1d59a7ac59b764fa06e3e728edf8aeccb0d1c",
+      "files": {
+        "kube-apiserver": {
+          "sha256": "38b6b6e767fee44e9f9e5d3791b88c1d8e330b511c3259f7c57c171869ae6701",
+          "mode": "0o755",
+          "bytes": 79429794
+        },
+        "kube-controller-manager": {
+          "sha256": "35cbc17d32372fe7fb7e01d88475495d28702c89c75fd65b0243e034b058fa94",
+          "mode": "0o755",
+          "bytes": 67174562
+        },
+        "kube-proxy": {
+          "sha256": "241ecae6f5b24abce1df66bc24a6b1488d07ddd97c5eeff51597b80636fc09b3",
+          "mode": "0o755",
+          "bytes": 42533026
+        },
+        "kube-scheduler": {
+          "sha256": "74d094bcacbbb833380aa080ded5ec52288e5a58c0bcdc974926f941a27898f8",
+          "mode": "0o755",
+          "bytes": 46530722
+        },
+        "kubectl": {
+          "sha256": "66e8283d52d9bc1f9c0e9daade7c971cd20db5a379306862897dfb25395f3e03",
+          "mode": "0o755",
+          "bytes": 57409698
+        },
+        "kubelet": {
+          "sha256": "170c87e456b4e987ebbfd13fc75b28317a7cb4f5dedb10de48c2ffb4cb9b2f11",
+          "mode": "0o755",
+          "bytes": 56230153
+        },
+        "official.sha256": {
+          "sha256": "8adb3ec544fe3e7dc33abfb23e7ebbbeb2e5a05c9d295bc25434d849c64625e0",
+          "mode": "0o644",
+          "bytes": 477
+        }
+      },
+      "official_hashes_match": true,
+      "elf_architecture_match": true,
+      "elapsed_seconds": 15.619
+    }
+  ],
+  "temporary_spools_closed": true,
+  "dockerhub_independent_readback": false,
+  "parent_acceptance": false
+}

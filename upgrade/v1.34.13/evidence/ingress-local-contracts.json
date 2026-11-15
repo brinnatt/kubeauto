@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "observed_on": "2026-11-15",
+  "matrix_ids": [
+    "UPG-04",
+    "UPG-11"
+  ],
+  "claim": "Official ingress Chart pairing, actual product values rendering and unknown-version role refusal only",
+  "parent_acceptance": false,
+  "live_lab_execution": false,
+  "checks": [
+    {
+      "command": ".venv/bin/python -B -m unittest upgrade.tests.test_ingress -v",
+      "rc": 0,
+      "tests": 5,
+      "helm": "3.19.0; four actual source/target × metrics render combinations, zero skip",
+      "ansible_core": "2.18.6; actual role refuses unknown Chart before commands or filesystem mutation"
+    }
+  ],
+  "inputs": {
+    "roles/cluster-addon/tasks/ingress-nginx.yml": "7394d7f034fe9a6d93c937b334e7dbecc8d5dcb917d94f004e2e5f8b9a0a57ed",
+    "roles/cluster-addon/templates/ingress-nginx/values.yaml.j2": "5057aa9b9a71f49821a1331ee29419a7f014bfb7331cc6add2797deb560857bd",
+    "roles/cluster-addon/files/ingress-nginx-4.15.1.tgz": "3eff0bd18151d6e6b1c441463410571443dda1ac78292cb189346628de784f0c",
+    "upgrade/tests/test_ingress.py": "89bb4161e382770b126263743d86fcad1105ad6e052f1f3dc84c4a029103a5da"
+  },
+  "raw_log": "upgrade/v1.34.13/evidence/raw/kubeauto-ingress-contracts.log",
+  "next": "Two-image artifact qualification then focused source-side rollout and real routing/TLS/admission evidence"
+}

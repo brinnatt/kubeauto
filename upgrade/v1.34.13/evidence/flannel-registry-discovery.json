@@ -1,0 +1,15 @@
+{
+  "observed_on": "2026-11-15",
+  "registry": "hub.talkedu.cn",
+  "authenticated": true,
+  "results": [
+    {
+      "image": "flannel:v0.28.10",
+      "http": 404
+    },
+    {
+      "image": "flannel-cni-plugin:v1.9.1-flannel3",
+      "http": 404
+    }
+  ]
+}

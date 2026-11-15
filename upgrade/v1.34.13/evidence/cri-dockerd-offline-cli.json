@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "scope": "checksum-qualified official cri-dockerd0.4.10 amd64 offline help/version only",
+  "provenance": {
+    "version": "0.4.10",
+    "archive_sha256": "5350e6a939acdf3263ba976bddac2e0ddb56d6600667a9f7ff1f7007e552bdb4",
+    "binary_sha256": "72115edfc4e17633950f06390969e871fa24a69f238891b861fc01fce388bacc",
+    "url": "https://github.com/Mirantis/cri-dockerd/releases/download/v0.4.10/cri-dockerd-0.4.10.amd64.tgz",
+    "scope": "Offline help/version only; no daemon or Docker/CRI socket execution"
+  },
+  "observations": {
+    "version": {
+      "path": "upgrade/v1.34.13/evidence/raw/cri-dockerd-0410-version.txt",
+      "sha256": "9dfc9e8df0ffa1938fdba35b4c1c25aa51ffbb252d0d9012ffbd2946f50637e5",
+      "rc": 0
+    },
+    "help": {
+      "path": "upgrade/v1.34.13/evidence/raw/cri-dockerd-0410-help.txt",
+      "sha256": "b7e75492815aa009e781330aca3d6dcc37082b62069ddbc0d5163a483af6ce94",
+      "rc": 0
+    }
+  },
+  "live_execution": false,
+  "parent_acceptance": false
+}

@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "accepted": true,
+  "source": "v1.33.6",
+  "target": "v1.34.13",
+  "case_ids": [
+    "UPG-11"
+  ],
+  "method": "analysis",
+  "claim": "目标集群的 metrics-server API 已在 v1.34.13 端点读回，Deployment 可用且 observability 观察出口通过；Ingress、Prometheus/Alertmanager、EFK 和 Dashboard 未在该实验室集群部署。Ingress 的 TLS/RBAC 静态合同、监控/日志 render 对比和 Dashboard 已归档的生命周期限制沿用 upgrade 证据，Dashboard 首跳继续作为明确 EOL 过渡边界，不写成上游维护中。",
+  "covered_subcases": [
+    "metrics-api-target-readback",
+    "ingress-static-tls-and-rbac-contract-reuse",
+    "monitoring-and-logging-unchanged-render-boundary",
+    "dashboard-eol-transition-boundary"
+  ],
+  "inputs": {
+    "upgrade/v1.34.13/release.yaml": "cfdcd0a7d3b168c6c607d27392c6942cf780007e49febf72add154f0c5ef0143",
+    "upgrade/v1.34.13/evidence/UPG-08.json": "5c025585d05e9bf28540535bf1d6556c0bbcf3b096659723fe206b5b3d1a6c64",
+    "upgrade/v1.34.13/evidence/UPG-10.json": "446187433b4c655dc622a61b99a0fe00f178fe76bf0706ebe17c93f686c6daf2",
+    "upgrade/v1.34.13/evidence/metrics-stage-contracts.json": "c0eefde272bab55fc38f0db97521b11f96f52699ddca66063174e263f9be33c2",
+    "upgrade/v1.34.13/evidence/ingress-local-contracts.json": "5d238f0b7e21923b2e155e30110c2547e0f37e05bb221a44e23dead6239ab36c",
+    "upgrade/v1.34.13/evidence/monitoring-render-comparison.json": "cc342885c24da3302f6dac2d2238eccea1980542721da5a2d1c4790371883a6a",
+    "upgrade/v1.34.13/evidence/logging-render-comparison.json": "5d2092042bdf67f813a5977cb7a96687abbbee3db738aa23764cb503fb5220a6"
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/observability-scope-observation-20261115.log",
+      "sha256": "54e3bccb54380b9c3737e137b4fb255ea4111ff5bb77b192044f5894b04750d8"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/metrics-stage-contracts.json",
+      "sha256": "c0eefde272bab55fc38f0db97521b11f96f52699ddca66063174e263f9be33c2"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/ingress-local-contracts.json",
+      "sha256": "5d238f0b7e21923b2e155e30110c2547e0f37e05bb221a44e23dead6239ab36c"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/monitoring-render-comparison.json",
+      "sha256": "cc342885c24da3302f6dac2d2238eccea1980542721da5a2d1c4790371883a6a"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/logging-render-comparison.json",
+      "sha256": "5d2092042bdf67f813a5977cb7a96687abbbee3db738aa23764cb503fb5220a6"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/offline-integration-with-metrics.json",
+      "sha256": "9e6659fa317b634ca585b049b6028ff0969b0322dd6c716a8c0b0ba0fea30e5a"
+    }
+  ],
+  "official_source_ids": [
+    "K8S-SKEW"
+  ],
+  "applicability": {
+    "conditions": "目标实验室仅启用 metrics-server；入口、监控、日志和 Dashboard 没有 workload。",
+    "differences": "Kubernetes/API/runtime 已升级，观测和入口组合保持源 GA。",
+    "reason": "现场只补实际指标 API；其余路径按静态合同、官方生命周期和首跳保留限制复用。"
+  },
+  "checks": [
+    {
+      "command": "read-only metrics API/deployment/ingress scope observation on upgrade-v1336-source",
+      "rc": 0
+    }
+  ],
+  "customer_signoff": null,
+  "live_execution": false,
+  "completed_ladder": 4
+}

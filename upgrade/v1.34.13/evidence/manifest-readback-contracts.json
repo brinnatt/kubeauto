@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "observed_on": "2026-11-15",
+  "matrix_ids": [
+    "UPG-03",
+    "UPG-04"
+  ],
+  "classification": "supply-chain evidence reader and test-gate",
+  "repository_sha": "9cec0229fd9850c44a88e742998192f1cd606db4",
+  "official_source_ids": [
+    "DOCKER-BUILDX-MANIFEST-INSPECT"
+  ],
+  "inputs_sha256": {
+    "scripts/image_release.py": "eb01c96e84b624e5dc0d0d1cf818636e3ab6ff6aafd9bbac47ee1913b133edd6",
+    ".github/workflows/build.yml": "30e9bd86cffc7d07b4bba5d2dcdfeba6f7433bf346bb7221e80a04fef0eb5d29",
+    ".github/workflows/build.yml.backup": "fcb376703110ba0bdf4b22d191b95db1bc88b60fb9d9342727d17cc572cedb00",
+    "tests/test_manifest_readback.py": "20cbca474220f6482d6655e0820e43a5c001ee8f1c2e3c640420a300a8e323f0",
+    "tests/test_incremental_release.py": "a4237f93352f0344b6e68cb946bda234332bee97163471579d989d8f3bb4187d",
+    "tests/test_image_release.py": "e5f0e11722d5c0a4fe453d162ed29fae8864553a21f57d9543b3471ba72ba6cf"
+  },
+  "commands": [
+    {
+      "command": "python3 -B -m unittest discover -s tests -v",
+      "cwd": "kubeauto-ext-images-dockerfile",
+      "rc": 0,
+      "tests": 107
+    }
+  ],
+  "logs": {
+    "first-attempt": {
+      "path": "upgrade/v1.34.13/evidence/raw/manifest-readback-contracts/first-attempt.log",
+      "sha256": "67a4283f1ef81be96abdceea65d5621cec616da5a5926a0a17cd8d087f494f2d",
+      "bytes": 25951,
+      "rc": 1,
+      "tests": null
+    },
+    "qualified": {
+      "path": "upgrade/v1.34.13/evidence/raw/manifest-readback-contracts/qualified.log",
+      "sha256": "12e1c5cc0ff8ab64597dc96052f0f6e1bf57c271dfbad2e9333d664265237498",
+      "bytes": 10022,
+      "rc": 0,
+      "tests": 53
+    },
+    "complete": {
+      "path": "upgrade/v1.34.13/evidence/raw/manifest-readback-contracts/complete.log",
+      "sha256": "1ff666682c4b4c2705f97270ef5179ead71a18cee1ddd3614bb40d9d590fdc90",
+      "bytes": 20364,
+      "rc": 0,
+      "tests": 107
+    }
+  },
+  "scope": [
+    "Explicit nonempty known selected references only; registry inspect only",
+    "Readback plan items empty, shards0, mutation none; no history restore, checkpoint or release jobs",
+    "Both real workflow Plan/Finalize shells exercised through actual Python CLI; mutation routes refuse verify/readback plans"
+  ],
+  "first_failure": {
+    "classification": "test-gate fixture and expected options",
+    "cause": "Fixture extracted a following low-indentation comment into the workflow shell; old expected options omitted readback.",
+    "repair": "Bound extraction to the YAML run block and updated exact dispatch options; real shell/CLI contracts pass.",
+    "live_lab_consumed": false
+  },
+  "actual_actions_evidence": "upgrade/v1.34.13/evidence/legacy-manifest-readback.json",
+  "completed_ladder": 2,
+  "live_lab_execution": false,
+  "parent_acceptance": false
+}

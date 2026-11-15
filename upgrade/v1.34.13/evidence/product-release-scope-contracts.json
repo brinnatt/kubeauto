@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "observed_on": "2026-11-15",
+  "matrix_ids": [
+    "UPG-03",
+    "UPG-04"
+  ],
+  "classification": "supply-chain command scope and test-gate",
+  "result": "local-contracts-pass",
+  "cause": "build.py default also builds independent tools; kubecli release must use its existing --kubecli-only option",
+  "command": ".venv/bin/python -B -m unittest upgrade.tests.test_product_release_scope -v",
+  "tests": 1,
+  "architectures_checked": [
+    "amd64",
+    "arm64"
+  ],
+  "rc": 0,
+  "elapsed_seconds": 0.009,
+  "inputs": {
+    ".github/workflows/release.yml": "e5d41171ae94757c252a4384d309b26a11f3ada055182a2cfa6a7c107113d3e1",
+    "build.py": "29dd1553d6b3b4c46f63abc6f94b4cf94e22118a3320645b65c686512c2e9560",
+    "upgrade/tests/test_product_release_scope.py": "7b332a3d02c6099fbcc83e7bce45dee9127d4605296dbe8c4d635cc2ecad3b09"
+  },
+  "raw_log": "upgrade/v1.34.13/evidence/raw/product-release-scope-contracts-20261115.log",
+  "raw_sha256": "ad926a73c932c0f489ee21ac660ce961cf78f27f12d1df556ee37609922ed969",
+  "official_source_ids": [
+    "ACTIONS-PRODUCT-RELEASE-SCOPE"
+  ],
+  "completed_ladder": 2,
+  "next_permitted_level": "Only after full product/artifact admission, scoped kubecli release; no tools build",
+  "publication_triggered": false,
+  "parent_acceptance": false,
+  "limitations": [
+    "Both real build.main command plans are evaluated through a recording adapter; pip/PyInstaller and live publication are not executed",
+    "Product upgrade packaging/CLI/GA still pending"
+  ]
+}
