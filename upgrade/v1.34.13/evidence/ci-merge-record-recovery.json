@@ -1,0 +1,392 @@
+{
+  "schema_version": 1,
+  "kind": "ci-merge-record-recovery",
+  "recorded_on": "2026-11-15",
+  "observed_on": "2026-11-15",
+  "repository": "brinnatt/kubeauto-ext-images-dockerfile",
+  "branch": "dev",
+  "scope": "发布记录恢复与原累计计划的只读复用核验；不重签升级矩阵或客户验收",
+  "original_failure": {
+    "run_id": 43725656634,
+    "head": "9cec0229fd9850c44a88e742998192f1cd606db4",
+    "conclusion": "failure",
+    "layer": "test-gate/release-history",
+    "release": "skipped",
+    "checkpoint": "skipped"
+  },
+  "cause": {
+    "checkpoint": "997ad438c7b557fde1cfc534d98a02094dcea2de",
+    "push_before": "33a209565a37c5b476c4730b692fdc51ffd04275",
+    "new_catalog_entries": 36,
+    "cumulative_plan_entries": 48,
+    "unavailable_historical_records": 12,
+    "description": "累计发布计划包含先前已发布镜像；早期 Actions artifact 保存期为7天且原记录已不可从API取得，缺记录保护拒绝继续。"
+  },
+  "fix_commits": [
+    "7fd29c873592c7a307c0a5f4d18f16e72fecf28c",
+    "a84b776ba7dab1a4bbe2b417338beebcf569e0c2"
+  ],
+  "fix": {
+    "files": [
+      "scripts/release_history.py",
+      "tests/test_incremental_release.py",
+      "release-records.json"
+    ],
+    "archived_records": 12,
+    "archive_sha256": "760cb35b033e7c1bfb09b839649542f016a8e38a72895193d69b15f5429b091f",
+    "archive_provenance": [
+      {
+        "key": "brinnatt/longhorn-instance-manager:v1.12.1-kubeauto.3",
+        "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/41768548120",
+        "run_id": 41768548120,
+        "head": "e3dab38e0f95ae3215221363d09406e1b5971f66",
+        "receipt_name": "elasticsearch-images-20261103.json",
+        "receipt_sha256": "08f5b037147be9b3661f2e79c18bc3fb6555b7d43b7302e382cf506b4aefc0d9",
+        "archives": {
+          "41768548120-release-evidence-0-1.zip": {
+            "sha256": "0b6928c0ecc7d6f18563b2d8bb5ce01d389afb15c6c191bdbfb25b667e74a46a"
+          }
+        }
+      },
+      {
+        "key": "brinnatt/longhorn-manager:v1.12.1-kubeauto.1",
+        "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/41678041850",
+        "run_id": 41678041850,
+        "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+        "receipt_name": "elasticsearch-images-20261103.json",
+        "receipt_sha256": "08f5b037147be9b3661f2e79c18bc3fb6555b7d43b7302e382cf506b4aefc0d9",
+        "archives": {
+          "41678041850-release-evidence-8-2.zip": {
+            "sha256": "d911cafa81cddd12972458abf8044c4b9f0c1a4f0ecb7b0a2ce23f7d532c4c3c"
+          }
+        }
+      },
+      {
+        "key": "brinnatt/longhorn-manager:v1.12.1-kubeauto.2",
+        "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/41373290910",
+        "run_id": 41373290910,
+        "head": "adfbcc16e43d9da443b5072f4aa3b0a768449074",
+        "receipt_name": "longhorn-manager-pending-publication-20261102.json",
+        "receipt_sha256": "1314d68e6824198788c40f7b8f5b21862fa6def776d886a7652e5cc0c5649b3e",
+        "archives": {
+          "image-plan": "3d109fe9b13c966c570e5c35924e4ec8f29ef23323908d51b0b8595bdca3037b",
+          "plan-evidence-1": "8b59365ff9b474f715516142be6b93ea5cef0b8fc55cc4398116fcf6f2efd804",
+          "release-evidence-0-1": "4eaa8cd1ad1befcd2a3be615ddc267e79a5bb487b7323b5cefad089db59a94b1"
+        }
+      },
+      {
+        "key": "brinnatt/eck-operator:3.4.1",
+        "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/41670245576",
+        "run_id": 41670245576,
+        "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+        "receipt_name": "elasticsearch-images-20261103.json",
+        "receipt_sha256": "08f5b037147be9b3661f2e79c18bc3fb6555b7d43b7302e382cf506b4aefc0d9",
+        "archives": {
+          "41670245576-release-evidence-0-1.zip": {
+            "sha256": "1124e2f7bd156dd3e46f67010d1660b44b48fe0dc4b2934d9ac26838b30d5423"
+          }
+        }
+      },
+      {
+        "key": "brinnatt/elasticsearch-client:9.5.1-kubeauto.1",
+        "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/41673063867",
+        "run_id": 41673063867,
+        "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+        "receipt_name": "elasticsearch-images-20261103.json",
+        "receipt_sha256": "08f5b037147be9b3661f2e79c18bc3fb6555b7d43b7302e382cf506b4aefc0d9",
+        "archives": {
+          "41673063867-release-evidence-0-1.zip": {
+            "sha256": "76e06d07cc46e3fe80e99bc2fec514d1ed176d6957825a67a2be797d8a02381f"
+          }
+        }
+      },
+      {
+        "key": "brinnatt/elasticsearch-exporter:v1.11.0",
+        "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/41673063867",
+        "run_id": 41673063867,
+        "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+        "receipt_name": "elasticsearch-images-20261103.json",
+        "receipt_sha256": "08f5b037147be9b3661f2e79c18bc3fb6555b7d43b7302e382cf506b4aefc0d9",
+        "archives": {
+          "41673063867-release-evidence-0-1.zip": {
+            "sha256": "76e06d07cc46e3fe80e99bc2fec514d1ed176d6957825a67a2be797d8a02381f"
+          }
+        }
+      },
+      {
+        "key": "brinnatt/elasticsearch-rally:2.13.0-kubeauto.1",
+        "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/41674326497",
+        "run_id": 41674326497,
+        "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+        "receipt_name": "elasticsearch-images-20261103.json",
+        "receipt_sha256": "08f5b037147be9b3661f2e79c18bc3fb6555b7d43b7302e382cf506b4aefc0d9",
+        "archives": {
+          "41674326497-release-evidence-0-1.zip": {
+            "sha256": "8255fcd955482265b7bc868d8f36e94abe2c89bca231af1fc5d179c1912bd5bc"
+          }
+        }
+      },
+      {
+        "key": "brinnatt/elasticsearch-smartcn:9.5.6-kubeauto.1",
+        "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/41674326497",
+        "run_id": 41674326497,
+        "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+        "receipt_name": "elasticsearch-images-20261103.json",
+        "receipt_sha256": "08f5b037147be9b3661f2e79c18bc3fb6555b7d43b7302e382cf506b4aefc0d9",
+        "archives": {
+          "41674326497-release-evidence-0-1.zip": {
+            "sha256": "8255fcd955482265b7bc868d8f36e94abe2c89bca231af1fc5d179c1912bd5bc"
+          }
+        }
+      },
+      {
+        "key": "brinnatt/elasticsearch:9.5.5",
+        "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/41674326497",
+        "run_id": 41674326497,
+        "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+        "receipt_name": "elasticsearch-images-20261103.json",
+        "receipt_sha256": "08f5b037147be9b3661f2e79c18bc3fb6555b7d43b7302e382cf506b4aefc0d9",
+        "archives": {
+          "41674326497-release-evidence-0-1.zip": {
+            "sha256": "8255fcd955482265b7bc868d8f36e94abe2c89bca231af1fc5d179c1912bd5bc"
+          }
+        }
+      },
+      {
+        "key": "brinnatt/elasticsearch:9.5.6",
+        "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/41673063867",
+        "run_id": 41673063867,
+        "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+        "receipt_name": "elasticsearch-images-20261103.json",
+        "receipt_sha256": "08f5b037147be9b3661f2e79c18bc3fb6555b7d43b7302e382cf506b4aefc0d9",
+        "archives": {
+          "41673063867-release-evidence-0-1.zip": {
+            "sha256": "76e06d07cc46e3fe80e99bc2fec514d1ed176d6957825a67a2be797d8a02381f"
+          }
+        }
+      },
+      {
+        "key": "brinnatt/kibana:9.5.5",
+        "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/41674326497",
+        "run_id": 41674326497,
+        "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+        "receipt_name": "elasticsearch-images-20261103.json",
+        "receipt_sha256": "08f5b037147be9b3661f2e79c18bc3fb6555b7d43b7302e382cf506b4aefc0d9",
+        "archives": {
+          "41674326497-release-evidence-0-1.zip": {
+            "sha256": "8255fcd955482265b7bc868d8f36e94abe2c89bca231af1fc5d179c1912bd5bc"
+          }
+        }
+      },
+      {
+        "key": "brinnatt/kibana:9.5.6",
+        "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/41673063867",
+        "run_id": 41673063867,
+        "head": "89b7736c0bf9f048b6e4df5cfb7753e0d8c36157",
+        "receipt_name": "elasticsearch-images-20261103.json",
+        "receipt_sha256": "08f5b037147be9b3661f2e79c18bc3fb6555b7d43b7302e382cf506b4aefc0d9",
+        "archives": {
+          "41673063867-release-evidence-0-1.zip": {
+            "sha256": "76e06d07cc46e3fe80e99bc2fec514d1ed176d6957825a67a2be797d8a02381f"
+          }
+        }
+      }
+    ],
+    "guards": [
+      "仅补缺失记录，不覆盖API取得的新记录",
+      "原输入fingerprint必须相同",
+      "恢复后仍核验双端双架构digest与上游输入",
+      "同次run-id重跑不加载跨运行档案"
+    ],
+    "runtime_inputs_changed": false
+  },
+  "validation": {
+    "local_tests": {
+      "count": 112,
+      "failures": 0,
+      "result": "pass"
+    },
+    "catalog": {
+      "rows": 214,
+      "dockerfiles": 214,
+      "result": "pass"
+    },
+    "coverage": {
+      "expected": 48,
+      "accepted": 48,
+      "disjoint_union_verified": true
+    },
+    "runs": [
+      {
+        "run_id": 43727060575,
+        "conclusion": "failure",
+        "accepted_keys": [
+          "brinnatt/cephcsi:v3.17.2",
+          "brinnatt/longhorn-manager:v1.12.1-kubeauto.2",
+          "brinnatt/elasticsearch:9.5.6",
+          "brinnatt/elasticsearch:9.5.5",
+          "brinnatt/kibana:9.5.6",
+          "brinnatt/kibana:9.5.5",
+          "brinnatt/eck-operator:3.4.1",
+          "brinnatt/elasticsearch-exporter:v1.11.0",
+          "brinnatt/elasticsearch-client:9.5.1-kubeauto.1",
+          "brinnatt/elasticsearch-smartcn:9.5.6-kubeauto.1",
+          "brinnatt/elasticsearch-rally:2.13.0-kubeauto.1",
+          "brinnatt/longhorn-engine:v1.12.2",
+          "brinnatt/longhorn-manager:v1.12.2-kubeauto.1",
+          "brinnatt/longhorn-ui:v1.12.2",
+          "brinnatt/longhorn-instance-manager:v1.12.2-kubeauto.1",
+          "brinnatt/longhorn-share-manager:v1.12.2",
+          "brinnatt/longhorn-backing-image-manager:v1.12.2",
+          "brinnatt/longhorn-support-bundle-kit:v1.0.5",
+          "brinnatt/longhorn-csi-attacher:v4.13.0-20261028",
+          "brinnatt/longhorn-csi-provisioner:v5.3.0-20261028",
+          "brinnatt/longhorn-csi-node-driver-registrar:v2.18.0-20261028",
+          "brinnatt/longhorn-csi-resizer:v2.3.0-20261028",
+          "brinnatt/longhorn-csi-snapshotter:v8.7.0-20261028",
+          "brinnatt/longhorn-livenessprobe:v2.20.0-20261028",
+          "brinnatt/ingress-nginx-controller:v1.15.1",
+          "brinnatt/kube-webhook-certgen:v1.6.9",
+          "brinnatt/cilium:v1.19.10",
+          "brinnatt/cilium-operator-generic:v1.19.10",
+          "brinnatt/hubble-relay:v1.19.10",
+          "brinnatt/cilium:v1.20.4",
+          "brinnatt/cilium-operator-generic:v1.20.4",
+          "brinnatt/hubble-relay:v1.20.4",
+          "brinnatt/hubble-ui:v0.13.6",
+          "brinnatt/hubble-ui-backend:v0.13.6",
+          "brinnatt/flannel:v0.28.10",
+          "brinnatt/flannel-cni-plugin:v1.9.1-flannel3",
+          "brinnatt/coredns:1.15.0",
+          "brinnatt/k8s-dns-node-cache:1.26.8",
+          "brinnatt/calico-cni:v3.31.7",
+          "brinnatt/calico-node:v3.31.7",
+          "brinnatt/calico-kube-controllers:v3.31.7",
+          "brinnatt/calico-cni:v3.32.4",
+          "brinnatt/calico-node:v3.32.4",
+          "brinnatt/calico-kube-controllers:v3.32.4",
+          "brinnatt/metrics-server:v0.9.1",
+          "brinnatt/local-path-provisioner:v0.0.37"
+        ],
+        "remaining_keys": [
+          "brinnatt/longhorn-instance-manager:v1.12.1-kubeauto.3",
+          "brinnatt/longhorn-manager:v1.12.1-kubeauto.1"
+        ],
+        "boundary": "父运行失败保留；仅接受逐项IMAGE_REUSE_PASS，不宣称该运行整体成功。"
+      },
+      {
+        "run_id": 43727995605,
+        "head": "a84b776ba7dab1a4bbe2b417338beebcf569e0c2",
+        "conclusion": "success",
+        "mode": "verify",
+        "accepted_keys": [
+          "brinnatt/longhorn-instance-manager:v1.12.1-kubeauto.3",
+          "brinnatt/longhorn-manager:v1.12.1-kubeauto.1"
+        ],
+        "release": "skipped",
+        "checkpoint": "skipped",
+        "url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/43727995605"
+      }
+    ],
+    "acceptance_type": "跨运行46+2项复用核验，不是一次全量发布验收"
+  },
+  "mutation": {
+    "images_built": 0,
+    "images_published": 0,
+    "images_overwritten": 0,
+    "lab_mutations": 0
+  },
+  "raw_evidence": [
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-merge-recovery-20261115/43725656634-jobs.json",
+      "sha256": "b9850e70acf99ed89fce6993a43b599fdc42c217118195525e659c998684f0c4",
+      "bytes": 6492
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-merge-recovery-20261115/43725656634-plan-evidence-1.zip",
+      "sha256": "9fd2744def79c1adb79068200b4fab49640e0f41c3db31d91bb73de92835ebcb",
+      "bytes": 733
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-merge-recovery-20261115/43725656634-run.json",
+      "sha256": "fc07b1a0d485706b344f234f777ece9f9a9c99c1558623e659db6d2c8718cc67",
+      "bytes": 14231
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-merge-recovery-20261115/43727036558-jobs.json",
+      "sha256": "b3ea4bb3dcbd112248e06a55066708e9688950720b87d29c0964335d46f0051e",
+      "bytes": 6122
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-merge-recovery-20261115/43727036558-run.json",
+      "sha256": "293eb4433d3b1018f802451108a88aca9202bcc9a957ca9085773e7f723355c7",
+      "bytes": 14241
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-merge-recovery-20261115/43727060575-jobs.json",
+      "sha256": "c710f7b873ce1789abedfd508122bf6bbdb278c04753af6f9ce602f8c6e19ace",
+      "bytes": 4093
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-merge-recovery-20261115/43727060575-plan-evidence-1.zip",
+      "sha256": "38e5f1b04b500842e7c8cceaa4775b8031c3fe4e28025894114f65ecf6044c30",
+      "bytes": 1185
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-merge-recovery-20261115/43727060575-run.json",
+      "sha256": "98a601700ae77df53db576fe05c0afb3def121a2b11d44e77b2e1a10bda6e07e",
+      "bytes": 14190
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-merge-recovery-20261115/43727686379-image-plan.zip",
+      "sha256": "2c14d974452cb3ba33a25a71c3ff3443f33493793f61cb3bfec0d1eb80a9e19d",
+      "bytes": 904
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-merge-recovery-20261115/43727686379-plan-evidence-1.zip",
+      "sha256": "58bd5a6473bb57d7e60b232e43c0b8f35aba3255cf617c0d753bb82a85983193",
+      "bytes": 810
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-merge-recovery-20261115/43727995605-image-plan.zip",
+      "sha256": "72b44419cc2282b2a6046b64ecddc6415ddce7d83a1630962b01d2688c30750e",
+      "bytes": 550
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-merge-recovery-20261115/43727995605-jobs.json",
+      "sha256": "20b85ab9cd7e3a42c44fb5a5026603d1f9b902ca0bcedd6543d7977a0d9bdca1",
+      "bytes": 8563
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-merge-recovery-20261115/43727995605-plan-evidence-1.zip",
+      "sha256": "1e048391e806c16f88927f0ea0ec587d341b14aa0bb05cbe70d82c960deab967",
+      "bytes": 825
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-merge-recovery-20261115/43727995605-run.json",
+      "sha256": "15946eb4dc047023209b48612920327e470fd445addadc5d64014dae5f990398",
+      "bytes": 15096
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-merge-recovery-20261115/accepted-46.json",
+      "sha256": "0c722121676072174f80660f29a5d1f51709264047f45073328ce6be1978b5a0",
+      "bytes": 1942
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-merge-recovery-20261115/local-tests.log",
+      "sha256": "748c5f45d0eec754ca806971c473e1f4e45529acf9c01a6b1c04df6f7f8e8c5e",
+      "bytes": 21315
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-merge-recovery-20261115/original-image-plan.json",
+      "sha256": "bbf2be5a897594c0a7e185e5105ee01c0e58340e4b9c91918aa20f0362c6a7c7",
+      "bytes": 22217
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-merge-recovery-20261115/verified-2.json",
+      "sha256": "2c398a17f7d3159aba946c828835506fbbdb23a3c6a090259de9ce98dddac024",
+      "bytes": 1149
+    }
+  ],
+  "customer_signoff": null
+}

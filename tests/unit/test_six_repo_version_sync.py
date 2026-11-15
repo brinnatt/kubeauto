@@ -10,6 +10,7 @@ import ast
 import json
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from common.constants import KubeConstant
 
@@ -33,12 +34,12 @@ class TestSixRepoVersionSync(unittest.TestCase):
 
     def test_json_mock_ci_tag_matches_constant(self):
         """v_json_mock must match the dual-push catalog tag."""
-        self.assertEqual(self._ci_tag("json-mock"), self.kc.v_json_mock)
+        self.assertEqual(self._ci_tag("json-mock", self.kc.v_json_mock), self.kc.v_json_mock)
 
     def test_ansible_execution_image_ci_tag_matches_constant(self):
         """Conditional EE must keep the TalkEdu/Docker Hub CI tag in sync."""
-        self.assertEqual(self._ci_tag("alpine-ansible"), self.kc.v_ansible_core)
-        self.assertEqual(self._ci_tag("python314"), self.kc.v_ansible_core_py314)
+        self.assertEqual(self._ci_tag("alpine-ansible", self.kc.v_ansible_core), self.kc.v_ansible_core)
+        self.assertEqual(self._ci_tag("python314", self.kc.v_ansible_core_py314), self.kc.v_ansible_core_py314)
         self.assertEqual(
             self.kc.ansible_execution_image,
             f"brinnatt/ansible:{self.kc.v_ansible_core}",
@@ -108,9 +109,10 @@ class TestSixRepoVersionSync(unittest.TestCase):
         }
         for directory, tags in expected.items():
             if directory == "ceph":
-                actual = {self._ci_tag("ceph"), self._ci_tag("ceph-20.2.3")}
+                actual = {self._ci_tag("ceph", f"v{self.kc.v_ceph}"),
+                          self._ci_tag("ceph-20.2.3", f"v{self.kc.v_ceph_upgrade_source}")}
             else:
-                actual = {self._ci_tag(directory)}
+                actual = {self._ci_tag(directory, tag) for tag in tags}
             self.assertEqual(actual, tags, f"Ceph release drift for {directory}")
 
     def test_json_mock_dockerfile_pins_node20(self):
@@ -119,11 +121,27 @@ class TestSixRepoVersionSync(unittest.TestCase):
         self.assertIn("node:20.", df)
         self.assertIn("json-server@0.17.4", df)
 
-    def _ci_tag(self, dockerfile_dir: str) -> str:
+    def _ci_tag(self, dockerfile_dir: str, expected: str) -> str:
         entries = [row for row in self.catalog
                    if Path(row["dockerfile"]).parent.name == dockerfile_dir]
-        self.assertEqual(len(entries), 1, f"{dockerfile_dir} missing or duplicated in ext-images catalog")
+        # catalog 同时保留已交付、升级目标和测试版本；按消费者精确 pin 核对。
+        entries = [row for row in entries if row["tag"].lstrip("v") == expected.lstrip("v")]
+        self.assertEqual(len(entries), 1, f"{dockerfile_dir}:{expected} missing or duplicated in ext-images catalog")
         return entries[0]["tag"]
+
+    def test_ci_tag_selects_consumer_pin_among_released_and_upgrade_versions(self):
+        rows = [{"dockerfile": f"platform/calico/{version}/calico-node/Dockerfile", "tag": version}
+                for version in ("v3.28.4", "v3.31.2", "v3.32.0")]
+        with patch.object(self, "catalog", rows):
+            self.assertEqual(self._ci_tag("calico-node", "v3.28.4"), "v3.28.4")
+            self.assertEqual(self._ci_tag("calico-node", "3.31.2"), "v3.31.2")
+            with self.assertRaisesRegex(AssertionError, "missing or duplicated"):
+                self._ci_tag("calico-node", "v9.0.0")
+
+    def test_ci_tag_still_rejects_duplicate_consumer_pin(self):
+        row = {"dockerfile": "platform/calico/calico-node/Dockerfile", "tag": "v3.28.4"}
+        with patch.object(self, "catalog", [row, row]), self.assertRaisesRegex(AssertionError, "duplicated"):
+            self._ci_tag("calico-node", "v3.28.4")
 
     def test_ecosystem_ci_tags_match_kubeauto_constants(self):
         """No six-repo fragmentation: CNI/DNS/control-plane/monitor pins must match constants."""
@@ -157,7 +175,7 @@ class TestSixRepoVersionSync(unittest.TestCase):
 
         bad = []
         for dirname, want in expect.items():
-            got = self._ci_tag(dirname)
+            got = self._ci_tag(dirname, want)
             if got != want and got != want.lstrip("v") and f"v{got}" != want:
                 bad.append(f"{dirname}: ci={got} const={want}")
         self.assertEqual(bad, [], msg=f"six-repo ecosystem tag drift: {bad}")
@@ -226,7 +244,10 @@ class TestSixRepoVersionSync(unittest.TestCase):
 
     def test_nacos_mysql_fixture_is_published_by_ext_images_ci(self):
         """Every Nacos MySQL fixture reference must match one dual-pushed image."""
-        tag = self._ci_tag("mysql")
+        source = (EXT_IMAGES / "middleware/nacos/test-support/mysql/Dockerfile").read_text()
+        pinned = re.search(r"^FROM docker.io/library/mysql:([^\s]+)$", source, re.MULTILINE)
+        self.assertIsNotNone(pinned, "Nacos fixture must pin its official MySQL version")
+        tag = self._ci_tag("mysql", pinned.group(1))
         rows = [row for row in self.catalog
                 if row["dockerfile"] == "./middleware/nacos/test-support/mysql/Dockerfile"]
         self.assertEqual(rows, [{"dockerfile": "./middleware/nacos/test-support/mysql/Dockerfile",

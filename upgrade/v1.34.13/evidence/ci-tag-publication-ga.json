@@ -1,0 +1,584 @@
+{
+  "schema_version": 1,
+  "kind": "external-image-publication-ga",
+  "accepted": true,
+  "recorded_on": "2026-11-16",
+  "scope": "外部镜像共享发布流程的 tag 语义修复与两个轻量制品的代表性完整验收；不是整仓逐镜像重新编译或客户签收",
+  "repository": "brinnatt/kubeauto-ext-images-dockerfile",
+  "implementation_commit": "a2d03e47572d4db14ec9494adc9cf64eb9dcd1c1",
+  "delivery_head": "04e742a5e7364f9e23a199eeeaab5fdfff3de12a",
+  "decisions": {
+    "identity": "image:tag",
+    "existing_complete": "reuse",
+    "one_end_missing": "digest-preserving multi-architecture copy",
+    "both_ends_missing": "build",
+    "published_tag_overwrite": false,
+    "history_required": false,
+    "git_sha_triggers_rebuild": false,
+    "historical_fingerprint_triggers_rebuild": false,
+    "fingerprint_purpose": "same-run plan/run consistency only"
+  },
+  "local_checks": [
+    {
+      "log": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/all-tests.log",
+      "tests_run": 87,
+      "skipped": 0,
+      "rc": 0
+    },
+    {
+      "log": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/six-repo-tests.log",
+      "tests_run": 12,
+      "skipped": 0,
+      "rc": 0
+    },
+    {
+      "log": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/upgrade-tests.log",
+      "tests_run": 272,
+      "skipped": 4,
+      "rc": 0
+    },
+    {
+      "log": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/upgrade-validator-tests.log",
+      "tests_run": 12,
+      "skipped": 0,
+      "rc": 0
+    }
+  ],
+  "static_checks": {
+    "workflows": 2,
+    "shell_blocks": 20,
+    "catalog_entries": 216,
+    "original_unchanged_build_inputs": 214,
+    "rc": 0,
+    "boundary": "所有既有源码编译制品的 Dockerfile/context/build-policy 均逐字节保留，不重复编译"
+  },
+  "functional_coverage": [
+    {
+      "capability": "catalog / exact selection / current push diff / branch merge / build-policy scope / 256-shard limit",
+      "evidence": "PlanningTests + ReleaseCLIContracts.test_real_git_version_branch_merge_only_selects_changed_tag"
+    },
+    {
+      "capability": "changed / selected / bounded full / verify / readback and hosted/self-hosted handoffs",
+      "evidence": "真实 workflow shell 与 CLI 合同；五个真实 Actions 运行"
+    },
+    {
+      "capability": "missing/expired history and changed Git SHA never rebuild a complete tag",
+      "evidence": "无历史目录的真实 CLI 合同；full 与版本分支 selected 两项均复用"
+    },
+    {
+      "capability": "one registry missing / fixed-digest copy / no compilation",
+      "evidence": "两方向单元合同及真实 CLI 部分发布失败→丢弃历史→重跑补推合同；外部命令由隔离协议夹具替代"
+    },
+    {
+      "capability": "dual-architecture build / staged equality / formal promotion / final readback",
+      "evidence": "Actions 43733649862 的两个真实制品；busybox RUN 在双架构构建中执行"
+    },
+    {
+      "capability": "build failure / stop following images / partial publication / stage resume / failed-job retry",
+      "evidence": "ReleaseCLIContracts 的隔离故障合同，真实入口与持久 registry 夹具，不向生产 tag 注入故障"
+    },
+    {
+      "capability": "auth / network / TLS / 429 / ambiguous 404 / malformed architecture / conflicting tag refusal",
+      "evidence": "ManifestTests / PlanningTests / ReleaseCLIContracts；错误不转为构建"
+    },
+    {
+      "capability": "read-only refusal / wrong SHA / stale context / foreign mapping / invalid shard / completion prerequisite refusal / durable rc",
+      "evidence": "真实 CLI、真实 workflow 完成步骤及 run_logged 合同"
+    },
+    {
+      "capability": "multi-version consumer matching / missing and duplicate tag refusal",
+      "evidence": "主仓 12 项六仓合同；原 214 项 catalog 已复现旧门禁 calico-node 三版本错误"
+    }
+  ],
+  "real_runs": [
+    {
+      "run_id": 43733649862,
+      "url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/43733649862",
+      "head": "a2d03e47572d4db14ec9494adc9cf64eb9dcd1c1",
+      "branch": "dev",
+      "mode": "changed",
+      "candidates": 2,
+      "planned_publications": 2,
+      "reused": 0,
+      "conclusion": "success",
+      "release_job": "success",
+      "terminal_marker": "IMAGE_RELEASE_PASS mode=changed count=2"
+    },
+    {
+      "run_id": 43734129822,
+      "url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/43734129822",
+      "head": "a2d03e47572d4db14ec9494adc9cf64eb9dcd1c1",
+      "branch": "dev",
+      "mode": "full",
+      "candidates": 2,
+      "planned_publications": 0,
+      "reused": 2,
+      "conclusion": "success",
+      "release_job": "skipped",
+      "terminal_marker": "IMAGE_RELEASE_PASS mode=full count=2"
+    },
+    {
+      "run_id": 43734335595,
+      "url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/43734335595",
+      "head": "04e742a5e7364f9e23a199eeeaab5fdfff3de12a",
+      "branch": "dev",
+      "mode": "changed",
+      "candidates": 0,
+      "planned_publications": 0,
+      "reused": 0,
+      "conclusion": "success",
+      "release_job": "skipped",
+      "terminal_marker": "IMAGE_RELEASE_PASS mode=changed count=0"
+    },
+    {
+      "run_id": 43734448446,
+      "url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/43734448446",
+      "head": "04e742a5e7364f9e23a199eeeaab5fdfff3de12a",
+      "branch": "v1.34.13",
+      "mode": "selected",
+      "candidates": 2,
+      "planned_publications": 0,
+      "reused": 2,
+      "conclusion": "success",
+      "release_job": "skipped",
+      "terminal_marker": "IMAGE_RELEASE_PASS mode=selected count=2"
+    },
+    {
+      "run_id": 43734696580,
+      "url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/43734696580",
+      "head": "04e742a5e7364f9e23a199eeeaab5fdfff3de12a",
+      "branch": "v1.34.13",
+      "mode": "verify",
+      "candidates": 4,
+      "planned_publications": 0,
+      "reused": 0,
+      "conclusion": "success",
+      "release_job": "skipped",
+      "terminal_marker": "IMAGE_RELEASE_PASS mode=verify count=4"
+    }
+  ],
+  "durable_statuses": [
+    {
+      "run_id": 43733649862,
+      "archive": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/43733649862-plan-evidence-1.zip",
+      "member": "plan-reuse.status",
+      "rc": 0
+    },
+    {
+      "run_id": 43733649862,
+      "archive": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/43733649862-plan-evidence-1.zip",
+      "member": "plan.status",
+      "rc": 0
+    },
+    {
+      "run_id": 43733649862,
+      "archive": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/43733649862-release-evidence-0-1.zip",
+      "member": "runs/43733649862-1/release-0.status",
+      "rc": 0
+    },
+    {
+      "run_id": 43734129822,
+      "archive": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/43734129822-plan-evidence-1.zip",
+      "member": "plan-reuse.status",
+      "rc": 0
+    },
+    {
+      "run_id": 43734129822,
+      "archive": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/43734129822-plan-evidence-1.zip",
+      "member": "plan.status",
+      "rc": 0
+    },
+    {
+      "run_id": 43734335595,
+      "archive": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/43734335595-plan-evidence-1.zip",
+      "member": "plan-reuse.status",
+      "rc": 0
+    },
+    {
+      "run_id": 43734335595,
+      "archive": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/43734335595-plan-evidence-1.zip",
+      "member": "plan.status",
+      "rc": 0
+    },
+    {
+      "run_id": 43734448446,
+      "archive": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/43734448446-plan-evidence-1.zip",
+      "member": "plan-reuse.status",
+      "rc": 0
+    },
+    {
+      "run_id": 43734448446,
+      "archive": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/43734448446-plan-evidence-1.zip",
+      "member": "plan.status",
+      "rc": 0
+    },
+    {
+      "run_id": 43734696580,
+      "archive": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/43734696580-plan-evidence-1.zip",
+      "member": "plan-verify.status",
+      "rc": 0
+    },
+    {
+      "run_id": 43734696580,
+      "archive": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/43734696580-plan-evidence-1.zip",
+      "member": "plan.status",
+      "rc": 0
+    }
+  ],
+  "actual_builds": [
+    "brinnatt/busybox:1.37-release-smoke.1",
+    "brinnatt/pause:3.10-release-smoke.1"
+  ],
+  "actual_build_count": 2,
+  "current_manifests": [
+    {
+      "image": "brinnatt/longhorn-instance-manager:v1.12.1-kubeauto.3",
+      "talkedu": {
+        "digest": "sha256:24e9f0e2f4ac5576e957749833cc98b604dd10902b4d7c1e34a71db8605c524e",
+        "platforms": {
+          "linux/amd64": "sha256:f45c1ffe607799dd4119b2127ead6a729fb1475314b0d9f1f4ec20e18417e51b",
+          "linux/arm64": "sha256:7afe0518b33502edbf030dda547d39a0f6f9c7c1e052e35c8c3e50a9fa1b3ad9"
+        }
+      },
+      "dockerhub": {
+        "digest": "sha256:24e9f0e2f4ac5576e957749833cc98b604dd10902b4d7c1e34a71db8605c524e",
+        "platforms": {
+          "linux/amd64": "sha256:f45c1ffe607799dd4119b2127ead6a729fb1475314b0d9f1f4ec20e18417e51b",
+          "linux/arm64": "sha256:7afe0518b33502edbf030dda547d39a0f6f9c7c1e052e35c8c3e50a9fa1b3ad9"
+        }
+      }
+    },
+    {
+      "image": "brinnatt/longhorn-manager:v1.12.1-kubeauto.1",
+      "talkedu": {
+        "digest": "sha256:6dd315ad7015248ebe3a1ab68ad337382e48bc52d90815e0757783e554fe9c41",
+        "platforms": {
+          "linux/amd64": "sha256:c9eff56f1fe1edab70e9ee76edbf5f5207d08b3a7bbd0971ff7e517c4dd01975",
+          "linux/arm64": "sha256:a0a08472c155db0f1d1b6be16186d0bb21a7e980c3a11623d12ccaedd3903583"
+        }
+      },
+      "dockerhub": {
+        "digest": "sha256:6dd315ad7015248ebe3a1ab68ad337382e48bc52d90815e0757783e554fe9c41",
+        "platforms": {
+          "linux/amd64": "sha256:c9eff56f1fe1edab70e9ee76edbf5f5207d08b3a7bbd0971ff7e517c4dd01975",
+          "linux/arm64": "sha256:a0a08472c155db0f1d1b6be16186d0bb21a7e980c3a11623d12ccaedd3903583"
+        }
+      }
+    },
+    {
+      "image": "brinnatt/busybox:1.37-release-smoke.1",
+      "talkedu": {
+        "digest": "sha256:3f05b57542510ec0b3f958efa70b69bb099e7e62a005c0e11e03e1f7330a1e0d",
+        "platforms": {
+          "linux/amd64": "sha256:911cb6f7b32992a53f5219a4f99b11dd84b9361184ba0e5718e9f30ae3194104",
+          "linux/arm64": "sha256:43596e6f1d63d2446989235d69846d082e089c82a435d0ede1944378e0cc1039"
+        }
+      },
+      "dockerhub": {
+        "digest": "sha256:3f05b57542510ec0b3f958efa70b69bb099e7e62a005c0e11e03e1f7330a1e0d",
+        "platforms": {
+          "linux/amd64": "sha256:911cb6f7b32992a53f5219a4f99b11dd84b9361184ba0e5718e9f30ae3194104",
+          "linux/arm64": "sha256:43596e6f1d63d2446989235d69846d082e089c82a435d0ede1944378e0cc1039"
+        }
+      }
+    },
+    {
+      "image": "brinnatt/pause:3.10-release-smoke.1",
+      "talkedu": {
+        "digest": "sha256:471b7f80588b1e7e0b90726cd35f3fabb0024cedd20b3001edb7e0afed7122c6",
+        "platforms": {
+          "linux/amd64": "sha256:d342ec528dd7d38eda850ddf820f6be475b659a03963248e8c5c889200d2f661",
+          "linux/arm64": "sha256:3e1f60ee1fd12ff6ad22dae1ea2121cdcdf663350a224bf938d6b275c7c0dabf"
+        }
+      },
+      "dockerhub": {
+        "digest": "sha256:471b7f80588b1e7e0b90726cd35f3fabb0024cedd20b3001edb7e0afed7122c6",
+        "platforms": {
+          "linux/amd64": "sha256:d342ec528dd7d38eda850ddf820f6be475b659a03963248e8c5c889200d2f661",
+          "linux/arm64": "sha256:3e1f60ee1fd12ff6ad22dae1ea2121cdcdf663350a224bf938d6b275c7c0dabf"
+        }
+      }
+    }
+  ],
+  "branch_resolution": {
+    "action": "保留并快进同步 v1.34.13；不删除版本维护分支",
+    "ext_images_dev_and_version_head": "04e742a5e7364f9e23a199eeeaab5fdfff3de12a",
+    "reason": "版本分支是 dev 祖先；差异仅发布修复及测试制品，214 个既有组件构建输入不变"
+  },
+  "retired_ledger": {
+    "branch": "image-release-records",
+    "archived_head": "2a9664fcf52139b9f79a89ec7de742493ba0b6c1",
+    "archive": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/retired-ledger.json",
+    "archive_sha256": "de1a6dfefb54665a2d99a9eddbcb6d8c8dc309999f492b2c6ffbfcb2696da0b8",
+    "remote_deleted_with_expected_sha_lease": true,
+    "runtime_code_and_workflow_removed": true
+  },
+  "historical_failure": {
+    "original_run": 43725656634,
+    "cause": "累计 checkpoint + 发布记录必需，artifact 过期阻断已存在 tag",
+    "intermediate_recovery_receipt": "upgrade/v1.34.13/evidence/ci-merge-record-recovery.json",
+    "intermediate_durable_ledger_run_failure": 43730946976,
+    "resolution": "撤除历史记录与账本的运行依赖；保留历史失败，不把原运行改签成功"
+  },
+  "upgrade_acceptance": {
+    "matrix": "upgrade/v1.34.13/test-matrix.yaml",
+    "pass": 15,
+    "total": 15,
+    "pending_or_fail": 0,
+    "fail": 0,
+    "completed_groups": 8,
+    "total_groups": 8,
+    "state_changed": false,
+    "impact": "发布流程与测试门禁变化；原组件/镜像/产品实现未变，既有升级及最终干净回归证据经当前 validator 复核保留，不重复集群回归"
+  },
+  "inputs": {
+    "../kubeauto-ext-images-dockerfile/scripts/image_release.py": "8d765d6397ab2bdf37fca96f23b6775bc111287fe2c163ae51c8b7557bfff82d",
+    "../kubeauto-ext-images-dockerfile/.github/workflows/build.yml": "54e6b5defd64ddeb0a33e4be17e09318adc034352101ef7b85bd138f660ab0fb",
+    "../kubeauto-ext-images-dockerfile/.github/workflows/build.yml.backup": "db4ba74b24992ea7804c806c722c2c479f32a2e56e1afa8a79571675ffdf24a9",
+    "../kubeauto-ext-images-dockerfile/scripts/validate_catalog.py": "acafa78b54280d517bc7022c69e877b77d628728b63de8dd8badc5db9cf712b9",
+    "../kubeauto-ext-images-dockerfile/build-policy.json": "654896bfda98020ad357d0a15917e898f7bf6eb23306569bc0b8ec4945345baf",
+    "../kubeauto-ext-images-dockerfile/catalog.json": "006ac37733220bf9779dc25cee1fc5e30f157319fdbff6c3359101693ec45a9a",
+    "../kubeauto-ext-images-dockerfile/tests/test_image_release.py": "06da4aab91cf998c660218332d9ea2c41c121df08bca057b9490dbae5d3631ea",
+    "../kubeauto-ext-images-dockerfile/tests/test_incremental_release.py": "dbb02426863096657c92192cd6a54b77580b30a175536b4dbed538bade28bb61",
+    "../kubeauto-ext-images-dockerfile/README.md": "8a13ee95a82f590c226b592d27d79f70fc889ab4258620e7c1892a6c081424b7",
+    "../kubeauto-ext-images-dockerfile/AGENTS.md": "10f2990238b433d30e5f0ecad080a4dc4ab033f38dec30fd4f3349a072904044"
+  },
+  "kubeauto_inputs": {
+    "AGENTS.md": "2d87f792b2bfe689103883b643ba387d6489c4450fd15f95e3fa9602d995f93d",
+    "tests/unit/test_six_repo_version_sync.py": "011f037c9408f1f6bdde81339e16ddc563099de0915b268a2420aa8e2f216f90",
+    "upgrade/policy.md": "d80cd79c180457d226051ac18e3c96b9b5823ba5a98ace20c56dd6376c136755",
+    "upgrade/data-contract.md": "5a025303e59584cbe7a9818ab344ca824381f2e9f774f228a94aaeac4b7f6c7d"
+  },
+  "official_sources": [
+    {
+      "url": "https://docs.docker.com/reference/cli/docker/buildx/imagetools/inspect/",
+      "scope": "raw manifest inspection"
+    },
+    {
+      "url": "https://github.com/containers/skopeo/blob/v1.22.3/cmd/skopeo/copy.go",
+      "scope": "all/index-only copying and preserve-digests"
+    },
+    {
+      "url": "https://github.com/opencontainers/distribution-spec/blob/v1.1.1/spec.md",
+      "scope": "manifest absence, authentication and authorization are distinct outcomes"
+    }
+  ],
+  "references": [
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/43733649862-artifacts.json",
+      "sha256": "1ead2cf982ff9911c379a9d3c40e81dc8c531e8642bb10a72f771e6c06ac69af",
+      "bytes": 2527
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/43733649862-image-plan.zip",
+      "sha256": "d83d0828bd5ce55a8fdf0b225af97f7caf9d9bc2d9172b8b347067f7cb310364",
+      "bytes": 563
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/43733649862-jobs.json",
+      "sha256": "3c485045c3a19af529bd32d521c27eb8c569c8c935c78c3b62f60df20484e29f",
+      "bytes": 12720
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/43733649862-logs.zip",
+      "sha256": "051403be86b16e7710abce3f7dd11ba0f9a6d1347a6e9ff0e4a0d81a550f4396",
+      "bytes": 71201
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/43733649862-plan-evidence-1.zip",
+      "sha256": "7b1939f1be93eb6eb9d88dc9a27989bdbfc1eafaca7ab08607a4a0d6785e4057",
+      "bytes": 600
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/43733649862-release-evidence-0-1.zip",
+      "sha256": "b0eba1e54c1c6113877aca48f5e0ecb956289c6a8a360c7cdd8528e5f2ef3163",
+      "bytes": 3230
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/43733649862-run.json",
+      "sha256": "617af64a0207a793760c42bbd508087a3b68ef608634235bf920ed6d4700c380",
+      "bytes": 15140
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/43734129822-artifacts.json",
+      "sha256": "732692aff4465de6109b9e58f8c4f6deb2835b95211bd9f8ec730238a8115c2f",
+      "bytes": 1680
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/43734129822-image-plan.zip",
+      "sha256": "0aeba11b845ea358887f5c45a7f36ca0be0d937278f6fbc7145f8c4fde919918",
+      "bytes": 844
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/43734129822-jobs.json",
+      "sha256": "a9d35efeb13e3791d5dc21503260b7d0e645c0e92f4f2b1f4be2f9e66654e9aa",
+      "bytes": 8054
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/43734129822-logs.zip",
+      "sha256": "b068167ec15341f99c4e353d02c3ce41dc953ba26894b3d5e0a00e0d2e31f954",
+      "bytes": 31544
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/43734129822-plan-evidence-1.zip",
+      "sha256": "bf15b884f9b51fbeee36170e5caad6cc0921c9adb9cf7e8942f324c8bb44490b",
+      "bytes": 660
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/43734129822-run.json",
+      "sha256": "d22c110cca09b25d0898893f05101bcb6eca0e05d0194761e8a93fd81ffd52a0",
+      "bytes": 15099
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/43734335595-artifacts.json",
+      "sha256": "d35a59a5e5343cc7f78f5981aae54d0d76b099d0e7e25528626f9debb1005c87",
+      "bytes": 1680
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/43734335595-image-plan.zip",
+      "sha256": "3a9a2fd65984d6eb45f7894b3a9ac14ef344a559692cf10935ea44d8d0186723",
+      "bytes": 282
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/43734335595-jobs.json",
+      "sha256": "c38443b0682c9cb4e4bda39bbb22b23eaeb7b6ff1442ff6685e093d5105c4d8d",
+      "bytes": 7528
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/43734335595-logs.zip",
+      "sha256": "ce92512400f6b671fc29d6735fd62523eb6843f93f31a25896d4ed62c78f5cf7",
+      "bytes": 28270
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/43734335595-plan-evidence-1.zip",
+      "sha256": "32c99a2d839bce3d4ebfd5ef6fd768512ecd2a56ebeac83f9b18c82d45766224",
+      "bytes": 600
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/43734335595-run.json",
+      "sha256": "d8e126d2dcf6e914ac534e8c57af90c1549949af11c90020fada82d4872b38ff",
+      "bytes": 15134
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/43734448446-artifacts.json",
+      "sha256": "8c811a02ac0952f1395adc7d903fa8a406338fd58433d3cba6d8c539da61882c",
+      "bytes": 1690
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/43734448446-image-plan.zip",
+      "sha256": "5932f32cd1cf917900876d3153841fb3d9d852f69cc6e97600971d2d1b370681",
+      "bytes": 845
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/43734448446-jobs.json",
+      "sha256": "bca6aa42f003e26f216d7020837cb2fd169e353454555e11af06f2865efc6f81",
+      "bytes": 8069
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/43734448446-logs.zip",
+      "sha256": "99327bf1d77930e697adae68e71995c4876945ea68f1a631d133a9d575600049",
+      "bytes": 31476
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/43734448446-plan-evidence-1.zip",
+      "sha256": "79d3991f9a1abc769df62c13e154e8b636123ebac678d894c6e3c773039815d3",
+      "bytes": 668
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/43734448446-run.json",
+      "sha256": "9605f1449de33dabf1a535b593238f0f78166e0edccf7827c81a6edfa810deee",
+      "bytes": 15101
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/43734696580-artifacts.json",
+      "sha256": "f9e7924d19074586c2660cdfca4ce3d9d77e3dd64255c688ed6baef86f769f16",
+      "bytes": 1691
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/43734696580-image-plan.zip",
+      "sha256": "c034d30b2d90f6a2a5d8930e673d671ff56ad55d47218c3a7d1ba6089c112500",
+      "bytes": 1322
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/43734696580-jobs.json",
+      "sha256": "3b82c61a5ef97904fd002f4917a4cd72c61ed4474aa294e60871417d6bdbcebf",
+      "bytes": 8069
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/43734696580-logs.zip",
+      "sha256": "fd499400192979fd4ec5450dfc85a448d0cf1c76081ce21dd357bd8df68772a0",
+      "bytes": 32344
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/43734696580-plan-evidence-1.zip",
+      "sha256": "4b49b86a2c958db1109d51ee3e6214361d31c25a13c4101a4a4864ccb4ac2119",
+      "bytes": 919
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/43734696580-run.json",
+      "sha256": "3fb9e41a25c4077157585151ad853d6111e85ff7778be55072203c49b531866e",
+      "bytes": 15101
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/all-tests.log",
+      "sha256": "241011fa439985293f38601ffed05e7a44ce61b124606c126c6d086b65ecbb6c",
+      "bytes": 16725
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/docker-buildx-inspect",
+      "sha256": "87586a8339046e3072408ce8c5174319cc7c6ec197ef987c28980e3179b542cd",
+      "bytes": 590817
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/oci-errors",
+      "sha256": "360b29820869bfaac5f73ebfa30669c9172c069ef619f8c6689acc3bcef6f719",
+      "bytes": 47162
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/preflight.log",
+      "sha256": "3e8735da8222ebc6771543048234fc22c56da0df1b25d77a551ae6e85ff82bab",
+      "bytes": 148
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/preflight.py",
+      "sha256": "f82122417e9120904712eae1f105b3c6d1f5e85f811df74f2d07ea733e732777",
+      "bytes": 1915
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/retired-ledger.json",
+      "sha256": "de1a6dfefb54665a2d99a9eddbcb6d8c8dc309999f492b2c6ffbfcb2696da0b8",
+      "bytes": 62982
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/six-repo-first-failure.log",
+      "sha256": "3ebbb77d53b65006880cd3ca05ffedaf28aeb5b51af4b7c1aedc64e7706749f0",
+      "bytes": 1214
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/six-repo-tests.log",
+      "sha256": "08828790f574db47283043744e92c91c5d69e8350c94e2a1a82762bc3e6307bc",
+      "bytes": 2510
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/skopeo-copy-source",
+      "sha256": "046cfe464cbe9e1a060a45357ae72d3a7de9eec93b6e8064514de16a62cc56f1",
+      "bytes": 10166
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/upgrade-status.json",
+      "sha256": "89d1984c74b652fecb4bcd92e5641c3d12415f7293daa4865a506d287c5b7481",
+      "bytes": 2762
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/upgrade-tests.log",
+      "sha256": "0671f9dc29c3e7a1311e6776821aeb9bb4703b5aab8f9b801feb3a6cc3c19379",
+      "bytes": 54557
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/raw/ci-tag-release-20261116/upgrade-validator-tests.log",
+      "sha256": "cb242820dc1d3abe84416da61f3b54b93f4ec86f9948244ec68ed0dde6ae61f7",
+      "bytes": 2079
+    }
+  ],
+  "customer_signoff": null
+}

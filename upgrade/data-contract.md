@@ -66,9 +66,11 @@ FROM 版本、配置显式 pin、Python 固定依赖、外部镜像 catalog 全�
 搭配矩阵已完成或冻结构建集合。
 
 每个实际消费镜像需补充用途（production/upgrade/recovery/backup/performance/
-test-infrastructure）、所属组件、触发条件、双端架构 digest、发布记录、构建策略与
-context fingerprint、是否带自有补丁。catalog 全量存在不是允许全量重建的理由。
-context 源码摘要只供定位，不能伪装为既有 CI 的 build-policy/context fingerprint。
+test-infrastructure）、所属组件、触发条件、准确 image:tag、当前双端双架构
+manifest/digest、可核实来源和自有补丁。已有发布记录保留为追溯资料；记录缺失
+不阻断已存在 tag 的当前核验，也不能伪造原始来源。catalog 全量存在不是允许
+全量重建的理由。构建策略/context fingerprint 只保证一次运行内 plan/run 输入
+一致；源码摘要、Git SHA 或旧指纹变化均不自动使已有 tag 失效。
 
 `release.yaml` 的目标 `component_decisions` 对 catalog 每个组件域都有记录；
 冻结时须逐具体组件/Chart/镜像展开，给出确切版本及两端/过渡支持依据。所有
