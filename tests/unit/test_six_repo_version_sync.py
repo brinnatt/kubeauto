@@ -73,6 +73,18 @@ class TestSixRepoVersionSync(unittest.TestCase):
         self.assertEqual(env(ext, "DOCKER_BUILDX_VER"), self.kc.v_docker_buildx.lstrip("v"))
         self.assertEqual(env(ext, "CRI_DOCKERD_VER"), self.kc.v_cri_dockerd.lstrip("v"))
         self.assertEqual(env(ext, "NERDCTL_VER"), self.kc.v_nerdctl.lstrip("v"))
+        for name, version in (
+            ("CONTAINERD_VER", self.kc.v_containerd),
+            ("RUNC_VER", self.kc.v_runc),
+            ("CNI_VER", self.kc.v_cni_plugins),
+            ("HELM_VER", self.kc.v_helm),
+            ("CRICTL_VER", self.kc.v_crictl),
+        ):
+            with self.subTest(component=name):
+                self.assertEqual(env(ext, name), version.lstrip("v"))
+        etcd = re.search(r"COPY --from=quay\.io/coreos/etcd:([^\s]+)", ext)
+        self.assertIsNotNone(etcd)
+        self.assertEqual(etcd.group(1), self.kc.v_etcd)
         self.assertEqual(env(sp1, "EXT_BIN_SP1_VER"), self.kc.v_extra_bin_sp1.lstrip("v"))
         m = re.search(r"kubeauto-ext-bin-sp1:([^\s]+)", ext)
         self.assertIsNotNone(m)

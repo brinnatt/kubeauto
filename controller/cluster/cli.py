@@ -628,10 +628,17 @@ Examples:
         )
 
     def _setup_version_command(self) -> None:
-        """Setup 'version' command: print kubeauto version (same as v_kubeauto)."""
-        self.subparsers.add_parser(
+        """Setup the offline release version inventory."""
+        parser = self.subparsers.add_parser(
             "version",
-            help="Show kubeauto version"
+            help="Show kubeauto and bundled component versions",
+            description=(
+                "Show this release's pinned component versions without querying a cluster. "
+                "Optional components are listed even when not installed; cluster settings may override defaults."
+            ),
+        )
+        parser.add_argument(
+            "--short", action="store_true", help="Show only the kubeauto version"
         )
 
     def _setup_completion_command(self) -> None:
@@ -934,8 +941,113 @@ Examples:
             sys.exit(1)
 
     def _handle_version(self, args: argparse.Namespace) -> None:
-        """Print kubeauto version (from v_kubeauto), no side effects."""
-        logger.info(self.kube_constant.v_kubeauto, extra=LOG_STDOUT)
+        """Print release pins, without inspecting installed software or clusters."""
+        versions = self.kube_constant
+        if args.short:
+            print(versions.v_kubeauto)
+            return
+
+        images = versions.component_images
+
+        def image_tag(component: str, image_name: str) -> str:
+            prefix = f"brinnatt/{image_name}:"
+            return next(image[len(prefix):] for image in images[component]
+                        if image.startswith(prefix))
+
+        groups = (
+            ("Kubernetes", (
+                ("kube-apiserver", versions.v_k8s_bin),
+                ("kube-controller-manager", versions.v_k8s_bin),
+                ("kube-scheduler", versions.v_k8s_bin),
+                ("kubelet", versions.v_k8s_bin),
+                ("kube-proxy", versions.v_k8s_bin),
+                ("kubectl", versions.v_k8s_bin),
+                ("etcd / etcdctl / etcdutl", versions.v_etcd),
+            )),
+            ("Container runtimes and tools", (
+                ("containerd", versions.v_containerd),
+                ("runc", versions.v_runc),
+                ("Docker Engine", versions.v_docker),
+                ("cri-dockerd", versions.v_cri_dockerd),
+                ("Docker Compose", versions.v_docker_compose),
+                ("Docker Buildx", versions.v_docker_buildx),
+                ("crictl", versions.v_crictl),
+                ("nerdctl", versions.v_nerdctl),
+                ("Helm", versions.v_helm),
+                ("pause", versions.v_pause),
+            )),
+            ("Network plugins (alternatives)", (
+                ("CNI plugins", versions.v_cni_plugins),
+                ("Calico", versions.v_calico),
+                ("Flannel", versions.v_flannel),
+                ("Flannel CNI", versions.v_flannel_cni),
+                ("Cilium", versions.v_cilium),
+                ("Hubble UI", versions.v_cilium_hubble_ui),
+                ("kube-router", versions.v_kuberouter),
+                ("Kube-OVN", versions.v_kubeovn),
+            )),
+            ("Core addons", (
+                ("CoreDNS", versions.v_coredns),
+                ("NodeLocal DNSCache", versions.v_dnsnodecache),
+                ("Metrics Server", versions.v_metricsserver),
+                ("Dashboard (chart)", versions.v_dashboard),
+                ("ingress-nginx (chart)", versions.v_ingressnginx),
+                ("ingress-nginx controller", versions.v_ingress_nginx_controller),
+            )),
+            ("Storage (optional)", (
+                ("local-path-provisioner", versions.v_localpathprovisioner),
+                ("NFS provisioner", versions.v_nfsprovisioner),
+                ("OpenEBS (chart)", versions.v_openebs),
+                ("Ceph", versions.v_ceph),
+                ("Ceph CSI", versions.v_ceph_csi),
+                ("Longhorn", versions.v_longhorn),
+                ("MinIO Operator", versions.v_miniooperator),
+                ("MinIO (image tag)", image_tag("minio", "minio")),
+            )),
+            ("Observability (optional)", (
+                ("kube-prometheus-stack (chart)", versions.v_promchart),
+                ("Prometheus Operator", versions.v_prometheus_operator),
+                ("Prometheus (image tag)", versions.v_prometheus),
+                ("Alertmanager", versions.v_alertmanager),
+                ("Grafana", versions.v_grafana),
+                ("kube-state-metrics", versions.v_kube_state_metrics),
+                ("Node Exporter", versions.v_node_exporter),
+                ("ECK Operator", versions.v_eck_operator),
+                ("Elasticsearch (logging)", versions.v_elasticsearch),
+                ("Kibana", versions.v_kibana),
+                ("Fluent Bit", versions.v_fluent_bit),
+                ("Logstash", versions.v_logstash),
+                ("Loki", versions.v_loki),
+                ("Alloy", versions.v_alloy),
+            )),
+            ("Middleware and registry (optional)", (
+                ("Percona Operator for MySQL", versions.v_pxc_operator),
+                ("Percona XtraDB Cluster", versions.v_pxc),
+                ("Strimzi Operator", versions.v_strimzi_operator),
+                ("Kafka", versions.v_kafka),
+                ("Percona Operator for MongoDB", versions.v_mongodb_operator),
+                ("Percona Server for MongoDB", versions.v_mongodb),
+                ("Redis Operator", versions.v_redis_operator),
+                ("Redis", versions.v_redis),
+                ("Nacos (image tag)", image_tag("nacos", "nacos-server")),
+                ("RocketMQ broker (image tag)", image_tag("rocketmq", "rocketmq-broker")),
+                ("Elasticsearch (business)", versions.v_business_elasticsearch),
+                ("Harbor", versions.v_harbor),
+            )),
+            ("Binary packages", (
+                ("kubeauto-k8s-bin", versions.v_k8s_bin),
+                ("kubeauto-ext-bin", versions.v_extra_bin),
+                ("kubeauto-ext-bin-sp1", versions.v_extra_bin_sp1),
+            )),
+        )
+        width = max(len(name) for _, rows in groups for name, _ in rows)
+        print(f"kubeauto {versions.v_kubeauto}")
+        print("Release defaults; not live cluster versions.")
+        print("Optional components may be absent; cluster settings may override defaults.")
+        for title, rows in groups:
+            print(f"\n{title}")
+            for name, version in rows:
+                print(f"  {name:<{width}}  {version}")
 
     def _handle_completion(self, args: argparse.Namespace) -> None:
         """Print shell completion script (bash or zsh). No side effects."""

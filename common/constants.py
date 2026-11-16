@@ -66,6 +66,14 @@ class KubeConstant:
         "refer_github": "https://github.com/brinnatt/dockerfile-kubeauto-ext-bin-sp1",
         "description": "Supplement package pulled into kubeauto-ext-bin build",
     })
+    # Component inventory of v_extra_bin; checked against its Dockerfile by
+    # test_six_repo_version_sync. These describe the pack, not installed binaries.
+    v_etcd: str = field(default="v3.6.4")
+    v_containerd: str = field(default="2.1.4")
+    v_runc: str = field(default="v1.3.1")
+    v_cni_plugins: str = field(default="v1.8.0")
+    v_helm: str = field(default="v3.19.0")
+    v_crictl: str = field(default="v1.34.0")
     # Docker-compatible CLI for containerd; shipped via ext-bin (minimal), installed by roles/containerd.
     # Upstream v2.3.4 supports containerd v1.7 / v2.0 / v2.1 / v2.2 / v2.3 (matches CONTAINERD_VER=2.1.4).
     v_nerdctl: str = field(default="2.3.4", metadata={
