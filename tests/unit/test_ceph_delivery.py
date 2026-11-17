@@ -604,7 +604,7 @@ wait_observability_health recovered http://127.0.0.1:9283/metrics
 
     def test_versions_are_exact_official_pins(self) -> None:
         self.assertEqual(self.constants.v_ceph, "20.2.4")
-        self.assertEqual(self.constants.v_ceph_csi, "v3.17.1")
+        self.assertEqual(self.constants.v_ceph_csi, "v3.17.2")
         self.assertEqual(self.constants.v_ceph_csi_provisioner, "v6.2.0")
         self.assertEqual(self.constants.v_ceph_csi_attacher, "v4.11.0")
         self.assertEqual(self.constants.v_ceph_csi_resizer, "v2.1.0")
@@ -770,7 +770,7 @@ exec "$@"
         self.assertNotIn("urllib.request", source)
 
     def test_ext_bin_cephadm_is_atomic_checksum_gated(self) -> None:
-        self.assertEqual(self.constants.v_extra_bin, "1.16.0")
+        self.assertEqual(self.constants.v_extra_bin, "1.17.0")
         downloader = (PROJECTS / "kubeauto-ext-bin-dockerfile/multi-platform-download.sh").read_text()
         block = downloader.split("# The official cephadm zip application is architecture-independent.\n", 1)[1]
         self.assertIn('https://download.ceph.com/rpm-${CEPHADM_VER}/el9/noarch/cephadm', block)
@@ -4341,7 +4341,13 @@ stage_cephadm_artifact
 
     def test_six_repository_supply_chain_is_registered(self) -> None:
         ext_bin = (PROJECTS / "kubeauto-ext-bin-dockerfile/Dockerfile").read_text()
-        self.assertIn(f"EXT_BIN_VER={self.constants.v_extra_bin}", ext_bin)
+        overlay_path = PROJECTS/'kubeauto-ext-bin-dockerfile/upgrade/overlay-v1.34.13.json'
+        overlay = json.loads(overlay_path.read_text())
+        self.assertEqual(overlay['tag'], self.constants.v_extra_bin)
+        overlay_text = overlay_path.with_name('Dockerfile.v1.34.13').read_text()
+        self.assertIn('@'+overlay['base']['digest'], overlay_text)
+        self.assertIn(f"EXT_BIN_VER={self.constants.v_extra_bin}", overlay_text)
+        self.assertIn(f"EXT_BIN_VER={overlay['base']['tag']}", ext_bin)
         self.assertEqual(self.constants.v_cephadm_sha256, "5b78c8d5772ef7c5c8619dac6ee0b36716b829338ea7a11c9f2b896626ab354f")
         self.assertIn(f"CEPHADM_VER={self.constants.v_ceph}", ext_bin)
         self.assertIn(f"CEPHADM_SHA256={self.constants.v_cephadm_sha256}", ext_bin)
@@ -4350,7 +4356,7 @@ stage_cephadm_artifact
         self.assertIn("brinnatt/kubeauto-ext-bin", ext_workflow)
         self.assertIn("linux/amd64,linux/arm64", ext_workflow)
         for registry in ("hub.talkedu.cn/kubeauto", "docker.io/brinnatt"):
-            self.assertIn(f"{registry}/kubeauto-ext-bin:{self.constants.v_extra_bin}", self.regression)
+            self.assertIn(f"{registry}/kubeauto-ext-bin:{overlay['base']['tag']}", self.regression)
         catalog = json.loads((PROJECTS / "kubeauto-ext-images-dockerfile/catalog.json").read_text())
         contexts = {row["ctx"] for row in catalog}
         for context in (

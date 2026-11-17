@@ -1,0 +1,2603 @@
+schema_version: 1
+recorded_on: '2026-11-16'
+quality_standard: docs/documentation-quality-standard.md 第1/10/11节
+source_research:
+  path: upgrade/v1.34.13/research.yaml
+  sha256: 6a985e003a74956ffd9f68bdebae301ec3bf6c491f56979976690689b7077e2a
+  completion_claim: false
+  boundary: 原记录中的未完成目录仍是缺口；不把源GA状态改写成文档目录已完整阅读。
+known_official_observations: upgrade/official-sources.yaml
+scope: v1.34.13到v1.35.10增量；不重读未变化的全部组件资料，也不遗漏已证明变化的接口、平台、迁移和恢复语义。
+completion_claim: false
+compatibility_review_complete: true
+documentation_claim: 本跳增量操作手册的目录差异、来源去向、正文及两类读者路径已复核；原完整官方四类正文阅读缺口继续保留，不签全站完成或客户签收。
+directory_item_contract:
+  required:
+  - official_category
+  - original_topic
+  - version_or_commit
+  - url
+  - observed_on
+  - status
+  - mechanism_and_constraints
+  - project_mapping
+  - document_destination
+  - exclusion_basis
+  - acceptance_refs
+  statuses:
+  - pending
+  - understood
+  - excluded
+  - unavailable
+  rule: 四类目录分别完整处理；已读专题不等于全目录完成。排除有依据，重复项保留到同结论的映射。
+topics:
+- id: N-01
+  topic: Kubernetes用户/运维：版本偏差、minor升级、弃用和精确patch
+  status: understood
+  official_source_ids:
+  - K8S-SKEW
+  - K8S-13510-CHANGELOG
+  - K8S-13510-PATCH-DELTA
+  - K8S-135-DEPRECATION-DIRECTORY
+  mechanism_and_constraints: HA逐API屏障；不跳minor；移除StorageVersionMigration旧API及kubelet旧flag；deprecated
+    IPVS仍保留。
+  project_mapping: upgrade/product/及所属原生产模板
+  document_destination: upgrade/v1.35.10/operations-manual.md
+  acceptance_refs:
+  - UPG-02
+  - UPG-05
+  - UPG-06
+  - UPG-07
+  - UPG-12
+  evidence_boundary: 官方/精确源码与合同边界保持；UPG-05/06接受源与HA控制面证据，UPG-07/12接受e资格链逐节点及PDB拒绝续跑；不外推未部署路径或完整目录阅读。
+- id: N-02
+  topic: Kubernetes运维/开发：kubelet配置及cgroup
+  status: understood
+  official_source_ids:
+  - K8S-13510-KUBELET-CONFIG
+  mechanism_and_constraints: 默认failCgroupV1=true；源主机实际检查在drain前；显式false是deprecated过渡，不能说1.35完全移除v1。
+  project_mapping: upgrade/product/及所属原生产模板
+  document_destination: upgrade/v1.35.10/operations-manual.md
+  acceptance_refs:
+  - UPG-04
+  - UPG-05
+  - UPG-07
+  evidence_boundary: 官方/源码、主机准入合同及e资格链Rocky9.8/cgroupv2实际节点证据；不签其它内核或cgroupv1本跳现场。
+- id: N-03
+  topic: Kubernetes技术/开发：聚合层认证
+  status: understood
+  official_source_ids:
+  - K8S-13510-AGGREGATOR-CA-VALIDATION
+  mechanism_and_constraints: 固定源码验证共享CA+空AllowedNames拒绝；项目证书CN=aggregator，保留信任链并限制名称。已取得真实官方二进制配置反证和Ansible修改合同，e资格链首次完成与幂等调用的真实metrics聚合API均已通过，源RBAC保持；不外推客户自定义权限组合。
+  project_mapping: upgrade/product/及所属原生产模板
+  document_destination: upgrade/v1.35.10/operations-manual.md
+  acceptance_refs:
+  - UPG-04
+  - UPG-06
+  - UPG-11
+  evidence_boundary: 官方/源码与合同，以及e资格链真实聚合API、六节点和业务Pod指标；UPG-11接受。未部署或自定义授权组合不由此签实测。
+- id: N-04
+  topic: etcd运维/开发：快照与恢复完整性
+  status: understood
+  official_source_ids:
+  - ETCD-3616-SNAPSHOT-COMMAND
+  - ETCD-3616-SNAPSHOT-INTEGRITY
+  - ETCD-3616-SNAPSHOT-OUTPUT
+  mechanism_and_constraints: snapshot status只读检查bbolt结构；离线restore默认校验附带SHA256。新快照来自源TLS端点，不向现役data-dir恢复，不冒称业务灾备已验收。
+  project_mapping: upgrade/product/及所属原生产模板
+  document_destination: upgrade/v1.35.10/operations-manual.md
+  acceptance_refs:
+  - UPG-04
+  - UPG-05
+  - UPG-12
+  evidence_boundary: e资格链新快照revision2881、678keys、摘要及离线restore校验通过；不启动恢复成员，不签卷数据备份或在线灾备恢复。
+- id: N-05
+  topic: containerd运维：1.35配套和升级
+  status: understood
+  official_source_ids:
+  - CONTAINERD-K8S135-COMPAT
+  - CONTAINERD-22-23-RELEASES
+  mechanism_and_constraints: 2.1.4低于1.35推荐下限，走2.2.10再2.3.7；原已2.3.7只校验，保留runc/CNI/路径/容器身份。
+  project_mapping: upgrade/product/及所属原生产模板
+  document_destination: upgrade/v1.35.10/operations-manual.md
+  acceptance_refs:
+  - UPG-02
+  - UPG-04
+  - UPG-07
+  evidence_boundary: e资格链按containerd2.1.4→2.2.10→2.3.7升级，CRI与原Ready sandbox逐段读回，UPG-07接受；其它运行时按各自官方/旧GA/当前合同复用，不冒签本轮现场。
+- id: N-06
+  topic: Calico用户/运维/技术：平台与etcd迁移
+  status: understood
+  official_source_ids:
+  - CALICO-331-UPGRADE
+  - CALICO-332-UPGRADE
+  - CALICO-332-HOST-PLATFORM
+  - CALICO-3324-MANIFEST
+  mechanism_and_constraints: 保留直接etcd datastore、IPv4及iptables，按3.31.7桥接；3.32测试1.34/1.35/1.36且要求kernel>=5.10，旧4.18实验节点不准入。
+  project_mapping: upgrade/product/及所属原生产模板
+  document_destination: upgrade/v1.35.10/operations-manual.md
+  acceptance_refs:
+  - UPG-02
+  - UPG-04
+  - UPG-05
+  - UPG-08
+  evidence_boundary: d及e控制面通过，e目标节点与账本连续性由UPG-07/08接受；只签Calico IPv4直接etcd、合格内核实际路径，不外推其它CNI或配置。
+- id: N-07
+  topic: 项目开发/发行：冻结包中的升级入口
+  status: understood
+  official_source_ids:
+  - PYINSTALLER-616-UPGRADE-DATA
+  - ANSIBLE-UPGRADE-INVENTORY-CONTRACT
+  mechanism_and_constraints: Ansible仍为外部执行器，参数由真实inventory解析；发行包包含yml/toml/pins和已验收策略，不塞入实验室证据树，缺准入不回落93。
+  project_mapping: upgrade/product/及所属原生产模板
+  document_destination: upgrade/v1.35.10/operations-manual.md
+  acceptance_refs:
+  - UPG-04
+  - UPG-14
+  evidence_boundary: 冻结包数据与策略拒绝合同已通过；实际发行包必须全部15项有效后才构建，构建与smoke另保留真实证据，不把本项静态合同写成已完成打包。
+- id: N-08
+  topic: Kubernetes完整目录差异与Pod证书alpha端点、CSI token兼容边界
+  status: understood
+  official_source_ids:
+  - K8S-13510-PODCERT-ALPHA-REMOVAL
+  - K8S-13510-CSI-TOKEN-OPTIN
+  mechanism_and_constraints: 官方release-1.34/1.35英文目录分别1528/1573项；49新增、4删除、529内容SHA变化。目录变化不等于API移除，按精确源码核实：PodCertificateRequest旧alpha端点不再注册而ClusterTrustBundle保留；CSI新字段未选入时保持原行为。新Pod证书alpha拒绝有6项API合同及14项受影响交接合同支持。
+  project_mapping: upgrade/product/next_api.py
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  acceptance_refs:
+  - UPG-04
+  - UPG-05
+  - UPG-14
+  evidence_boundary: 目录差异与精确源码核对；不冒称1573页正文全部阅读，旧完整目录映射缺口保留。
+- id: N-09
+  topic: Calico迁移声明与Kubernetes API零值序列化
+  status: understood
+  official_source_ids:
+  - K8S-13413-VOLUMEMOUNT-OMITEMPTY
+  mechanism_and_constraints: VolumeMount.readOnly的false和省略等价；声明渲染只规范化这一字段，匹配仍拒绝真正读写权限变化，不能对所有字段通用放宽比较。
+  project_mapping: upgrade/product/calico_stage.py、upgrade/tests/test_calico_stage.py
+  document_destination: upgrade/v1.35.10/operations-manual.md#失败时停止诊断和续跑
+  acceptance_refs:
+  - UPG-04
+  - UPG-06
+  - UPG-12
+  evidence_boundary: 原首失败与journal保持；19项离线合同和后续d/e真实Calico迁移完成，UPG-06/08已接受；限定规范化不扩展为通用字段放宽。
+- id: N-10
+  topic: 1.35默认门控、私库缓存验证与CSI卷计数
+  status: understood
+  official_source_ids:
+  - K8S-135-IMAGE-CREDENTIAL-VERIFICATION
+  - K8S-135-CSI-ALLOCATABLE-REFRESH
+  mechanism_and_constraints: 官方源/目标二进制help已逐门控比较；初次启用镜像凭据校验时旧缓存按pre-pulled处理，不擅自清除镜像或关闭安全门控；CSI周期刷新需字段选择，ResourceExhausted反应语义变化单独标明。
+  project_mapping: 原镜像Secret/registry配置及CSIDriver模板；本跳不新增字段、不迁移CSI或重写业务工作负载。
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  acceptance_refs:
+  - UPG-09
+  - UPG-11
+  - UPG-14
+  evidence_boundary: 官方文档、固定二进制help及模板读取；本跳实验室没有CSI和私库凭据轮换业务，不冒签对应故障或认证场景实测。
+- id: N-11
+  topic: StatefulSet滚动预算与kubectl用户偏好的增量边界
+  status: understood
+  official_source_ids:
+  - K8S-135-STATEFULSET-ROLLING-BUDGET
+  - K8S-135-KUBERC-PLUGIN-POLICY
+  - K8S-13510-STATEFULSET-BUDGET-PATCH-DEFAULT
+  mechanism_and_constraints: StatefulSet预算门控在1.35.0曾默认启用，但1.35.4为修复Parallel回归已改回false；精确1.35.10源码与官方二进制help均为false，优先于版本分支手册的概括。门控生效后缺省预算为1；本跳不启用或扩大批次，PDB不代替更新预算。kuberc偏好不是本跳新增，凭据插件策略未配置时仍AllowAll，不自动覆写客户偏好或拓权。
+  project_mapping: 本跳coordinator不重放中间件角色或更改业务Pod模板；目标kubectl使用显式kubeconfig与输出格式，客户个人偏好仍由其维护。
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  acceptance_refs:
+  - UPG-10
+  - UPG-11
+  - UPG-14
+  evidence_boundary: 官方精确commit正文及项目模板检索；不冒签本跳全部StatefulSet更新或凭据插件组合实测。
+- id: N-12
+  topic: Calico迁移的API动态字段、JSON持久化身份与默认BGP对象
+  status: understood
+  official_source_ids:
+  - K8S-13413-HOSTPATH-DEFAULT
+  - K8S-13413-CONTROLLER-REVISION
+  - CALICO-3324-CREATED-DEFAULT-BGP
+  mechanism_and_constraints: 新hostPath返回type空字符串；DaemonSet模板generation及Deployment
+    revision由上游推进，只按所属kind处理这两个顶层注解。采集值使用JSON原生list，确保非空数据首次执行与重读一致。3.32 node只在缺失时创建default
+    BGPConfiguration，直接etcd也应用Info/Enabled默认值；缺省聚合原本即Enabled，未添加地址宣告范围。
+  project_mapping: upgrade/product/calico_stage.py、next_platform.py及对应非空夹具/合同；仅3.32边允许精确默认新增，首次观察即固定新UID和内容，已有BGP及其它池/策略/HostEndpoint继续精确比较。
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  acceptance_refs:
+  - UPG-04
+  - UPG-06
+  - UPG-08
+  - UPG-12
+  - UPG-14
+  evidence_boundary: 原首失败和journal保留且限定清理；d控制面由UPG-06接受，e独立资格链完成节点/PDB续跑及幂等，UPG-07至12接受；最终完整链以UPG-15当前证据为准。
+- id: N-13
+  topic: Metrics Server驱逐与节点drain的异步删除交接
+  status: understood
+  official_source_ids:
+  - K8S-13413-EVICTION-DELETION-HANDOFF
+  mechanism_and_constraints: Eviction接受后Pod仍可优雅终止；官方drain会等待原Pod删除，emptyDir过滤仍拒绝尚未结束的Pod。限定驱逐后增加有界wait，超时阻断drain，不放宽PDB或本地数据保护。
+  project_mapping: upgrade/product/metrics-eviction.yml；实际helper和node.yml的drain任务组合合同使用未完成删除状态，另测超时/PDB/外来归属拒绝。
+  document_destination: upgrade/v1.35.10/operations-manual.md#从产品入口执行
+  acceptance_refs:
+  - UPG-04
+  - UPG-07
+  - UPG-12
+  - UPG-14
+  evidence_boundary: d资格链原控制面通过；nodes-protection因metrics Pod尚未删除被本地数据保护拒绝，非PDB预期负例。原失败和journal保留并由原runner清理。6项精确合同和25项受影响合同通过；e资格链nodes.attempt-1在真实metrics承载节点216执行删除等待成功，随后正常drain，六节点与真实metrics均通过且幂等复验成功，UPG-07/12已接受。193和210的该任务实际跳过，不以任务名代替执行结果。
+- id: N-14
+  topic: 实验室销毁后的运行时子进程与systemd失败状态清理
+  status: understood
+  official_source_ids: []
+  mechanism_and_constraints: systemd的failed状态可在unit文件移除后保留；KillMode为process时不能从主进程退出推导其cgroup全部子进程结束。Linux进程comm有长度限制，完整shim名称的精确comm匹配会漏检，需读取完整argv。此项是实验室门禁衔接，不改变客户生产销毁语义。
+  project_mapping: next_session.py在本轮namespace及卷回收、CA归属核对、产品destroy成功后，调用既有lab-wipe-nodes.sh的rocky-only入口且仅传六台已租用节点，再由next-hosts.yml严格复验；不包含control或裸盘格式化。
+  document_destination: upgrade/v1.35.10/operations-manual.md#验收独立实验室入口和来源
+  acceptance_refs:
+  - UPG-04
+  - UPG-13
+  - UPG-15
+  evidence_boundary: 23项合同通过；e资格链source-clean和target-clean均真实通过，后者7分33秒，6个WIPE_OK、LAB_WIPE_DONE、严格残留检查、租约释放及父链双零与LAB_CLEAN_VERIFY_PASS齐全，UPG-13接受；不改变客户生产销毁语义。
+component_records:
+- component_id: product
+  target_pins:
+    kubeauto: v0.1.8
+    ansible_core: 2.18.6
+    ansible_core_py314: 2.20.9
+    kubecli_scope: kubecli-only
+  source_record:
+    path: upgrade/v1.34.13/research.yaml
+    component_id: product
+  official_categories:
+  - category: official-user-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-operations-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-technical-whitepaper
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-development-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  official_source_ids:
+  - ACTIONS-PRODUCT-RELEASE-SCOPE
+  - PYINSTALLER-616-UPGRADE-DATA
+  - ANSIBLE-UPGRADE-INVENTORY-CONTRACT
+  decision: keep
+  transition_record: upgrade/v1.35.10/release.yaml#product
+  document_destination: upgrade/v1.35.10/operations-manual.md
+  acceptance_refs:
+  - UPG-02
+  - UPG-04
+  - UPG-15
+- component_id: kubernetes
+  target_pins:
+    kubernetes: v1.35.10
+  source_record:
+    path: upgrade/v1.34.13/research.yaml
+    component_id: kubernetes
+  official_categories:
+  - category: official-user-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: directory-compared-body-review-in-progress
+    rule: 逐目录核对变化；已读专题见topics及official_source_ids，不把链接存在或源GA当完成。
+  - category: official-operations-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: directory-compared-body-review-in-progress
+    rule: 逐目录核对变化；已读专题见topics及official_source_ids，不把链接存在或源GA当完成。
+  - category: official-technical-whitepaper
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: directory-compared-body-review-in-progress
+    rule: 逐目录核对变化；已读专题见topics及official_source_ids，不把链接存在或源GA当完成。
+  - category: official-development-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: directory-compared-body-review-in-progress
+    rule: 逐目录核对变化；已读专题见topics及official_source_ids，不把链接存在或源GA当完成。
+  official_source_ids:
+  - K8S-SKEW
+  - K8S-13510-STABLE
+  - K8S-13510-RELEASE
+  - K8S-13510-CHANGELOG
+  - K8S-13510-PATCH-DELTA
+  - K8S-13510-KUBELET-CONFIG
+  - K8S-13510-PROXY-CONFIG
+  - K8S-13510-DEPENDENCIES
+  - K8S-135-DEPRECATION-DIRECTORY
+  - K8S-13510-AGGREGATOR-CA-VALIDATION
+  decision: update
+  transition_record: upgrade/v1.35.10/release.yaml#kubernetes
+  document_destination: upgrade/v1.35.10/operations-manual.md
+  acceptance_refs:
+  - UPG-02
+  - UPG-03
+  - UPG-04
+  - UPG-05
+  - UPG-06
+  - UPG-07
+  - UPG-12
+- component_id: binary-packs
+  target_pins:
+    v_extra_bin: 1.17.0
+    v_extra_bin_sp1: 1.3.1
+    ext_bin_index_digest: sha256:0029d1d4f4dba068c7a79461a6ec2378b84524e6de5110c52a0730e1dc5f37b8
+    etcd: 3.6.16
+  source_record:
+    path: upgrade/v1.34.13/research.yaml
+    component_id: binary-packs
+  official_categories:
+  - category: official-user-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-operations-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-technical-whitepaper
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-development-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  official_source_ids:
+  - ETCD-373-RELEASE
+  - ETCD-3616-RELEASE
+  - ETCD-36-PATCH-DELTA
+  - ETCD-36-MINOR-PRECONDITIONS
+  - ETCD-36-PATCH-POLICY
+  - RUNC-137-RELEASE
+  - ETCD-36-SUPPORTED-UPGRADE-POLICY
+  - EXTBIN-OFFICIAL-ASSETS-CALICO-3317
+  - EXTBIN-OFFICIAL-ASSETS-CALICO-3324
+  - EXTBIN-OFFICIAL-ASSETS-CONTAINERD-2210
+  - EXTBIN-OFFICIAL-ASSETS-CONTAINERD-237
+  - EXTBIN-OFFICIAL-ASSETS-CRIDOCKERD-0410
+  - EXTBIN-OFFICIAL-ASSETS-ETCD-3616
+  - EXTBIN-OFFICIAL-ASSETS-RUNC-152
+  - ETCD-3616-SNAPSHOT-COMMAND
+  - ETCD-3616-SNAPSHOT-INTEGRITY
+  - ETCD-3616-SNAPSHOT-OUTPUT
+  decision: update
+  transition_record: upgrade/v1.35.10/release.yaml#binary-packs
+  document_destination: upgrade/v1.35.10/operations-manual.md
+  acceptance_refs:
+  - UPG-02
+  - UPG-03
+  - UPG-04
+  - UPG-06
+  - UPG-12
+- component_id: runtime
+  target_pins:
+    containerd: 2.3.7
+    containerd_bridge: 2.2.10
+    runc: 1.5.2
+    v_nerdctl: 2.3.4
+    v_docker: 28.5.2
+    v_cri_dockerd: 0.4.10
+  source_record:
+    path: upgrade/v1.34.13/research.yaml
+    component_id: runtime
+  official_categories:
+  - category: official-user-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-operations-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-technical-whitepaper
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-development-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  official_source_ids:
+  - CONTAINERD
+  - CONTAINERD-FIRST-HOP
+  - K8S-13413-CRI-CGROUP
+  - CONTAINERD-219-RELEASE
+  - CRI-DOCKERD-0410-RELEASE
+  - CRI-DOCKERD-040-DELTA
+  - CRI-DOCKERD-0410-CGROUP
+  - K8S-13413-EXACT-PATCH-DELTA
+  - CONTAINERD-215-DELTA
+  - CONTAINERD-216-DELTA
+  - CONTAINERD-217-DELTA
+  - CONTAINERD-218-DELTA
+  - RUNC-137-RELEASE
+  - CONTAINERD-22-23-RELEASES
+  - CONTAINERD-237-RUNC-POLICY
+  - CONTAINERD-2210-RUNC-POLICY
+  - CONTAINERD-237-RUNC-PIN
+  - CONTAINERD-2210-RUNC-PIN
+  - CONTAINERD-237-SCHEMA
+  - CONTAINERD-237-CONFIG-LOADER
+  - CONTAINERD-237-CONFIG-CLI
+  - CONTAINERD-237-CRI-CONFIG
+  - CONTAINERD-2210-CRI-CONFIG
+  - CONTAINERD-237-OPS
+  - RUNC-152-RELEASE
+  - RUNC-15-CUMULATIVE
+  - RUNC-152-CGROUPV2
+  - RUNC-152-SPEC
+  - NERDCTL-234-COMPATIBILITY
+  - CRI-DOCKERD-0410-CLIENT
+  - CRI-DOCKERD-0410-DOCKER-CLIENT
+  - DOCKER-2852-PATCH-POLICY
+  - DOCKER-2852-API-CONTRACT
+  - CRI-DOCKERD-0410-SDK
+  - CRI-DOCKERD-0410-FLAGS
+  - CRI-DOCKERD-0410-ENDPOINT-FLAG
+  - CRI-DOCKERD-0326-0410-DELTA
+  - CRI-DOCKERD-0326-BACKPORTS
+  - CRI-DOCKERD-0326-CGROUP-BASELINE
+  - CRI-DOCKERD-0326-DEPENDENCIES
+  - CRI-DOCKERD-04-PATCHES
+  - CRI-DOCKERD-0410-CRI-V1
+  - CONTAINERD-K8S135-COMPAT
+  decision: update
+  transition_record: upgrade/v1.35.10/release.yaml#runtime
+  document_destination: upgrade/v1.35.10/operations-manual.md
+  acceptance_refs:
+  - UPG-02
+  - UPG-03
+  - UPG-04
+  - UPG-07
+  - UPG-12
+- component_id: calico
+  target_pins:
+    v_calico: v3.32.4
+    v_calico_source_bridge: v3.31.7
+    calicoctl: v3.32.4
+    calicoctl_source_bridge: v3.31.7
+    cniVersion: 1.0.0
+    datastore: etcdv3
+    dataplane: iptables
+  source_record:
+    path: upgrade/v1.34.13/research.yaml
+    component_id: calico
+  official_categories:
+  - category: official-user-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-operations-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-technical-whitepaper
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-development-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  official_source_ids:
+  - CALICO-328
+  - CALICO-331-FIRST-HOP
+  - CALICO-331-UPGRADE
+  - CALICO-332-FIRST-HOP
+  - CALICO-332-UPGRADE
+  - CALICO-333-FIRST-HOP
+  - CALICO-3317-RELEASE
+  - CALICO-332-TAGS
+  - CALICO-3324-RELEASE
+  - CALICO-3317-MANIFEST
+  - CALICO-3324-MANIFEST
+  - CALICO-3317-PATCH-NOTES
+  - CALICO-3324-PATCH-NOTES
+  - CALICO-3317-KERNEL-FEATURES
+  - CALICO-3324-KERNEL-FEATURES
+  - CALICO-3317-KERNEL-TESTS
+  - CALICO-3324-KERNEL-TESTS
+  - CALICO-331-SYSTEM-SOURCE
+  - CALICO-330-SYSTEM
+  - CALICO-KERNEL-POLICY-HISTORY
+  - CALICO-KERNEL-POLICY-REVIEW
+  - CALICO-329-DELTA
+  - CALICO-330-DELTA
+  - CALICO-331-DELTA
+  - CALICO-332-DELTA
+  - CALICO-331-CUMULATIVE
+  - CALICO-332-CUMULATIVE
+  - CALICO-3324-FELIX-API
+  - CALICO-3324-FELIX-CONFIG
+  - K8S134-CORE-DEFAULTS
+  - K8S1336-CORE-DEFAULTS
+  - CALICO-332-HOST-PLATFORM
+  decision: update
+  transition_record: upgrade/v1.35.10/release.yaml#calico
+  document_destination: upgrade/v1.35.10/operations-manual.md
+  acceptance_refs:
+  - UPG-02
+  - UPG-03
+  - UPG-04
+  - UPG-08
+  - UPG-12
+- component_id: flannel
+  target_pins:
+    v_flannel: v0.28.10
+    v_flannel_cni: v1.9.1-flannel3
+    cniVersion: 1.0.0
+    healthz_address: 127.0.0.1:8081
+  source_record:
+    path: upgrade/v1.34.13/research.yaml
+    component_id: flannel
+  official_categories:
+  - category: official-user-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-operations-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-technical-whitepaper
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-development-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  official_source_ids:
+  - FLANNEL-02810-FIRST-HOP
+  - FLANNEL-LATEST-RELEASE
+  - FLANNEL-02810-MANIFEST
+  - FLANNEL-0284-MANIFEST
+  - FLANNEL-028-PATCH-DELTA
+  - FLANNEL-CNI-191-RELEASE
+  - FLANNEL-CNI-191-MECHANISM
+  - FLANNEL-02810-INSTALL-CONF
+  - FLANNEL-02810-KIND-E2E
+  - FLANNEL-02810-HEALTH
+  - FLANNEL-02810-BUILD
+  - FLANNEL-CNI-180-191-EXACT-DELTA
+  decision: keep
+  transition_record: upgrade/v1.35.10/release.yaml#flannel
+  document_destination: upgrade/v1.35.10/operations-manual.md
+  acceptance_refs:
+  - UPG-02
+  - UPG-03
+  - UPG-04
+  - UPG-08
+  - UPG-12
+- component_id: cilium
+  target_pins:
+    v_cilium: v1.20.4
+    v_cilium_source_bridge: v1.19.10
+    v_cilium_hubble_ui: v0.13.6
+    upgradeCompatibility: '1.19'
+    vendored_charts_sha256:
+      roles/cilium/files/cilium-1.19.10.tgz: b7252afca3413a33e2b987c954e52441e96979e411e1495ecc6aefe8cd258863
+      roles/cilium/files/cilium-1.20.4.tgz: 505abff8385811df1a949776fc42e9f10697989a332acc86d6e8933efcb855ed
+  source_record:
+    path: upgrade/v1.34.13/research.yaml
+    component_id: cilium
+  official_categories:
+  - category: official-user-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-operations-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-technical-whitepaper
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-development-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  official_source_ids:
+  - CILIUM-1195
+  - CILIUM-1204-FIRST-HOP
+  - CILIUM-LATEST-RELEASE
+  - CILIUM-1204-UPGRADE
+  - CILIUM-1204-WARNING
+  - CILIUM-1204-NOTES
+  - CILIUM-119-TAGS
+  - CILIUM-11910-RELEASE
+  - CILIUM-1204-REQUIRED
+  - CILIUM-CHART-INDEX
+  - CILIUM-1204-VALUES
+  - CILIUM-11910-VALUES
+  - CILIUM-1204-FLAGS
+  - CILIUM-119-PATCH-DELTA
+  - HELM-319-CMD-HELM-STATUS
+  - HELM-319-PKG-RELEASE-RELEASE
+  - HELM-319-PKG-ACTION-STATUS
+  - HELM-319-CMD-HELM-UPGRADE
+  - HELM-319-CMD-HELM-INSTALL
+  - HELM-319-CMD-HELM-GET_METADATA
+  - HELM-319-PKG-ACTION-GET_METADATA
+  - HELM-319-PKG-STORAGE-DRIVER-SECRETS
+  - HELM-319-PKG-ACTION-INSTALL
+  - HELM-319-PKG-ACTION-UPGRADE
+  decision: keep
+  transition_record: upgrade/v1.35.10/release.yaml#cilium
+  document_destination: upgrade/v1.35.10/operations-manual.md
+  acceptance_refs:
+  - UPG-02
+  - UPG-03
+  - UPG-04
+  - UPG-08
+  - UPG-12
+- component_id: kube-router
+  target_pins:
+    v_kuberouter: v2.12.0
+    source_bridge: v1.5.4
+    cni_config: v1
+    iptables_mode: explicit-project-default
+  source_record:
+    path: upgrade/v1.34.13/research.yaml
+    component_id: kube-router
+  official_categories:
+  - category: official-user-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-operations-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-technical-whitepaper
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-development-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  official_source_ids:
+  - KUBEROUTER-212-UPGRADE
+  - KUBEROUTER-212-GUIDE
+  - KUBEROUTER-212-E2E
+  - KUBEROUTER-212-BREAKING-RELEASES
+  - KUBEROUTER-212-HEALTH
+  - KUBEROUTER-212-TUNNELS
+  - KUBEROUTER-212-IMAGE
+  - KUBEROUTER-212-MANIFEST
+  - KUBEROUTER-212-INFORMERS
+  - KUBEROUTER-212-CNI-INSTALL
+  - KUBEROUTER-212-NODE-IDENTITY
+  - KUBEROUTER-212-CNI-CONFIG
+  decision: keep
+  transition_record: upgrade/v1.35.10/release.yaml#kube-router
+  document_destination: upgrade/v1.35.10/operations-manual.md
+  acceptance_refs:
+  - UPG-02
+  - UPG-03
+  - UPG-06
+  - UPG-07
+  - UPG-11
+- component_id: kube-ovn
+  target_pins:
+    v_kubeovn: v1.17.1
+    source_bridge: v1.11.5
+    chart_app_version: 1.17.1
+    kube_minimum: v1.29.0
+  source_record:
+    path: upgrade/v1.34.13/research.yaml
+    component_id: kube-ovn
+  official_categories:
+  - category: official-user-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-operations-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-technical-whitepaper
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-development-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  official_source_ids:
+  - KUBEOVN-1171-CHART
+  - KUBEOVN-1171-RELEASE
+  - KUBEOVN-117-REQUIREMENTS
+  - KUBEOVN-117-MAINTENANCE
+  - KUBEOVN-117-INSTALL-UPGRADE-PROCEDURE
+  - KUBEOVN-117-PRODUCTION-PREPARATION
+  - KUBEOVN-117-OVN-RECOVERY
+  decision: keep
+  transition_record: upgrade/v1.35.10/release.yaml#kube-ovn
+  document_destination: upgrade/v1.35.10/operations-manual.md
+  acceptance_refs:
+  - UPG-02
+  - UPG-03
+  - UPG-06
+  - UPG-07
+  - UPG-12
+- component_id: dns
+  target_pins:
+    v_coredns: 1.15.0
+    v_dnsnodecache: 1.26.8
+    nodecache_embedded_coredns: 1.13.2
+  source_record:
+    path: upgrade/v1.34.13/research.yaml
+    component_id: dns
+  official_categories:
+  - category: official-user-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-operations-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-technical-whitepaper
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-development-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  official_source_ids:
+  - COREDNS-115-OPERATIONS
+  - COREDNS-115-KUBERNETES
+  - COREDNS-115-CONTROLLER
+  - COREDNS-113-115-DELTA
+  - COREDNS-115-CACHE
+  - COREDNS-115-FORWARD
+  - COREDNS-115-METRICS
+  - K8S-13413-COREDNS-PIN
+  - K8S-13413-COREDNS-MANIFEST
+  - DNS-1268-VERSION-POLICY
+  - DNS-1268-TAGS
+  - DNS-1268-PROMOTION
+  - DNS-1264-1268-DELTA
+  - DNS-1268-MAIN
+  - DNS-1268-CACHE-APP
+  - DNS-1268-DEPS
+  - K8S-13413-NODELOCAL-MANIFEST
+  - K8S-NODELOCAL-OPERATIONS
+  - K8S134-JSON-PATCH
+  - K8S134-API-CONCURRENCY
+  decision: update
+  transition_record: upgrade/v1.35.10/release.yaml#dns
+  document_destination: upgrade/v1.35.10/operations-manual.md
+  acceptance_refs:
+  - UPG-02
+  - UPG-03
+  - UPG-08
+  - UPG-11
+  - UPG-12
+- component_id: metrics
+  target_pins:
+    v_metricsserver: v0.9.1
+  source_record:
+    path: upgrade/v1.34.13/research.yaml
+    component_id: metrics
+  official_categories:
+  - category: official-user-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-operations-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-technical-whitepaper
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-development-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  official_source_ids:
+  - METRICS-080
+  - METRICS-091-FIRST-HOP
+  - METRICS-LATEST-RELEASE
+  - METRICS-090-DELTA
+  - METRICS-091-FAQ
+  - METRICS-091-KNOWN-ISSUES
+  - METRICS-V1BETA1-WIRE-CONTRACT
+  - K8S-RESOURCE-QUANTITY-CONTRACT
+  - K8S-METAV1-DURATION-CONTRACT
+  decision: update
+  transition_record: upgrade/v1.35.10/release.yaml#metrics
+  document_destination: upgrade/v1.35.10/operations-manual.md
+  acceptance_refs:
+  - UPG-02
+  - UPG-03
+  - UPG-04
+  - UPG-11
+- component_id: ingress
+  target_pins:
+    v_ingressnginx: 4.15.1
+    v_ingress_nginx_controller: v1.15.1
+    v_webhook_certgen: v1.6.9
+    chart_sha256: 3eff0bd18151d6e6b1c441463410571443dda1ac78292cb189346628de784f0c
+  source_record:
+    path: upgrade/v1.34.13/research.yaml
+    component_id: ingress
+  official_categories:
+  - category: official-user-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-operations-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-technical-whitepaper
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-development-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  official_source_ids:
+  - INGRESS-LIFECYCLE
+  - INGRESS-FIRST-HOP
+  - INGRESS-ARCHIVED
+  - INGRESS-1140-DELTA
+  - INGRESS-1150-DELTA
+  - INGRESS-1151-RELEASE
+  - INGRESS-1151-UPGRADE
+  - INGRESS-1151-MANIFEST
+  - INGRESS-4151-RELEASE
+  - INGRESS-4151-VALUES
+  - INGRESS-4151-CHART
+  decision: update
+  transition_record: upgrade/v1.35.10/release.yaml#ingress
+  document_destination: upgrade/v1.35.10/operations-manual.md
+  acceptance_refs:
+  - UPG-02
+  - UPG-03
+  - UPG-04
+  - UPG-06
+  - UPG-11
+- component_id: dashboard
+  target_pins:
+    chart: 7.14.0
+    api: 1.14.0
+    auth: 1.4.0
+    web: 1.7.0
+    metrics_scraper: 1.2.2
+    kong: '3.9'
+  source_record:
+    path: upgrade/v1.34.13/research.yaml
+    component_id: dashboard
+  official_categories:
+  - category: official-user-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-operations-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-technical-whitepaper
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-development-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  official_source_ids:
+  - DASHBOARD-714-PINS
+  - DASHBOARD-714-INSTALL-CONTRACT
+  - DASHBOARD-ARCHIVED
+  decision: keep
+  transition_record: upgrade/v1.35.10/release.yaml#dashboard
+  document_destination: upgrade/v1.35.10/operations-manual.md
+  acceptance_refs:
+  - UPG-02
+  - UPG-10
+  - UPG-11
+- component_id: local-storage
+  target_pins:
+    local_path_provisioner: v0.0.37
+    local_path_helper: busybox:1.37
+    nfs_provisioner: v4.0.2
+    openebs_chart: 4.3.2
+    openebs_hostpath: 4.3.0
+    openebs_lvm: 1.7.0
+  source_record:
+    path: upgrade/v1.34.13/research.yaml
+    component_id: local-storage
+  official_categories:
+  - category: official-user-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-operations-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-technical-whitepaper
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-development-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  official_source_ids:
+  - NFS-402-BEHAVIOR
+  - LOCALPATH-037-BEHAVIOR
+  - OPENEBS-432-ENGINE-BOUNDARY
+  - OPENEBS-LVM-170-SYSTEM
+  - OPENEBS-HOSTPATH-430-MATRIX
+  - LOCALPATH-031-037-DELTA
+  - LOCALPATH-037-SCRATCH-IMAGE
+  - LOCALPATH-037-OFFICIAL-DEPLOYMENT
+  - LOCALPATH-037-CLIENT-PIN
+  - NFS-402-CLIENT-PIN
+  - LOCALPATH-037-CONFIG-RELOAD-CONTRACT
+  decision: keep
+  transition_record: upgrade/v1.35.10/release.yaml#local-storage
+  document_destination: upgrade/v1.35.10/operations-manual.md
+  acceptance_refs:
+  - UPG-02
+  - UPG-03
+  - UPG-07
+  - UPG-09
+  - UPG-12
+- component_id: ceph
+  target_pins:
+    v_ceph: 20.2.4
+    v_ceph_upgrade_source: 20.2.3
+    v_cephadm_sha256: 5b78c8d5772ef7c5c8619dac6ee0b36716b829338ea7a11c9f2b896626ab354f
+    v_ceph_csi: v3.17.2
+    v_ceph_csi_registrar: v2.16.0
+    v_ceph_csi_provisioner: v6.2.0
+    v_ceph_csi_attacher: v4.11.0
+    v_ceph_csi_resizer: v2.1.0
+    v_ceph_csi_snapshotter: v8.5.0
+    vendored_charts_sha256:
+      roles/ceph/files/ceph-csi-cephfs-3.17.1.tgz: 100c00932b1969df63400e5bb477b5ef2701371fb350e5b8cb8c4fb2873aa117
+      roles/ceph/files/ceph-csi-rbd-3.17.1.tgz: 75527adefcdf248e9acd2e9759205ddf4fd444824157e3e1914cf9659544bffc
+  source_record:
+    path: upgrade/v1.34.13/research.yaml
+    component_id: ceph
+  official_categories:
+  - category: official-user-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-operations-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-technical-whitepaper
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-development-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  official_source_ids:
+  - CEPHCSI-3171
+  - CEPHCSI-3182-FIRST-HOP
+  - CEPH-CSI-LATEST-RELEASE
+  - CEPHCSI-3172-RELEASE
+  - CEPHCSI-3172-README
+  - CEPHCSI-3172-RBD-COMPOSITION
+  - CEPHCSI-3172-CEPHFS-COMPOSITION
+  - CEPHCSI-3172-EXACT-DELTA
+  decision: keep
+  transition_record: upgrade/v1.35.10/release.yaml#ceph
+  document_destination: upgrade/v1.35.10/operations-manual.md
+  acceptance_refs:
+  - UPG-03
+  - UPG-09
+- component_id: longhorn
+  target_pins:
+    v_longhorn: 1.12.2
+    v_longhorn_upgrade_source: 1.12.1
+    v_longhorn_snapshot_controller: v8.6.0
+    chart_sha256: 3514c3a802ec910b3e97698f0b816c038d66547e1bf3d1a4ebad44a9f5b8ac8a
+    images:
+      longhorn-engine: v1.12.2
+      longhorn-manager: v1.12.2-kubeauto.1
+      longhorn-ui: v1.12.2
+      longhorn-instance-manager: v1.12.2-kubeauto.1
+      longhorn-share-manager: v1.12.2
+      longhorn-backing-image-manager: v1.12.2
+      longhorn-support-bundle-kit: v1.0.5
+      longhorn-csi-attacher: v4.13.0-20261028
+      longhorn-csi-provisioner: v5.3.0-20261028
+      longhorn-csi-node-driver-registrar: v2.18.0-20261028
+      longhorn-csi-resizer: v2.3.0-20261028
+      longhorn-csi-snapshotter: v8.7.0-20261028
+      longhorn-livenessprobe: v2.20.0-20261028
+  source_record:
+    path: upgrade/v1.34.13/research.yaml
+    component_id: longhorn
+  official_categories:
+  - category: official-user-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-operations-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-technical-whitepaper
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-development-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  official_source_ids:
+  - LONGHORN-1121
+  - LONGHORN-LATEST-RELEASE
+  - LONGHORN-1122-RELEASE
+  - LONGHORN-1122-EVICTION
+  - LONGHORN-1122-PENDING
+  - LONGHORN-1122-SETTINGS
+  - LONGHORN-1122-IM-ENGINE
+  - LONGHORN-1122-IM-REPLICA
+  - LONGHORN-1122-MANAGER-IDENTITY
+  - LONGHORN-1122-IM-IDENTITY
+  - LONGHORN-1122-CHART-COMPOSITION
+  - LONGHORN-1122-CHART-METADATA
+  - LONGHORN-1122-UPGRADE
+  - LONGHORN-1122-MAINTENANCE
+  - LONGHORN-1122-PLATFORM
+  - LONGHORN-1122-CHART-INDEX
+  - LONGHORN-1122-MANAGER-GOMOD
+  - LONGHORN-1122-IM-GOMOD
+  - LONGHORN-1122-MANAGER-BUILD
+  - LONGHORN-1122-IM-BUILD
+  - LONGHORN-1122-IM-LINK
+  - LONGHORN-1122-DEP-IDENTITY
+  - LONGHORN-1122-DEPENDENCIES
+  decision: keep
+  transition_record: upgrade/v1.35.10/release.yaml#longhorn
+  document_destination: upgrade/v1.35.10/operations-manual.md
+  acceptance_refs:
+  - UPG-03
+  - UPG-07
+  - UPG-09
+  - UPG-12
+- component_id: monitoring
+  target_pins:
+    v_promchart: 88.0.0
+    v_prometheus_operator: v0.93.0
+    v_prometheus_config_reloader: v0.93.0
+    v_prometheus_admission_webhook: v0.93.0
+    v_prometheus: v3.13.1-distroless
+    v_alertmanager: v0.33.1
+    v_node_exporter: v1.12.1
+    v_kube_state_metrics: v2.18.0
+    v_grafana: 13.1.1
+    v_k8s_sidecar: 1.30.5
+    v_prometheus_webhook_certgen: 1.8.5
+    v_thanos: v0.41.0
+    v_prometheus_adapter: v0.12.0
+    v_blackbox_exporter: v0.27.0
+    vendored_charts_sha256:
+      roles/cluster-addon/files/kube-prometheus-stack-88.0.0.tgz: f96cb0a0999f7375b2899e4b60e6ec0e8f7133e5847f39ac87d53baea765eb32
+  source_record:
+    path: upgrade/v1.34.13/research.yaml
+    component_id: monitoring
+  official_categories:
+  - category: official-user-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-operations-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-technical-whitepaper
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-development-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  official_source_ids:
+  - PROM-093-REQUIREMENTS
+  - PROM-STACK-880-PINS
+  - PROM-093-COMPATIBILITY
+  - KSM-218-K8S134-MATRIX
+  - KSM-LATEST-RELEASE-OBSERVATION
+  - PROM-ADAPTER-012-API
+  decision: keep
+  transition_record: upgrade/v1.35.10/release.yaml#monitoring
+  document_destination: upgrade/v1.35.10/operations-manual.md
+  acceptance_refs:
+  - UPG-02
+  - UPG-04
+  - UPG-11
+- component_id: logging
+  target_pins:
+    eck_operator: 3.5.0
+    elasticsearch: 9.5.1
+    kibana: 9.5.1
+    fluent_bit: 5.1.1
+    loki: 3.7.6
+    loki_chart: 18.9.0
+    alloy: 1.18.1
+    alloy_chart: 1.11.1
+  source_record:
+    path: upgrade/v1.34.13/research.yaml
+    component_id: logging
+  official_categories:
+  - category: official-user-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-operations-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-technical-whitepaper
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-development-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  official_source_ids:
+  - ECK-350-SUPPORTED
+  - ALLOY1181-KUBERNETES-DISCOVERY
+  - ALLOY1181-KUBERNETES-LOGS
+  - LOKI1890-CHART
+  - ALLOY1111-CHART
+  - HELM319-CHART-DEPENDENCY
+  decision: keep
+  transition_record: upgrade/v1.35.10/release.yaml#logging
+  document_destination: upgrade/v1.35.10/operations-manual.md
+  acceptance_refs:
+  - UPG-02
+  - UPG-09
+  - UPG-10
+  - UPG-11
+- component_id: elasticsearch
+  target_pins:
+    v_eck_operator: 3.5.0
+    v_elasticsearch: 9.5.1
+    v_business_elasticsearch: 9.5.6
+    v_elasticsearch_upgrade_source: 9.5.5
+    v_elasticsearch_exporter: v1.11.0
+    v_elasticsearch_client: 9.5.1-kubeauto.1
+    v_elasticsearch_rally: 2.13.0-kubeauto.1
+  source_record:
+    path: upgrade/v1.34.13/research.yaml
+    component_id: elasticsearch
+  official_categories:
+  - category: official-user-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-operations-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-technical-whitepaper
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-development-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  official_source_ids:
+  - ECK-350-SUPPORTED
+  - ECK-LATEST-RELEASE
+  decision: keep
+  transition_record: upgrade/v1.35.10/release.yaml#elasticsearch
+  document_destination: upgrade/v1.35.10/operations-manual.md
+  acceptance_refs:
+  - UPG-02
+  - UPG-10
+  - UPG-11
+- component_id: mysql
+  target_pins:
+    v_pxc_operator: 1.20.0
+    v_pxc: 8.4.8-8.1
+    v_pxc_xtrabackup: 8.4.0-5.1
+    v_pxc_haproxy: 2.8.18-1
+    v_pxc_fluentbit: 5.0.6-1
+    v_pxc_operator_chart_sha256: b8bff81d0f9691b1e495f958fba1bb268e48838cf548adf6ae6570ea0e0059cf
+  source_record:
+    path: upgrade/v1.34.13/research.yaml
+    component_id: mysql
+  official_categories:
+  - category: official-user-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-operations-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-technical-whitepaper
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-development-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  official_source_ids:
+  - PXC-120-FIRST-HOP
+  - PXC-LATEST-RELEASE
+  decision: keep
+  transition_record: upgrade/v1.35.10/release.yaml#mysql
+  document_destination: upgrade/v1.35.10/operations-manual.md
+  acceptance_refs:
+  - UPG-02
+  - UPG-10
+- component_id: kafka
+  target_pins:
+    v_strimzi_operator: 1.2.0
+    v_kafka: 4.3.1
+    v_kafka_metadata: 4.3-IV0
+    v_strimzi_drain_cleaner: 1.6.1
+    v_strimzi_operator_chart_sha256: 0f8a50b2f19bd99482f9fd6e17cf42902f72f9e594a136813ac3f0b7af422efd
+    v_strimzi_drain_cleaner_chart_sha256: ce84b8ddcd105f1b10d085fe69ed0d9185f798d009de3fba967386af2b8f6fdd
+  source_record:
+    path: upgrade/v1.34.13/research.yaml
+    component_id: kafka
+  official_categories:
+  - category: official-user-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-operations-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-technical-whitepaper
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-development-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  official_source_ids:
+  - STRIMZI-120
+  - STRIMZI-131-RELEASE-DELTA
+  - STRIMZI-131-SUPPORTED-UPGRADE-PATH
+  - STRIMZI-131-UPGRADE-SEQUENCE
+  - STRIMZI-131-OPERATOR-PRESERVATION
+  - STRIMZI-131-CHART-FEATURE-GATES
+  - STRIMZI-131-KAFKA-PINS
+  - KAFKA-432-STABLE-CHECKSUM
+  - KAFKA-432-RELEASE-DELTA
+  - KAFKA-43-UPGRADE-CONTRACT
+  - STRIMZI-DRAIN-161-BEHAVIOR
+  - STRIMZI-DRAIN-LATEST
+  - K8S-13413-CHANGELOG
+  decision: keep
+  transition_record: upgrade/v1.35.10/release.yaml#kafka
+  document_destination: upgrade/v1.35.10/operations-manual.md
+  acceptance_refs:
+  - UPG-07
+  - UPG-10
+- component_id: mongodb
+  target_pins:
+    v_mongodb_operator: 1.23.1
+    v_mongodb_operator_chart: 1.23.2
+    v_mongodb_operator_chart_sha256: 80e629dc31f8cfe2615a5efb8b0d1d2ed418f25e8c0b168f981412c8594a07e9
+    v_mongodb: 8.0.32-14
+    v_mongodb_backup: 2.15.0
+    v_mongodb_fluentbit: 5.1.2-1
+    v_mongodb_exporter: 0.53.0
+  source_record:
+    path: upgrade/v1.34.13/research.yaml
+    component_id: mongodb
+  official_categories:
+  - category: official-user-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-operations-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-technical-whitepaper
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-development-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  official_source_ids:
+  - MONGODB-REQUIREMENTS-FIRST-HOP
+  - MONGODB-1231-FIRST-HOP
+  - MONGODB-LATEST-RELEASE
+  decision: keep
+  transition_record: upgrade/v1.35.10/release.yaml#mongodb
+  document_destination: upgrade/v1.35.10/operations-manual.md
+  acceptance_refs:
+  - UPG-02
+  - UPG-10
+- component_id: redis
+  target_pins:
+    v_redis_operator: 0.27.0
+    v_redis_operator_image: 0.27.0-kubeauto.2
+    v_redis: 8.10.2
+    v_redis_cluster_image: 8.10.2-kubeauto.1
+    v_redis_exporter: v1.93.0
+    v_redis_operator_chart_sha256: 4eabe2cde88657f8b7b21c2ec5ddafa3a305d35c9877021f9be89ac3beeb0f7f
+  source_record:
+    path: upgrade/v1.34.13/research.yaml
+    component_id: redis
+  official_categories:
+  - category: official-user-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-operations-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-technical-whitepaper
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-development-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  official_source_ids:
+  - REDIS-027-CI-SCOPE
+  - REDIS-027-CHART-CI
+  - REDIS-027-CLIENT-DEPENDENCIES
+  - REDIS-027-README
+  - REDIS-027-CHART
+  - REDIS-INSTALLATION-MINIMUM
+  - REDIS-027-RBAC-API
+  decision: keep
+  transition_record: upgrade/v1.35.10/release.yaml#redis
+  document_destination: upgrade/v1.35.10/operations-manual.md
+  acceptance_refs:
+  - UPG-02
+  - UPG-03
+  - UPG-10
+- component_id: minio
+  target_pins:
+    operator_chart: 7.1.1
+    tenant_chart: 7.1.1
+    v_miniooperator: 7.1.1
+    minio_server: RELEASE.2025-04-08T15-41-24Z
+  source_record:
+    path: upgrade/v1.34.13/research.yaml
+    component_id: minio
+  official_categories:
+  - category: official-user-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-operations-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-technical-whitepaper
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-development-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  official_source_ids:
+  - MINIO-711-LATEST
+  - MINIO-711-REQUIREMENTS
+  - MINIO-711-CI-SCOPE
+  decision: keep
+  transition_record: upgrade/v1.35.10/release.yaml#minio
+  document_destination: upgrade/v1.35.10/operations-manual.md
+  acceptance_refs:
+  - UPG-02
+  - UPG-09
+  - UPG-10
+  - UPG-11
+- component_id: nacos
+  target_pins:
+    nacos_server: 2.4.3
+    peer_finder_plugin: '1.1'
+    mysql: 8.0.46
+    connector_j: 8.2.0
+  source_record:
+    path: upgrade/v1.34.13/research.yaml
+    component_id: nacos
+  official_categories:
+  - category: official-user-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-operations-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-technical-whitepaper
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-development-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  official_source_ids:
+  - NACOS-DOCKER-243-README
+  - NACOS-DOCKER-243-DOCKERFILE
+  - NACOS-243-COMPATIBLE
+  - K8S134-DEPRECATION-GUIDE
+  - K8S134-DEPRECATION-POLICY
+  - NACOS-PEERFINDER-130-MAIN
+  - NACOS-PEERFINDER-130-README
+  - NACOS-K8S-PLUGIN-DOCKERFILE
+  - NACOS-243-SCHEMA
+  - NACOS24-TAGS
+  - NACOS243-RELEASE
+  decision: keep
+  transition_record: upgrade/v1.35.10/release.yaml#nacos
+  document_destination: upgrade/v1.35.10/operations-manual.md
+  acceptance_refs:
+  - UPG-02
+  - UPG-09
+  - UPG-10
+  - UPG-12
+- component_id: rocketmq
+  target_pins:
+    operator_chart: 0.1.0
+    operator_image_index_digest: sha256:66516b068aa9b73bee2b218556f551111fc75721a32aa183f655106ef10bcfdf
+    broker: 4.5.0-alpine-operator-0.3.0
+    nameserver: 4.5.0-alpine-operator-0.3.0
+    console: 2.0.0
+  source_record:
+    path: upgrade/v1.34.13/research.yaml
+    component_id: rocketmq
+  official_categories:
+  - category: official-user-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-operations-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-technical-whitepaper
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-development-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  official_source_ids:
+  - ROCKETMQ-030-FIRST-HOP
+  - ROCKETMQ-OP-LATEST-RELEASE
+  - ROCKETMQ-030-GO-DEPS
+  - ROCKETMQ-CURRENT-OFFICIAL-BUILD
+  - CLIENTGO-0221-SHARED-API
+  - CONTROLLER-RUNTIME-010-VERSIONING-ENTRY
+  - CONTROLLER-RUNTIME-010-REST-POLICY
+  - ROCKETMQ-030-API-AND-EXEC-BOUNDARY
+  decision: keep
+  transition_record: upgrade/v1.35.10/release.yaml#rocketmq
+  document_destination: upgrade/v1.35.10/operations-manual.md
+  acceptance_refs:
+  - UPG-02
+  - UPG-03
+  - UPG-09
+  - UPG-10
+  - UPG-12
+- component_id: registry
+  target_pins:
+    harbor: v2.13.0
+    distribution: v2.8.3
+    product_registry_tag: 2.8.3
+  source_record:
+    path: upgrade/v1.34.13/research.yaml
+    component_id: registry
+  official_categories:
+  - category: official-user-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-operations-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-technical-whitepaper
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-development-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  official_source_ids:
+  - HARBOR-213-INSTALL-PREREQS
+  - DISTRIBUTION-283-RELEASE
+  decision: keep
+  transition_record: upgrade/v1.35.10/release.yaml#registry
+  document_destination: upgrade/v1.35.10/operations-manual.md
+  acceptance_refs:
+  - UPG-02
+  - UPG-03
+  - UPG-06
+  - UPG-12
+- component_id: control-client
+  target_pins:
+    kubernetes-python: 35.0.0
+  source_record:
+    path: upgrade/v1.34.13/research.yaml
+    component_id: control-client
+  official_categories:
+  - category: official-user-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-operations-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-technical-whitepaper
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-development-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  official_source_ids:
+  - PYTHONCLIENT-350-COMPATIBILITY
+  decision: keep
+  transition_record: upgrade/v1.35.10/release.yaml#control-client
+  document_destination: upgrade/v1.35.10/operations-manual.md
+  acceptance_refs:
+  - UPG-02
+  - UPG-04
+  - UPG-11
+- component_id: test-infrastructure
+  target_pins:
+    ansible_core: 2.18.6
+    ansible_core_py314: 2.20.9
+    pyinstaller: v6.16.0
+    runner_contract: upgrade/validate.py:v1
+    lab_authority: AGENTS.md-fixed-whitelist
+  source_record:
+    path: upgrade/v1.34.13/research.yaml
+    component_id: test-infrastructure
+  official_categories:
+  - category: official-user-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-operations-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-technical-whitepaper
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-development-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  official_source_ids:
+  - K8S-SKEW
+  - K8S-API-HEALTH-CONTRACT
+  - K8S-13413-VERSION-CONTRACT
+  - ACTIONS-PRODUCT-RELEASE-SCOPE
+  - PYINSTALLER-616-UPGRADE-DATA
+  - ANSIBLE-UPGRADE-INVENTORY-CONTRACT
+  decision: keep
+  transition_record: upgrade/v1.35.10/release.yaml#test-infrastructure
+  document_destination: upgrade/v1.35.10/operations-manual.md
+  acceptance_refs:
+  - UPG-02
+  - UPG-04
+  - UPG-05
+  - UPG-15
+- component_id: tools
+  target_pins:
+    scripts_sha256:
+      CalicoPolicyCli: 8b172fcdd8a13110e24327d7ed720fc812191aae67607dc3132ec74da5c9f137
+      KubeBackupCli: ce1a03afaaac8e6ccd7b61256265fade8e51780214b8f1ae9b7f14fa6b281d00
+      KubePublishCli: df122fe8d2d0a02258085bfe9818c923cd6ddb4ce65b68e6a34417452af8187b
+    kubernetes_python: 35.0.0
+    nerdctl: 2.3.4
+    docker: 28.5.2
+    calicoctl_target: v3.32.4
+    calicoctl_bridge: v3.31.7
+  source_record:
+    path: upgrade/v1.34.13/research.yaml
+    component_id: tools
+  official_categories:
+  - category: official-user-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-operations-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-technical-whitepaper
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  - category: official-development-manual
+    baseline: 源研究相同组件的对应目录；保留原状态
+    delta_status: unchanged-official-version
+    rule: 官方版本集合逐字段相同，复用源目录及其真实阅读状态；仅本次Kubernetes平台接口差异另见topics与release的迁移边，不改签源未完成项，不据候选pin推导实际安装。
+  official_source_ids:
+  - PYTHONCLIENT-350-COMPATIBILITY
+  - K8S134-DEPRECATION-GUIDE
+  - K8S134-DEPRECATION-POLICY
+  - CALICO3324-HOSTENDPOINT-API
+  - CALICO3324-GLOBALNETWORKPOLICY-API
+  - NERDCTL-234-COMPATIBILITY
+  - NERDCTL234-CLI-REFERENCE
+  decision: keep
+  transition_record: upgrade/v1.35.10/release.yaml#tools
+  document_destination: upgrade/v1.35.10/operations-manual.md
+  acceptance_refs:
+  - UPG-02
+  - UPG-04
+  - UPG-11
+remaining_gaps:
+- 原研究中完整官方四类正文阅读缺口继续保留；本跳增量目录差异、正文去向及源码/发行包两类读者路径已复核，不签原全站研究完成。
+- 未部署的可选网络、CSI、存储灾备和中间件业务按官方适用性、当前静态与原GA逐主张复用；本次Calico/local-path现场不扩张为这些路径的新实测。
+- 资格链已完成迁移、PDB拒绝续跑、独立目标两次安装与清理；最终GA必须由UPG-15独立干净全链和全部前置当前有效共同决定，发行包只在15项有效后导出准入策略。
+compatibility_review_boundary: 精确K8s与逐组件配套/迁移边及本跳增量交付已核对；原完整正文缺口和客户签收保留，不把旧证据复用或未部署路径写为本轮现场。
+directory_difference_evidence: upgrade/v1.35.10/evidence/official-directory-scope.json
+kubernetes_added_directory_items:
+- official_category: official-user-manual
+  original_topic: concepts/overview/kubectl.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/concepts/overview/kubectl.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: 1d489c8032a9adec4050a3cba311188de3c8f8488460987425ced28cdc662085
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: kubeconfig/集群内身份通过API通信；客户端偏差±1 minor；不引入Headlamp/Krew。
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-user-manual
+  original_topic: concepts/overview/working-with-objects/storage-version.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/concepts/overview/working-with-objects/storage-version.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: 640abffcbdbdf85a042a2a6c75e97d4c38ff769a79625c279d7bf59a3df54747
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: 读转换不重写存储，写使用当前storage version；旧CRD版本和加密密钥不能在迁移完成前删除。本跳不自动迁移schema或轮换密钥。
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-user-manual
+  original_topic: concepts/scheduling-eviction/gang-scheduling.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/concepts/scheduling-eviction/gang-scheduling.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: 2a6b9c0d62a7b774e32cd4a890b219e507a60384507d6b950bd5108866307248
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: GenericWorkload/GangScheduling/NodeDeclaredFeatures为alpha显式启用；Workload
+    basic/gang组策略，缺引用保持Pending，gang需minCount及Permit；本跳不启用或创建。
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-user-manual
+  original_topic: concepts/scheduling-eviction/node-declared-features.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/concepts/scheduling-eviction/node-declared-features.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: c6fd6c3964e5c8d0d6bcfdc658f0a3f947d84ad785c293d7652ba3bfa85b9b95
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: GenericWorkload/GangScheduling/NodeDeclaredFeatures为alpha显式启用；Workload
+    basic/gang组策略，缺引用保持Pending，gang需minCount及Permit；本跳不启用或创建。
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-user-manual
+  original_topic: concepts/workloads/autoscaling/horizontal-pod-autoscale.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/concepts/workloads/autoscaling/horizontal-pod-autoscale.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: 3cba34c60ff13d8fec5683c78bde82d8a963dd6a2ae172df03411c6b2777a233
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: 旧tasks概念页搬迁；resource metrics排除终止Pod，external/object按Running+Ready计数。本跳不改HPA对象，旧证据保持条件。
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-user-manual
+  original_topic: concepts/workloads/pods/advanced-pod-config.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/concepts/workloads/pods/advanced-pod-config.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: ab61c6deaaadec5e874a501c81ef805520216f84ce397c3b7c093507569367b6
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: 优先级、RuntimeClass、安全上下文、亲和/容忍和Pod overhead机制聚合；本跳不改变业务模板/权限。
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-user-manual
+  original_topic: concepts/workloads/pods/pod-condition.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/concepts/workloads/pods/pod-condition.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: 1c79adb82f9cfedae5b30aafdf09af28aff5e2481cb86a56bd2d20642693f8c5
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: Running不等于Ready，readinessGates需全部True；DisruptionTarget不保证最终删除；按Ready及原业务账本验收。
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-user-manual
+  original_topic: concepts/workloads/pods/workload-reference.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/concepts/workloads/pods/workload-reference.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: d19167a5f47175330f6000a0224ce002dcc717cf9c8dbe213833400ac38acde7
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: GenericWorkload/GangScheduling/NodeDeclaredFeatures为alpha显式启用；Workload
+    basic/gang组策略，缺引用保持Pending，gang需minCount及Permit；本跳不启用或创建。
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-user-manual
+  original_topic: concepts/workloads/workload-api/_index.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/concepts/workloads/workload-api/_index.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: 48cb2262580c5c69a69a65120a1890f55e6f892de3615f0c651aedc4cfb8a2b6
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: GenericWorkload/GangScheduling/NodeDeclaredFeatures为alpha显式启用；Workload
+    basic/gang组策略，缺引用保持Pending，gang需minCount及Permit；本跳不启用或创建。
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-user-manual
+  original_topic: concepts/workloads/workload-api/policies.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/concepts/workloads/workload-api/policies.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: 1d304cc56718da887112d9ce37a92e4cc571948cd38eae625fb47290c767a07a
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: GenericWorkload/GangScheduling/NodeDeclaredFeatures为alpha显式启用；Workload
+    basic/gang组策略，缺引用保持Pending，gang需minCount及Permit；本跳不启用或创建。
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-development-manual
+  original_topic: contribute/new-content/preview-locally.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/contribute/new-content/preview-locally.md
+  observed_on: '2026-11-16'
+  delta_status: excluded
+  target_sha256: 49cab9f5fb0493f81da1869849a8a9d4b16562cf7c21fbae7e46158aa0fb8de2
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: 项目采用systemd二进制，不采用kubeadm phase或上游website本地预览/贡献流程；共享API/机制另外保留。
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: 项目采用systemd二进制，不采用kubeadm phase或上游website本地预览/贡献流程；共享API/机制另外保留。
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-development-manual
+  original_topic: reference/access-authn-authz/user-impersonation.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/reference/access-authn-authz/user-impersonation.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: 3496850fd0678d5ce981c254760f9f2452d0b50a10cfe850babd51ba5a0b100e
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: 旧认证专题搬出；1.35新增as-user-extra；ConstrainedImpersonation
+    alpha显式启用且保留旧impersonate回退；不新增模拟授权。
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-development-manual
+  original_topic: reference/command-line-tools-reference/feature-gates/AuthorizePodWebsocketUpgradeCreatePermission.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/reference/command-line-tools-reference/feature-gates/AuthorizePodWebsocketUpgradeCreatePermission.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: 25fda16561f774f2e58dc8da4eaa0d38be61098fbee1d26133eb131d169bdae9
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: 'AuthorizePodWebsocketUpgradeCreatePermission：beta，1.35默认True。When
+    the `AuthorizePodWebsocketUpgradeCreatePermission` feature gate is `true`,
+
+    clients must be authorized to **create** Pod subresources even when triggering
+    their
+
+    creation using a WebSocket.
+
+
+    The connection upgrade request occurs for each of the following subresources:
+    `pods/exec`,
+
+    `pods/attach`, and `pods/portforward`. This feature gate fixes a security gap
+    caused by
+
+    the protocol transition: while SPDY requests utilize HTTP `POST` (naturally aligning
+    with
+
+    the **create** RBAC permission), the WebSocket protocol requires an HTTP `GET`
+    request for
+
+    the handshake. To correct this defect, a synthetic RBAC check is now applied to
+    ensure
+
+    WebSocket upgrades strictly enforce the **create** permission, matching the existing
+
+    SPDY security model.
+
+
+    You may want to disable this feature gate if you have existing clients or custom
+    tooling
+
+    that rely on the previous behavior—specifically, if they connect via WebSockets
+    but do *not*
+
+    currently hold the **create** RBAC permission.'
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-development-manual
+  original_topic: reference/command-line-tools-reference/feature-gates/CRDObservedGenerationTracking.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/reference/command-line-tools-reference/feature-gates/CRDObservedGenerationTracking.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: 0ea2b1ab19cb47d1f872f565017af492a08c5e9f203185d44d59a078f24bfde3
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: 'CRDObservedGenerationTracking：beta，1.35默认False。Allows
+    for the observed generation to be tracked in CRD conditions. Setting to
+
+    false will make it so CRD conditions will have the observed generation wiped.'
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-development-manual
+  original_topic: reference/command-line-tools-reference/feature-gates/CSIServiceAccountTokenSecrets.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/reference/command-line-tools-reference/feature-gates/CSIServiceAccountTokenSecrets.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: 960fa2afeb2a022708b8135becd838401f2660538ffd04b947a9a3ac6739dbd7
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: 'CSIServiceAccountTokenSecrets：beta，1.35默认True。Enables
+    CSI drivers to opt-in for receiving service account tokens from kubelet
+
+    through the dedicated secrets field in NodePublishVolumeRequest instead of the
+    volume_context field.'
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-development-manual
+  original_topic: reference/command-line-tools-reference/feature-gates/ChangeContainerStatusOnKubeletRestart.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/reference/command-line-tools-reference/feature-gates/ChangeContainerStatusOnKubeletRestart.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: 49f10aac69f23c0b07bb314fa088437e0f7b991e7df5db85d065c7dc0b3b9586
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: 'ChangeContainerStatusOnKubeletRestart：deprecated，1.35默认False。Enable
+    legacy writes to update container `ready` status after the kubelet detects a
+
+    [restart](/docs/concepts/workloads/pods/pod-lifecycle/#kubelet-restarts).
+
+
+    This feature gate was introduced to allow you revert the behavior to a previously
+    used default.
+
+    If you are satisfied with the default behavior, you do not need to enable this
+
+    feature gate.'
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-development-manual
+  original_topic: reference/command-line-tools-reference/feature-gates/CloudControllerManagerWatchBasedRoutesReconciliation.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/reference/command-line-tools-reference/feature-gates/CloudControllerManagerWatchBasedRoutesReconciliation.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: 614cbc6ffadc9dd4df99263b69252e5ddc6b6d267d3ac8a5b6f8744bac75c22a
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: 'CloudControllerManagerWatchBasedRoutesReconciliation：alpha，1.35默认False。Enables
+    a watch-based route reconciliation mechanism (rather than reconciling at a fixed
+    interval)
+
+    within the cloud-controller-manager library.'
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-development-manual
+  original_topic: reference/command-line-tools-reference/feature-gates/ConstrainedImpersonation.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/reference/command-line-tools-reference/feature-gates/ConstrainedImpersonation.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: b556a2cf3692c15be0fd1ae8fb8437c35b676d17dd1652e8d7f6064d65454ae8
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: ConstrainedImpersonation：alpha，1.35默认False。Enables impersonation
+    that is constrained to specific requests instead of being all or nothing.
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-development-manual
+  original_topic: reference/command-line-tools-reference/feature-gates/DRADeviceTaintRules.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/reference/command-line-tools-reference/feature-gates/DRADeviceTaintRules.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: 8acb2f71cb27df48534d6e586a91d5a8f71c140d658c8ef6f65e864748717bc2
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: 'DRADeviceTaintRules：alpha，1.35默认False。Enables support
+    for
+
+    [tainting devices through DeviceTaintRule objects](/docs/concepts/scheduling-eviction/dynamic-resource-allocation/#device-taints-and-tolerations)
+
+    when using dynamic resource allocation to manage devices.
+
+
+    This feature gate has no effect unless you also enable the `DRADeviceTaint` feature
+    gate.'
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-development-manual
+  original_topic: reference/command-line-tools-reference/feature-gates/GangScheduling.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/reference/command-line-tools-reference/feature-gates/GangScheduling.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: b9a345ac7e39e97cbbaea4a76c5eba692974f4838b696cc907390e76f86cd709
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: 'GangScheduling：alpha，1.35默认False。Enables the GangScheduling
+    plugin in kube-scheduler, which implements "all-or-nothing"
+
+    scheduling algorithm. The [Workload API](/docs/concepts/workloads/workload-api/)
+    is used
+
+    to express the requirements.'
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-development-manual
+  original_topic: reference/command-line-tools-reference/feature-gates/GenericWorkload.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/reference/command-line-tools-reference/feature-gates/GenericWorkload.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: 021076fcf61f28f68e0069b599e4992d2c123d9139c15f0ebcab084942261cd0
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: 'GenericWorkload：alpha，1.35默认False。Enables the support
+    for [Workload API](/docs/concepts/workloads/workload-api/) to express scheduling
+    requirements at the workload level.
+
+
+    When enabled Pods can reference a specific pod group and use this to influence
+
+    the way that they are scheduled.'
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-development-manual
+  original_topic: reference/command-line-tools-reference/feature-gates/InPlacePodLevelResourcesVerticalScaling.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/reference/command-line-tools-reference/feature-gates/InPlacePodLevelResourcesVerticalScaling.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: 152d606905b7983e23a6781b1ae6af100eda111ab9578e58555683c2270aaaee
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: 'InPlacePodLevelResourcesVerticalScaling：alpha，1.35默认False。Enables
+    the in-place vertical scaling of resources for a Pod (For example, changing a
+
+    running Pod''s pod-level CPU or memory requests/limits without needing to restart
+
+    it). For details, see the documentation on [In-place Pod-level Resources Vertical
+    Scaling](/docs/tasks/configure-pod-container/resize-pod-resources/).'
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-development-manual
+  original_topic: reference/command-line-tools-reference/feature-gates/MutablePVNodeAffinity.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/reference/command-line-tools-reference/feature-gates/MutablePVNodeAffinity.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: d988a26d812c3ccb89be00beb15d100d0ddbe32c8e5bba194ee7f33d519f81e5
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: 'MutablePVNodeAffinity：alpha，1.35默认False。Allow update
+    to the `.spec.nodeAffinity` field of a PersistentVolume.
+
+    See [Updates to node affinity](/docs/concepts/storage/persistent-volumes/#updates-to-node-affinity)
+    for more details.'
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-development-manual
+  original_topic: reference/command-line-tools-reference/feature-gates/MutablePodResourcesForSuspendedJobs.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/reference/command-line-tools-reference/feature-gates/MutablePodResourcesForSuspendedJobs.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: 4470d259f1ea6727099e6935d2e828407889cdad131c615d000500137cef7587
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: MutablePodResourcesForSuspendedJobs：alpha，1.35默认False。Enable
+    the ability to patch pod templates for suspended Jobs, in order to change requests
+    or limits for infrastructure resources.
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-development-manual
+  original_topic: reference/command-line-tools-reference/feature-gates/MutableSchedulingDirectivesForSuspendedJobs.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/reference/command-line-tools-reference/feature-gates/MutableSchedulingDirectivesForSuspendedJobs.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: 0829d0f0ee00523130a7c42ea7339ae7de71df361631f9cf20c295d8d167b1bc
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: MutableSchedulingDirectivesForSuspendedJobs：alpha，1.35默认False。Enable
+    the ability to patch pod templates for suspended Jobs, in order to change the
+    pod scheduling directives.
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-development-manual
+  original_topic: reference/command-line-tools-reference/feature-gates/NodeDeclaredFeatures.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/reference/command-line-tools-reference/feature-gates/NodeDeclaredFeatures.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: 26b8e986e8d0c0b9e704ea77077194134b0240853412fe45c3fd0ae13456db0d
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: "NodeDeclaredFeatures：alpha，1.35默认False。Enables Nodes\
+    \ to report supported features via their `.status`. This enables the \nscheduler\
+    \ and admission controller to prevent operations on nodes lacking features\nrequired\
+    \ by the pod. See [Node Declared Features](/docs/concepts/scheduling-eviction/node-declared-features/)."
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-development-manual
+  original_topic: reference/command-line-tools-reference/feature-gates/OpportunisticBatching.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/reference/command-line-tools-reference/feature-gates/OpportunisticBatching.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: 8f006e35a429f8975c9147e0d9f063950679883ff770312bc9f41663d0c73d9e
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: OpportunisticBatching：beta，1.35默认True。Enable reusing
+    of scheduling results from the previous scheduling cycle for equivalent pods.
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-development-manual
+  original_topic: reference/command-line-tools-reference/feature-gates/RestartAllContainersOnContainerExits.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/reference/command-line-tools-reference/feature-gates/RestartAllContainersOnContainerExits.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: e196ea43f46bad3a4037de39a61d20aee07c06c24e1a74d2a0e8b96fe131eb50
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: 'RestartAllContainersOnContainerExits：alpha，1.35默认False。Enables
+    the ability to specify
+
+    `RestartAllContainers` as an action in container `restartPolicyRules`. When a
+    container''s exit matches a rule with this action, the entire Pod is terminated
+    and restarted in-place.
+
+    See [Restart All Containers](/docs/concepts/workloads/pods/pod-lifecycle/#restart-all-containers)
+    for more details.'
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-development-manual
+  original_topic: reference/command-line-tools-reference/feature-gates/StructuredAuthenticationConfigurationJWKSMetrics.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/reference/command-line-tools-reference/feature-gates/StructuredAuthenticationConfigurationJWKSMetrics.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: db713f074a2c67f8fa4e2c985bdbcfdf39481e964e2e2890edece2b2b3359c54
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: 'StructuredAuthenticationConfigurationJWKSMetrics：beta，1.35默认True。Enables
+    additional metrics for JSON Web Key Set (JWKS) operations in JWT authenticators
+
+    configured via `--authentication-config`. When enabled, the API server records
+    metrics about
+
+    the last time JWKS was fetched and the hash value of the JWKS response.
+
+    See the [metrics reference](/docs/reference/instrumentation/metrics/) for details.'
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-development-manual
+  original_topic: reference/command-line-tools-reference/feature-gates/TaintTolerationComparisonOperators.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/reference/command-line-tools-reference/feature-gates/TaintTolerationComparisonOperators.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: 42eb4f4ac85c48b4088a59c08b1757cd15e1c4c767bddee0aae3c4f02d7f1d54
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: 'TaintTolerationComparisonOperators：alpha，1.35默认False。Enables
+    numeric comparison operators (`Lt` and `Gt`) for
+
+    [tolerations](/docs/concepts/scheduling-eviction/taint-and-toleration/).'
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-development-manual
+  original_topic: reference/command-line-tools-reference/feature-gates/UserNamespacesHostNetworkSupport.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/reference/command-line-tools-reference/feature-gates/UserNamespacesHostNetworkSupport.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: c8ad899c7974faf705a3657c2baf41ea65e90e62bc0472358ad825ec476f53ca
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: UserNamespacesHostNetworkSupport：alpha，1.35默认False。When
+    enabled, pods are allowed to use both `hostNetwork` and [User Namespaces](/docs/concepts/workloads/pods/user-namespaces)
+    simultaneously.
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-development-manual
+  original_topic: reference/command-line-tools-reference/feature-gates/VolumeLimitScaling.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/reference/command-line-tools-reference/feature-gates/VolumeLimitScaling.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: 793dfb1a67eb80e1e5c8051ee6cf558fb42e0b32fb0577ade4e58148184237c9
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: 'VolumeLimitScaling：alpha，1.35默认False。Enables volume
+    limit scaling for CSI drivers. This allows scheduler to
+
+    co-ordinate better with cluster-autoscaler for storage limits.
+
+    See [Storage Limits](/docs/concepts/storage/storage-limits/)
+
+    for more information.'
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-development-manual
+  original_topic: reference/encodings/_index.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/reference/encodings/_index.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: 8ba26e428ad660d5ef4a4ebd32b61087282ac44cb0d1a42a464bc3d2f87f02fc
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: 目录索引；机制沿同组正文映射，不从导航推导新交付。
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-development-manual
+  original_topic: reference/encodings/kyaml.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/reference/encodings/kyaml.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: c922087a78c956cb769b4e2a1979b0e4af11db45fd40e6bf5120a6eea3e86b73
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: 1.35 beta的YAML子集：flow结构、双引号字符串；不切换既有解析/输出。
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-development-manual
+  original_topic: reference/glossary/condition.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/reference/glossary/condition.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: 7a659424264e396963e61f17df38e05a98740bd606771a87757ebc107947d72c
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: type和True/False/Unknown表达状态；不能以对象存在或Running代替业务结果。
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-development-manual
+  original_topic: reference/kubectl/generated/kubectl_alpha/_index.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/reference/kubectl/generated/kubectl_alpha/_index.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: cc72c34801565ad30ad7784e44f6daa489f54a702e6302118e9a859f90a1443e
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: kubectl alpha kuberc提供本地偏好view/set、defaults/aliases/overwrite；继承全局参数复用共同阅读，不覆盖客户偏好，不等于启用服务端alpha。
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-development-manual
+  original_topic: reference/kubectl/generated/kubectl_alpha/kubectl_alpha_kuberc.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/reference/kubectl/generated/kubectl_alpha/kubectl_alpha_kuberc.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: 9240fdd558884f73a13c7f88ed51827c886f1ec27d1fc3d3c91a8f5d28d267b4
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: kubectl alpha kuberc提供本地偏好view/set、defaults/aliases/overwrite；继承全局参数复用共同阅读，不覆盖客户偏好，不等于启用服务端alpha。
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-development-manual
+  original_topic: reference/kubectl/generated/kubectl_alpha/kubectl_alpha_kuberc_set.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/reference/kubectl/generated/kubectl_alpha/kubectl_alpha_kuberc_set.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: eeef325e27f93f07a8a70651c1a0a930341c1938c46cf060e3a47f48d34d5776
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: kubectl alpha kuberc提供本地偏好view/set、defaults/aliases/overwrite；继承全局参数复用共同阅读，不覆盖客户偏好，不等于启用服务端alpha。
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-development-manual
+  original_topic: reference/kubectl/generated/kubectl_alpha/kubectl_alpha_kuberc_view.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/reference/kubectl/generated/kubectl_alpha/kubectl_alpha_kuberc_view.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: 609de24590c7f04bb73a3c47b11efc0975916fff9beebd68caa18cbb4816a12a
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: kubectl alpha kuberc提供本地偏好view/set、defaults/aliases/overwrite；继承全局参数复用共同阅读，不覆盖客户偏好，不等于启用服务端alpha。
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-development-manual
+  original_topic: reference/kubernetes-api/authentication-resources/pod-certificate-request-v1beta1.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/reference/kubernetes-api/authentication-resources/pod-certificate-request-v1beta1.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: 8f208d7bc85e6d3b5ed4b2ee23f4e227415f056fa2c0b0e9ad79d060e3b2255c
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: alpha到beta新增unverifiedUserAnnotations，签发者应拒绝未知键；本跳拒绝旧alpha消费者，不交付签发器。
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-development-manual
+  original_topic: reference/kubernetes-api/config-and-storage-resources/storage-version-migration-v1beta1.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/reference/kubernetes-api/config-and-storage-resources/storage-version-migration-v1beta1.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: 488b41810a7cdc449f60652b10bc3999f3fbfcaab93f3421d0787a07040cf688
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: beta用GroupResource替代GroupVersionResource，取消continueToken，采用标准Condition；不自动迁移alpha对象。
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-development-manual
+  original_topic: reference/kubernetes-api/workload-resources/workload-v1alpha1.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/reference/kubernetes-api/workload-resources/workload-v1alpha1.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: cef594a489851a7456d7294dc113ea6fa851364091d6ed17ebe49615e9bc7633
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: GenericWorkload/GangScheduling/NodeDeclaredFeatures为alpha显式启用；Workload
+    basic/gang组策略，缺引用保持Pending，gang需minCount及Permit；本跳不启用或创建。
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-development-manual
+  original_topic: reference/node/kubelet-sync-loop.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/reference/node/kubelet-sync-loop.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: 36bd735e0ac1b86f818096d4d5a7a2e161efb66bdcc4fb8a4016197900a9eecd
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: sync loop/pod worker经CRI协调、PLEG轮询导致API状态延迟；有界等待和原账本，不承诺即时一致。
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-development-manual
+  original_topic: reference/setup-tools/kubeadm/generated/kubeadm_join/kubeadm_join_phase_etcd-join.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/reference/setup-tools/kubeadm/generated/kubeadm_join/kubeadm_join_phase_etcd-join.md
+  observed_on: '2026-11-16'
+  delta_status: excluded
+  target_sha256: 452f6b456e8b3bb944cfe1c765dd98743ad3344def8c46b8ae5dc1b7da4ca748
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: 项目采用systemd二进制，不采用kubeadm phase或上游website本地预览/贡献流程；共享API/机制另外保留。
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: 项目采用systemd二进制，不采用kubeadm phase或上游website本地预览/贡献流程；共享API/机制另外保留。
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-development-manual
+  original_topic: reference/setup-tools/kubeadm/generated/kubeadm_join/kubeadm_join_phase_kubelet-wait-bootstrap.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/reference/setup-tools/kubeadm/generated/kubeadm_join/kubeadm_join_phase_kubelet-wait-bootstrap.md
+  observed_on: '2026-11-16'
+  delta_status: excluded
+  target_sha256: d54af66480e383c60b6e70a0505380c04ad90542375a8f9cc995e6b42d74fb94
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: 项目采用systemd二进制，不采用kubeadm phase或上游website本地预览/贡献流程；共享API/机制另外保留。
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: 项目采用systemd二进制，不采用kubeadm phase或上游website本地预览/贡献流程；共享API/机制另外保留。
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-user-manual
+  original_topic: tasks/configure-pod-container/resize-pod-resources.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/tasks/configure-pod-container/resize-pod-resources.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: 9c2799e1b05c46962318b2e16a75a8d4bbc109db62ebe97196fa2a22f49c2ad4
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: Pod级resize为alpha，依赖四项门控；总请求不小于容器之和，容器上限受Pod限制，容器策略仍可能重启。官方例子存在对象名/清理笔误，不复制为项目命令，不启用本能力。
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-user-manual
+  original_topic: tasks/debug/debug-cluster/topology.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/tasks/debug/debug-cluster/topology.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: 6d83cb5e4733e2b982cf70b2a84fe9de04f1703c24ec6afe0da204eb1275c835
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: NUMA/CPU/Memory/Topology Manager排障区分hint、实际分配和资源约束；本跳不改变策略。
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-user-manual
+  original_topic: tasks/run-application/scale-deployment.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/tasks/run-application/scale-deployment.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: 105a890582b705dc708f166ff74b3574116112f754d4f331a8cbb8056f622326
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: 手动replicas会与HPA协调冲突；缩为0保留Deployment但终止Pod；本跳不改副本数。
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-user-manual
+  original_topic: tutorials/configuration/configure-persistent-volume-storage.md
+  version_or_commit: 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/tutorials/configuration/configure-persistent-volume-storage.md
+  observed_on: '2026-11-16'
+  delta_status: understood
+  target_sha256: c9b9430aa95590770c68e999a52fad8243b9190802ac7dcb884a7f324df34f39
+  review_scope: 新增正文或搬迁差异；重复generated参数合并阅读保留映射；旧正文阅读缺口不改签。
+  mechanism_and_constraints: tasks搬到tutorials，正文逐行相同；hostPath演示不能作为跨节点存储保证。本跳验证产品local-path原PVC账本。
+  project_mapping: upgrade/product/及既有生产模板；未启用能力不新增安装任务
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  exclusion_basis: null
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+incremental_reading_boundary:
+  added_pages: 49
+  removed_pages: 4
+  changed_pages: 529
+  delta_review: 变化块及新增正文/搬迁差异已读，重复generated参数合并保留每页映射。
+  source_body_gaps: 未变化正文原阅读状态不改签，源完整目录缺口仍保留。
+  full_source_manual_completion: false
+kubernetes_removed_directory_items:
+- official_category: official-development-manual
+  original_topic: reference/kubernetes-api/authentication-resources/pod-certificate-request-v1alpha1.md
+  source_commit: 47132eb5367cfdcba0a3b33a0b3ffc81185bd7e8
+  source_sha256: 4ededd435a4577b848337148d5777543590347a9e283c15d9fa5cf1d34f6e064
+  source_url: https://github.com/kubernetes/website/blob/47132eb5367cfdcba0a3b33a0b3ffc81185bd7e8/content/en/docs/reference/kubernetes-api/authentication-resources/pod-certificate-request-v1alpha1.md
+  target_topic: reference/kubernetes-api/authentication-resources/pod-certificate-request-v1beta1.md
+  delta_status: understood
+  mechanism_and_constraints: API由v1alpha1变为v1beta1；源alpha消费者必须在变更前迁移，ClusterTrustBundle不随此资源一起误拒绝。
+  project_mapping: upgrade/product/next_api.py
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-development-manual
+  original_topic: reference/kubernetes-api/config-and-storage-resources/storage-version-migration-v1alpha1.md
+  source_commit: 47132eb5367cfdcba0a3b33a0b3ffc81185bd7e8
+  source_sha256: eb68e1d75d0a91a45f38f6e5a0bf72a717345d5054224e29d880c81082f2c18e
+  source_url: https://github.com/kubernetes/website/blob/47132eb5367cfdcba0a3b33a0b3ffc81185bd7e8/content/en/docs/reference/kubernetes-api/config-and-storage-resources/storage-version-migration-v1alpha1.md
+  target_topic: reference/kubernetes-api/config-and-storage-resources/storage-version-migration-v1beta1.md
+  delta_status: understood
+  mechanism_and_constraints: API由v1alpha1变为v1beta1；旧接口仍在服务时产品预检拒绝，不自动删除业务对象。
+  project_mapping: upgrade/product/next_api.py
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-user-manual
+  original_topic: tasks/configure-pod-container/configure-persistent-volume-storage.md
+  source_commit: 47132eb5367cfdcba0a3b33a0b3ffc81185bd7e8
+  source_sha256: bc28d4542f20ff1a75b9b1c907185e5cd4afbfa1963e0b2c4bafb7860610de00
+  source_url: https://github.com/kubernetes/website/blob/47132eb5367cfdcba0a3b33a0b3ffc81185bd7e8/content/en/docs/tasks/configure-pod-container/configure-persistent-volume-storage.md
+  target_topic: tutorials/configuration/configure-persistent-volume-storage.md
+  delta_status: understood
+  mechanism_and_constraints: 正文迁移且内容相同，只有content_type改为tutorial；不构成PV/PVC存储语义变化，不新增产品步骤或回归。
+  project_mapping: upgrade/product/continuity.py
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  acceptance_refs:
+  - UPG-02
+  - UPG-14
+- official_category: official-user-manual
+  original_topic: tasks/run-application/horizontal-pod-autoscale.md
+  source_commit: 47132eb5367cfdcba0a3b33a0b3ffc81185bd7e8
+  source_sha256: bca5ecd424ce82d98ec96600acb5fbd711916c8c20d5f41ae6e3f06e2981a906
+  source_url: https://github.com/kubernetes/website/blob/47132eb5367cfdcba0a3b33a0b3ffc81185bd7e8/content/en/docs/tasks/run-application/horizontal-pod-autoscale.md
+  target_topic: concepts/workloads/autoscaling/horizontal-pod-autoscale.md
+  delta_status: understood
+  mechanism_and_constraints: HPA主题迁移到concepts；resource指标忽略终止Pod，external/object按说明处理，不能将本页移动当成项目新增HPA支持或新的缩放保证。
+  project_mapping: 既有生产HPA/监控接口；本跳不新增或改写HPA模板
+  document_destination: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  acceptance_refs:
+  - UPG-02
+  - UPG-14

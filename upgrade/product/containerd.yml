@@ -65,7 +65,8 @@
       - not (upgrade_runtime_configuration.stat.islnk | default(false))
       - >-
         upgrade_runtime_configuration.stat.checksum == UPGRADE_CONTAINERD_SOURCE_CONFIG_SHA256 or
-        (UPGRADE_NODE_RESUME | default(false) | bool and
+        ((UPGRADE_NODE_RESUME | default(false) | bool or
+          UPGRADE_CONTAINERD_ACCEPT_EXISTING_TARGET | default(false) == true) and
          upgrade_runtime_configuration.stat.checksum == UPGRADE_CONTAINERD_CONFIG.sha256)
 
 - name: Read the running containerd identity through its live CRI socket
@@ -81,6 +82,8 @@
       - upgrade_runtime_initial.stdout is search('RuntimeApiVersion:\s+v1')
       - >-
         upgrade_runtime_initial.stdout is search('RuntimeVersion:\s+v?2\.1\.4') or
+        (UPGRADE_CONTAINERD_ACCEPT_EXISTING_TARGET | default(false) == true and
+         upgrade_runtime_initial.stdout is search('RuntimeVersion:\s+v?2\.3\.7')) or
         (UPGRADE_NODE_RESUME | default(false) | bool and
          (upgrade_runtime_initial.stdout is search('RuntimeVersion:\s+v?2\.2\.10') or
           upgrade_runtime_initial.stdout is search('RuntimeVersion:\s+v?2\.3\.7')))

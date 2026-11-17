@@ -1,0 +1,163 @@
+{
+  "run_id": 43841549563,
+  "head": "e897890dfe666703a544185ac5a836c80bd22c24",
+  "artifact_id": 14213361202,
+  "artifact_sha256": "28d1f417fe9b11dfcf98697c09d8057da04a9a1fc316d342dd8ef4ef0517b6ad",
+  "plan": {
+    "candidates": 6,
+    "head": "e897890dfe666703a544185ac5a836c80bd22c24",
+    "items": [],
+    "mode": "readback",
+    "mutation": "none",
+    "observed": [
+      {
+        "dockerhub": {
+          "digest": "sha256:ace9f6765c0188467cb4bb793e28bf946be4de85dd9a2c2ce416e30ce0b94458",
+          "platforms": {
+            "linux/amd64": "sha256:d1d9381387647d22f0842ed7a24940e752b6204c82c550beacf3dfdeea62106f",
+            "linux/arm64": "sha256:9218ce6b50c53d4f61cfc6f9d0c4d7097486da5cbd7be19b0d410bc5db3cbd41"
+          }
+        },
+        "fingerprint": "67f2057875e8ece2cb87fb1a630b481478375f55b3554065d4f72e342adf7adf",
+        "row": {
+          "ctx": "./platform/observability/metrics-server/",
+          "dockerfile": "./platform/observability/metrics-server/Dockerfile",
+          "image": "brinnatt/metrics-server",
+          "tag": "v0.8.0",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/metrics-server"
+        },
+        "talkedu": {
+          "digest": "sha256:ace9f6765c0188467cb4bb793e28bf946be4de85dd9a2c2ce416e30ce0b94458",
+          "platforms": {
+            "linux/amd64": "sha256:d1d9381387647d22f0842ed7a24940e752b6204c82c550beacf3dfdeea62106f",
+            "linux/arm64": "sha256:9218ce6b50c53d4f61cfc6f9d0c4d7097486da5cbd7be19b0d410bc5db3cbd41"
+          }
+        }
+      },
+      {
+        "dockerhub": {
+          "digest": "sha256:490d3d35f60056bb25048b04e62c22b0d5cfe7b5ce18b1f8cf82a7e0e81f0e49",
+          "platforms": {
+            "linux/amd64": "sha256:781f21cf30abdddcefb70b78de643f57f89fc55fa4c9a3ad17194f2ef9019134",
+            "linux/arm64": "sha256:33e5963f607475cc53262eb2a6915ca2984439dde4d8e6cb4c69954aa6387cf1"
+          }
+        },
+        "fingerprint": "2ad66ea031977178820af4638540ba2415113877859061441fd09507c513114f",
+        "row": {
+          "ctx": "./platform/dns/k8s-dns-node-cache/",
+          "dockerfile": "./platform/dns/k8s-dns-node-cache/Dockerfile",
+          "image": "brinnatt/k8s-dns-node-cache",
+          "tag": "1.26.4",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/k8s-dns-node-cache"
+        },
+        "talkedu": {
+          "digest": "sha256:490d3d35f60056bb25048b04e62c22b0d5cfe7b5ce18b1f8cf82a7e0e81f0e49",
+          "platforms": {
+            "linux/amd64": "sha256:781f21cf30abdddcefb70b78de643f57f89fc55fa4c9a3ad17194f2ef9019134",
+            "linux/arm64": "sha256:33e5963f607475cc53262eb2a6915ca2984439dde4d8e6cb4c69954aa6387cf1"
+          }
+        }
+      },
+      {
+        "dockerhub": {
+          "digest": "sha256:d01c71e702bc906860d95ccb4c44e6a44ff8f8782113efed59b02f2e50e3a6ac",
+          "platforms": {
+            "linux/amd64": "sha256:79940dce90b5dd3e69914f77e1239bf4aac43977499266a55bd3576800f1b029",
+            "linux/arm64": "sha256:91580d5530529447b93a77c4f070be6676196c3d0e1094ed216941c272d13a9d"
+          }
+        },
+        "fingerprint": "90d5a58db59365e4925f102ed04b47c5e885afa095f14745cfd69a30ee97211b",
+        "row": {
+          "ctx": "./platform/network/calico/calico-cni/",
+          "dockerfile": "./platform/network/calico/calico-cni/Dockerfile",
+          "image": "brinnatt/calico-cni",
+          "tag": "v3.28.4",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/calico-cni"
+        },
+        "talkedu": {
+          "digest": "sha256:d01c71e702bc906860d95ccb4c44e6a44ff8f8782113efed59b02f2e50e3a6ac",
+          "platforms": {
+            "linux/amd64": "sha256:79940dce90b5dd3e69914f77e1239bf4aac43977499266a55bd3576800f1b029",
+            "linux/arm64": "sha256:91580d5530529447b93a77c4f070be6676196c3d0e1094ed216941c272d13a9d"
+          }
+        }
+      },
+      {
+        "dockerhub": {
+          "digest": "sha256:e5e6dbeed2e5aad6d0069995ae1279920855ecb63f1878e6c111230ef600cc28",
+          "platforms": {
+            "linux/amd64": "sha256:c54b9ebcd4c4504fb3d3916060bb326312103c9ab145403a6d2fe3a69074d8f2",
+            "linux/arm64": "sha256:3baf93522913689a80174e3ec24b56a648737abdb924d7ae24fa795eaef3cc25"
+          }
+        },
+        "fingerprint": "b57628f3d4741c8d41e53058a89098886b006d71c039e3efad4eb2db26b7f86b",
+        "row": {
+          "ctx": "./platform/network/calico/calico-node/",
+          "dockerfile": "./platform/network/calico/calico-node/Dockerfile",
+          "image": "brinnatt/calico-node",
+          "tag": "v3.28.4",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/calico-node"
+        },
+        "talkedu": {
+          "digest": "sha256:e5e6dbeed2e5aad6d0069995ae1279920855ecb63f1878e6c111230ef600cc28",
+          "platforms": {
+            "linux/amd64": "sha256:c54b9ebcd4c4504fb3d3916060bb326312103c9ab145403a6d2fe3a69074d8f2",
+            "linux/arm64": "sha256:3baf93522913689a80174e3ec24b56a648737abdb924d7ae24fa795eaef3cc25"
+          }
+        }
+      },
+      {
+        "dockerhub": {
+          "digest": "sha256:02fee7204f96a3fbd49622a2dc9b91876796235314315eae89925d1ad1f5dbe9",
+          "platforms": {
+            "linux/amd64": "sha256:86f353f7975c5c270bea9554866494132769164014415a02103903476b08add7",
+            "linux/arm64": "sha256:0657b7e7afb45ed31014f0ede04fb13b1b41a4db8b14d43970119749d7125ab3"
+          }
+        },
+        "fingerprint": "1538a5f73aca57928cc1db9ff63bfb7c9a984726c1337a4724b5595fa9956297",
+        "row": {
+          "ctx": "./platform/network/calico/calico-kube-controllers/",
+          "dockerfile": "./platform/network/calico/calico-kube-controllers/Dockerfile",
+          "image": "brinnatt/calico-kube-controllers",
+          "tag": "v3.28.4",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/calico-kube-controllers"
+        },
+        "talkedu": {
+          "digest": "sha256:02fee7204f96a3fbd49622a2dc9b91876796235314315eae89925d1ad1f5dbe9",
+          "platforms": {
+            "linux/amd64": "sha256:86f353f7975c5c270bea9554866494132769164014415a02103903476b08add7",
+            "linux/arm64": "sha256:0657b7e7afb45ed31014f0ede04fb13b1b41a4db8b14d43970119749d7125ab3"
+          }
+        }
+      },
+      {
+        "dockerhub": {
+          "digest": "sha256:c186cdfc3cab2cf6152defb37bde4fd60639560294dbac0c5c9225ee7d6ec07b",
+          "platforms": {
+            "linux/amd64": "sha256:a1d9a81ba706cd4e3821d377c02d756d55241d42e9803b4a5ff43d90b6c6d8a9",
+            "linux/arm64": "sha256:86d964c2971601353a9c30a0d69196cc7c273f0b83c555cb1895dbb851f32c42"
+          }
+        },
+        "fingerprint": "efe221317c6c1aadc998abee60ba6b810e8db0be52ac611a6bbfbf5f63fc1bec",
+        "row": {
+          "ctx": "./platform/dns/coredns/",
+          "dockerfile": "./platform/dns/coredns/Dockerfile",
+          "image": "brinnatt/coredns",
+          "tag": "1.12.4",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/coredns"
+        },
+        "talkedu": {
+          "digest": "sha256:c186cdfc3cab2cf6152defb37bde4fd60639560294dbac0c5c9225ee7d6ec07b",
+          "platforms": {
+            "linux/amd64": "sha256:a1d9a81ba706cd4e3821d377c02d756d55241d42e9803b4a5ff43d90b6c6d8a9",
+            "linux/arm64": "sha256:86d964c2971601353a9c30a0d69196cc7c273f0b83c555cb1895dbb851f32c42"
+          }
+        }
+      }
+    ],
+    "schema": 1,
+    "scope": "current-dual-registry-manifest-identity-only",
+    "shard_size": 20,
+    "shards": 0
+  }
+}

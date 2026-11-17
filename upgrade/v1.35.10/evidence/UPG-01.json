@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "accepted": true,
+  "source": "v1.34.13",
+  "target": "v1.35.10",
+  "case_ids": [
+    "UPG-01"
+  ],
+  "method": "analysis",
+  "claim": "按交付负责人已确认的 v1.34.13 GA 和当前校验通过的原始15项矩阵关联源分支、正式证据和两种实际运行 profile；原始证据已位于upgrade中并逐字节引用，不把首跳选型目标当实装版本，不重开旧GA。",
+  "covered_subcases": [
+    "ga-authority-and-preserved-original-scope",
+    "exact-project-reference-tag-and-six-repository-source-identities",
+    "immutable-formal-evidence-copy-identities",
+    "customer-and-live-source-identity-boundaries"
+  ],
+  "inputs": {
+    "upgrade/v1.35.10/source-baseline.yaml": "91612ce24d24bf02b381e7ca783a3312270022b3a9ac64174a6acecbf59e9c12"
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.34.13/release.yaml",
+      "sha256": "cfdcd0a7d3b168c6c607d27392c6942cf780007e49febf72add154f0c5ef0143"
+    },
+    {
+      "path": "upgrade/v1.34.13/test-matrix.yaml",
+      "sha256": "ce9f84a86bc0060681e3f09c8f8533cb5d5cc0e57819b841ccc1f8a2bd142987"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/UPG-15.json",
+      "sha256": "db9381af8fd68b04d6228b91ed7608d4e1d9084666baeac22a20445f0815dfe2"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/ci-tag-publication-ga.json",
+      "sha256": "a2b3148d32d76a98f1fff7832c87652511a9e4783f8e363535cf8ddb5196b474"
+    }
+  ],
+  "applicability": {
+    "conditions": "源为已验收v1.34.13；实际实验室及客户配置仍由UPG-05变更前验证。",
+    "differences": "下一跳目标1.35；旧GA事实及其深度验收未改变；新迁移结论尚待验收。",
+    "reason": "旧证据只能支持原主张及源身份；不能从引用推导下一跳现场PASS。"
+  },
+  "checks": [
+    {
+      "command": ".venv/bin/python -B upgrade/validate.py upgrade/v1.34.13/test-matrix.yaml --status",
+      "rc": 0
+    }
+  ],
+  "customer_signoff": null
+}

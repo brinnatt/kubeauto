@@ -1,0 +1,28 @@
+schema_version: 1
+kubernetes: v1.34.13
+delivery_authority: 交付负责人确认 v1.34.13 已 GA；原矩阵 15/15 校验通过，既有功能 GA 不重新验收。
+source_commit: 0eac368744cf82fdd401d278858859927a82e387
+source_evidence:
+- path: upgrade/v1.34.13/release.yaml
+  sha256: cfdcd0a7d3b168c6c607d27392c6942cf780007e49febf72add154f0c5ef0143
+- path: upgrade/v1.34.13/test-matrix.yaml
+  sha256: ce9f84a86bc0060681e3f09c8f8533cb5d5cc0e57819b841ccc1f8a2bd142987
+- path: upgrade/v1.34.13/evidence/UPG-15.json
+  sha256: db9381af8fd68b04d6228b91ed7608d4e1d9084666baeac22a20445f0815dfe2
+- path: upgrade/v1.34.13/evidence/ci-tag-publication-ga.json
+  sha256: a2b3148d32d76a98f1fff7832c87652511a9e4783f8e363535cf8ddb5196b474
+profiles:
+  new_install:
+    kubernetes: v1.34.13
+    etcd: 3.6.4
+    containerd: 2.1.4
+    runc: 1.3.1
+    calico: v3.28.4
+    source: upgrade/v1.34.13/evidence/UPG-13.json
+  migrated:
+    kubernetes: v1.34.13
+    containerd: 2.3.7
+    runc: 1.5.2
+    calico: v3.28.4
+    source: upgrade/v1.34.13/evidence/UPG-07.json
+boundary: 源 profile 由已验收实测记录确定；release.yaml 的候选 target_pins 不能代替实际运行身份。现场由源预检逐节点复核，混合或未知配置拒绝。

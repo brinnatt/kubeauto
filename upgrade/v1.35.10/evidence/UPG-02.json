@@ -1,0 +1,1328 @@
+{
+  "schema_version": 1,
+  "accepted": true,
+  "source": "v1.34.13",
+  "target": "v1.35.10",
+  "case_ids": [
+    "UPG-02"
+  ],
+  "method": "analysis",
+  "claim": "已逐条核对30项固定组合及实际源迁移边；区分官方逐版测试/支持下限/稳定接口，保留EOL过渡与非Calico自动迁移拒绝边界；不签本跳现场、未部署业务或官方完整目录阅读。",
+  "covered_subcases": [
+    "exact-adjacent-kubernetes-stable-pin",
+    "every-catalog-component-has-decision-pin-and-transition-edge",
+    "official-evidence-strength-and-noncertification-boundaries",
+    "eol-and-transition-only-components-are-explicit"
+  ],
+  "inputs": {
+    "upgrade/v1.35.10/release.yaml": "f69e9e88afa6a7cdc333240d62873ed120c7db981e20a6bf3cd68bbc0bf77625",
+    "upgrade/v1.35.10/source-baseline.yaml": "91612ce24d24bf02b381e7ca783a3312270022b3a9ac64174a6acecbf59e9c12",
+    "upgrade/v1.35.10/evidence/combination-review.json": "526d80507f5749756d971abdb1dfbb5b6f45db4a072eb1525f70930836758e8a"
+  },
+  "references": [
+    {
+      "path": "upgrade/official-snapshots/2026-11-13/calico.txt",
+      "sha256": "31f1ad6864204af60d7595596d3c10bcfcf3d779edf4a7a3035610504a118ac5"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-13/ceph-csi-html.txt",
+      "sha256": "77fc32fcda125c45bfc9708cb05d568fe4b7f77bf453a42d7b9efcc4b13ac267"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-13/cilium-github.txt",
+      "sha256": "b8615afa08bf1566bd876f8a179db8908066305a8bd9d8b5f92c10baeda69d88"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-13/containerd-html.txt",
+      "sha256": "a3282897a24b6340f5740f39be84b16e0d6a343b2c3222bdb8e6a95893c96442"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-13/ingress-retire.txt",
+      "sha256": "a7868168dc1ac00499f4adb05444e0151584cb4e26232565f6bb5aaecdcaffaf"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-13/metrics.txt",
+      "sha256": "1e19082eb802865272286bf8b21016a5649ae14006ff54dc53835ad8099c53b1"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-13/skew-html.txt",
+      "sha256": "8ee564a5901b657136782286db03bdf39a918e2fc8c09a3cbec751135a2d3da0"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-13/strimzi.txt",
+      "sha256": "907ec975bb5deef510d4dd9ac1c8b7c6f507c60278e2263dbce1ed873ae02f3f"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/actions-workflow-syntax-upgrade.txt",
+      "sha256": "a90db6cfc3a8683137f7c3efe12b3d341d5d323087d4de3c812cea8c47fdcfe7"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/alloy1111-chart.txt",
+      "sha256": "fd1508d15c390bfb529c23e73c2f9ab69fb493db45d6480bc4b699a12cd43def"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/alloy1181-kubernetes-discovery.txt",
+      "sha256": "63020aa71f9eea75fdfe494f78283f2437d5d7c18becff13823845c38c629f32"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/alloy1181-kubernetes-logs.txt",
+      "sha256": "149f7e3b4c761809869bc4af9e91eb4263361bcce9f29a5d35e8bbb30b68592f"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/ansible-special-variables.txt",
+      "sha256": "eae2222cc554f34e6dc6b9ec9c253b82a58bd131ad8006e09af07f067e54a21a"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/ansible216-debug.txt",
+      "sha256": "c0f929c7ba051845035cfc52468a496c4477c5d02b7ece487e3bebe4a38abc82"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/ansible216-ini.txt",
+      "sha256": "06c5ab4b493a1cddf0d268bcd923550142796935fd418972f6c1f28122f4ca31"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/ansible220-debug.txt",
+      "sha256": "28f5ad1843db735d7dfded6b350ced081fb0cde94939b02fd7aa893473d435be"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/calico-3290-notes.txt",
+      "sha256": "288c2364f7d9b3bf69f7b9451f59c799ad4fd5654ef3fd1833cbc1ff996e2829"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/calico-330-system-page.txt",
+      "sha256": "4ad137c8f104c07a51393f4a8996ac22d2d33399f3919706e220b348c2774e26"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/calico-3300-notes.txt",
+      "sha256": "77377ea8f8c08734c8c2aa3f34d6d089a21aebe775289b5c36994474d9045149"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/calico-331-all-release-notes.txt",
+      "sha256": "89a2efb5edb6324cc1eb408d97672fd16037dfa468b0911b81f1fbbf82f3be37"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/calico-331-release.txt",
+      "sha256": "db66ada7acc2e902a7b7039aa17227bab462f3a62782fb9939dd0a9bee3c02c7"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/calico-331-req.txt",
+      "sha256": "6018e51384eeabc16102f9c9c9022835fb2697cbdf7cb616d84e9fefbf841b8c"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/calico-331-upgrade.txt",
+      "sha256": "19afa982a04926f7eb1635b4fb6f26690e061160972684bf12907813ac61f922"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/calico-3310-notes.txt",
+      "sha256": "d289aa7ec88119ce8abc38d39b7f756c51005155dbece44236ac76f6752b7f41"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/calico-3317-host-tests.txt",
+      "sha256": "3c3c90763249c3ff008f0bcc3b3eacae29053cfe0ee51871502ec5c6d835c48b"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/calico-3317-linux-features.txt",
+      "sha256": "c4072f25d9964e4019cd38084cf22045b853594186d907ae14bb0121e092a331"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/calico-3317-manifest-api.txt",
+      "sha256": "803b42e41514056216773c7da85d7c391c5dbd3a042eb2f602026efcc5c9c0ed"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/calico-3317-notes-api.txt",
+      "sha256": "2c258f7fe090e6277c576dc47d21e7e8f3710bda03dae2d1d1deadf2ad8ede20"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/calico-332-all-release-notes.txt",
+      "sha256": "c6420788831a89bbd713fa1dd60f5eca2e3679a1e62c64bd50e3d9ce644fbd5a"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/calico-332-req.txt",
+      "sha256": "f3639345f17d2ade1761e2a153f43d77c66bad10abeccfb7b2e69ecf791d6847"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/calico-332-tags.txt",
+      "sha256": "24f4b511039f9059ecf0c9258dc10e1d94a429b3bf39be4004caf36e887ae92c"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/calico-332-upgrade.txt",
+      "sha256": "3dc0a4ebd29e0abfbd7aad8a5f2c25c31db5a5f7cb0db4668fa58d458dbd9ef3"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/calico-3320-notes.txt",
+      "sha256": "d6692bef1e5fb8e7c1fdb78b99da5cf7f0444bdb8fc91880c16d173ae58cafd3"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/calico-3324-config.txt",
+      "sha256": "a5d55f8cfc381754fbff20b993dd39a5ecc8c3b4a10a74cb6564c4387f153177"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/calico-3324-felix-api.txt",
+      "sha256": "7185b7c8035b3a8a70defe37a44ee330e00a435603f6645245efe5dade3c1d9a"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/calico-3324-host-tests.txt",
+      "sha256": "2a16732cd61a7f1d91b6182f38934381cddc2e4337f611166210847432ec29aa"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/calico-3324-linux-features.txt",
+      "sha256": "debffb1ba3a53ad55d0d3f9f33dfff3dec5d68649d66ef2f6b39a45d1a785765"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/calico-3324-manifest-api.txt",
+      "sha256": "0b88e71e1807f54e1f1393d4976a5a0cf4a37f5da89b53020204e29847ef3b17"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/calico-3324-notes-api.txt",
+      "sha256": "27b9fa8d57127dfc5ad9f7e02a8861543026f520d3f6901f358e870733067cbf"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/calico-3324-release.txt",
+      "sha256": "82aa060f71d2503cd891c66ebc9cf40a266b80ec42735cc619914542fa86cdb5"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/calico-333-req-retry.txt",
+      "sha256": "35192795e510b80deb3583606f8585df29f97348a3fbf06df9e4a74663c3eb67"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/calico-doc-331-system.txt",
+      "sha256": "1369b59229cab9223c11eafdb73b6112b626bf75f6a1ddfb324ef6761c74dfc4"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/calico-kernel-policy-commit.txt",
+      "sha256": "e62eae9a21c66b57aff84073034d1033cc180538a575b42b3a3efdf46b89a132"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/calico-kernel-policy-review-comments.txt",
+      "sha256": "65330bf046df01169c400184d51822d5b97d8f3d1b7fce429ceaadd400185624"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/calico3324-globalnetworkpolicy-api.txt",
+      "sha256": "91e5cbdeb7915f9a2f5166c8e39993e5a61dfd6dec294376f7923ef44f6478e8"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/calico3324-hostendpoint-api.txt",
+      "sha256": "719c37ac4b7de679fff3c29740233993d27fb99d0f5c3b9ac2789b13ab9a6b9a"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/ceph-csi-latest-release.txt",
+      "sha256": "b048eca5a418994b11d4cd4aebdc5c60d01981fcb5fee26bdd8b0c5cf304f411"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/cephcsi-3172-cephfs-values.txt",
+      "sha256": "79f1407a6bd4a8db4fcc7261a38e1f82b510631fac4da66a16dd6e4e1b8b1931"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/cephcsi-3172-compare.txt",
+      "sha256": "12d2724ae7d92ef75d6e971a5a44257f84dccf08db4918050436703081c8bf2e"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/cephcsi-3172-rbd-values.txt",
+      "sha256": "de41051d115dabe3c7730a8b28070de41dc6bca137ea551292d11a00c9b24e04"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/cephcsi-3172-readme.txt",
+      "sha256": "7f4c9b5b14d1300568b323e65e580d65a42479e52ee77f146788cf2bd49c58f5"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/cephcsi-3172-release.txt",
+      "sha256": "3c793f50e6f63ae24025e24a642886ab62aff17e465e69c027b2145c3c8c3ce1"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/cephcsi-3182-readme.txt",
+      "sha256": "943c1c9e8b514809368f6e4ba84c8a244775b9c7c13953c3450490e4614147c8"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/cilium-119-delta.txt",
+      "sha256": "cf712684860ba95faf45e23f46ca70507ca99fa678318e90fe0ef25847de7b1f"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/cilium-119-tags.txt",
+      "sha256": "94929b535a0ce95a6f3ca39dd3a539f4a449a7a02d6a4acc396dd68f29c4e5f1"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/cilium-11910-chart-values.txt",
+      "sha256": "08ad3507c25f157992916a09b3cad64615196e1466de2ce24439ab8da564f5ab"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/cilium-11910-release.txt",
+      "sha256": "f71cc49e74f8917650afd298a33a4077916d5987ef453faa9f775976a9bf0bb5"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/cilium-1204-agent-flags.txt",
+      "sha256": "c062969b0c0f3199b34535ae5172e05d56d69496ad368caf258204686da24509"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/cilium-1204-chart-values.txt",
+      "sha256": "6ef6bcb8e016e91cb53533feaf43c9028a8e0d6860010b66cd1feccfca832e8e"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/cilium-1204-compatibility.txt",
+      "sha256": "4119df582c01582bc082c529b6faf29167d07f129c1cec2583117fc37e2e4b13"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/cilium-1204-current.txt",
+      "sha256": "9e0d85ab6be0cbb61729ff244ad6a712f9b27f81494c785416696b600c013e26"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/cilium-1204-notes.txt",
+      "sha256": "1d471dbfb1e4bc045837ff0f147e5ee43d510a5aeb24e0da74f02bdabb20f384"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/cilium-1204-upgrade.txt",
+      "sha256": "0b21f2d581aa95a7558ac17832e2c7ba8682d50265761db1eecb423ad557864d"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/cilium-1204-warning.txt",
+      "sha256": "a0fcd92896140ee0ae2494e163089b5b702186ccea6d44b6043da857f5001adf"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/cilium-chart-index.txt",
+      "sha256": "3805a7be8113f6b02eddbeebb18e5a189ac888b0651cbc0d4262c4954d208818"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/cilium-latest-release.txt",
+      "sha256": "fd18dc54721d44e38148852134f069f5c65f9764ef3787340fdd244bf49d58f2"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/clientgo-0221-compatibility.txt",
+      "sha256": "878f9379ff05e5e5b352385a09b445403393ed1adcf17f8dd2dce4fb5c37f27f"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/containerd-215-release.txt",
+      "sha256": "0e2bf45c9a94a813b57a74d62298f09e2688caf39319599c907aa5593f93303b"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/containerd-216-release.txt",
+      "sha256": "a28e83e07a1b1832ef7c057f0efa7d154d5d653c292bdbbdbbac0189f5ad4dd9"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/containerd-217-release.txt",
+      "sha256": "11e8c79deeba3c3bd1083dbe32c6d6cd4e0a6586bba93e09889219d83f91fa7b"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/containerd-218-release.txt",
+      "sha256": "0b79f475700dbe412bc845c9f2fddf35514fc95846128a9d97364ccb46dd9a52"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/containerd-219-release.txt",
+      "sha256": "f44d8e93d94d97f0d7df881f2e6896fee1456fbed4a027d99ef36adfc4e52773"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/containerd-2210-config.txt",
+      "sha256": "b6f4c015d975712e2655b7f694f80157ed677ec98f135a626d3c4a29f912d7d7"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/containerd-2210-runc-requirements.txt",
+      "sha256": "fe831579ab9fc4f66e03507c75c646ae36261940d48bed9f29eaff0da4ee3a0d"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/containerd-2210-version.txt",
+      "sha256": "9d1ff8af2e6f7f1aea2f410c390572f584a1abc60c4b20d4205b5055c56a4246"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/containerd-237-config-command.txt",
+      "sha256": "8a1850bafb5a1c96e118809b04109be8db01b2fc92090e758cebc26bb58f01c7"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/containerd-237-config-loader.txt",
+      "sha256": "37a25b7f1b4b911a91084a4888851a53fbe072f9518f667105478959543e5aaf"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/containerd-237-config.txt",
+      "sha256": "62be8adcb1f0805136bcae1aca91730b3506ad928ee5c6ff05d0a6b13b06d0a1"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/containerd-237-operations.txt",
+      "sha256": "11290a6436ce2e2a2552f324c0746a294587689753567f64ddf303a361067d41"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/containerd-237-runc-requirements.txt",
+      "sha256": "fe831579ab9fc4f66e03507c75c646ae36261940d48bed9f29eaff0da4ee3a0d"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/containerd-237-version.txt",
+      "sha256": "e12ce503171b3086e1ac148f8abc002fa33aa4a1b58e3cbb0d1273d42e84314a"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/containerd-237-versioned-configuration.txt",
+      "sha256": "cb9a5c8a6f01e725f4b537bc3eb31a3cc7c67d2621e0bb2775ef1590b4c917f2"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/containerd-releases.txt",
+      "sha256": "a03ca12c441aab024ad9581e8e5d0ee62bcd8b85e11911dd4975665e671fdf5c"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/containerd-selection-releases.txt",
+      "sha256": "c1dddc0d5e58a98f2b90eed2e30da0ad8fdcc75cb1b5ddc51579eec65bdb9576"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/controller-runtime-010-readme.txt",
+      "sha256": "a2672ba95ca181d77287c857c4b22a9a5b38f4c0713ed3b3de62337c3c960d0b"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/controller-runtime-010-versioning.txt",
+      "sha256": "a98d71ab760cc4a7bab6be195953dc7750b468afd319019ea1b025057cb0f410"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/coredns-115-cache.txt",
+      "sha256": "0480225920dfcb21fc19e20f1b11d8bef63067abb67d8b2b124ae3e797e0dd9e"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/coredns-115-controller.txt",
+      "sha256": "3c8295697997925fff2323eaafff56d7cdd76020bb72f2e1d6589ce73243728a"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/coredns-115-forward.txt",
+      "sha256": "14d9461f577ea2af6d72ee774e8d668e13e15d1666c57aec015e085a7e82c060"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/coredns-115-kubernetes.txt",
+      "sha256": "e5ac3ba9af4f2e34a720899e38a54ad6b4d6b6b38e43887a7f4e5b3bce4a7769"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/coredns-115-metrics.txt",
+      "sha256": "48523d79bbe52d53e99e196b51db809973c412793db5be00d29ac039fe301a98"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/coredns-115-readme.txt",
+      "sha256": "d0bb8e7f5a12dab21cf024d21be86a578793c23e09a10a2b47f3cff74546855e"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/coredns-releases-selection.txt",
+      "sha256": "b974073f0140e25a22b7a8c47b7324cc2721d0db06da62289e31c5fa58137a5e"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/cri-dockerd-0326-0410-compare.txt",
+      "sha256": "0623d4068091448544e1521e56487ff410cbf167cce6849d18a820d240569fe9"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/cri-dockerd-0326-go-mod.txt",
+      "sha256": "c0c76c3272643e5d6652fbc2f7722aa1c45dbbb7110acd500cffba19b5538a53"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/cri-dockerd-0326-runtime.txt",
+      "sha256": "540ce722bc753b5c9617a28cda6ad58a3baaa95908a7c9f9dc33df0625060f29"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/cri-dockerd-040-release.txt",
+      "sha256": "1de9142b0cbf2b192c7bbd06f1abb46d9e3f63a8a6f6320a6e50d3ee1ec383ff"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/cri-dockerd-0410-0326-reverse.txt",
+      "sha256": "0b9f69f52ac50be40f95905e5eaa44b722628df46202c82e98006b87aa4af451"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/cri-dockerd-0410-client.txt",
+      "sha256": "94cc23741bf246dc1906b5aee022a88058933804226824238b5e9a17073a21da"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/cri-dockerd-0410-config-options.txt",
+      "sha256": "df4b2cf0cf56e744d6d368bd4e09ffe2fe8b5bb8adc891be8a381f82640dccd0"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/cri-dockerd-0410-constants.txt",
+      "sha256": "e861b117662dd8a3f9b5afbd4d21569ea48fc2d8f6b81c8a5a6bd41c4aa36572"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/cri-dockerd-0410-docker-client.txt",
+      "sha256": "85791db2c53151561d42b5b6eca6b34158261aac4a15103407cd7d2250d5b729"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/cri-dockerd-0410-go-mod.txt",
+      "sha256": "60a7aada18d30d802f928dd9bdb5418328c8a9954869a95341434a0660d03759"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/cri-dockerd-0410-options.txt",
+      "sha256": "34cc909e7d7edbdab0a1c13564be3db08daddbb656fdbb85b91d08cd20fe9760"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/cri-dockerd-0410-runtime.txt",
+      "sha256": "c8b6f3f427dba5e59f695575fcac9760530c4f10ca00478e2eca1e3dd3bbb45c"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/cri-dockerd-latest-release.txt",
+      "sha256": "dc2ac9d6d1a99123079424996f56cc72b91c400eb26cbec26d8d4efd9b737f72"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/cri-dockerd-selected-releases.txt",
+      "sha256": "134d89f65ebce6e509b360bd911bb8c151703847bace3c9c4f722449cb7c02c5"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/dashboard-714-chart.txt",
+      "sha256": "37fa51b9b3a3650da3238a55362c8e3f29523f0c58bf44e3cadf972fdb601526"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/dashboard-714-readme.txt",
+      "sha256": "44884beb06ca80069f76345edf62cfb9fc513281099dcc1e1a074515654a7fe2"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/dashboard-repo-state.txt",
+      "sha256": "18adb0dc09ae2975d5f0f4140981567d9de3c4672ab53a623e56f87ab2d4103d"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/distribution-283-release.txt",
+      "sha256": "aea8aa90d3712c26eb4ea3ced535c48832651f5c69ccfc71dc40df03d11d3b2d"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/dns-1264-1268-delta.txt",
+      "sha256": "c63a8cf0ccc34320559519b3c525aa00450f6ef56f92d0a6806bda6b96ddab02"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/dns-1268-cache-app.txt",
+      "sha256": "51275c845757b85d6bc35be5514b17b1942231aeef6e5c90b8b60c3e0e8da326"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/dns-1268-go-mod.txt",
+      "sha256": "b64a5632d3c05d22b6533d9c4eb93d1f474bd9512fb7803051192ff1249aa247"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/dns-1268-nodelocal-main.txt",
+      "sha256": "4b82a895620a79f66e5df5aae863034eae249255e095f81c1d8ae12c43fb9e3b"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/dns-1268-readme.txt",
+      "sha256": "c920f33e9863e3ab28d8b051545e483b28844ffa4f2ef6aacd5912cf2b444530"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/dns-image-tags.txt",
+      "sha256": "ef0dc293b0404900af903ff4430f59713069050873f4bc91bbf8965d043c4935"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/dns-promotion-manifest.txt",
+      "sha256": "91475ddcf29cfcc4a2ebf513d0d430de51ce6bee1be6c5bf61383cd3574799fe"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/docker-engine-28-notes.txt",
+      "sha256": "3209301773fc163b23be4f27bc58d42923530699d9fa52e0ecc07b85c44882dd"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/docker-engine-api-main-retry.txt",
+      "sha256": "d6d0f196434d1ef1aa92ddd88f6033ba06f7d736dba96b2395fd2b18f74494d3"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/drain-cleaner-161-readme.txt",
+      "sha256": "f7261980a0dcc8d3faf72b444c98d81e8263cac150431d9cacde9eecf273a76e"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/eck-350-readme.txt",
+      "sha256": "c5b7ad85f7f63bb90d69e5062c27764031fb16a2d8632b2a11675a8e863fe5df"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/eck-latest-release.txt",
+      "sha256": "c8bf6d594f9f4d29e7c91a150db9a7bfb540a4b1b812bc8dbb934eceac852a11"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/etcd-36-upgrade-source.txt",
+      "sha256": "c5737d8888310bb831196a13af9903a8287025a11deabb62c201b73981adf587"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/etcd-36-upgrade.txt",
+      "sha256": "5764f75ffc918d675d830d7e4f6f8027c5c02d49470e8c2f4d9dd0666d37de07"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/etcd-3616-release.txt",
+      "sha256": "69d3425cd62d556cea047a519cd28802d71bd164e99a56e03cb00db304303ea3"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/etcd-latest-release.txt",
+      "sha256": "b9c13c0f26862048acfffda5d60273bd29b9cd60bfa227dd35e67e0eb2135b22"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/etcd-main-changelog.txt",
+      "sha256": "bd78f51ff11a5c3f9292865e7fabd1f1c03fe3c577e3ffc2520627600cb23873"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/etcd-version-policy.txt",
+      "sha256": "858af8088d662afd3c54f6b2cc55dbe51429e9aabf1f7b050d6dbb8f35a41c95"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/ext-overlay-calico-3317-release.txt",
+      "sha256": "4b6867966ff4588b071c31a32c980aa20d7f09162f560b6148ee917dcf5be085"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/ext-overlay-calico-3324-release.txt",
+      "sha256": "5718738173e4f14932b799f1c414263b75f9023c238d9bb602710fad87d06cfb"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/ext-overlay-containerd-2210-release.txt",
+      "sha256": "59759aa57ec757a4baea407aa3a1768efbb86151d8807f3c67b2bf88267602c5"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/ext-overlay-containerd-237-release.txt",
+      "sha256": "a3293e38226bff72ef7343af1675b7a35d145cd5362372ee1eb413631c611878"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/ext-overlay-cridockerd-0410-release.txt",
+      "sha256": "8756d7ee8ded1a253532d4d5f74e930c81d8988372df166700f95210cdf538a1"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/ext-overlay-etcd-3616-release.txt",
+      "sha256": "13d5a9ff8475a36da8ab64a0f45e74bf5325f6ef10fdce644cbb636ca7aaacd4"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/ext-overlay-runc-152-release.txt",
+      "sha256": "af54094b78f3f8832a9836cb6b173dc67eda42179fff7c274d122c4ffeb26183"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/flannel-02810-build.txt",
+      "sha256": "fa6fa78dee13d21f3f176f2d4ecee391dca4d73526bd31655e6270e8dd4d7af1"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/flannel-02810-install-conf.txt",
+      "sha256": "e14db12cb95d2c962f40bc9d6503d6e8f5692bc12cbfa95d551a2c0ae60ad8f9"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/flannel-02810-kind-e2e.txt",
+      "sha256": "11d0f6a128d09769bdeb398930b3a4f5f449f0a0eec0a39757dc0bc4f1dfc300"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/flannel-02810-main.txt",
+      "sha256": "3f74bb5492d3585a8caa93bcf390255805d60bb402130ff3e676023af1c7d7ff"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/flannel-02810-manifest.txt",
+      "sha256": "944a3c1f925f117727a1b7272a323c80965da642498397ec7e6ea9bef0f9e6c5"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/flannel-02810-readme.txt",
+      "sha256": "ae4f746d060f7e37a23f1d7357fde98627edfc196c0d411fde79cecc0eb53c43"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/flannel-0284-manifest.txt",
+      "sha256": "0bd380eb4954227c903bdea96dc9254650badd2d45ebe31978a47c3ffe2e9727"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/flannel-cni-180-to-191.txt",
+      "sha256": "81a9f4599b07025961c0df49f1f823ef7f02ebdf8e05821f485ea2d5fa11e016"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/flannel-cni-191-readme.txt",
+      "sha256": "a7acb0b463352938ede516b85ad92a729ca9c6234a300cb053af0aa491fd1244"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/flannel-cni-191-release.txt",
+      "sha256": "14b243915d6ef8c8944b939b16ab6ce8bfbb9419cb76ca657e427e4989044f4d"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/flannel-latest-release.txt",
+      "sha256": "c110fefca12710313d0b82c65702811bfa0f10e19836ab403fc14f09cf6ae500"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/flannel-patch-delta.txt",
+      "sha256": "5bceb45f3bf80e83ebe65c0d6d64886c6f0b62df9994e2741d70b85dd0528bea"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/harbor-213-install-prereqs.txt",
+      "sha256": "181215d04e46d9bfe9d72b17f9bb203eb217d623b9c55dc66a0d3cf1eca6a2d8"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/helm-319-cmd-helm-get_metadata.txt",
+      "sha256": "9f9c3ba7f07f4e23fe88b08c41e01e9567be854ff436639559f375105df9ff6b"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/helm-319-cmd-helm-install.txt",
+      "sha256": "4092605865edda119b13b3e4edb38d741bb674d028506aa162966e8a6b777fb3"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/helm-319-cmd-helm-status.txt",
+      "sha256": "2e1b51aeb40b0dee75d63971c499a8ce5ba6fc99fd002bcfd975596b7885b7d5"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/helm-319-cmd-helm-upgrade.txt",
+      "sha256": "e4e73e8debabb8519c7cfe4debbdb70a58cc9b20f65114dea59afb3c99a18bb0"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/helm-319-pkg-action-get_metadata.txt",
+      "sha256": "58a08575d5deb1e56a9942e43940198b310ff9e61aad2547e736560ec4d3b51f"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/helm-319-pkg-action-install.txt",
+      "sha256": "8da25ffad3e9c9a36cba36965af132dc1164e6205279d5b7c53c2cc7191ea28b"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/helm-319-pkg-action-status.txt",
+      "sha256": "961674467e8e8f5958f483da7408bea4837c2f5b4cc5aca24628476a3df6e9f7"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/helm-319-pkg-action-upgrade.txt",
+      "sha256": "99e71e15001e064bc0dd8cf9b585b1c9c807b49acf3aa85ab6016c2d004a940a"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/helm-319-pkg-release-release.txt",
+      "sha256": "1750f1168853189b2c81826f92d629fa07ff146cbb54d0a8b7f76051002924a3"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/helm-319-pkg-storage-driver-secrets.txt",
+      "sha256": "3b6398fb39b09618d65c8a1e9be7dbfab6ab0ddee62456bf77fb9c568aa10e4d"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/helm319-chart-dependency.txt",
+      "sha256": "ce56746c893d4e1a3c99c20628a8c03e71c32af5b295c8d6649dceb7c53ab1af"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/ingress-114-release.txt",
+      "sha256": "63881b45dcdacd1af3c5c03231706558d772d5fe7bafe9dca34b5b9b356d705e"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/ingress-115-release.txt",
+      "sha256": "14f5cfbb7b5e45d3204cdb215c4dc33d38a7cf67650c5fd530f0f160ffcd4808"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/ingress-1151-manifest.txt",
+      "sha256": "16b9b62df45b8ed8f1ecaed0341d583b3360e4b63c41fe00413f6a1fa2f95bec"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/ingress-1151-release.txt",
+      "sha256": "10a0ab9a5e9fb404d19965e28e251deffc995d75c924926b3fa3d9fcec782fca"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/ingress-1151-upgrade.txt",
+      "sha256": "c654d1b661827a960206c8b1fe1d5219cc4ee01cfaaae9e9a6527291d1144549"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/ingress-4151-chart.txt",
+      "sha256": "3d514d4f70886e936288f51afbd7aaa7baf3b4d6a1c67ee23d46f89e4e287843"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/ingress-4151-release.txt",
+      "sha256": "a5341d08ad1a534b3de3662381a48b63923e96ebacafd2d0fcb02d02bc331c7e"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/ingress-4151-values.txt",
+      "sha256": "0d8eac2d4e5cc2ffa225debea7b1feb1fb372520c5b046e21f6177919d54e622"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/ingress-readme.txt",
+      "sha256": "46d14184416cad9944ccfa88051b6c9ce5f4ed1c0da9f1af6444dc8c02331de6"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/ingress-repo-state.txt",
+      "sha256": "fef20f5341a15aa6b190211d49bd861e4f85dac90c20d8d395d0c17e39f691bf"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/k8s-134-changelog.txt",
+      "sha256": "c048c82278047c6891daeef98e26d9c2860104d64ce6605100ee17dfb4ef86f7"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/k8s-13413-cgroup-runtime.txt",
+      "sha256": "343b4487256ca0f1d9dbb07aac6dba08f5f0fabc8631d4606b4ede4f786e3026"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/k8s-13413-coredns-manifest.txt",
+      "sha256": "2e13b923c09062e456a58e6ee00939f042b5ec58e27fecb43b7f67213ce5c024"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/k8s-13413-coredns-pin.txt",
+      "sha256": "a7981c714e464ecbb63afc091d15d6d6ac15b91a3319e4249aa43b35c0859a5f"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/k8s-13413-nodelocal-manifest.txt",
+      "sha256": "65674bc450e3a4d5348b09e7f3af91c5f0d826b8d2a90ed17d04f8ed5f56312e"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/k8s-13413-patch-compare.txt",
+      "sha256": "ae7847909ae1bedf974a482ef1ca60c0ce2af152864eb4c3d8d6543a819b8e67"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/k8s-13413-version-type.txt",
+      "sha256": "04d5935c081893abeac42495e289b7072432fc07cc44d00b01415a6af78a2e6d"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/k8s-health-check-contract.txt",
+      "sha256": "9b0c829aa0f7d9ea24507fb258e739c21bbc15de38dff813e0260a8aa3acd34b"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/k8s-nodelocal-operations.txt",
+      "sha256": "ef911e3cfc2f4be0d205ab08f003486b1e303789c688a6aa930530cbb0d3ce1a"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/k8s1336-core-api-defaults.txt",
+      "sha256": "07440193171cd2f43c8345bcd5c658c3a6d16acf0a1f498b243cfe65e28b380d"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/k8s134-api-concurrency.txt",
+      "sha256": "874e0155fa062c35740af6609157bfa4be7d42aa2cc8cdd6619f65b7126d78de"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/k8s134-core-api-defaults.txt",
+      "sha256": "07960825580a31c1ccbf5c3609b0ef22042fee37912d6d5216e430b6ddc17967"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/k8s134-deprecation-guide.txt",
+      "sha256": "96f34a49cbdd7bd53008cc7b7cc8aff58c373ad323e64eef0155cbbc44494f61"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/k8s134-deprecation-policy.txt",
+      "sha256": "830eb371ae65ae92dbc4d53ac5dcc83d708c8a1ca57fb04d4066d428149d1348"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/k8s134-duration.txt",
+      "sha256": "2fb1fc508dc49360ab4b2cf63957df32589ac679bc96e1e629f04e6df6e8acb5"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/k8s134-json-patch.txt",
+      "sha256": "f7cbba7fe74d9d6ad0d1fd60aaa62d0c8010f94afc567140fb5cdfecbe32c283"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/k8s134-metrics-v1beta1-types.txt",
+      "sha256": "05e8ece22c564c180926e78005e204250e06cfda7fd744b9263f826aea2135cc"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/k8s134-resource-quantity.txt",
+      "sha256": "e8a6e80a3d3dd43f5c6d8edd2accbfccaf6db6792654d3bb6e0c44830a27af54"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/kafka-43-upgrade.txt",
+      "sha256": "e34b04db67749550c549ce4cecf4a5149a1694190d24256f7be5ae5eaa1a19f0"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/kafka-432-release-notes.txt",
+      "sha256": "7b729e5c5c682975234767807eb924aa669ea958ab03ecdb25390b1a673bf983"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/kafka-432-stable-sha512.txt",
+      "sha256": "fb26ec279fb843a0d50d6121414d7e02a4611128b871c6ba61919ceff869ce1e"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/ksm-218-latest.txt",
+      "sha256": "71e70be2184fd9a8202a20962b2ae182aa6137dac48ff97155605873f02c9ce2"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/ksm-218-readme.txt",
+      "sha256": "ea556a732f885a1cfd99a81d042f4ad9e401158df92df962d5a4de3699bf25b2"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/kubeovn-117-doc-install.txt",
+      "sha256": "e113b4a4582e97020d3840f4789df3ff136981826d1591b183285000fc7eb05a"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/kubeovn-117-doc-production.txt",
+      "sha256": "038da31867edc63f4cb49cc7a68667448f4d6616bbbb638287e6c234c38a5660"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/kubeovn-117-doc-recover.txt",
+      "sha256": "151d11df9ebc7f9ea78284b915d9ad6fa58a5c33f330dce523cd2b98bf6ad4eb"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/kubeovn-117-prepare.txt",
+      "sha256": "b85280663d495c05d66d0b427c18432625276adb148a26d18693d4125d4c6acd"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/kubeovn-117-releasing.txt",
+      "sha256": "de78adddfa310b49a1c378e701d2816ca1f936934b1f9ef6901a18f7d3b3ad38"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/kubeovn-1171-helm.txt",
+      "sha256": "1fd6655fb55ad260f4a669182b001597a5fd6ffad5e53c19d9fde0462dd09487"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/kubeovn-1171-releasenotes.txt",
+      "sha256": "364e6ce5567334208886637d2dea607c618874044058ce425ef9a8df81bf7af3"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/kuberouter-212-cni-install.txt",
+      "sha256": "3b1bd552e6735c232a2d44ff028cc57e4a38d363ce08aabe0811e922daa35bdf"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/kuberouter-212-cni.txt",
+      "sha256": "a84d7d7e9dc6e8a09cebe65dde81890906255cbafc2783ba73995cda79a8d9e5"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/kuberouter-212-dockerfile.txt",
+      "sha256": "bf31dc7257595fc1196cfff72becc62f15851b53518bf074e493e271f5cec6f1"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/kuberouter-212-e2e.txt",
+      "sha256": "3e07101d96f57c4e1d3dac60a346af50c9426ad612046d72dd20003635c96681"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/kuberouter-212-guide.txt",
+      "sha256": "a4c16497a35cba30171b6f6c40043bd9458def4289bdce3da90e4942acdec7e8"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/kuberouter-212-health.txt",
+      "sha256": "8a421d1319acf2a90763e7272647d49844e9a824b16f35a17e72432b9422e82c"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/kuberouter-212-main.txt",
+      "sha256": "e016580249965a7f5d3482059c56bb22704d3e5847a86c781ccb701009710c3b"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/kuberouter-212-manifest.txt",
+      "sha256": "17286f3fc04e81b394c8ae9f93613a32cf6a476534d5480fc337672025a42ca8"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/kuberouter-212-node.txt",
+      "sha256": "96b42d48b6749d03293de92bab2eca695641ed36004aed72e4ec3a2b4463b433"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/kuberouter-212-tunnels.txt",
+      "sha256": "0e5b5e6b5a2db2c4ecdadc80f5dec07f53079b31d6d2bef7be741ebbebaeff3f"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/kuberouter-212-upgrade.txt",
+      "sha256": "84160fdc4046d657702ca08c76ed446a6a05df2c2d69e95d63b48e65824f518e"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/kuberouter-releases.txt",
+      "sha256": "634eb64ccc7a49b825be2b63217f474896ad10403f577a58eaf9a0047aae8bd4"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/localpath-031-037-compare.txt",
+      "sha256": "452a5450a8bcc003311551b8c4626e3820bfda4468fd14bbdb22dbf4ae2d5a7a"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/localpath-037-controller.txt",
+      "sha256": "ea6b59f6acac5edb7b59fc3d291f8a78bd9f054050312fb8bc13553e0f0ec8e9"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/localpath-037-deployment.txt",
+      "sha256": "9781b39c24f3f651bd6d6e41b561e04e4904bbdb6d4f8c7a6009df3a702dcd65"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/localpath-037-dockerfile.txt",
+      "sha256": "d3cc494e4aa4a3e2b299a959b0a48dd98c5e9a054b1c0302ce30086388bbd9db"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/localpath-037-gomod.txt",
+      "sha256": "f35e9abcf1a140e3357b350d884472a48b6b3d23512325e25f3ebbddd9dac208"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/localpath-037-readme.txt",
+      "sha256": "774368b3d9a4f2e38e155b2b982ce20a18157ec73b69d14dd91db3560cd25cd8"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/loki1890-chart.txt",
+      "sha256": "8276ec5f589af6a794a1f314246d04e7bc11ba70ba16469aa645430dc86dfc83"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/longhorn-1122-best-practices.txt",
+      "sha256": "361aa57caa87e5ee1927a73818139aab14b9f7460980e07d9b6943e5357ca8b5"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/longhorn-1122-chart-metadata.txt",
+      "sha256": "a1e54a8937ec272e8b9f521679ff4e297c1a0392a57b188f7ef1f36c2198760f"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/longhorn-1122-chart-values.txt",
+      "sha256": "ddd077de18b334ef0c5b4f894a504855c7b76e8c206dcc3dad93fc0135ac0cba"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/longhorn-1122-dep-ref.txt",
+      "sha256": "23f785414b17a0e7ab2c00dbb4a375c05dcc6e06d659ee4995418abeb24f7884"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/longhorn-1122-dep-versions.txt",
+      "sha256": "87a82dc8d5288daa44af8e1b71fc15885ed19ce724dc6ac0f2f85bf7dbc5239c"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/longhorn-1122-im-build.txt",
+      "sha256": "7fe7163a9ee6e27573cd89bfc25567c8e86f2594b21e13a277a2d446ea4bda7a"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/longhorn-1122-im-dockerfile.txt",
+      "sha256": "75a2859361bd714952e2dcc10c72477cd11661ba3fa18c7bfb1680888c67eae3"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/longhorn-1122-im-go-mod.txt",
+      "sha256": "32b7b44be038566a9d4d80b28beafadfdedfe2db74057686654fd000249e1602"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/longhorn-1122-im-ref.txt",
+      "sha256": "ad6b17b0a28f2e235069362d6f161d03179fc55c4ed9915c132169b0fe1a2843"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/longhorn-1122-instance-manager-engine-go.txt",
+      "sha256": "85cf7493f678c2b4aceeb7403c2af30b922f9f6ae620a94d18f8d0d311496aed"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/longhorn-1122-instance-manager-replica-go.txt",
+      "sha256": "80aa23f37e13453af4bb14de2b5caa6d885fc966126a80153e0a8cde6b1495e1"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/longhorn-1122-maintenance.txt",
+      "sha256": "23553c57b6799bd7cbaa5edaa6035cad7c6bf8f40117d29db3cc8093e6ffabf5"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/longhorn-1122-manager-dockerfile.txt",
+      "sha256": "22bfa4a3a2b965254e93e52f84c8e03e0820f20cfdbb1397ea37b006698d0c84"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/longhorn-1122-manager-go-mod.txt",
+      "sha256": "fcb56cfc3d5057bb972f0a40983302271b68a7a60f0bb7f5bd55808326ef2595"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/longhorn-1122-manager-instance_manager-go.txt",
+      "sha256": "b7ee88315bfbfb7f4cba12aae9daeba38c904e6302dec993cfd3bad810db81ab"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/longhorn-1122-manager-ref.txt",
+      "sha256": "05a11f661f7f454abfcca70c7a1d3d670afcf3e7b644b44bd2e36ef1e9909355"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/longhorn-1122-manager-setting-go.txt",
+      "sha256": "30dd5245f0b5669aca1e20a8d31930bb9c39cc33329680f7b1755489c73978a5"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/longhorn-1122-manager-volume_controller-go.txt",
+      "sha256": "8a45ac11daef05267874f78d2ea209c8a422731bed93ec0bab2bff3032768d87"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/longhorn-1122-release.txt",
+      "sha256": "de6e96bc7f72ff8ad2d379221db1b77ead4b47d92dad3e47dad4ed73909190f3"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/longhorn-1122-upgrade.txt",
+      "sha256": "6cb7f635c6553bd925395cf4301d5cf60102cb8aa8da8ba0426523c39b4d3598"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/longhorn-chart-index.txt",
+      "sha256": "e37b968c5e7c5ebac5c32b1ff76d84b329570e4a4543279ea88ffaee126ef43b"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/longhorn-latest-release.txt",
+      "sha256": "620d47661de356fa504eece543be517133c28e487a28ac2ce90caf40a62b14ea"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/metrics-090-release.txt",
+      "sha256": "4c7e6b36b311d8890edb502ca95896daf3635166cd04123ad8ff95810f3bc18c"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/metrics-091-faq.txt",
+      "sha256": "15affb343ffeda9e52263bdddd88c89f20c55784277128f9f2b661220cbb892a"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/metrics-091-issues.txt",
+      "sha256": "67f6a44b73c7d585b427c9e6dba10e94c4ec8cbc217e9e27d3eb548cdaf42ce8"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/metrics-091-readme.txt",
+      "sha256": "ec7ee8fe2f5969e05890a16924557ce68e68b40c9125af3d4a3d21dc22a06c26"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/metrics-latest-release.txt",
+      "sha256": "12fc6952b1b301a1c077bf35cda474bdef05b783e2e9f0129face1fa951248ee"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/minio-711-k8s-tests.txt",
+      "sha256": "6ffa5c56aef7d91fd5b15907933a7f2d249f2e0cae4b8eaa3d2b7b4f9fa268b0"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/minio-operator-711-readme.txt",
+      "sha256": "bc522a60872d147729e86fd2e1b9878bd285065c9ece696e159e6f2d1259fbb1"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/minio-operator-latest.txt",
+      "sha256": "eee111fa57024e9b8e45a0a7ed2d043881ea82d09fcd5b22fb410a8dd6d3d98b"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/mongo-req-case.txt",
+      "sha256": "f404d22a658d8346c26ae3243f29a9506582105da16026d9880f9a35c50bfd2a"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/mongo-rn1231-api.txt",
+      "sha256": "77b2fa132e67a8a2bb7735350f0b7c081368eeeabc4c26bf1d6951d957e6009a"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/mongodb-latest-release.txt",
+      "sha256": "72e53cf1e6c657a6ddbd496bc0699e363d6a1f3427db2033db451d4544b8bdb7"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/nacos-243-compatible.txt",
+      "sha256": "a3c75baf221ba00303b6066af647531abc137568a0e94e5d4d680fc173239800"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/nacos-243-schema.txt",
+      "sha256": "87aaae43774601ff5223a385de9f0d64840b5b7ec59fb26217e955a276afdb21"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/nacos-docker-243-dockerfile.txt",
+      "sha256": "b50ead21db1020325eba4becc6d079c171bb412b727fb49cb5d4e108c1336242"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/nacos-docker-243-readme.txt",
+      "sha256": "3489c181d1fbc732b646a67480ffcc937d28362b80006df3f92885777087297d"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/nacos-k8s-plugin-dockerfile.txt",
+      "sha256": "5fd0be80bbfe9ddb22517c6d1fd825071a728a9479ff1b48591a2a4570702721"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/nacos-peerfinder-130-main.txt",
+      "sha256": "73eb92d48bec1abba6d867ee60258e7d8a08155346eaf07c283220c41997a2e3"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/nacos-peerfinder-130-readme.txt",
+      "sha256": "9d53e05490bb86808aeeb2a6d94f97a175966e2271e320e224cec718b2b60abf"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/nacos24-tags.txt",
+      "sha256": "db74c03be0c6240caa581a2fbcf7e2cddefdbe1077c9c09f32d59dc308ce84fe"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/nacos243-release.txt",
+      "sha256": "09e9c3bc00648b157ccdcaeae740ff16715e6351eca9a2ab0e420d5605d2bda3"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/nerdctl-234-release.txt",
+      "sha256": "14940da085d8b69d2d017cc3b09db4533cae9378c5ee0f8a43d7d35a11943fff"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/nerdctl234-cli-reference.txt",
+      "sha256": "70e42256762898a0177f9f4abd1e87e802a641f314938fd8262f18ed6edf6677"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/nfs-402-gomod.txt",
+      "sha256": "3c60048f3be4e37725b411cd04a9a3059e2ebbf7a85d9f34da5d298c18615baf"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/nfs-402-readme.txt",
+      "sha256": "8205c3466cbf698f883d070b275568ac5579660b2c730b1d3f8ddabfe735c134"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/openebs-432-readme.txt",
+      "sha256": "cdfb436857062143c571be633916dc90bf4e49659f8368e409987c7f8489be21"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/openebs-hostpath-430-readme.txt",
+      "sha256": "a35b1a71de02e287cd2e96454aac6f5f1b1cff1f7edd284176be463ac38aa307"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/openebs-lvm-170-readme.txt",
+      "sha256": "0946c60109f1cad4e31cd3117ac99c5f7a44f1c68e9669da274948ed004ef8fa"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/prom-093-compatibility.txt",
+      "sha256": "69939ff8f896a997fe231e85f85213ada08904d727ea34ff1e1e5253dd11fbc7"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/prom-adapter-012-readme.txt",
+      "sha256": "8f615281ce10c25e664c05209a943d242a0f3b3f53425359611bd4811b28cb84"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/prom-operator-093-readme.txt",
+      "sha256": "93f6f918e99f6215dd9adfeb81015138136d574c740a3044338c433ff32cad48"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/prom-stack-88-chart.txt",
+      "sha256": "06b7f4c84674d6be7ad5ef342bbcea711b4fefd3da8c5ea0b1044ec0db4a495c"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/pxc-120-notes.txt",
+      "sha256": "dbadbe6e562ffc6753b5154e3d7de2c50cf54c002f90b9ff722c68de1a3abc49"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/pxc-latest-release.txt",
+      "sha256": "94976a82b2bb984c87c506206e93db9bcbce11d36793564fa8b5db040aae9015"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/pyinstaller616-specfiles-source.txt",
+      "sha256": "d840474d554a866817c0b072614d5175e7a7bb6e27d15244092cf74c0bf4ebe0"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/pythonclient-350-readme.txt",
+      "sha256": "ad901d765b7eca7eb80239e4a5c49439e7ac3c7fc09f59d07208154711a8e67d"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/redis-027-chart-tests.txt",
+      "sha256": "6a093e847583d2d01b3a6afc96ddcaab4052104d3b3ef7ed3dcfe2f52a72d725"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/redis-027-chart.txt",
+      "sha256": "860a25197f79b3a3d437c701aae630da0f2a7d6f50d8415a5960d0d0b2c97080"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/redis-027-ci.txt",
+      "sha256": "83a88992f124693a29afba997b8550ecf6c4efdf9bd1673684ecb4d5484e2110"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/redis-027-go-module.txt",
+      "sha256": "3181ea6cdf7db9be206094746f97d7b6650a36ea81c5571c2b5e982113faadbc"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/redis-027-rbac-decoded.txt",
+      "sha256": "d43e2e14208c0a201173998478fc537e49fe133e6502830af90535f8142e0c24"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/redis-027-readme.txt",
+      "sha256": "17aa2b7ff798fa35c7f3bf03b8519897aabcb0ae16b8ccff541755370f819562"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/redis-installation.txt",
+      "sha256": "1c8eeae5dc4639d095e8bfe873e687ab6d20c99ce751740c491311d49f426a2a"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/rocketmq-030-main.txt",
+      "sha256": "729660bf7b101bdb4d2eb199a076443ea5a176e7004c00671753184cc86cf5c9"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/rocketmq-030-pkg-apis-rocketmq-v1alpha1-groupversion_info.txt",
+      "sha256": "b51952658f041bb2c451d8e08c2221c9a7811fceb44213465f40bdaae90bff31"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/rocketmq-030-pkg-controller-broker-broker_controller.txt",
+      "sha256": "467e6af4922e0a015ce32e40b2b0141e8695441eba91b5b88bd85009e2b75fde"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/rocketmq-030-pkg-controller-console-console_controller.txt",
+      "sha256": "880a0b71e1aaf5ba841ba154ae99ba89e5c6b4ebbf8e3ccc5c93594fdef64f05"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/rocketmq-030-pkg-controller-nameservice-nameservice_controller.txt",
+      "sha256": "7122d1fab4db107e6be1a34c6a7b98b381bd86bfa8bccf169d5e6ff6a6fe6436"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/rocketmq-030-pkg-controller-topictransfer-topictransfer_controller.txt",
+      "sha256": "923396b4c51cc21f98990fe24fbd44167a65316a2ce4ac2763a9911a39667bbe"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/rocketmq-030-pkg-tool-k8s.txt",
+      "sha256": "7ad0540312cfb159168584413c0fa931701477dc6fe4475fad074a31a3076785"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/rocketmq-030-readme.txt",
+      "sha256": "df06f43b49a77a27122896bb77d798b89d056b70d6126a1edae664f6e316b7ca"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/rocketmq-op-030-go-mod.txt",
+      "sha256": "40c203fed289c45890cdaf414b7c70c6024114b05d513a2288c0b86cf8a3c785"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/rocketmq-op-current-dockerfile.txt",
+      "sha256": "d6d9265e11133f9ad8984cfd142af9c4bf763b614a7f46d8f5862953b67f80bd"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/rocketmq-op-latest-release.txt",
+      "sha256": "ae4abde280a17969763fe481486fbf341d4a69aa687222eabf9c1d73ed78fa7c"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/runc-137-release.txt",
+      "sha256": "4c453bdaea566052b06cd42e0bed725e5b3aa492d8611a63951c668b966f770a"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/runc-15-changelog.txt",
+      "sha256": "7dcd47e872d0fc2b1cd6376c405739f3e9161986c53a2df29c26cdeebe73859a"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/runc-152-cgroupv2.txt",
+      "sha256": "b4e1e4936a7f58393199f64cb077f518da157717a1bbe576ea94b07ea1b32f20"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/runc-152-release.txt",
+      "sha256": "59e0d22eba5314aada45c4df1c8ce6366a4a9aea652a7d0771eaa8175dbfcf23"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/runc-152-spec.txt",
+      "sha256": "b37406766767d6a1187d57c6f3ca8fa26bc17897d59d7968cc463178eb6dce3a"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/strimzi-131-chart-values.txt",
+      "sha256": "4624b1f66b0ceecb2571f524325800af9f8427dadd0a6bcffb8c93e44b7e62e5"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/strimzi-131-kafka-metadata-pins.txt",
+      "sha256": "b0d03e522de3d983d5b78e43ed58e5c961a74df382f2f38d3c0823fb6f6eec7a"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/strimzi-131-operator-upgrade.txt",
+      "sha256": "2dfb5fc4ecde642025ee2189b23393b31a738347e26e5896759664f40d3a516f"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/strimzi-131-release.txt",
+      "sha256": "ddf1de2e297b83d558604f7cb2777c7469a20525cf416d8ca4442bd9c61509c9"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/strimzi-131-upgrade-paths.txt",
+      "sha256": "2887e8d524bfea98c87d50d21fc352ad85ecc8db1c76e4e3e50fbaf4f7109fcb"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/strimzi-131-upgrade-sequence.txt",
+      "sha256": "3d3d22d8f1b91ea72ab9ddb9b7c94bc904c0be97cd4c93b3e5d60ecedd613504"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14-first-hop/strimzi-drain-cleaner-latest.txt",
+      "sha256": "d9a93716941017af9374aa8a5dfc3700f6eddaf1e0fb0df83a355b1975446c26"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14/longhorn-best-practices.html",
+      "sha256": "1b893866cdfe2b4bf3b5dd837e65031d7a5d393cd5820458c496172c1079bff6"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14/longhorn-notes.html",
+      "sha256": "d0ebd29f7cce62fffa0cf424d3966bb237905ce20624d8674eed103836ccd985"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-14/longhorn-requirements.html",
+      "sha256": "081b701e1a6b35b2813416a65656f8aaf34a9da7519033a207526a6779bc78cd"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-16-next-hop/calico-332-requirements.txt",
+      "sha256": "db111252895bc56ca2b2ab9b62238f8f5444406d856355656315d8be8620d6c5"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-16-next-hop/containerd-compatibility.txt",
+      "sha256": "a03ca12c441aab024ad9581e8e5d0ee62bcd8b85e11911dd4975665e671fdf5c"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-16-next-hop/etcd3616-printer.go.txt",
+      "sha256": "a3e8f6e643168f238fcdab1812194a1501d2effc81a7ca9408806985405ec168"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-16-next-hop/etcd3616-snapshot-command.go.txt",
+      "sha256": "b72bcac4839110543047172ec4d2da9306dafe22d4c9db1309fcbbaccf27fa57"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-16-next-hop/etcd3616-snapshot-v3.go.txt",
+      "sha256": "3155cd82119ea71ecd8922e30d2d373a8a2764d4f9894e1fb8a33283dcbb965c"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-16-next-hop/k8s-13510-release.txt",
+      "sha256": "2265e4e91e839f1f2277fbcfd7f77501b5bce259354a5e48baa3bff7bc93d37c"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-16-next-hop/k8s-stable-135.txt",
+      "sha256": "f9ab224724f494c9bc9bc0ab3fb2ead590349b0685bfe98d6a1eb88d9d901fb6"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-16-next-hop/k8s135-changelog.txt",
+      "sha256": "1f9d86189c4f783fd6cd8b0f11f70af51999c208d8eaefc0faa170a3735ab9ca"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-16-next-hop/k8s135-dependencies.txt",
+      "sha256": "15678d19d7b5c7e013ca3811666ce3c723698ef1d55c01ddf860b7d781dae733"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-16-next-hop/k8s135-deprecation-guide.md.txt",
+      "sha256": "96f34a49cbdd7bd53008cc7b7cc8aff58c373ad323e64eef0155cbbc44494f61"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-16-next-hop/k8s135-kubelet-config.txt",
+      "sha256": "e21379d9afd44f5e8f18848338a26bb7bc563f26da1e634a440e69f7a8a680ff"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-16-next-hop/k8s135-proxy-config.txt",
+      "sha256": "9ed0ee997438ee88daf92757ef1e9a62ed3527c2cbc762e493c41fbbe9f28c74"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-16-next-hop/k8s13510-authentication.go.txt",
+      "sha256": "8ccc0cd15519d9dbcfb92158269687be687ba28cb0511aa8156fb44ef93fe31f"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-16-next-hop/k8s13510-exact-patch-delta.json",
+      "sha256": "f32855d56b34a2308db9e2cc19e41744cfc4554c58581ce87510773d9c1d53af"
+    }
+  ],
+  "applicability": {
+    "conditions": "精确源1.34.13及已评审profile；变更前实际身份、恢复点、制品和平台由UPG-03至05核验。",
+    "differences": "1.35认证CA验证、cgroup默认值/API移除，以及源实际Calico/containerd/etcd/DNS/metrics与候选组合差异已分别登记；非核心组件不在升级时重放安装角色。",
+    "reason": "沿已接受的官方资料分层边界冻结组合；不因K8s minor或仓库SHA改变重测无变化深度业务；现场缺口留待相应矩阵。"
+  },
+  "checks": [
+    {
+      "command": ".venv/bin/python -B upgrade/validate.py upgrade/v1.35.10/test-matrix.yaml --combination-preflight",
+      "rc": 0
+    }
+  ],
+  "customer_signoff": null
+}

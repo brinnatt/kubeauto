@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "matrix_id": "UPG-06",
+  "category": "product-and-test-gate",
+  "run_id": "v13510-qualify-20261116c",
+  "first_disproof": "server dry-run changed reviewed Calico content; dynamic deprecated.daemonset.template.generation",
+  "official_source_id": "K8S-13413-CONTROLLER-REVISION",
+  "fix": "Normalize only matching top-level DaemonSet TemplateGeneration and Deployment rollout revision counters; keep user annotations, PodTemplate, UID, RBAC, TLS Secret and full rollout health comparisons.",
+  "checks": [
+    {
+      "command": ".venv/bin/python -B -m unittest upgrade.tests.test_calico_stage upgrade.tests.test_next_platform upgrade.tests.test_next_coordinator upgrade.tests.test_next_session.NextTransportContracts -v",
+      "tests": 30,
+      "rc": 0
+    }
+  ],
+  "live_qualification": {
+    "command": "guarded real API get and server-dry-run create/patch only",
+    "rc": 0,
+    "marker": "CALICO_PRECONTROL_SERVER_DRYRUN_PASS mutation=none journal=absent",
+    "calls": 50,
+    "product_migration_pass": false
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/calico-revision-repair/kubeauto-v13510-revision-first-disproof.log",
+      "sha256": "d1ce50e4ce6301914946afa3d0da54f937cc019154f38ca8ff961a484c6d0518"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/calico-revision-repair/kubeauto-v13510-revision-contracts.log",
+      "sha256": "6ead0a9f468eae6b6d67347c4b1b74e927adf8f3c88c3b4e8bee276640270daa"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/calico-revision-repair/kubeauto-v13510-calico-controller-revision-sources.json",
+      "sha256": "e433b2fb572f1a5664a84bf65081b8d67d2f7def6a97dab77a1965af8b3c9850"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/calico-revision-repair/kubeauto-v13510-calico-revision-repair-live.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/calico-revision-repair/kubeauto-v13510-calico-revision-remote-sha256.txt",
+      "sha256": "1b35a40f12e4c98bd59d74ed274a53778450fc7c3d372f3b824f7d38abbfe7a8"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/calico-revision-repair/kubeauto-v13510-calico-post-revision-server-dry-run.log",
+      "sha256": "5ac4a16e40e72633b95da87ea000d6b8332aa58e3826b952ffc8dbdc9ccb90cf"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/calico-revision-repair/kubeauto-v13510-calico-post-repair-server-dry-run-full.log",
+      "sha256": "2c88b824f670345c014330fc90340fd14a054f5842560c3f0c66b9c6d1986bbe"
+    }
+  ]
+}

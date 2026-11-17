@@ -1,0 +1,190 @@
+{
+  "schema_version": 1,
+  "accepted": true,
+  "source": "v1.34.13",
+  "target": "v1.35.10",
+  "case_ids": [
+    "UPG-06"
+  ],
+  "method": "live",
+  "claim": "独立干净d资格链经产品config+kubecli依次完成etcd3.6.16、Calico3.31.7/3.32.4与三API/控制器1.35.10；控制器在全部API目标就绪后更新，六源kubelet仍1.34.13。原etcd成员、池/策略及PVC/Service账本保持；仅接受并固定官方3.32缺省BGP新增。原失败链保留，不重签或修改其journal。",
+  "covered_subcases": [
+    "source-observation-rebound-to-product-inventory",
+    "all-api-servers-v13510-and-ready",
+    "controllers-after-all-api-servers",
+    "durable-journal-first-failure-stop-and-resume",
+    "source-lease-and-recovery-point-bound-to-run"
+  ],
+  "inputs": {
+    "upgrade/v1.35.10/release.yaml": "f69e9e88afa6a7cdc333240d62873ed120c7db981e20a6bf3cd68bbc0bf77625",
+    "upgrade/v1.35.10/source-baseline.yaml": "91612ce24d24bf02b381e7ca783a3312270022b3a9ac64174a6acecbf59e9c12",
+    "upgrade/v1.35.10/artifact-pins.json": "6ceaf94c0fb6657a66017ff1563b9743c754ff1c7282b36242ade029b9a25047",
+    "upgrade/v1.35.10/evidence/UPG-05.json": "142b0cea77d039c3f7c978042fbe51c9568e0a294a0cacfe7d5719ce74e2f708",
+    "upgrade/product/coordinator.py": "38e1b8e51d3a4bd318d83d8e7d6ddca4c4df9d0210ed0a0fc94d5ca3d2521a6f",
+    "upgrade/product/kubernetes_stage.py": "e59fe56ad7a0404e159930a8189f643e2ff77e211ae32f0459166331f2976537",
+    "upgrade/product/control-plane.yml": "a67a6294e035e0b6481d82d0b5cca72cf4646954cf70d06053c5491234ad8d51",
+    "upgrade/product/next_platform.py": "8def9871f75000ec28c94242e8001bbd850b54cb3a34acda92c2b3a8f5f6d05a",
+    "upgrade/product/calico_stage.py": "e60de46a942bd8e21a0d0562f53cbcbf8059b1d0d75618f9c5581e4dd577942a",
+    "upgrade/product/next_etcd.py": "75beaffaf932721a7151bdb3fed3c1f465237752bed81c11ed7cbd0ec07a7102"
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/control/plan.json",
+      "sha256": "8aa4788a3d418407ce104a6023ad0f3173ad84f1c25581185111e079db4a50df"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/control/source-config.json",
+      "sha256": "2c433f769d1459e9c8d943a648ead836d5a4d550895e7645c0bba843d62c3387"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/control/ledger-namespace.json",
+      "sha256": "91f95a55a3bbcb68c10b9d379ecd366dffbf7ca770b1f0243b2d865210faf5b1"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/control/continuity.json",
+      "sha256": "088ab6365c4657e6a88113296fd97a909e4da30212618ca8e911db73f3e605d0"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/control/prepared-boundary.json",
+      "sha256": "b74462d784126800195f9f485cba6b543057dfb31e46c9d55b948af36e0fa6ab"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/control/control-boundary.json",
+      "sha256": "74af0223c194862c53bb10103e1f40d85ceb5ca8994da4bad86e7efbed9d8453"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/control/control.status.json",
+      "sha256": "7baa29b080df48a785248d05654d6531bf12c924f2849e298ca33fea828856d0"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/control/control.attempt-1.log",
+      "sha256": "239028ce6e8812f2c3505ec8dd8c7e89e6f818392f789996d63ace001d0c34b0"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/control/control.attempt-1.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/control/control.attempt-1.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/control/control.attempt-1.product-state/calico-created-default-bgp.json",
+      "sha256": "86861e72bb651fac651027b41a54654c0bebeef57a4661f112e665ca3b824043"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/control/control.attempt-1.product-state/calico-datastore.json",
+      "sha256": "50c386df6db5a0f4595866153674ad4f40380ac2728082fa17eeb8ae6ba8fdd8"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/control/control.attempt-1.product-state/calico-edges.json",
+      "sha256": "126e9dd6680307084c5d9c017e6a16b76080ea4107162ce54ee1765b6628de1b"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/control/control.attempt-1.product-state/calico-v3.31.7.json",
+      "sha256": "0c642b999d33c75036ea33d14a0953cd3307026f722c0a4711b1c4a94f52ab82"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/control/control.attempt-1.product-state/calico-v3.32.4.json",
+      "sha256": "5f3d8c8be3c7f23f99c0b0512b25e24689267e8b70023f64958f552c138bf0d6"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/control/control.attempt-1.product-state/dns-source.json",
+      "sha256": "acadbc2f6efd77654c0cc1a1706c8b8feac4ee798774318d9a78cc23820b51a6"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/control/control.attempt-1.product-state/etcd-source.json",
+      "sha256": "5e3eca6fa5e0a77749f448763a5ca33fce3ea4ee35f335c09ff0b28b71817ac3"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/control/control.attempt-1.product-state/etcd-unit-192.168.122.217.json",
+      "sha256": "6b794c77f65f5ff12d0818153a5a7da7769ae5c01781729a82987b353c92104a"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/control/control.attempt-1.product-state/etcd-unit-192.168.122.243.json",
+      "sha256": "b43d55049ac3f0042033ddb45aa0a292f07fa84de9dfc3ab735769b9b27f1277"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/control/control.attempt-1.product-state/etcd-unit-192.168.122.246.json",
+      "sha256": "46ef0315176300826db54abd2d3bea3ac4b54b35cde0f5c71a422f0c8f10dbbe"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/control/control.attempt-1.product-state/first-hop-result.json",
+      "sha256": "74af0223c194862c53bb10103e1f40d85ceb5ca8994da4bad86e7efbed9d8453"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/control/control.attempt-1.product-state/journal/journal.json",
+      "sha256": "f6a9ae79e23d2e0da53f15ee38b9a7abd0f81c0fa9e2d9011aa5b3295192861e"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/control/control.attempt-1.product-state/journal/owner.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/control/control.attempt-1.product-state/metrics-source.json",
+      "sha256": "315ab58a3e4b160f783b5a54a29316a86fb7ea45a19af3c80b3fcd1d24a4be18"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/control/control.attempt-1.product-state/prepared-receipt.json",
+      "sha256": "b74462d784126800195f9f485cba6b543057dfb31e46c9d55b948af36e0fa6ab"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/control/control.attempt-1.product-state/product-config.json",
+      "sha256": "a73e169d6134734dc6b1644f4a0921f48d0fba0ab126c98e702bcd135319b4af"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/control/control.attempt-1.product-state/snapshot.db",
+      "sha256": "6d65c8c4aa2ee73ac4dd7cdb7628396198d081684b08dd57298acf326ff99ff1"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/control/control.attempt-1.product-state/source-observation.json",
+      "sha256": "2ef2d5baa92a9d3d88e69650923378a7ed2e00301cb95efe1d7b93a1a78b8e5e"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/control/control.attempt-1.product-state/v3.31.7-accepted.json",
+      "sha256": "5f3d8c8be3c7f23f99c0b0512b25e24689267e8b70023f64958f552c138bf0d6"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/control/control.attempt-1.product-state/v3.32.4-accepted.json",
+      "sha256": "04b68b8e769708baaabff364959b5626ee0d7f887d56ff954b19a0e507435d95"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/control/control-readback.json",
+      "sha256": "c60a4e62a7c10eaaacaf0dcd0e9c4d00365fae94e250f16c0dc4c376a46f2968"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/metrics-eviction-repair/UPG-04-before-metrics-wait.json",
+      "sha256": "3409baf803e5c816b00109670c52b60ec313a9693d237998ae0257eaaedd3dd7"
+    }
+  ],
+  "run_id": "v13510-qualify-20261116d/control.attempt-1",
+  "durable_rc": 0,
+  "finalized_rc": 0,
+  "failure_markers": 0,
+  "success_marker": "UPGRADE_NEXT_CONTROL_PASS",
+  "cleanup_marker": "NEXT_SESSION_PHASE_SCOPE_VERIFY_PASS phase=control ownership=retained",
+  "log": {
+    "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/control/control.attempt-1.log",
+    "sha256": "239028ce6e8812f2c3505ec8dd8c7e89e6f818392f789996d63ace001d0c34b0"
+  },
+  "durable_exit": {
+    "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/control/control.attempt-1.exit",
+    "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+  },
+  "durable_finalized": {
+    "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/control/control.attempt-1.finalized",
+    "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+  },
+  "business_assertions": [
+    "原source observation及prepare receipt与库存、集群UID、恢复点和租约关联",
+    "三API后端均1.35.10且readyz=ok；controller/scheduler串行更新在全部API屏障之后",
+    "六原节点UID保持、Ready、kubelet仍1.34.13，尚未执行节点更新",
+    "etcd三成员ID和clusterID保持、版本3.6.16、revision不回退",
+    "Calico两段均已接受；原IPPool/策略/HostEndpoint不变，默认BGP新UID固定",
+    "namespace/Service/PVC/PV原UID与HTTP账本摘要保持",
+    "完整控制面journal四步完成、active空、失败列表空；首失败停止和恢复拒绝另由当前合同及后续UPG-12覆盖"
+  ],
+  "completed_ladder": 3,
+  "customer_signoff": null,
+  "dependency_boundary": "原控制面运行时的静态准入副本逐字节保留。后续metrics-eviction等待只在node.yml控制面之后调用，不改变本项控制面实现、顺序、数据或已签原始输出；新节点实现须独立资格验收，不以此控制面PASS代签。"
+}

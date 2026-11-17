@@ -5810,6 +5810,479 @@ sources:
       sha256: b51952658f041bb2c451d8e08c2221c9a7811fceb44213465f40bdaae90bff31
       bytes: 1538
   use: upgrade/v1.34.13/research.yaml + release.yaml rocketmq candidate boundary
+- id: K8S-13510-STABLE
+  url: https://dl.k8s.io/release/stable-1.35.txt
+  observed_on: '2026-11-16'
+  version: v1.35.10
+  facts:
+  - 官方当前1.35稳定端点返回v1.35.10；只授权从1.34.13逐minor进入。
+  obtained_content:
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/k8s-stable-135.txt
+      sha256: f9ab224724f494c9bc9bc0ab3fb2ead590349b0685bfe98d6a1eb88d9d901fb6
+      bytes: 8
+- id: K8S-13510-RELEASE
+  url: https://api.github.com/repos/kubernetes/kubernetes/releases/tags/v1.35.10
+  observed_on: '2026-11-16'
+  version: v1.35.10
+  facts:
+  - 精确release非prerelease；发布日2026-10-28。
+  obtained_content:
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/k8s-13510-release.txt
+      sha256: 2265e4e91e839f1f2277fbcfd7f77501b5bce259354a5e48baa3bff7bc93d37c
+      bytes: 2235
+- id: K8S-13510-CHANGELOG
+  url: https://api.github.com/repos/kubernetes/kubernetes/contents/CHANGELOG/CHANGELOG-1.35.md?ref=v1.35.10
+  observed_on: '2026-11-16'
+  version: v1.35.10
+  facts:
+  - 固定tag源码记录1.35 minor差异：移除pod-infra-container-image、failCgroupV1默认true、IPVS弃用仍保留、StorageVersionMigration移除v1alpha1。
+  - 当前changelog头部尚为1.35.9；精确patch变化另按Git compare核实。
+  obtained_content:
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/k8s135-changelog.txt
+      sha256: 1f9d86189c4f783fd6cd8b0f11f70af51999c208d8eaefc0faa170a3735ab9ca
+      bytes: 347261
+- id: K8S-13510-PATCH-DELTA
+  url: https://api.github.com/repos/kubernetes/kubernetes/compare/v1.35.9...v1.35.10
+  observed_on: '2026-11-16'
+  version: v1.35.10
+  facts:
+  - 精确patch比较22提交、26文件；包含Job expectations清理、DRA响应重置、namespaceSelector负向匹配及身份header兼容修复。
+  - 二进制使用官方发布制品，不自行重编；集成验证关注既有工作负载、调度、TLS与身份链，不默认启用DRA。
+  obtained_content:
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/k8s13510-exact-patch-delta.json
+      sha256: f32855d56b34a2308db9e2cc19e41744cfc4554c58581ce87510773d9c1d53af
+      bytes: 185145
+- id: K8S-13510-KUBELET-CONFIG
+  url: https://api.github.com/repos/kubernetes/kubernetes/contents/staging/src/k8s.io/kubelet/config/v1beta1/types.go?ref=v1.35.10
+  observed_on: '2026-11-16'
+  version: v1.35.10
+  facts:
+  - FailCgroupV1为可选bool，默认true；显式false仍允许deprecated cgroupv1。保留原OS的过渡须明确opt-in，不声称推荐长期使用。
+  obtained_content:
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/k8s135-kubelet-config.txt
+      sha256: e21379d9afd44f5e8f18848338a26bb7bc563f26da1e634a440e69f7a8a680ff
+      bytes: 59679
+- id: K8S-13510-PROXY-CONFIG
+  url: https://api.github.com/repos/kubernetes/kubernetes/contents/staging/src/k8s.io/kube-proxy/config/v1alpha1/types.go?ref=v1.35.10
+  observed_on: '2026-11-16'
+  version: v1.35.10
+  facts:
+  - IPVS在1.35被弃用但未移除；保留项目原模式，不把弃用当强制nftables迁移。
+  obtained_content:
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/k8s135-proxy-config.txt
+      sha256: 9ed0ee997438ee88daf92757ef1e9a62ed3527c2cbc762e493c41fbbe9f28c74
+      bytes: 13589
+- id: K8S-13510-DEPENDENCIES
+  url: https://api.github.com/repos/kubernetes/kubernetes/contents/build/dependencies.yaml?ref=v1.35.10
+  observed_on: '2026-11-16'
+  version: v1.35.10
+  facts:
+  - 官方精确依赖记录用于版本组合审计；构建依赖不是任意外部组件逐版认证。
+  obtained_content:
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/k8s135-dependencies.txt
+      sha256: 15678d19d7b5c7e013ca3811666ce3c723698ef1d55c01ddf860b7d781dae733
+      bytes: 12277
+- id: CONTAINERD-K8S135-COMPAT
+  url: https://containerd.io/releases/
+  observed_on: '2026-11-16'
+  version: v1.35.10
+  facts:
+  - 官方K8s1.35推荐表为2.2.0+/2.1.5+/1.7.28+；源新建profile2.1.4不满足，必须迁移。
+  - 官方支持相邻minor，复用已发布2.2.10桥接和2.3.7目标；源已2.3.7时只验证身份与健康，禁止降级或重走桥接。
+  obtained_content:
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/containerd-compatibility.txt
+      sha256: a03ca12c441aab024ad9581e8e5d0ee62bcd8b85e11911dd4975665e671fdf5c
+      bytes: 58512
+- id: ETCD-3616-SNAPSHOT-COMMAND
+  url: https://api.github.com/repos/etcd-io/etcd/contents/etcdutl/etcdutl/snapshot_command.go?ref=v3.6.16
+  observed_on: '2026-11-16'
+  version: v3.6.16
+  facts:
+  - snapshot status --write-out=json为固定版本命令；restore默认skip-hash-check=false，不允许跳过完整性校验。
+  - 离线restore写入新目录；它不验证业务恢复流程，也不应指向任何现役成员数据目录。
+  obtained_content:
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/etcd3616-snapshot-command.go.txt
+      sha256: b72bcac4839110543047172ec4d2da9306dafe22d4c9db1309fcbbaccf27fa57
+      bytes: 6070
+- id: ETCD-3616-SNAPSHOT-INTEGRITY
+  url: https://api.github.com/repos/etcd-io/etcd/contents/etcdutl/snapshot/v3_snapshot.go?ref=v3.6.16
+  observed_on: '2026-11-16'
+  version: v3.6.16
+  facts:
+  - Status以只读bbolt事务检查结构完整性，JSON字段为hash/revision/totalKey/totalSize/version。
+  - Restore在复制到新数据目录时要求snapshot附带SHA256并验证哈希；仅Status不能代替此项。
+  obtained_content:
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/etcd3616-snapshot-v3.go.txt
+      sha256: 3155cd82119ea71ecd8922e30d2d373a8a2764d4f9894e1fb8a33283dcbb965c
+      bytes: 16251
+- id: ETCD-3616-SNAPSHOT-OUTPUT
+  url: https://api.github.com/repos/etcd-io/etcd/contents/etcdutl/etcdutl/printer.go?ref=v3.6.16
+  observed_on: '2026-11-16'
+  version: v3.6.16
+  facts:
+  - 固定版本支持JSON输出Status结构；字段来自snapshot.Status，不按表格文本解析。
+  obtained_content:
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/etcd3616-printer.go.txt
+      sha256: a3e8f6e643168f238fcdab1812194a1501d2effc81a7ca9408806985405ec168
+      bytes: 2628
+- id: CALICO-332-HOST-PLATFORM
+  url: https://docs.tigera.io/calico/3.32/getting-started/kubernetes/requirements
+  observed_on: '2026-11-16'
+  version: Calico 3.32
+  facts:
+  - 官方测试Kubernetes1.34/1.35/1.36，并要求Linux kernel5.10及以上；发行版名称不能代替实际内核条件。
+  - 本次实验室使用Rocky9的5.14内核；不升级旧Rocky8主机，不以源码兼容分支代替上游平台要求。
+  obtained_content:
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/calico-332-requirements.txt
+      sha256: db111252895bc56ca2b2ab9b62238f8f5444406d856355656315d8be8620d6c5
+      bytes: 68328
+- id: K8S-135-DEPRECATION-DIRECTORY
+  url: https://api.github.com/repos/kubernetes/website/contents/content/en/docs/reference/using-api/deprecation-guide.md?ref=release-1.35
+  observed_on: '2026-11-16'
+  version: release-1.35
+  facts:
+  - 固定release-1.35官方迁移目录最高章节仍为1.32；该目录未枚举1.35不代表无移除项。
+  - 1.35移除及默认值以精确Kubernetes tag changelog/源码补核，尤其StorageVersionMigration v1alpha1；不把自身CRD的v1alpha1误判为被移除的内置API。
+  obtained_content:
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/k8s135-deprecation-guide.md.txt
+      sha256: 96f34a49cbdd7bd53008cc7b7cc8aff58c373ad323e64eef0155cbbc44494f61
+      bytes: 21486
+- id: K8S-13510-AGGREGATOR-CA-VALIDATION
+  url: https://api.github.com/repos/kubernetes/kubernetes/contents/pkg/kubeapiserver/options/authentication.go?ref=v1.35.10
+  observed_on: '2026-11-16'
+  version: v1.35.10
+  facts:
+  - BuiltInAuthenticationOptions.Validate在普通客户端CA与request-header CA包含相同证书且AllowedNames为空时返回错误；不是可忽略告警。
+  - 项目现有模板正好共享ca.pem且名称为空，原代理证书CN固定为aggregator；本跳仅限制允许名称，不替换任何CA、证书、密钥或其它参数。
+  - 配置验证与聚合指标真实访问是不同证明；修复后仍需目标metrics API、普通证书身份及错误代理身份的最小集成验证。
+  obtained_content:
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/k8s13510-authentication.go.txt
+      sha256: 8ccc0cd15519d9dbcfb92158269687be687ba28cb0511aa8156fb44ef93fe31f
+      bytes: 38195
+- id: K8S-13510-FEATURE-LOCKS
+  url: https://api.github.com/repos/kubernetes/kubernetes/contents/pkg/features/kube_features.go?ref=v1.35.10
+  observed_on: '2026-11-16'
+  version: v1.35.10
+  facts:
+  - 精确1.35.10声明DynamicResourceAllocation、ExecProbeTimeout、JobManagedBy和SystemdWatchdog在1.35锁定默认true；保留原显式false会被拒绝。
+  - 移除gate名单和聚合discovery锁定依据同时引用精确1.35 changelog；源码常量与目标二进制配置校验不等于项目现场。
+  obtained_content:
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/k8s13510-kube-features.go.txt
+      sha256: 252dd04ad4a7fd84cf3ddc677264bac530538737b3085b2970f8a843d0c4444d
+      bytes: 102279
+- id: K8S-13510-DRA-COUNTERS
+  url: https://api.github.com/repos/kubernetes/kubernetes/contents/staging/src/k8s.io/api/resource/v1/types.go?ref=v1.35.10
+  observed_on: '2026-11-16'
+  version: v1.35.10
+  facts:
+  - ResourceSliceSpec.sharedCounters和Device.consumesCounters由DRAPartitionableDevices gate保护；1.34到1.35之间alpha数据不兼容，迁移前不能保留这些slice。
+  - 项目仅支持无此alpha数据的源准入，不自动删除业务资源；DRA核心GA API存在本身不是拒绝原因。
+  obtained_content:
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/k8s13510-dra-types.go.txt
+      sha256: 1fcf6710498325ecada9c78df8955fa71f4de380327f38462d2c5bb564733651
+      bytes: 81808
+- id: K8S-13510-RAW-DELETE
+  url: https://raw.githubusercontent.com/kubernetes/kubernetes/v1.35.10/staging/src/k8s.io/kubectl/pkg/cmd/delete/delete.go
+  observed_on: '2026-11-16'
+  version: v1.35.10
+  facts:
+  - 精确kubectl支持delete --raw URI -f -，将stdin内容作为DELETE body；DeleteOptions.uid前置用于拒绝同名namespace替换，不以名称代替归属。
+  obtained_contents:
+  - local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/k8s13510-kubectl-delete.go.txt
+      sha256: a9faa6217e8894158115d47b739a1ea4a58696772c2641148f03a336d98cdd36
+      bytes: 17376
+  - local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/k8s13510-kubectl-raw.go.txt
+      sha256: 628c17b0faff1cc8b620aaa2231f48fc2db491aac4bb26ebd7a65c129615d56a
+      bytes: 2618
+- id: DISTRIBUTION-283-REGISTRY-API
+  url: https://raw.githubusercontent.com/distribution/distribution/v2.8.3/docs/spec/api.md
+  observed_on: '2026-11-16'
+  version: v2.8.3
+  facts:
+  - Registry V2通过POST创建upload、带digest的PUT校验并提交blob，再PUT manifest；manifest本身按响应原始字节SHA256核验。
+  - 实验室供应仅复制缺失的已验收AMD64制品，不覆盖已有tag；已有不同manifest序列化须核rootfs diff_ids和有效容器配置，不能只凭tag或忽略运行参数变化。
+  obtained_content:
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/distribution283-api.md.txt
+      sha256: 87415dd72912a503f6c3a169497418857dd1ae50522f3f2c2fb0cc9126ef05e6
+      bytes: 146712
+- id: K8S-13510-PODCERT-ALPHA-REMOVAL
+  urls:
+  - https://raw.githubusercontent.com/kubernetes/kubernetes/v1.34.13/pkg/registry/certificates/rest/storage_certificates.go
+  - https://raw.githubusercontent.com/kubernetes/kubernetes/v1.35.10/pkg/registry/certificates/rest/storage_certificates.go
+  observed_on: '2026-11-16'
+  version: v1.34.13 -> v1.35.10
+  facts:
+  - 1.34.13在certificates/v1alpha1注册PodCertificateRequest；1.35.10只在v1beta1注册该资源，v1alpha1仍注册ClusterTrustBundle。必须按资源发现拒绝旧PodCertificateRequest客户端，不把整个alpha组都判为移除。
+  obtained_contents:
+  - local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/k8s13413-certificate-storage.go.txt
+      sha256: dc12fbee2775f1a37201560be614e0c0907b96e1a7bab0c152be97a79c105f9d
+      bytes: 6062
+  - local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/k8s13510-certificate-storage.go.txt
+      sha256: 0a39791c304a375f574966fbf071dd35096cd4bbb3575f2ffb02dc46990a75cf
+      bytes: 6061
+- id: K8S-13510-CSI-TOKEN-OPTIN
+  url: https://raw.githubusercontent.com/kubernetes/kubernetes/v1.35.10/staging/src/k8s.io/api/storage/v1/types.go
+  observed_on: '2026-11-16'
+  version: v1.35.10
+  facts:
+  - CSIServiceAccountTokenSecrets虽为默认true的beta门控，CSIDriver.spec.serviceAccountTokenInSecrets仍为显式opt-in；false或未设置保持VolumeContext传递，true才改为Secrets。项目未引入此字段，不据新门控默认值扩大未变CSI回归。
+  obtained_content:
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/k8s13510-csi-storage-types.go.txt
+      sha256: 146d3a53dfd360fd2b3501b7f75349bfaf5bb64e339ba33885b5ab14a7a671aa
+      bytes: 37825
+- id: K8S-13413-VOLUMEMOUNT-OMITEMPTY
+  evidence_type: source-contract
+  observed_on: '2026-11-16'
+  version: api v0.34.13
+  url: https://raw.githubusercontent.com/kubernetes/api/v0.34.13/core/v1/types.go
+  obtained_content:
+    representation: official version-pinned Go source; existing snapshot reused
+    sha256: 7f239e9466a8594d51e8fbd4965735951b9d969b550da0e31140db766faddf48
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-14-first-hop/k8s-13413-node-types-raw-retry.txt
+      sha256: 7f239e9466a8594d51e8fbd4965735951b9d969b550da0e31140db766faddf48
+      bytes: 441323
+  facts:
+  - VolumeMount.ReadOnly是bool且json omitempty，false或未设置均读写，默认false；API返回省略false不是源配置漂移。
+  - 升级声明只规范化VolumeMount的显式false；true与false/省略仍严格区分，其它字段不作通用零值容错。
+  limitations: 接口序列化语义及精确合同，不替代Calico实际迁移或父项验收。
+  use: upgrade/product/calico_stage.py
+- id: K8S-135-IMAGE-CREDENTIAL-VERIFICATION
+  evidence_type: official-documentation
+  observed_on: '2026-11-16'
+  version: website release-1.35 commit 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://raw.githubusercontent.com/kubernetes/website/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/concepts/containers/images.md
+  obtained_content:
+    representation: official version documentation source via exact Git commit
+    sha256: d9b8542837bce17f541ccca576ebb302649dd3d7923081ec1ec01ee877ab14c3
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/k8s135-images.md.txt
+      sha256: d9b8542837bce17f541ccca576ebb302649dd3d7923081ec1ec01ee877ab14c3
+      bytes: 28712
+  facts:
+  - KubeletEnsureSecretPulledImages在1.35默认开启；默认NeverVerifyPreloadedImages，首次启用前现有缓存视作预拉取。
+  - 新的或轮换的凭据需要重新拉取验证；已记录的相同凭据且镜像仍在本地可本地验证；不以该机制改变image:tag交付身份。
+  limitations: 官方机制与本项目输入适用性核对，不是本项目CSI故障或私库凭据轮换实测。
+  use: upgrade/v1.35.10/operations-manual.md
+- id: K8S-135-CSI-ALLOCATABLE-REFRESH
+  evidence_type: official-documentation
+  observed_on: '2026-11-16'
+  version: website release-1.35 commit 8817d358864b70a9710c5ad34f78df6a239be33d
+  url: https://raw.githubusercontent.com/kubernetes/website/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/concepts/storage/storage-limits.md
+  obtained_content:
+    representation: official version documentation source via exact Git commit
+    sha256: 1786d11629ffa11ddc3412dc2258e30910481a7e463d4aae88ece5a1e241c17a
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/k8s135-storage-limits.md.txt
+      sha256: 1786d11629ffa11ddc3412dc2258e30910481a7e463d4aae88ece5a1e241c17a
+      bytes: 4639
+  facts:
+  - 周期刷新需要CSIDriver.spec.nodeAllocatableUpdatePeriodSeconds，最短10秒，调用NodeGetInfo更新卷上限。
+  - Volume attachment返回ResourceExhausted时可立即更新卷计数并将受影响Pod标Failed，交由控制器重建；不将旧故障流程假称新版本未变。
+  limitations: 官方机制与本项目输入适用性核对，不是本项目CSI故障或私库凭据轮换实测。
+  use: upgrade/v1.35.10/operations-manual.md
+- id: K8S-135-STATEFULSET-ROLLING-BUDGET
+  evidence_type: official-documentation
+  observed_on: '2026-11-16'
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/concepts/workloads/controllers/statefulset.md
+  applicability: Kubernetes v1.35官方版本分支；仅签所述机制与默认条件
+  facts:
+  - 此版本分支正文描述1.35.0门控beta默认启用和预算缺省1；精确1.35.10的默认false必须按K8S-13510-STATEFULSET-BUDGET-PATCH-DEFAULT校正，不能将本页概括直接套到补丁版。
+  limitations: 官方机制及项目配置审阅；不是该业务场景的新现场验收或整份官方手册通读证明。
+  obtained_content:
+    representation: official documentation repository exact-commit Markdown
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/k8s135-statefulset.md.txt
+      sha256: 9ce2520a8d0bab9f8abac62c18e3854907ae09070c00a7528a3cf0ee46bf159e
+      bytes: 26545
+- id: K8S-135-KUBERC-PLUGIN-POLICY
+  evidence_type: official-documentation
+  observed_on: '2026-11-16'
+  url: https://github.com/kubernetes/website/blob/8817d358864b70a9710c5ad34f78df6a239be33d/content/en/docs/reference/kubectl/kuberc.md
+  applicability: Kubernetes v1.35官方版本分支；仅签所述机制与默认条件
+  facts:
+  - kuberc偏好1.34已经beta；1.35新增凭据插件策略，空值/未设置保持AllowAll，Allowlist必须提供有效匹配项；不自动覆盖客户偏好。
+  limitations: 官方机制及项目配置审阅；不是该业务场景的新现场验收或整份官方手册通读证明。
+  obtained_content:
+    representation: official documentation repository exact-commit Markdown
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/k8s135-kuberc.md.txt
+      sha256: 33056bca916f00bbb778e9a3fc33cc8ec01bd872eafcf115b64e12a9df121904
+      bytes: 12444
+
+- id: K8S-13413-PODSPEC-SECURITYCONTEXT-DEFAULT
+  evidence_type: official-source
+  observed_on: '2026-11-16'
+  url: https://raw.githubusercontent.com/kubernetes/kubernetes/v1.34.13/pkg/apis/core/v1/defaults.go
+  applicability: 精确源1.34.13的PodSpec默认化；同时适用于DaemonSet和Deployment的Pod模板
+  conclusion: SetDefaults_PodSpec在SecurityContext为nil时分配空PodSecurityContext；返回空映射不是用户定制。
+  limitations: 仅将省略的Pod securityContext按官方默认空映射处理；真实seccomp策略冲突仍拒绝，不泛化接受其它空值。
+  use: upgrade/product/calico_stage.py
+  obtained_contents:
+  - url: https://raw.githubusercontent.com/kubernetes/kubernetes/v1.34.13/pkg/apis/core/v1/defaults.go
+    representation: exact version official Go source
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/k8s13413-core-defaults.go.txt
+      sha256: 07960825580a31c1ccbf5c3609b0ef22042fee37912d6d5216e430b6ddc17967
+      bytes: 17608
+
+- id: K8S-13510-STATEFULSET-BUDGET-PATCH-DEFAULT
+  evidence_type: official-source-and-release-notes
+  observed_on: '2026-11-16'
+  version: v1.35.10
+  urls:
+  - https://raw.githubusercontent.com/kubernetes/kubernetes/v1.35.10/pkg/features/kube_features.go
+  - https://github.com/kubernetes/kubernetes/blob/v1.35.10/CHANGELOG/CHANGELOG-1.35.md
+  facts:
+  - 1.35.4的Bug or Regression明确为修复Parallel管理回归而关闭MaxUnavailableStatefulSet默认值；精确1.35.10版本化门控仍为Beta、Default=false。
+  - 已校验官方制品的API Server help也返回BETA default=false；版本分支手册保留的1.35默认启用描述需要按精确patch校正。
+  - 本跳不启用该门控，不改变中间件Pod模板、更新预算或节点drain的PDB约束。
+  limitations: 精确版本默认值与文档校正，不是StatefulSet并行更新业务的新现场验收。
+  use: upgrade/v1.35.10/operations-manual.md#本跳改变什么
+  obtained_contents:
+  - url: https://raw.githubusercontent.com/kubernetes/kubernetes/v1.35.10/pkg/features/kube_features.go
+    representation: exact version official Go source
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/k8s13510-kube-features.go.txt
+      sha256: 252dd04ad4a7fd84cf3ddc677264bac530538737b3085b2970f8a843d0c4444d
+      bytes: 102279
+  - url: https://github.com/kubernetes/kubernetes/blob/v1.35.10/CHANGELOG/CHANGELOG-1.35.md
+    representation: exact version official changelog
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/k8s135-changelog.txt
+      sha256: 1f9d86189c4f783fd6cd8b0f11f70af51999c208d8eaefc0faa170a3735ab9ca
+      bytes: 347261
+
+- id: K8S-13413-HOSTPATH-DEFAULT
+  evidence_type: official-source
+  observed_on: '2026-11-16'
+  version: v1.34.13
+  url: https://raw.githubusercontent.com/kubernetes/kubernetes/v1.34.13/pkg/apis/core/v1/defaults.go
+  facts:
+  - SetDefaults_HostPathVolumeSource将nil Type设为指向HostPathUnset的指针；API返回type为空字符串，而不是省略字段。
+  - 新增sys-kernel-security卷省略此字段，必须补精确默认值后才能与server dry-run作内容等值比较；旧卷的显式类型原样保持。
+  limitations: 只处理已证明的新hostPath默认值；不接受未知admission修改，不改path或已有类型。
+  use: upgrade/product/calico_stage.py
+  obtained_content:
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/k8s13413-core-defaults.go.txt
+      sha256: 07960825580a31c1ccbf5c3609b0ef22042fee37912d6d5216e430b6ddc17967
+      bytes: 17608
+
+- id: K8S-13413-CONTROLLER-REVISION
+  evidence_type: source-contract
+  observed_on: '2026-11-16'
+  versions:
+  - v1.34.13
+  facts:
+  - DaemonSet PrepareForUpdate advances internal TemplateGeneration when PodTemplate
+    changes; apps/v1 conversion serializes it as deprecated.daemonset.template.generation,
+    including server dry-run.
+  - Deployment SetDeploymentRevision writes deployment.kubernetes.io/revision; this
+    controller-managed rollout counter can advance after persistence.
+  limitations: Only these two top-level annotations on their matching workload kinds
+    are dynamic; other annotations, PodTemplate fields, UID, permissions and TLS Secret
+    remain compared. Health still requires observedGeneration and complete rollout
+    readiness.
+  use: upgrade/product/calico_stage.py
+  obtained_contents:
+  - url: https://api.github.com/repos/kubernetes/kubernetes/contents/pkg/registry/apps/daemonset/strategy.go?ref=v1.34.13
+    representation: official fixed-tag Go source decoded from GitHub contents API
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/k8s13413-daemonset-strategy.go.txt
+      sha256: 9ffd1e7bff3e3ce1d8936196d944ca0e86593e76a6b3396d189b9289c4ffaf70
+      bytes: 7695
+  - url: https://api.github.com/repos/kubernetes/kubernetes/contents/pkg/controller/deployment/util/deployment_util.go?ref=v1.34.13
+    representation: official fixed-tag Go source decoded from GitHub contents API
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/k8s13413-deployment-util.go.txt
+      sha256: 8786a37a35841010f245bb8a5f4dd0ac351a8dbee5f83aacec877f1359c85d2e
+      bytes: 42157
+  - url: https://api.github.com/repos/kubernetes/kubernetes/contents/pkg/apis/apps/v1/conversion.go?ref=v1.34.13
+    representation: official fixed-tag Go source decoded from GitHub contents API
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/k8s13413-apps-v1-conversion.go.txt
+      sha256: 3c5f4eb8b2c64a07afa154e03a6f1aaed3a4a74ad35f309d115571ad86e58da5
+      bytes: 6335
+
+- id: CALICO-3324-CREATED-DEFAULT-BGP
+  evidence_type: source-contract
+  observed_on: '2026-11-16'
+  versions:
+  - v3.32.4
+  facts:
+  - node startup ensureDefaultConfig calls ensureDefaultBGPConfigExists; it creates
+    only missing global default and retains an existing BGPConfiguration.
+  - clientv3 Create calls validator.Validate; fixed validator applies CRD schema defaults
+    in place even for direct etcd. BGP API defaults are logSeverityScreen=Info and
+    serviceLoadBalancerAggregation=Enabled.
+  - confd initializes aggregation to Enabled and also uses Enabled when the BGPConfiguration
+    or field is absent. Address ranges for Service advertisement require separate
+    explicit fields; the reviewed new default does not add them.
+  limitations: Only absent-to-exact-default on the reviewed v3.32 edge is accepted.
+    Existing BGP contents and new object UID/content remain bound; no mesh, ASN, route,
+    policy or IPPool customization is allowed.
+  use: upgrade/product/next_platform.py
+  obtained_contents:
+  - url: https://api.github.com/repos/projectcalico/calico/contents/node/pkg/lifecycle/startup/startup.go?ref=v3.32.4
+    representation: official fixed-tag Go source from GitHub contents API
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/calico3324-node-startup.go.txt
+      sha256: b6e4136dc89fbc613e467a83876b9da54a02d43321c0ae0f6eb3cc8e94d9d550
+      bytes: 51916
+  - url: https://api.github.com/repos/projectcalico/calico/contents/libcalico-go/lib/clientv3/bgpconfig.go?ref=v3.32.4
+    representation: official fixed-tag Go source from GitHub contents API
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/calico3324-bgpconfig.go.txt
+      sha256: 938627287777c7c75fbd94abcb5b0da05301a993200a522d7479da8f2029f0bd
+      bytes: 6826
+  - url: https://api.github.com/repos/projectcalico/calico/contents/api/pkg/apis/projectcalico/v3/bgpconfig.go?ref=v3.32.4
+    representation: official fixed-tag Go source from GitHub contents API
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/calico3324-api-bgpconfig.go.txt
+      sha256: 9569eb5f46fe69a7870378fe3731dd267d029e5fa040a42ebd4bffa47537add2
+      bytes: 12090
+  - url: https://api.github.com/repos/projectcalico/calico/contents/libcalico-go/lib/clientv3/resources.go?ref=v3.32.4
+    representation: official fixed-tag Go source from GitHub contents API
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/calico3324-client-resources.go.txt
+      sha256: 8be8557f4e6b746098502d78a88064577c49494697d766438c26f0052553b4f3
+      bytes: 16000
+  - url: https://api.github.com/repos/projectcalico/calico/contents/confd/pkg/backends/calico/client.go?ref=v3.32.4
+    representation: official fixed-tag Go source from GitHub contents API
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/calico3324-confd-client.go.txt
+      sha256: 2828d4bd18424168fbbe687eb222d45fc54ab372edb0cd346a46e29dac77e95a
+      bytes: 74569
+  - url: https://api.github.com/repos/projectcalico/calico/contents/libcalico-go/lib/validator/v3/validator.go?ref=v3.32.4
+    representation: official fixed-tag Go source from GitHub contents API
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/calico3324-validator.go.txt
+      sha256: 51a30be2263c7cf0759693db29fd56fbca5b8826cf14bb51bb900401c7a97d3f
+      bytes: 86864
+
 lookup_only:
 - id: K8S-API-CHANGES
   status: pending
@@ -5852,3 +6325,39 @@ access_gaps:
     error: 'HTTPError: HTTP Error 404: Not Found'
   consequence: 文档站403、尝试的固定版本源码路径404；先查正确官方tag/目录与既有记录，不能宣称这些路径已读，不转为现场回归。
   resolution: 已找到官方文档仓main的PXC ReleaseNotes和MongoDB RN正确路径并取得固定版本文件，分别绑定PXC-120-FIRST-HOP、MONGODB-1231-FIRST-HOP；旧403/404作为原访问事实保留，不再把它们当作当前矩阵不可读。
+- id: K8S-13413-EVICTION-DELETION-HANDOFF
+  evidence_type: source-contract
+  observed_on: '2026-11-16'
+  version: v1.34.13
+  urls:
+  - https://raw.githubusercontent.com/kubernetes/kubernetes/v1.34.13/staging/src/k8s.io/kubectl/pkg/cmd/wait/delete.go
+  - https://raw.githubusercontent.com/kubernetes/kubernetes/v1.34.13/staging/src/k8s.io/kubectl/pkg/drain/drain.go
+  - https://raw.githubusercontent.com/kubernetes/kubernetes/v1.34.13/staging/src/k8s.io/kubectl/pkg/drain/filters.go
+  - https://raw.githubusercontent.com/kubernetes/kubernetes/v1.34.13/staging/src/k8s.io/kubectl/pkg/cmd/wait/wait.go
+  obtained_contents:
+  - representation: official pinned Go source
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/k8s13413-kubectl-wait-delete.go.txt
+      sha256: 39527c2167a41cf73206483a3548dce357adc16a6330a07cd516f75a8259d692
+      bytes: 4759
+  - representation: official pinned Go source
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/k8s13413-kubectl-drain.go.txt
+      sha256: 505864ae6d175f5a2e88267637b24c2747e5bb4f9b2bbe4342f51be7e1451e7e
+      bytes: 16193
+  - representation: official pinned Go source
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/k8s13413-kubectl-drain-filters.go.txt
+      sha256: a723a5141bb93256c4c14a8c2d748d33d9860ce4568f818f28bc44b5126e8f32
+      bytes: 8164
+  - representation: official pinned Go source
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/k8s13413-kubectl-wait.go.txt
+      sha256: 69f31f9f282ca752c0e71ec12307bc4568f76f78e4cddbdbd5bed01cd3d79cee
+      bytes: 13239
+  facts:
+  - EvictPod只是提交Eviction；官方drain随后调用waitForDelete，等待对象NotFound或原UID消失。
+  - localStorageFilter仍拒绝含emptyDir且尚未结束的Pod，不能将驱逐请求成功等同于删除完成。
+  - kubectl wait --for=delete会忽略已NotFound资源，并使用有界等待；名称若被重新使用，等待更保守，后续drain仍独立检查实际本地数据。
+  limitations: 证明异步删除交接机制；不等于项目修复现场或GA签署，不采用force、零grace、跳过等待或delete-emptydir-data。
+  use: upgrade/product/metrics-eviction.yml

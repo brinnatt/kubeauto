@@ -9,7 +9,7 @@ import unittest
 from unittest.mock import patch
 
 from upgrade.product.calico_stage import (CONTROLLER, NODE, SECRET, CalicoStage,
-    CalicoRefused, CalicoCommandFailed, delta, manifests, matches, new_container_defaults)
+    CalicoRefused, CalicoCommandFailed, content, delta, manifests, matches, new_container_defaults)
 
 
 FIXTURE = Path(__file__).parent/'fixtures/calico_kubectl.py'
@@ -28,7 +28,15 @@ def source_objects(version, variables):
         obj['metadata'].update(uid=ref+'-uid', resourceVersion='1', generation=1)
         if obj['kind'] not in ['DaemonSet', 'Deployment']:
             continue
+        revision = ('deprecated.daemonset.template.generation' if obj['kind'] == 'DaemonSet'
+                    else 'deployment.kubernetes.io/revision')
+        obj['metadata'].setdefault('annotations', {})[revision] = '1'
         pod = obj['spec']['template']['spec']
+        # SetDefaults_PodSpec allocates this even when the source omitted it.
+        pod.setdefault('securityContext', {})
+        for volume in pod.get('volumes', []):
+            if 'hostPath' in volume:
+                volume['hostPath'].setdefault('type', '')
         for container in pod.get('containers', [])+pod.get('initContainers', []):
             container.setdefault('imagePullPolicy', 'IfNotPresent')
             container.setdefault('terminationMessagePath', '/dev/termination-log')
@@ -139,6 +147,96 @@ class CalicoStageContracts(unittest.TestCase):
                         self.assertEqual(actual['spec']['selector'], original[ref]['spec']['selector'])
                     if ref == 'configmap/calico-config':
                         self.assertEqual(actual['data']['etcd_endpoints'], original[ref]['data']['etcd_endpoints'])
+
+    def test_api_omits_false_mount_flags_without_customization_or_patch_drift(self):
+        # core/v1.VolumeMount.ReadOnly is a bool with json omitempty. The API
+        # returns writable mounts without readOnly, even if YAML used false.
+        for obj in self.reviewed.values():
+            pod = obj.get('spec', {}).get('template', {}).get('spec', {})
+            for container in pod.get('containers', []) + pod.get('initContainers', []):
+                for mount in container.get('volumeMounts', []):
+                    if mount.get('readOnly') is False:
+                        del mount['readOnly']
+        self.state['objects'] = deepcopy(self.reviewed)
+        self.save()
+        self.execute()
+        current = json.loads((self.root/'state.json').read_text())['objects']
+        self.assertTrue(matches(current[NODE], self.stage.after[NODE]))
+        self.assertEqual(current[SECRET], self.reviewed[SECRET])
+
+    def test_new_hostpath_api_default_matches_dry_run_and_preserves_existing_types(self):
+        original = {v['name']: v for v in self.reviewed[NODE]['spec']['template']['spec']['volumes']}
+        self.execute()
+        current = json.loads((self.root/'state.json').read_text())['objects']
+        volumes = {v['name']: v for v in current[NODE]['spec']['template']['spec']['volumes']}
+        self.assertEqual(volumes['sys-kernel-security']['hostPath'],
+                         {'path': '/sys/kernel/security', 'type': ''})
+        for name, volume in original.items():
+            self.assertEqual(volumes[name], volume)
+        self.assertTrue(matches(current[NODE], self.stage.after[NODE]))
+
+    def test_controller_revisions_advance_without_losing_identity_or_custom_annotations(self):
+        for ref in [NODE, CONTROLLER]:
+            self.reviewed[ref]['metadata']['annotations']['customer.example/owner'] = 'retained'
+        self.state['objects'] = deepcopy(self.reviewed)
+        self.save()
+        self.execute()
+        current = json.loads((self.root/'state.json').read_text())['objects']
+        for ref, key in [(NODE, 'deprecated.daemonset.template.generation'),
+                         (CONTROLLER, 'deployment.kubernetes.io/revision')]:
+            self.assertEqual(current[ref]['metadata']['annotations'][key], '2')
+            self.assertEqual(current[ref]['metadata']['annotations']['customer.example/owner'],
+                             'retained')
+            self.assertEqual(current[ref]['metadata']['uid'], self.reviewed[ref]['metadata']['uid'])
+        self.assertEqual(current[SECRET], self.reviewed[SECRET])
+        writes = len(self.mutations())
+        self.execute()
+        self.assertEqual(len(self.mutations()), writes)
+
+    def test_content_ignores_only_kind_specific_revision_and_keeps_other_drift(self):
+        for ref, key in [(NODE, 'deprecated.daemonset.template.generation'),
+                         (CONTROLLER, 'deployment.kubernetes.io/revision')]:
+            original = deepcopy(self.reviewed[ref])
+            changed = deepcopy(original)
+            changed['metadata']['annotations'][key] = '2'
+            self.assertEqual(content(original), content(changed))
+            changed['metadata']['annotations']['customer.example/owner'] = 'foreign'
+            self.assertNotEqual(content(original), content(changed))
+            changed = deepcopy(original)
+            changed['metadata']['uid'] = 'foreign'
+            self.assertNotEqual(content(original), content(changed))
+            changed = deepcopy(original)
+            changed['spec']['template']['metadata'].setdefault('annotations', {})[key] = '2'
+            self.assertNotEqual(content(original), content(changed))
+            # Same key on a Secret is customer data, not controller state.
+            secret = deepcopy(self.reviewed[SECRET])
+            altered = deepcopy(secret)
+            altered['metadata']['annotations'] = {key: '2'}
+            self.assertNotEqual(content(secret), content(altered))
+            no_annotation = deepcopy(original)
+            no_annotation['metadata'].pop('annotations')
+            self.assertEqual(content(original), content(no_annotation))
+
+    def test_readonly_mount_change_is_still_refused_before_commands(self):
+        mount = self.reviewed[NODE]['spec']['template']['spec']['containers'][0]['volumeMounts'][0]
+        mount['readOnly'] = True
+        with self.assertRaises(CalicoRefused):
+            self.execute()
+        self.assertEqual(self.calls(), [])
+
+    def test_empty_pod_security_context_accepts_reviewed_seccomp_delta(self):
+        self.execute()
+        objects = json.loads((self.root/'state.json').read_text())['objects']
+        for ref in [NODE, CONTROLLER]:
+            self.assertEqual(objects[ref]['spec']['template']['spec']['securityContext'],
+                             {'seccompProfile': {'type': 'RuntimeDefault'}})
+
+    def test_existing_seccomp_conflict_is_not_an_api_default(self):
+        self.reviewed[NODE]['spec']['template']['spec']['securityContext'] = {
+            'seccompProfile': {'type': 'Unconfined'}}
+        with self.assertRaisesRegex(CalicoRefused, 'conflict'):
+            self.execute()
+        self.assertEqual(self.calls(), [])
 
     def test_source_customization_unknown_edge_or_missing_secret_refuses_before_commands(self):
         for fault in ['image', 'extra-env', 'secret']:

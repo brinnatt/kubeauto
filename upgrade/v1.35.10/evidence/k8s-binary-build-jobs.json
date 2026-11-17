@@ -1,0 +1,205 @@
+{
+  "total_count": 2,
+  "jobs": [
+    {
+      "id": 133125614618,
+      "run_id": 43815218544,
+      "workflow_name": "build",
+      "head_branch": "v1.35.10",
+      "run_url": "https://api.github.com/repos/brinnatt/kubeauto-k8s-bin-dockerfile/actions/runs/43815218544",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOPR2XqM8AAAAe_uesGg",
+      "head_sha": "686e0efa2e81da2a0e1334ed638d9a0c9f445862",
+      "url": "https://api.github.com/repos/brinnatt/kubeauto-k8s-bin-dockerfile/actions/jobs/133125614618",
+      "html_url": "https://github.com/brinnatt/kubeauto-k8s-bin-dockerfile/actions/runs/43815218544/job/133125614618",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-16T06:12:48Z",
+      "started_at": "2026-11-16T06:12:50Z",
+      "completed_at": "2026-11-16T06:12:52Z",
+      "name": "plan",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-16T06:12:51Z",
+          "completed_at": "2026-11-16T06:12:51Z"
+        },
+        {
+          "name": "Select publication scope",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-16T06:12:51Z",
+          "completed_at": "2026-11-16T06:12:51Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-16T06:12:51Z",
+          "completed_at": "2026-11-16T06:12:51Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/brinnatt/kubeauto-k8s-bin-dockerfile/check-runs/133125614618",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000003108,
+      "runner_name": "GitHub Actions 1000003108",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    },
+    {
+      "id": 133125639790,
+      "run_id": 43815218544,
+      "workflow_name": "build",
+      "head_branch": "v1.35.10",
+      "run_url": "https://api.github.com/repos/brinnatt/kubeauto-k8s-bin-dockerfile/actions/runs/43815218544",
+      "run_attempt": 1,
+      "node_id": "CR_kwDOPR2XqM8AAAAe_ugObg",
+      "head_sha": "686e0efa2e81da2a0e1334ed638d9a0c9f445862",
+      "url": "https://api.github.com/repos/brinnatt/kubeauto-k8s-bin-dockerfile/actions/jobs/133125639790",
+      "html_url": "https://github.com/brinnatt/kubeauto-k8s-bin-dockerfile/actions/runs/43815218544/job/133125639790",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-16T06:12:53Z",
+      "started_at": "2026-11-16T06:12:55Z",
+      "completed_at": "2026-11-16T06:14:33Z",
+      "name": "docker (v1.35.10)",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-16T06:12:55Z",
+          "completed_at": "2026-11-16T06:12:59Z"
+        },
+        {
+          "name": "Checkout",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-16T06:12:59Z",
+          "completed_at": "2026-11-16T06:12:59Z"
+        },
+        {
+          "name": "Docker meta",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-16T06:12:59Z",
+          "completed_at": "2026-11-16T06:13:00Z"
+        },
+        {
+          "name": "Set up QEMU",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-16T06:13:00Z",
+          "completed_at": "2026-11-16T06:13:07Z"
+        },
+        {
+          "name": "Set up Docker Buildx",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-11-16T06:13:07Z",
+          "completed_at": "2026-11-16T06:13:14Z"
+        },
+        {
+          "name": "Login to DockerHub",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-11-16T06:13:14Z",
+          "completed_at": "2026-11-16T06:13:14Z"
+        },
+        {
+          "name": "Login to TalkEdu Registry",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-16T06:13:14Z",
+          "completed_at": "2026-11-16T06:13:18Z"
+        },
+        {
+          "name": "Build and push",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-11-16T06:13:18Z",
+          "completed_at": "2026-11-16T06:14:26Z"
+        },
+        {
+          "name": "Post Build and push",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-11-16T06:14:26Z",
+          "completed_at": "2026-11-16T06:14:28Z"
+        },
+        {
+          "name": "Post Login to TalkEdu Registry",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12,
+          "started_at": "2026-11-16T06:14:28Z",
+          "completed_at": "2026-11-16T06:14:28Z"
+        },
+        {
+          "name": "Post Login to DockerHub",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13,
+          "started_at": "2026-11-16T06:14:28Z",
+          "completed_at": "2026-11-16T06:14:29Z"
+        },
+        {
+          "name": "Post Set up Docker Buildx",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 14,
+          "started_at": "2026-11-16T06:14:29Z",
+          "completed_at": "2026-11-16T06:14:29Z"
+        },
+        {
+          "name": "Post Set up QEMU",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15,
+          "started_at": "2026-11-16T06:14:29Z",
+          "completed_at": "2026-11-16T06:14:31Z"
+        },
+        {
+          "name": "Post Checkout",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 16,
+          "started_at": "2026-11-16T06:14:31Z",
+          "completed_at": "2026-11-16T06:14:31Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 17,
+          "started_at": "2026-11-16T06:14:31Z",
+          "completed_at": "2026-11-16T06:14:31Z"
+        }
+      ],
+      "check_run_url": "https://api.github.com/repos/brinnatt/kubeauto-k8s-bin-dockerfile/check-runs/133125639790",
+      "labels": [
+        "ubuntu-latest"
+      ],
+      "runner_id": 1000003109,
+      "runner_name": "GitHub Actions 1000003109",
+      "runner_group_id": 0,
+      "runner_group_name": "GitHub Actions"
+    }
+  ]
+}

@@ -27,9 +27,9 @@ class KubeConstant:
     })
     # Required when CONTAINER_RUNTIME=docker on K8s >=1.24 (dockershim removed).
     # Official: https://github.com/Mirantis/cri-dockerd
-    v_cri_dockerd: str = field(default="0.3.26", metadata={
+    v_cri_dockerd: str = field(default="0.4.10", metadata={
         "refer_github": "https://github.com/Mirantis/cri-dockerd/releases",
-        "description": "cri-dockerd CRI shim for dockerd; pairs with Engine 28.x / K8s 1.33",
+        "description": "cri-dockerd CRI shim for dockerd; pairs with Engine 28.x over CRI v1",
     })
     v_kubeauto: str = field(default="v0.1.8", metadata={
         "refer_github": "https://github.com/brinnatt"
@@ -50,12 +50,12 @@ class KubeConstant:
         ),
     })
     v_ansible_core_py314: str = field(default="2.20.9")
-    v_k8s_bin: str = field(default="v1.33.6", metadata={
+    v_k8s_bin: str = field(default="v1.35.10", metadata={
         "refer_all": "https://kubernetes.io/releases/download/",
         "refer_bin": "https://www.downloadkubernetes.com/",
         "refer_old": "https://github.com/kubernetes/kubernetes/tree/master/CHANGELOG",
     })
-    v_extra_bin: str = field(default="1.16.0", metadata={
+    v_extra_bin: str = field(default="1.17.0", metadata={
         "refer_github": "https://github.com/brinnatt/dockerfile-kubeauto-ext-bin",
         "description": (
             "ext-bin pack tag; includes containerd/crictl/nerdctl/helm and the "
@@ -68,17 +68,17 @@ class KubeConstant:
     })
     # Component inventory of v_extra_bin; checked against its Dockerfile by
     # test_six_repo_version_sync. These describe the pack, not installed binaries.
-    v_etcd: str = field(default="v3.6.4")
-    v_containerd: str = field(default="2.1.4")
-    v_runc: str = field(default="v1.3.1")
+    v_etcd: str = field(default="v3.6.16")
+    v_containerd: str = field(default="2.3.7")
+    v_runc: str = field(default="v1.5.2")
     v_cni_plugins: str = field(default="v1.8.0")
     v_helm: str = field(default="v3.19.0")
     v_crictl: str = field(default="v1.34.0")
     # Docker-compatible CLI for containerd; shipped via ext-bin (minimal), installed by roles/containerd.
-    # Upstream v2.3.4 supports containerd v1.7 / v2.0 / v2.1 / v2.2 / v2.3 (matches CONTAINERD_VER=2.1.4).
+    # Upstream v2.3.4 supports containerd v1.7 / v2.0 / v2.1 / v2.2 / v2.3 (matches CONTAINERD_VER=2.3.7).
     v_nerdctl: str = field(default="2.3.4", metadata={
         "refer_github": "https://github.com/containerd/nerdctl/releases",
-        "description": "Latest stable nerdctl compatible with containerd 2.1.x; minimal tarball only",
+        "description": "Latest stable nerdctl compatible with containerd 2.3.x; minimal tarball only",
     })
     v_harbor: str = field(default="v2.13.0", metadata={
         "refer_image": "https://github.com/wise2c-devops/build-harbor-aarch64",
@@ -88,7 +88,7 @@ class KubeConstant:
     v_kube_state_metrics: str = field(default="v2.18.0", metadata={
         "refer_github": "https://github.com/kubernetes/kube-state-metrics/releases/tag/v2.18.0",
     })
-    v_webhook_certgen: str = field(default="v1.6.0")
+    v_webhook_certgen: str = field(default="v1.6.9")
     v_prometheus_operator: str = field(default="v0.93.0", metadata={
         "refer_github": "https://github.com/prometheus-operator/prometheus-operator/releases/tag/v0.93.0",
     })
@@ -145,7 +145,7 @@ class KubeConstant:
     v_loki: str = field(default="3.7.6")
     v_alloy_chart: str = field(default="1.11.1")
     v_alloy: str = field(default="1.18.1")
-    v_ingress_nginx_controller: str = field(default="v1.13.0")
+    v_ingress_nginx_controller: str = field(default="v1.15.1")
     # v1.3.1: Node 20 + pinned json-server@0.17.4 (v1.3.0 used Node 18.10 + unpinned npm → CrashLoop)
     v_json_mock: str = field(default="v1.3.1")
     v_alpine_curl: str = field(default="v7.85.0")
@@ -163,8 +163,8 @@ class KubeConstant:
     v_cephadm_sha256: str = field(
         default="5b78c8d5772ef7c5c8619dac6ee0b36716b829338ea7a11c9f2b896626ab354f"
     )
-    v_ceph_csi: str = field(default="v3.17.1", metadata={
-        "refer_github": "https://github.com/ceph/ceph-csi/releases/tag/v3.17.1",
+    v_ceph_csi: str = field(default="v3.17.2", metadata={
+        "refer_github": "https://github.com/ceph/ceph-csi/releases/tag/v3.17.2",
         "description": "GA RBD/CephFS CSI release tested upstream with Kubernetes 1.34-1.36",
     })
     v_ceph_csi_registrar: str = field(default="v2.16.0")
@@ -172,11 +172,11 @@ class KubeConstant:
     v_ceph_csi_attacher: str = field(default="v4.11.0")
     v_ceph_csi_resizer: str = field(default="v2.1.0")
     v_ceph_csi_snapshotter: str = field(default="v8.5.0")
-    v_longhorn: str = field(default="1.12.1", metadata={
-        "refer_github": "https://github.com/longhorn/longhorn/releases/tag/v1.12.1",
+    v_longhorn: str = field(default="1.12.2", metadata={
+        "refer_github": "https://github.com/longhorn/longhorn/releases/tag/v1.12.2",
         "description": "Independent Longhorn V1 storage; does not replace middleware test fixtures",
     })
-    v_longhorn_upgrade_source: str = field(default="1.12.0")
+    v_longhorn_upgrade_source: str = field(default="1.12.1")
     v_longhorn_snapshot_controller: str = field(default="v8.6.0")
 
     @staticmethod
@@ -217,15 +217,15 @@ class KubeConstant:
     def k8s_bin_pack_tags(self):
         """k8s-bin image tags published by pack CI (includes current default)."""
         return (self.v_k8s_bin,)
-    v_calico: str = field(default="v3.28.4", metadata={
+    v_calico: str = field(default="v3.32.4", metadata={
         "refer_github": "https://github.com/projectcalico/calico",
         "refer_docs": "https://docs.tigera.io/calico/latest/about/"
     })
-    v_coredns: str = field(default="1.12.4", metadata={
+    v_coredns: str = field(default="1.15.0", metadata={
         "refer_github": "https://github.com/coredns/coredns",
         "refer_docs": "https://coredns.io/"
     })
-    v_dnsnodecache: str = field(default="1.26.4", metadata={
+    v_dnsnodecache: str = field(default="1.26.8", metadata={
         "refer_github": "https://github.com/kubernetes/kubernetes/blob/master/cluster/addons/dns/nodelocaldns/nodelocaldns.yaml",
         "refer_docs": "https://kubernetes.io/docs/tasks/administer-cluster/nodelocaldns/"
     })
@@ -235,7 +235,7 @@ class KubeConstant:
     v_dashboardmetricsscraper: str = field(default="1.2.2", metadata={
         "refer_github": "https://github.com/kubernetes-sigs/dashboard-metrics-scraper"
     })
-    v_metricsserver: str = field(default="v0.8.0", metadata={
+    v_metricsserver: str = field(default="v0.9.1", metadata={
         "refer_github": "https://github.com/kubernetes-sigs/metrics-server",
         "refer_docs": "https://kubernetes-sigs.github.io/metrics-server/"
     })
@@ -243,19 +243,19 @@ class KubeConstant:
         "refer_github": "https://github.com/kubernetes/kubernetes/tree/master/build/pause",
         "refer_none_official_docs": "https://k8s.iswbm.com/c02/p02_learn-kubernetes-pod-via-pause-container.html"
     })
-    v_flannel: str = field(default="v0.28.4", metadata={
+    v_flannel: str = field(default="v0.28.10", metadata={
         "refer_github": "https://github.com/flannel-io/flannel/releases",
-        "description": "Latest stable v0.28.4 (2026-04); pin flannel_ver in cluster config if mirror lags",
+        "description": "Pinned stable v0.28.10; exact image mapping is maintained in the image catalog",
     })
-    v_flannel_cni: str = field(default="v1.8.0-flannel1", metadata={
+    v_flannel_cni: str = field(default="v1.9.1-flannel3", metadata={
         "refer_github": "https://github.com/flannel-io/flannel-cni-plugin/releases",
     })
-    v_cilium: str = field(default="v1.19.5", metadata={
+    v_cilium: str = field(default="v1.20.4", metadata={
         "refer_github": "https://github.com/cilium/cilium/releases",
         "refer_docs": "https://docs.cilium.io/en/stable/network/kubernetes/compatibility/",
-        "description": "Latest stable v1.19.5; K8s 1.33 compatible",
+        "description": "Pinned stable v1.20.4; upstream tested Kubernetes 1.33-1.36",
     })
-    v_cilium_hubble_ui: str = field(default="v0.13.5", metadata={
+    v_cilium_hubble_ui: str = field(default="v0.13.6", metadata={
         "refer_github": "https://github.com/cilium/hubble-ui/releases",
         "refer_quay": "https://quay.io/repository/cilium/hubble-ui?tab=tags",
         "description": (
@@ -263,13 +263,13 @@ class KubeConstant:
             "Official images are on quay.io/cilium/* (not docker.io/cilium for this tag)."
         ),
     })
-    v_kuberouter: str = field(default="v1.5.4", metadata={
+    v_kuberouter: str = field(default="v2.12.0", metadata={
         "refer_github": "https://github.com/cloudnativelabs/kube-router"
     })
-    v_kubeovn: str = field(default="v1.11.5", metadata={
+    v_kubeovn: str = field(default="v1.17.1", metadata={
         "refer_github": "https://github.com/kubeovn/kube-ovn"
     })
-    v_localpathprovisioner: str = field(default="v0.0.31", metadata={
+    v_localpathprovisioner: str = field(default="v0.0.37", metadata={
         "refer_github": "https://github.com/rancher/local-path-provisioner"
     })
     v_nfsprovisioner: str = field(default="v4.0.2", metadata={
@@ -286,7 +286,7 @@ class KubeConstant:
     v_openebs: str = field(default="4.3.2", metadata={
         "refer_docs": "https://openebs.io/docs/quickstart-guide/installation",
     })
-    v_ingressnginx: str = field(default="4.13.0", metadata={
+    v_ingressnginx: str = field(default="4.15.1", metadata={
         "refer_docs": "https://kubernetes.github.io/ingress-nginx/deploy/",
     })
     v_pxc_operator: str = field(default="1.20.0", metadata={

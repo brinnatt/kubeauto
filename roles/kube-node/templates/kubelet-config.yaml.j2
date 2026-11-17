@@ -55,6 +55,10 @@ evictionHard:
   nodefs.inodesFree: 5%
 evictionPressureTransitionPeriod: 5m0s
 failSwapOn: true
+{% if (K8S_VER | default('1.34.13')).lstrip('v').split('.')[1] | int >= 35 %}
+{# Kubernetes v1.35: official default true; legacy cgroup v1 requires explicit opt-in. #}
+failCgroupV1: {{ KUBELET_FAIL_CGROUP_V1 | default(true) | lower }}
+{% endif %}
 fileCheckFrequency: 40s
 hairpinMode: hairpin-veth 
 healthzBindAddress: 0.0.0.0

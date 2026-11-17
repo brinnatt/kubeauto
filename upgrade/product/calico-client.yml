@@ -1,0 +1,33 @@
+- name: Verify Calico hosts and install only an admitted matching client
+  hosts: kube_master:kube_node
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - name: Require exact admitted client inputs
+      ansible.builtin.assert:
+        that:
+          - UPGRADE_PRECONDITIONS_VERIFIED == true
+          - UPGRADE_CALICOCTL_VERSION in ['v3.31.7', 'v3.32.4']
+          - UPGRADE_CALICOCTL_SHA256 is match('^[a-f0-9]{64}$')
+    - name: Observe the admitted client source
+      ansible.builtin.stat:
+        path: "{{ UPGRADE_CALICOCTL_SOURCE }}"
+        checksum_algorithm: sha256
+      register: upgrade_calicoctl_source
+      delegate_to: localhost
+    - name: Refuse changed client bytes
+      ansible.builtin.assert:
+        that:
+          - upgrade_calicoctl_source.stat.isreg | default(false)
+          - upgrade_calicoctl_source.stat.checksum == UPGRADE_CALICOCTL_SHA256
+    - name: Install only the matching calicoctl
+      ansible.builtin.copy:
+        src: "{{ UPGRADE_CALICOCTL_SOURCE }}"
+        dest: "{{ bin_dir }}/calicoctl"
+        mode: '0755'
+    - name: Verify the installed client version
+      ansible.builtin.command:
+        argv: ["{{ bin_dir }}/calicoctl", version, --client]
+      register: upgrade_calicoctl_version
+      changed_when: false
+      failed_when: upgrade_calicoctl_version.rc != 0 or UPGRADE_CALICOCTL_VERSION not in upgrade_calicoctl_version.stdout

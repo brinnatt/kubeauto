@@ -4,6 +4,7 @@ Actual Ansible expressions, includes, retries and assertions remain in control.
 Every unmodelled operation fails; no connection or host mutation is available.
 """
 import fcntl
+import base64
 import json
 import os
 from pathlib import Path
@@ -47,6 +48,8 @@ class ActionModule(ActionBase):
                 stdout = 'cri-dockerd '+node['adapter']+' (fixture)'
         elif module == 'stat':
             path = values['path']
+            if path == '/fixture/api.service':
+                return {'changed':False,'stat':{'isreg':True,'islnk':False}}
             digest = task_vars['UPGRADE_DOCKER_PRESERVED_FILES'].get(path)
             if path == task_vars['UPGRADE_CRI_DOCKERD']['path']:
                 digest = task_vars['UPGRADE_CRI_DOCKERD']['sha256']
@@ -76,16 +79,35 @@ class ActionModule(ActionBase):
             elif service not in state.get('staged', {}).get(host, []):
                 return {'failed': True, 'msg': 'restart without staged binary'}
             elif service == 'kube-apiserver':
-                state['apis'][host] = 'v1.34.13'
+                state['apis'][host] = task_vars['K8S_VER']
             elif service in ['kube-controller-manager', 'kube-scheduler']:
-                state['controllers'][host][service] = 'v1.34.13'
+                state['controllers'][host][service] = task_vars['K8S_VER']
             elif service in ['kubelet', 'kube-proxy']:
-                node[service] = 'v1.34.13'
+                node[service] = task_vars['K8S_VER']
             else:
                 return {'failed': True, 'msg': 'unmodelled service'}
+        elif module == 'slurp' and values['src'] == '/var/lib/kubelet/config.yaml':
+            result['content'] = base64.b64encode(node['config'].encode()).decode()
+        elif module == 'slurp' and values['src'] == '/fixture/api.service':
+            text = state.get('api_auth',{}).get(host,'--requestheader-allowed-names= \\\n')
+            result['content'] = base64.b64encode(text.encode()).decode()
+        elif module == 'replace' and values['path'] == '/fixture/api.service':
+            before = state.get('api_auth',{}).get(host,'--requestheader-allowed-names= \\\n')
+            after = re.sub(values['regexp'],values['replace'],before)
+            state.setdefault('api_auth',{})[host]=after
+            result['changed'] = after != before
+        elif module == 'lineinfile' and values['path'] == '/var/lib/kubelet/config.yaml':
+            node['config'] += values['line']+'\n'
+            result['changed'] = True
         elif module == 'command':
             argv = values['argv']
-            if Path(argv[0]).name == 'kubectl':
+            if argv == ['systemctl','show','--property=FragmentPath','--value','kube-apiserver']:
+                stdout = '/fixture/api.service'
+            elif argv == ['openssl','x509','-in','/fixture/ssl/aggregator-proxy.pem','-noout','-subject','-nameopt','RFC2253']:
+                stdout = 'subject=O=k8s,CN='+state.get('aggregator_cn','aggregator')
+            elif argv == ['stat', '-fc', '%T', '/sys/fs/cgroup']:
+                stdout = node.get('cgroup', 'cgroup2fs')
+            elif Path(argv[0]).name == 'kubectl':
                 if '--raw=/version' in argv:
                     server = next(v.split('=', 1)[1] for v in argv if v.startswith('--server='))
                     backend = server.removeprefix('https://').split(':')[0]
@@ -95,6 +117,8 @@ class ActionModule(ActionBase):
                 elif '--raw=/api/v1' in argv:
                     stdout = json.dumps({'resources': [{'name': 'pods/eviction', 'kind': 'Eviction',
                                                         'group': 'policy', 'version': 'v1'}]})
+                elif 'pods' in argv:
+                    stdout = json.dumps({'items': state.get('metrics_pods', [])})
                 elif 'node' in argv:
                     nodename = argv[argv.index('node')+1]
                     observed = next(n for n in state['nodes'].values() if n['name'] == nodename)

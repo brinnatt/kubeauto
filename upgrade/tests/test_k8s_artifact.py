@@ -117,6 +117,8 @@ else:
         for event, branch, version, expected in [
             ('workflow_dispatch', 'v1.34.13', 'v1.34.13', ['v1.34.13']),
             ('push', 'v1.34.13', '', ['v1.34.13']),
+            ('workflow_dispatch', 'v1.35.10', 'v1.35.10', ['v1.35.10']),
+            ('push', 'v1.35.10', '', ['v1.35.10']),
             ('push', 'dev', '', ['v1.34.2', 'v1.33.6', 'v1.33.5', 'v1.32.10', 'v1.31.14']),
         ]:
             with self.subTest(event=event):
@@ -128,7 +130,7 @@ else:
                 self.assertEqual(result.returncode, 0, result.stderr)
                 matrix = json.loads(output.read_text().removeprefix('matrix='))
                 self.assertEqual(matrix, {'include': [{'version': v} for v in expected]})
-        for event, version in [('workflow_dispatch', 'v1.35.10'),
+        for event, version in [('workflow_dispatch', 'v1.36.6'),
                                ('workflow_dispatch', 'v1.34.13\nattack'), ('pull_request', '')]:
             output.write_text('')
             result = subprocess.run(['bash', '-euc', script], capture_output=True,
@@ -139,7 +141,7 @@ else:
             self.assertEqual(output.read_text(), '')
         docker = workflow['jobs']['docker']
         self.assertEqual(docker['needs'], 'plan')
-        self.assertEqual(workflow['on']['push']['branches'], ['dev', 'v1.34.13'])
+        self.assertEqual(workflow['on']['push']['branches'], ['dev', 'v1.34.13', 'v1.35.10'])
         self.assertEqual(docker['strategy']['matrix'], '${{ fromJSON(needs.plan.outputs.matrix) }}')
         build = next(s for s in docker['steps'] if s.get('name') == 'Build and push')
         self.assertEqual(build['with']['build-args'], 'K8S_VER=${{ matrix.version }}')

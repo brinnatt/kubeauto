@@ -1,0 +1,164 @@
+{
+  "schema_version": 1,
+  "accepted": true,
+  "classification": "scoped release-package qualification after accepted platform final run",
+  "source": "v1.34.13",
+  "target": "v1.35.10",
+  "marker": "NEXT_FROZEN_PACKAGE_SMOKE_PASS",
+  "build_command": "upgrade/v1.35.10/private/build-venv/bin/python -B build.py --kubecli-only",
+  "build_rc": 0,
+  "build_environment": {
+    "python": "3.12.13",
+    "architecture": "AMD64",
+    "shared_python_library": true,
+    "pyinstaller": "6.16.0",
+    "pip_check_rc": 0
+  },
+  "failures_preserved": [
+    {
+      "classification": "environment",
+      "cause": "default development Python3.12.14 had Py_ENABLE_SHARED=0; upstream PyInstaller refuses before analysis",
+      "resolution": "separate existing system Python3.12.13 shared-library venv; no source compilation/system change"
+    },
+    {
+      "classification": "release dependency",
+      "cause": "new Calico renderer directly imports Jinja2 but requirements omitted it; developer Ansible installation had masked the omission",
+      "resolution": "pin directly consumed Jinja2==3.1.6 and transitive MarkupSafe==3.0.3 identical to accepted live environment; generic upgrade direct-import/requirements contract and actual frozen CLI regression pass"
+    }
+  ],
+  "dependency_impact": {
+    "product_logic_or_templates_changed": false,
+    "live_versions_changed": false,
+    "reason": "only explicit frozen dependency declaration and its local contract changed; new pins equal packages used in accepted live qualification/final run",
+    "affected_scope": "packaging and CLI import/admission, retested; no live environment recreation or unrelated regression"
+  },
+  "checks": {
+    "related_contracts": 13,
+    "delivery_process_contracts": 44,
+    "original_requirement_disproof": "real new contract fails specifically on jinja2 with original requirement content; no repository reset",
+    "actual_cli_cases": [
+      "version rc0 exact target release defaults",
+      "--help rc0",
+      "upgrade --help rc0 exposes prepare and continuity",
+      "upgrade prepare with missing source rc1 after packaged admission; no remote action"
+    ],
+    "archive": "all policy runtime-data hashes equal source and package; all15 accepted IDs; matrix identity; no tools/lab/evidence/private/snapshot data",
+    "cleanup": "local temporary directory removed and no /var/tmp upgrade state created"
+  },
+  "artifact": {
+    "path": "dist/kubecli",
+    "sha256": "70809451ddd816e546cb427b50505dbb48a2b4f4c9e42cbd236dc945f4f38f96",
+    "size": 35996280
+  },
+  "inputs": {
+    "requirements": "f7605d95181ac54efc208352298fcce459ca62047f9f8337c735d33e61527055",
+    "build.py": "29dd1553d6b3b4c46f63abc6f94b4cf94e22118a3320645b65c686512c2e9560",
+    "kubecli-onefile.spec": "8ce9d9135ce78d21066e9a53222280a17cebd68cb5e942311a9807ae62af18ab",
+    "upgrade/tests/test_product_release_scope.py": "69cf5a697c5dae6ec7bacbf2cb1ef23a1a1505760231f0a225f3998645f7d31d",
+    "upgrade/product/calico_stage.py": "e60de46a942bd8e21a0d0562f53cbcbf8059b1d0d75618f9c5581e4dd577942a",
+    "upgrade/product/release_policy.py": "ee4f2fce425d0be5e57c6f535ebb1d94f5611c421a4a38bc32e8270d2160e264",
+    "upgrade/v1.35.10/evidence/UPG-15.json": "31cfdc196ab3ff30923819683ed5530a20fb346ebb11b7a85ba45b793caba8ac"
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/package-qualification/initial-static-python-build.log",
+      "sha256": "19dbbc8e544d8b70e6b5d78a36d4247e2c06f2560c221dc4ba3edd80816dc946"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/package-qualification/shared-python-first-build.log",
+      "sha256": "b297471e582c1d6f63eace4abfdeccb9dfeb78c41c4f5a528e2ca17043bb579c"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/package-qualification/original-missing-jinja-smoke.log",
+      "sha256": "fbb2a814c824832fa9081056a1406fb32e7db7e5073232442ae859933a488240"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/package-qualification/dependency-install.log",
+      "sha256": "1cbfc137f2c0e70499a7e8b69d76564987d65284320dc44b6de43b890a5c665c"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/package-qualification/dependency-contracts.log",
+      "sha256": "9198a49845abe338e9109704923e76dbf6f3cb8893760ea8c3aacdc174612750"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/package-qualification/missing-dependency-disproof.log",
+      "sha256": "8d245953fe0ead4f1589b04d5acd0ccd83304cba213e6feb02a7bd359846128f"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/package-qualification/delivery-contracts.log",
+      "sha256": "4aeba73669ce1cd3002c24f1d1d3a797b58ad5378ee043f981ee636a56748498"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/package-qualification/final-build.log",
+      "sha256": "962b5661cfc43d61affdcff118659778a4d1e744124ba2a87daed7f127f3d621"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/package-qualification/final-package-smoke.log",
+      "sha256": "47d75e17b50629280a0f859a115c9cbae7779ce3c7f2e28dec41d30b86dc4a46"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/package-qualification/package-smoke.py.txt",
+      "sha256": "0153c4f3d2a5436ac36c3267ba86e8901914eae52229c077890237fa07098d27"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/package-qualification/jinja316-pyproject.toml.txt",
+      "sha256": "2a791a16ef1c63fba78621a79b839bf7369bdf5c6dae543df9d859bb0ab76ae0"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/package-qualification/jinja-official-intro.html",
+      "sha256": "468b3d95d4b91ddf09c641dd5c80816b0b56885538fefe10c44ba56830aa3a2e"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/package-qualification/six-repository-final-audit.json",
+      "sha256": "579ea1ec9b501c6e4a53fc5d96dd43a8e0deaef6220425feaaf8895397d9ecfb"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/package-qualification/cli-help.log",
+      "sha256": "3144cc3f2b559fbd375dc55704a53482cf35a9e3f99e0890382ed6eb20b28c0e"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/package-qualification/cli-version.log",
+      "sha256": "52a5da99f1846e138585a4b31a462caaf5b33962cb52ae91f35627b4499c0903"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/package-qualification/cli-prepare-reaches-product.log",
+      "sha256": "f980132ec56aa4324de828d34621e5bb04ad21483c98cffd768a574a46ef423b"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/package-qualification/cli-upgrade-help.log",
+      "sha256": "a5e1097e5527be1f9f69c32bff5c816866535c14458679505e61da5b6d46259d"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/package-qualification/pyinstaller616-bindepend.py.txt",
+      "sha256": "a3c8e3de4d5b26d0a91ac82e54385cc6073fef5961abb965c2b4d14c638cb99a"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/package-qualification/build-environment-freeze.txt",
+      "sha256": "7b9c5ee202bf03f1fb3afe3e234454406fb9436826ca84c9a03daf6b5966a641"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/package-qualification/final-lease-readback.log",
+      "sha256": "28cd5887d04796abf899245d6ec0527b015aec4a644331cb4722ccc485e6d6ba"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/package-qualification/final-current-matrix.json",
+      "sha256": "1069ac431be81da2c0dcf8d6c67f54ff4220c37238f0da1c158d6b8277d9e10d"
+    }
+  ],
+  "official_sources": [
+    {
+      "url": "https://github.com/pyinstaller/pyinstaller/blob/v6.16.0/PyInstaller/depend/bindepend.py",
+      "basis": "installed official6.16.0 source shared-library contract"
+    },
+    {
+      "url": "https://jinja.palletsprojects.com/en/stable/intro/",
+      "basis": "official installation/runtime dependency documentation"
+    },
+    {
+      "url": "https://github.com/pallets/jinja/blob/3.1.6/pyproject.toml",
+      "basis": "exact3.1.6 package MarkupSafe>=2.0 dependency"
+    }
+  ],
+  "boundary": "local AMD64 frozen package verified, upstream artifact AMD64/ARM64 identities remain UPG-03; this does not claim an ARM64 frozen executable was built or a customer tag/container was published",
+  "customer_signoff": null
+}

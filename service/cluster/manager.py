@@ -899,19 +899,10 @@ class ClusterManager:
             return
 
         if command == "upgrade":
-            # A target branch that carries an upgrade matrix must enter the
-            # independent first-hop admission path.  It may refuse before any
-            # remote action while prerequisites are pending; the legacy 93
-            # playbook remains available only on branches without that matrix.
-            from upgrade.product.entrypoint import DEFAULT_MATRIX, run_minor_upgrade
-            if DEFAULT_MATRIX.is_file():
-                run_minor_upgrade(self, name)
-            else:
-                self._run_playbook(
-                    name,
-                    playbook,
-                    fail_msg=f"Failed to {command} cluster {name} with playbook {playbook}.",
-                )
+            # Missing release admission is a packaging error. Never silently
+            # fall back to the legacy patch playbook for a minor transition.
+            from upgrade.product.entrypoint import run_minor_upgrade
+            run_minor_upgrade(self, name)
         else:
             self._run_playbook(
                 name,

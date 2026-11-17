@@ -1,0 +1,45 @@
+{
+  "candidates": 3,
+  "head": "e897890dfe666703a544185ac5a836c80bd22c24",
+  "items": [
+    {
+      "action": "build",
+      "fingerprint": "9505cb3093d3bd8b9c393eff9c1c3266550dc2413d27bb16ff89620e6c3e7b51",
+      "row": {
+        "ctx": "./platform/network/kube-router/kube-router-2.12.0/",
+        "dockerfile": "./platform/network/kube-router/kube-router-2.12.0/Dockerfile",
+        "image": "brinnatt/kube-router",
+        "tag": "v2.12.0",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/kube-router"
+      }
+    },
+    {
+      "action": "build",
+      "fingerprint": "ee1bf515e914a45ac5f3e6f21c29068cfbc4b6b02128895313047ba7e906a3f3",
+      "row": {
+        "ctx": "./platform/network/kube-ovn/kube-ovn-1.17.1/",
+        "dockerfile": "./platform/network/kube-ovn/kube-ovn-1.17.1/Dockerfile",
+        "image": "brinnatt/kube-ovn",
+        "tag": "v1.17.1",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/kube-ovn"
+      }
+    },
+    {
+      "action": "build",
+      "fingerprint": "8062e47f158604e6f77f6d1a5edce9164ea0eaba6cf92cb0875c1db6e9a05a80",
+      "row": {
+        "ctx": "./platform/storage/openebs/openebs-kubectl-1.35.10/",
+        "dockerfile": "./platform/storage/openebs/openebs-kubectl-1.35.10/Dockerfile",
+        "image": "brinnatt/openebs-kubectl",
+        "tag": "1.35.10",
+        "talkedu_image": "hub.talkedu.cn/kubeauto/openebs-kubectl"
+      }
+    }
+  ],
+  "mode": "selected",
+  "reuse_checked": true,
+  "reused": [],
+  "schema": 1,
+  "shard_size": 20,
+  "shards": 1
+}

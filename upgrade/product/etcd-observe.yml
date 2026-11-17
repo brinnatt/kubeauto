@@ -79,6 +79,7 @@
       - >-
         item.Status.version == '3.6.4' or
         UPGRADE_ETCD_RESUME | default(false) | bool or
+        upgrade_etcd_serial_started | default(false) | bool or
         upgrade_etcd_completed_host | default('') | length > 0
   loop: "{{ upgrade_etcd_status.stdout | from_json }}"
 

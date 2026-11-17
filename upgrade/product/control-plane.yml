@@ -9,8 +9,9 @@
     - name: Require the admitted first-hop inputs
       ansible.builtin.assert:
         that:
-          - UPGRADE_SOURCE_VERSION | default('') == 'v1.33.6'
-          - K8S_VER == 'v1.34.13'
+          - >-
+            [UPGRADE_SOURCE_VERSION | default(''), K8S_VER] in
+            [['v1.33.6', 'v1.34.13'], ['v1.34.13', 'v1.35.10']]
           - UPGRADE_PRECONDITIONS_VERIFIED | default(false) | bool
           - UPGRADE_RUN_ID | default('') is match('^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,95}$')
           - groups['kube_master'] | length > 0
@@ -64,6 +65,12 @@
   gather_facts: false
   any_errors_fatal: true
   tasks:
+    - name: Admit every master authentication boundary before the first replacement
+      ansible.builtin.include_tasks: api-auth.yml
+      vars:
+        UPGRADE_API_AUTH_OBSERVE_ONLY: true
+      when: K8S_VER == 'v1.35.10'
+
     - name: Read every running controller identity without mutation
       ansible.builtin.shell: |
         set -eu
@@ -101,6 +108,12 @@
          selectattr('item', 'equalto', upgrade_this_backend) |
          map(attribute='stdout') | map('from_json') | first }}
   tasks:
+    - name: Restrict the existing aggregator identity before this API restart
+      ansible.builtin.include_tasks: api-auth.yml
+      vars:
+        UPGRADE_API_AUTH_OBSERVE_ONLY: false
+      when: K8S_VER == 'v1.35.10'
+
     - name: Replace only the API server executable
       ansible.builtin.copy:
         src: "{{ base_dir }}/kube-bin/kube-apiserver"
@@ -113,7 +126,7 @@
         name: kube-apiserver
         daemon_reload: true
         state: restarted
-      when: upgrade_prior_api.gitVersion != K8S_VER
+      when: upgrade_prior_api.gitVersion != K8S_VER or (upgrade_api_auth_repair.changed | default(false))
 
     - name: Wait for this backend to report the exact target
       ansible.builtin.command:

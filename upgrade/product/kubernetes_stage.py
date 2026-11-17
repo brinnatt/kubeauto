@@ -13,6 +13,7 @@ from upgrade.product.kubernetes_preflight import NODE_NAME, Refused, endpoint, m
 
 
 SOURCE, TARGET = 'v1.33.6', 'v1.34.13'
+TRANSITIONS = {(SOURCE, TARGET), ('v1.34.13', 'v1.35.10')}
 CONTROL = 'kubernetes/control-plane'
 PRODUCT = Path(__file__).parent
 
@@ -30,21 +31,24 @@ class StageFailed(Refused):
 
 class KubernetesStage:
     def __init__(self, source, hosts, variables, kubectl, kubeconfig, run_playbook):
+        self.source_version, self.target_version = source.get("source"), source.get("target")
+        if (self.source_version, self.target_version) not in TRANSITIONS:
+            raise Refused("source/target must be an explicitly reviewed adjacent minor transition")
         self.source = deepcopy(source)
         self.hosts = deepcopy(hosts)  # Ordered inventory host -> Kubernetes node name.
         self.variables = deepcopy(variables)
         self.kubectl, self.kubeconfig = Path(kubectl), Path(kubeconfig)
         self.run_playbook = run_playbook
-        if (source.get('source') != SOURCE or source.get('target') != TARGET or
+        if (source.get('source') != self.source_version or source.get('target') != self.target_version or
                 source.get('mutation') != 'none' or
                 source.get('cluster_identity', {}).get('namespace') != 'kube-system' or
                 not source.get('cluster_identity', {}).get('uid') or
-                variables.get('UPGRADE_SOURCE_VERSION') != SOURCE or
-                variables.get('K8S_VER') not in [TARGET, TARGET[1:]] or
+                variables.get('UPGRADE_SOURCE_VERSION') != self.source_version or
+                variables.get('K8S_VER') not in [self.target_version, self.target_version[1:]] or
                 variables.get('UPGRADE_PRECONDITIONS_VERIFIED') is not True or
                 not callable(run_playbook)):
             raise Refused('exact source receipt and outer admission are required')
-        self.variables['K8S_VER'] = TARGET  # config uses 1.x.y; internal books require v1.x.y.
+        self.variables['K8S_VER'] = self.target_version  # config uses 1.x.y; internal books require v1.x.y.
         if (not isinstance(hosts, dict) or not hosts or
                 not all(isinstance(host, str) and host and isinstance(name, str) and
                         NODE_NAME.fullmatch(name) for host, name in hosts.items()) or
@@ -55,12 +59,12 @@ class KubernetesStage:
         if (len(self.nodes) != len(nodes) or set(self.nodes) != set(hosts.values()) or
                 any(not node.get('uid') or node.get('Ready') is not True or
                     type(node.get('originally_schedulable')) is not bool or
-                    node.get('kubeletVersion') != SOURCE for node in nodes) or
+                    node.get('kubeletVersion') != self.source_version for node in nodes) or
                 len({node['uid'] for node in nodes}) != len(nodes)):
             raise Refused('source nodes must bind every UID and original healthy scheduling state')
         self.backends = [endpoint(b['server']) for b in source.get('api_backends', [])]
         if (not self.backends or len(set(self.backends)) != len(self.backends) or
-                any(b.get('gitVersion') != SOURCE or b.get('readyz_rc') != 0
+                any(b.get('gitVersion') != self.source_version or b.get('readyz_rc') != 0
                     for b in source['api_backends']) or
                 self.backends != variables.get('UPGRADE_API_BACKENDS')):
             raise Refused('complete exact API backend binding is required')
@@ -78,7 +82,8 @@ class KubernetesStage:
                     for p in [Path(__file__), PRODUCT/'kubernetes_preflight.py', PRODUCT/'journal.py',
                               *[PRODUCT/name for name in ['kubernetes-observe.yml', 'control-plane.yml',
                                  'node.yml', 'containerd-admission.yml', 'containerd.yml',
-                                 'containerd-edge.yml', 'docker-admission.yml', 'docker.yml']]]}})}
+                                 'containerd-edge.yml', 'docker-admission.yml', 'docker.yml',
+                                 'cgroup.yml', 'api-auth.yml', 'metrics-eviction.yml']]]}})}
 
     def read(self, args, server):
         return mapping(query(self.kubectl, self.kubeconfig, server, args))
@@ -87,14 +92,14 @@ class KubernetesStage:
         """Reobserve the complete identity and allowed progress, never trust a marker."""
         completed = set(journal.data['completed']) | ({after} if after else set())
         active = None if after else journal.data['active']
-        allowed_apis = [TARGET] if CONTROL in completed else (
-            [SOURCE, TARGET] if active == CONTROL else [SOURCE])
+        allowed_apis = [self.target_version] if CONTROL in completed else (
+            [self.source_version, self.target_version] if active == CONTROL else [self.source_version])
         all_target = True
         for server in self.backends:
             version = self.read(['get', '--raw=/version'], server).get('gitVersion')
             if version not in allowed_apis:
                 raise Refused('API version is outside the journal-owned boundary')
-            all_target &= version == TARGET
+            all_target &= version == self.target_version
             query(self.kubectl, self.kubeconfig, server, ['get', '--raw=/readyz'])
             namespace = self.read(['get', 'namespace', 'kube-system', '-o', 'json'], server)
             if (namespace.get('metadata', {}).get('uid') != self.binding['cluster_uid'] or
@@ -113,8 +118,8 @@ class KubernetesStage:
                 raise Refused('unknown or duplicate node')
             seen.add(name)
             step = 'kubernetes/node/' + name
-            versions = [TARGET] if step in completed else (
-                [SOURCE, TARGET] if step == active else [SOURCE])
+            versions = [self.target_version] if step in completed else (
+                [self.source_version, self.target_version] if step == active else [self.source_version])
             if (meta.get('uid') != self.nodes[name]['uid'] or meta.get('deletionTimestamp') or
                     [c.get('status') for c in status.get('conditions', [])
                      if c.get('type') == 'Ready'] != ['True'] or
@@ -141,8 +146,8 @@ class KubernetesStage:
         if len(journal.data['completed']) < start:
             raise Refused('earlier admitted platform stages are not complete')
         all_target, allowed_nodes = self.observe(journal)
-        controller_versions = [TARGET] if CONTROL in journal.data['completed'] else (
-            [SOURCE, TARGET] if journal.data['active'] == CONTROL and all_target else [SOURCE])
+        controller_versions = [self.target_version] if CONTROL in journal.data['completed'] else (
+            [self.source_version, self.target_version] if journal.data['active'] == CONTROL and all_target else [self.source_version])
         self.book('kubernetes-observe.yml', {**self.variables,
             'UPGRADE_EXPECTED_CONTROLLER_VERSIONS': controller_versions,
             'UPGRADE_EXPECTED_NODE_VERSIONS': {host: allowed_nodes[name]

@@ -1,0 +1,37 @@
+{
+  "run_id": 43814785885,
+  "head_sha": "686e0efa2e81da2a0e1334ed638d9a0c9f445862",
+  "artifact_sha256": "6cc35655c9598bf6a47e9f3ff2b2637c74108f60deaa719fe1a1d86de718b298",
+  "mode": "readback",
+  "built_images": [],
+  "published_images": [],
+  "records": [
+    {
+      "image": "hub.talkedu.cn/kubeauto/kubeauto-k8s-bin:v1.34.13",
+      "exists": true,
+      "platforms": {
+        "amd64": "sha256:4e494547894ccd9009383a1acae091a4f4d9036bb57457450fe7d061d25b4813",
+        "arm64": "sha256:56cf124d1c5e810eeb1b9d327cc1d59a7ac59b764fa06e3e728edf8aeccb0d1c"
+      },
+      "digest": "sha256:102ab56b22ea78c726949ff18c6798f6d7a1a53dd7debc07384373985e153d35"
+    },
+    {
+      "image": "hub.talkedu.cn/kubeauto/kubeauto-k8s-bin:v1.35.10",
+      "exists": false
+    },
+    {
+      "image": "docker.io/brinnatt/kubeauto-k8s-bin:v1.34.13",
+      "exists": true,
+      "platforms": {
+        "amd64": "sha256:4e494547894ccd9009383a1acae091a4f4d9036bb57457450fe7d061d25b4813",
+        "arm64": "sha256:56cf124d1c5e810eeb1b9d327cc1d59a7ac59b764fa06e3e728edf8aeccb0d1c"
+      },
+      "digest": "sha256:102ab56b22ea78c726949ff18c6798f6d7a1a53dd7debc07384373985e153d35"
+    },
+    {
+      "image": "docker.io/brinnatt/kubeauto-k8s-bin:v1.35.10",
+      "exists": false
+    }
+  ],
+  "marker": "K8S_REGISTRY_PROBE_PASS"
+}

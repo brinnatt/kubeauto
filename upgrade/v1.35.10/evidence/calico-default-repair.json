@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "run_id": "v13510-qualify-20261116a",
+  "matrix_id": "UPG-06",
+  "category": "product",
+  "first_failure": "source Calico declaration/customization differs: daemonset/calico-node",
+  "causal_difference": "four writable VolumeMount.readOnly:false fields were omitted by official core/v1 JSON serialization",
+  "cluster_mutation_before_failure": "etcd patch completed; Calico and Kubernetes upgrade not started",
+  "official_source_id": "K8S-13413-VOLUMEMOUNT-OMITEMPTY",
+  "fix": "canonicalize only explicit false VolumeMount declaration flags; compare readOnly using its exact false default; refuse actual permission changes",
+  "static_qualification": "19 focused Calico/platform/coordinator tests passed",
+  "recovery": "no journal edits; old private state preserved; fixed runner removed only owned fixture and cluster and verified cleanup",
+  "cleanup_marker": "NEXT_SESSION_ABORT_CLEAN_VERIFY_PASS",
+  "original_run_rc": 1,
+  "ga_claim": false,
+  "references": [
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116a/control-failure/control.status.json",
+      "sha256": "aa00f73218c6010112297efee185df1a532dccae3cd6b1e01456798403dfbeef"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116a/control-failure/control.failure-1.json",
+      "sha256": "aa00f73218c6010112297efee185df1a532dccae3cd6b1e01456798403dfbeef"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116a/control-failure/control.attempt-1.log",
+      "sha256": "5649e810d225eb9cbf883e71b959786233564228da2541f61bbfe96a60c183fa"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116a/control-failure/v13510-qualify-20261116a.log",
+      "sha256": "78d001f14813d92a215645d24fe1f87457f6ff2c57d23209e1fdff5437db1e31"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116a/control-failure/v13510-qualify-20261116a.exit",
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116a/control-failure/v13510-qualify-20261116a.finalized",
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+    }
+  ]
+}

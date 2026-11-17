@@ -1,0 +1,62 @@
+[
+  {
+    "name": "k8s135-changelog",
+    "url": "https://api.github.com/repos/kubernetes/kubernetes/contents/CHANGELOG/CHANGELOG-1.35.md?ref=v1.35.10",
+    "path": "upgrade/official-snapshots/2026-11-16-next-hop/k8s135-changelog.txt",
+    "sha256": "1f9d86189c4f783fd6cd8b0f11f70af51999c208d8eaefc0faa170a3735ab9ca",
+    "bytes": 347261,
+    "source_blob": "bc35a166b603c3bf9ffc10e5571d46ee383cb4de",
+    "status": "obtained"
+  },
+  {
+    "name": "k8s135-dependencies",
+    "url": "https://api.github.com/repos/kubernetes/kubernetes/contents/build/dependencies.yaml?ref=v1.35.10",
+    "path": "upgrade/official-snapshots/2026-11-16-next-hop/k8s135-dependencies.txt",
+    "sha256": "15678d19d7b5c7e013ca3811666ce3c723698ef1d55c01ddf860b7d781dae733",
+    "bytes": 12277,
+    "source_blob": "3ac5ec484bbe25295f44dfbde3e0ba7e8c14af44",
+    "status": "obtained"
+  },
+  {
+    "name": "k8s135-kubelet-server",
+    "url": "https://api.github.com/repos/kubernetes/kubernetes/contents/cmd/kubelet/app/server.go?ref=v1.35.10",
+    "path": "upgrade/official-snapshots/2026-11-16-next-hop/k8s135-kubelet-server.txt",
+    "sha256": "147fe4e02b0ec34962ac0301dc8832a21af325e00650781e7f6c23db1c001895",
+    "bytes": 55585,
+    "source_blob": "c657106242e76a97cb46b8bdd9080a79fd8b53d6",
+    "status": "obtained"
+  },
+  {
+    "name": "k8s135-feature-gates",
+    "url": "https://api.github.com/repos/kubernetes/kubernetes/contents/pkg/features/versioned_kube_features.go?ref=v1.35.10",
+    "status": "unavailable",
+    "error": "HTTPError"
+  },
+  {
+    "name": "k8s135-kubelet-config",
+    "url": "https://api.github.com/repos/kubernetes/kubernetes/contents/staging/src/k8s.io/kubelet/config/v1beta1/types.go?ref=v1.35.10",
+    "path": "upgrade/official-snapshots/2026-11-16-next-hop/k8s135-kubelet-config.txt",
+    "sha256": "e21379d9afd44f5e8f18848338a26bb7bc563f26da1e634a440e69f7a8a680ff",
+    "bytes": 59679,
+    "source_blob": "a7c4e21829c3b9e4089f5b9b0dcaf13a9625fdfe",
+    "status": "obtained"
+  },
+  {
+    "name": "k8s135-proxy-config",
+    "url": "https://api.github.com/repos/kubernetes/kubernetes/contents/staging/src/k8s.io/kube-proxy/config/v1alpha1/types.go?ref=v1.35.10",
+    "path": "upgrade/official-snapshots/2026-11-16-next-hop/k8s135-proxy-config.txt",
+    "sha256": "9ed0ee997438ee88daf92757ef1e9a62ed3527c2cbc762e493c41fbbe9f28c74",
+    "bytes": 13589,
+    "source_blob": "f246934178015a2bd06638eed8c49a6c18c3e818",
+    "status": "obtained"
+  },
+  {
+    "name": "k8s135-cgroup-manager",
+    "url": "https://api.github.com/repos/kubernetes/kubernetes/contents/pkg/kubelet/cm/container_manager_linux.go?ref=v1.35.10",
+    "path": "upgrade/official-snapshots/2026-11-16-next-hop/k8s135-cgroup-manager.txt",
+    "sha256": "17c563fa20db3e60d0c63cc461d6adda8f186fdc17611efc3d6b7f631baa1542",
+    "bytes": 39006,
+    "source_blob": "11f7ea02ef09c03698160b8c96f3514df4841c88",
+    "status": "obtained"
+  }
+]

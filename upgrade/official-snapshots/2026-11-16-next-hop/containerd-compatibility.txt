@@ -1,0 +1,343 @@
+<!doctype html><html lang=en-us><head><script>(function(e,t,n,s,o,i,a){e.GoogleAnalyticsObject=o,e[o]=e[o]||function(){(e[o].q=e[o].q||[]).push(arguments)},e[o].l=1*new Date,i=t.createElement(n),a=t.getElementsByTagName(n)[0],i.async=1,i.src=s,a.parentNode.insertBefore(i,a)})(window,document,"script","https://www.google-analytics.com/analytics.js","ga"),ga("create","UA-71407002-1","auto"),ga("send","pageview")</script><meta charset=utf-8><meta name=viewport content="initial-scale=1,maximum-scale=1,user-scalable=no"><meta property="og:title" content="containerd &amp;ndash; Versioning and release"><meta property="og:url" content="https://containerd.io/releases/"><meta property="og:locale" content="en_US"><meta property="og:site_name" content="containerd"><meta name=og:type content="article"><meta name=og:image content="https://containerd.io/img/logos/horizontal/color/containerd-horizontal-color.png"><meta name=og:image:alt content="containerd project logo"><meta name=og:image:type content="image/png"><meta name=twitter:card content="summary"><meta name=twitter:site content="@containerd"><meta name=twitter:creator content="@containerd"><link rel=canonical href=https://containerd.io/releases/><link rel="shortcut icon" href=/favicon.png type=image/png><meta name=generator content="Hugo 0.116.0"><title>containerd &ndash; An industry-standard container runtime with an emphasis on simplicity, robustness and portability</title><link rel=stylesheet href=/css/style.d3bddcb3643397e3158234933494403d557aafa86f6e947809a99a051168e77f.css integrity="sha256-073cs2Qzl+MVgjSTNJRAPVV6r6hvbpR4CamaBRFo538="><link rel=stylesheet href=/css/syntax.6c8d2b9fbc19b041114d99efbca542518afe85fe83e683218ccc997fc35bb6ec.css integrity="sha256-bI0rn7wZsEERTZnvvKVCUYr+hf6D5oMhjMyZf8Nbtuw=">
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-KGB7V28PEJ"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-KGB7V28PEJ');
+</script>
+</head><body class="page is--page has-navbar-fixed-top"><div class="navbar is-fixed-top has-shadow"><div class=container><div class=navbar-brand><a class=navbar-item href=https://containerd.io><img src=/img/logos/navbar-dark-logo.png alt="containerd navbar logo"></a><div class="navbar-item is-docs-title has-text-weight-bold is-hidden-mobile">Versioning and release</div><a role=button class=navbar-burger aria-label=menu aria-expanded=false data-target=navbarMenu><span aria-hidden=true></span>
+<span aria-hidden=true></span>
+<span aria-hidden=true></span></a></div><div class=navbar-menu id=navbarMenu><div class=navbar-end><a class="navbar-item has-text-weight-bold" href=/downloads>Downloads</a><div class="navbar-item is-hoverable has-dropdown has-text-weight-bold"><a class=navbar-link href=/docs/2.4/>Docs</a><div class=navbar-dropdown><a class=navbar-item href=/docs/2.4/>2.4</a>
+<a class=navbar-item href=/docs/2.3/>2.3</a>
+<a class=navbar-item href=/docs/2.2/>2.2</a>
+<a class=navbar-item href=/docs/2.1/>2.1</a>
+<a class=navbar-item href=/docs/1.7/>1.7</a>
+<a class=navbar-item href=/docs/main/>main</a></div></div><div class="navbar-item is-hoverable has-dropdown has-text-weight-bold"><div class=navbar-link>Project</div><div class="navbar-dropdown is-right"><a class=navbar-item href=https://github.com/cncf/foundation/blob/master/code-of-conduct.md>Code of conduct</a>
+<a class=navbar-item href=/keps/>Collaboration with Kubernetes SIG-Node</a>
+<a class=navbar-item href=/contributing/>Contributing</a>
+<a class=navbar-item href=/roadmap/>Roadmap</a>
+<a class=navbar-item href=/scope/>Scope and principles</a>
+<a class=navbar-item href=/security/>Security and audits</a>
+<a class=navbar-item href=/releases/>Versioning and release</a>
+<a class=navbar-item href=https://github.com/cncf/artwork/blob/master/examples/graduated.md#containerd-logos>containerd branding</a></div></div><div class=navbar-item><div class="field is-grouped"><p class=control><a class="button is-borderless has-background-black has-text-white" href=https://github.com/containerd/containerd aria-label=GitHub><span class=icon><i class="fab fa-github" aria-hidden=true></i></span></a>
+<a class="button has-background-slack-green is-borderless has-text-white" href=https://slack.containerd.io/ aria-label=Slack><span class=icon><i class="fab fa-slack" aria-hidden=true></i></span></a>
+<a class="button has-background-bluesky-blue is-borderless has-text-white" href=https://bsky.app/profile/containerd.dev aria-label=Bluesky><span class=icon><i class="fab fa-bluesky" aria-hidden=true></i></span></a></p></div></div></div></div></div></div><main class=main><section class="hero is-dark"><div class=container><div class=hero-body><p class="title is-size-2 is-size-3 has-text-weight-bold">Versioning and release</p></div></div></section><article class=is-page-article><div class=container><div class="content is-inner-content"><p>This document details the versioning and release plan for containerd. Stability
+is a top goal for this project, and we hope that this document and the processes
+it entails will help to achieve that. It covers the release process, versioning
+numbering, backporting, API stability and support horizons.</p><p>If you rely on containerd, it would be good to spend time understanding the
+areas of the API that are and are not supported and how they impact your
+project in the future.</p><p>This document will be considered a living document. Supported timelines,
+backport targets and API stability guarantees will be updated here as they
+change.</p><p>If there is something that you require or this document leaves out, please
+reach out by
+<a href=https://github.com/containerd/containerd/issues>filing an issue</a>
+.</p><h2 id=releases>Releases</h2><p>Releases of containerd will be versioned using dotted triples, similar to
+<a href=http://semver.org/>Semantic Version</a>
+. For the purposes of this document, we
+will refer to the respective components of this triple as
+<code>&lt;major>.&lt;minor>.&lt;patch></code>. The version number may have additional information,
+such as alpha, beta and release candidate qualifications. Such releases will be
+considered &ldquo;pre-releases&rdquo;.</p><h3 id=major-and-minor-releases>Major and Minor Releases</h3><p>Major and minor releases of containerd will be made from main. Releases of
+containerd will be marked with GPG signed tags and announced at
+<a href=https://github.com/containerd/containerd/releases>https://github.com/containerd/containerd/releases</a>
+. The tag will be of the
+format <code>v&lt;major>.&lt;minor>.&lt;patch></code> and should be made with the command <code>git tag -s v&lt;major>.&lt;minor>.&lt;patch></code>.</p><p>After a minor release, a branch will be created, with the format
+<code>release/&lt;major>.&lt;minor></code> from the minor tag. All further patch releases will
+be done from that branch. For example, once we release <code>v1.0.0</code>, a branch
+<code>release/1.0</code> will be created from that tag. All future patch releases will be
+done against that branch.</p><h3 id=release-cadence>Release Cadence</h3><p>Since containerd v2.3 in April 2026, minor releases are provided on a time basis
+with a cadence of 4 months. New minor releases are scheduled for April, August,
+and December of each year. This cadence is synchronized with the Kubernetes
+release schedule to ensure that new features in containerd can be smoothly
+adopted by new Kubernetes releases.</p><p>The maintainers will maintain a roadmap and milestones for each release, however,
+features may be pushed to accommodate the release timeline. If your issue or feature
+is not present in the roadmap, please open a Github issue or leave a
+comment requesting it be added to a milestone.</p><p>As part of synchronizing with the Kubernetes release schedule, containerd will
+cut beta and release candidates that align with the Kubernetes release cycle.
+This allows for end-to-end testing of new Kubernetes features with a compatible
+containerd version before the final release of either project.</p><h3 id=patch-releases>Patch Releases</h3><p>Patch releases are made directly from release branches and will be done as needed
+by the release branch owners.</p><h3 id=pre-releases>Pre-releases</h3><p>Pre-releases, such as alphas, betas and release candidates will be conducted
+from their source branch. For major and minor releases, these releases will be
+done from main. For patch releases, it is uncommon to have pre-releases but
+they may have an rc based on the discretion of the release branch owners.</p><h3 id=support-horizon>Support Horizon</h3><p>Support horizons will be defined corresponding to a release branch, identified
+by <code>&lt;major>.&lt;minor></code>. Release branches will be in one of several states:</p><ul><li><strong><em>Future</em></strong>: An upcoming scheduled release.</li><li><strong><em>Alpha</em></strong>: The next scheduled release on the main branch under active development.</li><li><strong><em>Beta</em></strong>: The next scheduled release on the main branch under testing. Begins 8-10 weeks before a final release.</li><li><strong><em>RC</em></strong>: The next scheduled release on the main branch under final testing and stabilization. Begins 2-4 weeks before a final release. For new releases where the source branch is main, the main branch will be in a feature freeze during this phase.</li><li><strong><em>Active</em></strong>: The release is a stable branch which is currently supported and accepting patches.</li><li><strong><em>Extended</em></strong>: The release branch is only accepting security patches.</li><li><strong><em>LTS</em></strong>: The release is a long term stable branch which is currently supported and accepting patches.</li><li><strong><em>End of Life</em></strong>: The release branch is no longer supported and no new patches will be accepted.</li></ul><p>Regular (non-LTS) releases will be supported for 8 months after a <em>minor</em>
+release. This means that we will accept bug reports and backports to these
+release branches until the end of life date. Additionally, releases may have an
+extended security support period after the end of the active period to accept
+security backports. This timeframe will be decided by maintainers before the end
+of the active status.</p><p>One release per year will be designated a Long Term Stable (<em>LTS</em>) release. LTS
+releases are supported for at least two years after their initial <em>minor</em>
+(x.y.0) release. The maintainers of the <em>LTS</em> branch may commit to a longer period
+or extend the support period as needed. These branches will accept bug reports and
+backports until the end of life date. They may also accept a wider range of
+patches than non-<em>LTS</em> releases to support the longer term maintainability of the
+branch, including library dependency, toolchain (including Go) and other version
+updates which are needed to ensure each release is built with fully supported
+dependencies. Feature backports are up to the discretion of the maintainers who
+own the branch but should be rejected by default.</p><p>This combination of regular and LTS releases allows users to choose between
+adopting new features more quickly or prioritizing stability and longer support
+lifecycles.</p><h3 id=release-owners>Release Owners</h3><p>Every release shall be assigned owners when entering into the beta stage of the release. The initial
+release owners will be responsible for creating the releases and ensuring the release is on time.
+Once the release is in rc, the release owners should be part of any discussion around merging
+impactful or risky changes. Every release should have at least two owners who are all active
+maintainers and one of which has been a release owner in at least two prior releases.</p><p>Once the final release is out and the release branch moves to active, ownership will be
+transferred back over to all committers. Active releases are maintained by all committers
+until the release reaches end of life or the branch transitions to <em>LTS</em>.</p><p>Every <em>LTS</em> release requires at least two maintainers to volunteer as owners. The owners of the
+<em>LTS</em> release may step down or be replaced by another maintainer at any time if they can no longer
+support the release. If no maintainers volunteer to own the <em>LTS</em> release after maintainers step
+down, the branch will end of life after 6 months of extended support with ownership transferred back
+to all committers.</p><h3 id=current-state-of-containerd-releases>Current State of containerd Releases</h3><table><thead><tr><th>Release</th><th>Status</th><th>Start</th><th>End of Life</th><th>Owners</th></tr></thead><tbody><tr><td><a href=https://github.com/containerd/containerd/releases/tag/0.0.5>0.0</a></td><td>End of Life</td><td>Dec 4, 2015</td><td>-</td><td></td></tr><tr><td><a href=https://github.com/containerd/containerd/releases/tag/v0.1.0>0.1</a></td><td>End of Life</td><td>Mar 21, 2016</td><td>-</td><td></td></tr><tr><td><a href=https://github.com/containerd/containerd/tree/v0.2.x>0.2</a></td><td>End of Life</td><td>Apr 21, 2016</td><td>December 5, 2017</td><td></td></tr><tr><td><a href=https://github.com/containerd/containerd/releases/tag/v1.0.3>1.0</a></td><td>End of Life</td><td>December 5, 2017</td><td>December 5, 2018</td><td></td></tr><tr><td><a href=https://github.com/containerd/containerd/releases/tag/v1.1.8>1.1</a></td><td>End of Life</td><td>April 23, 2018</td><td>October 23, 2019</td><td></td></tr><tr><td><a href=https://github.com/containerd/containerd/releases/tag/v1.2.13>1.2</a></td><td>End of Life</td><td>October 24, 2018</td><td>October 15, 2020</td><td></td></tr><tr><td><a href=https://github.com/containerd/containerd/releases/tag/v1.3.10>1.3</a></td><td>End of Life</td><td>September 26, 2019</td><td>March 4, 2021</td><td></td></tr><tr><td><a href=https://github.com/containerd/containerd/releases/tag/v1.4.13>1.4</a></td><td>End of Life</td><td>August 17, 2020</td><td>March 3, 2022</td><td></td></tr><tr><td><a href=https://github.com/containerd/containerd/releases/tag/v1.5.18>1.5</a></td><td>End of Life</td><td>May 3, 2021</td><td>February 28, 2023</td><td></td></tr><tr><td><a href=https://github.com/containerd/containerd/releases/tag/v1.6.39>1.6</a></td><td>End of Life</td><td>February 15, 2022</td><td>August 23, 2025</td><td></td></tr><tr><td><a href=https://github.com/containerd/containerd/releases/tag/v1.7.36>1.7</a></td><td>End of Life</td><td>March 10, 2023</td><td>September 30, 2026</td><td></td></tr><tr><td><a href=https://github.com/containerd/containerd/releases/tag/v2.0.13>2.0</a></td><td>LTS</td><td>November 5, 2024</td><td>March 2027*</td><td><a href=https://github.com/samuelkarp>@samuelkarp</a>
+,
+<a href=https://github.com/chrishenzie>@chrishenzie</a></td></tr><tr><td><a href=https://github.com/containerd/containerd/releases/tag/v2.1.9>2.1</a></td><td>End of Life</td><td>May 7, 2025</td><td>July 3, 2026</td><td></td></tr><tr><td><a href=https://github.com/containerd/containerd/releases/tag/v2.2.9>2.2</a></td><td>Active</td><td>November 5, 2025</td><td>November 6, 2026</td><td>@containerd/committers</td></tr><tr><td><a href=https://github.com/containerd/containerd/releases/tag/v2.3.6>2.3</a></td><td>LTS</td><td>April 30, 2026</td><td>April 30, 2028</td><td>@containerd/committers</td></tr><tr><td><a href=https://github.com/containerd/containerd/releases/tag/v2.4.1>2.4</a></td><td>Active</td><td>September 16, 2026</td><td>May 16, 2027</td><td>@containerd/committers</td></tr><tr><td><em><a href=https://github.com/containerd/containerd/milestone/52>2.5</a></em></td><td><em>Planned</em></td><td><em>January 6, 2027</em></td><td><em>September 6, 2027</em></td><td>@containerd/committers</td></tr></tbody></table><p>* Support for the 2.0 release branch was provided by @containerd/committers until November 7, 2025. Extended support through March 2027 is provided by
+<a href=https://github.com/samuelkarp>@samuelkarp</a>
+and
+<a href=https://github.com/chrishenzie>@chrishenzie</a>
+. This extended support is focused on usage with Kubernetes 1.33 via
+<a href=https://cloud.google.com/kubernetes-engine>Google Kubernetes Engine</a>
+. Changes may not be accepted if they are not needed for this usage.</p><h3 id=kubernetes-support>Kubernetes Support</h3><p>The Kubernetes version matrix represents the versions of containerd which are
+recommended for a Kubernetes release. Any actively supported version of
+containerd may receive patches to fix bugs encountered in any version of
+Kubernetes, however, our recommendation is based on which versions have been
+the most thoroughly tested. See the
+<a href=https://testgrid.k8s.io/sig-node-containerd>Kubernetes test grid</a>
+for the list of actively tested versions. Kubernetes only supports n-3 minor
+release versions and containerd will ensure there is always a supported version
+of containerd for every supported version of Kubernetes.</p><table><thead><tr><th>Kubernetes Version</th><th>containerd Version</th><th>CRI Version</th></tr></thead><tbody><tr><td>1.32</td><td>2.1.0+, 2.0.1+, 1.7.24+, 1.6.36+</td><td>v1</td></tr><tr><td>1.33</td><td>2.1.0+, 2.0.4+, 1.7.24+, 1.6.36+</td><td>v1</td></tr><tr><td>1.34</td><td>2.1.3+, 2.0.6+, 1.7.28+, 1.6.39+</td><td>v1</td></tr><tr><td>1.35</td><td>2.2.0+, 2.1.5+, 1.7.28+</td><td>v1</td></tr><tr><td>1.36</td><td>2.3.0+, 2.2.0+</td><td>v1</td></tr><tr><td>1.37</td><td>2.4.0+, 2.3.0+</td><td>v1</td></tr></tbody></table><p>Deprecated containerd and kubernetes versions</p><table><thead><tr><th>Containerd Version</th><th>Kubernetes Version</th><th>CRI Version</th></tr></thead><tbody><tr><td>v1.0 (w/ cri-containerd)</td><td>1.7, 1.8, 1.9</td><td>v1alpha1</td></tr><tr><td>v1.1</td><td>1.10+</td><td>v1alpha2</td></tr><tr><td>v1.2</td><td>1.10+</td><td>v1alpha2</td></tr><tr><td>v1.3</td><td>1.12+</td><td>v1alpha2</td></tr><tr><td>v1.4</td><td>1.19+</td><td>v1alpha2</td></tr><tr><td>v1.5</td><td>1.20+</td><td>v1 (1.23+), v1alpha2 (until 1.25) **</td></tr><tr><td>v1.6.15+, v1.7.0+</td><td>1.26+</td><td>v1</td></tr></tbody></table><p>** Note: containerd v1.6.<em>, and v1.7.</em> support CRI v1 and v1alpha2 through EOL as those releases continue to support older versions of k8s, cloud providers, and other clients using CRI v1alpha2. CRI v1alpha2 is deprecated in v1.7 and is not present in containerd v2.0.</p><h3 id=platform-support>Platform Support</h3><p>containerd runs on a range of operating systems and CPU architectures, but the
+level of support we can provide varies by platform. Support is limited by what
+we are able to build, test, and maintain. A platform that we can fully test in
+CI can be supported more strongly than one we can only compile.</p><p>To make these differences explicit, platforms are organized into tiers. A tier
+describes what the project commits to for a platform. Tiers are forward-looking
+and apply to in-development and future releases. Platforms may be
+<a href=#demotion-and-removal>demoted or removed</a>
+if the project is no longer able to
+commit to support at a given tier.</p><p>A platform is identified by its <code>GOOS/GOARCH</code> pair, optionally with a variant
+(for example <code>linux/amd64</code>, <code>windows/amd64</code>, or <code>linux/arm/v7</code>). For operating
+systems like Linux, we do not designate specific distributions as supported,
+however automated testing primarily covers Ubuntu, Fedora, and AlmaLinux.</p><h4 id=tiers>Tiers</h4><p><strong><em>Tier 1: Supported.</em></strong> The platform is built, released, and exercised by
+automated tests (integration and/or CRI tests) in CI on every change. Test
+failures on a Tier 1 platform generally block merges and releases. These are the
+platforms we recommend for production use. Release artifacts are published with
+each release and nightly builds are produced.</p><p><strong><em>Tier 2: Released, best-effort.</em></strong> The platform is built and release artifacts
+are published, but we run no automated testing for it. While binaries are
+produced with the expectation that they work, the project cannot independently
+validate runtime behavior. Bugs that are specific to a Tier 2 platform are
+addressed on a best-effort basis and may depend on the reporter or interested
+parties to diagnose, fix, and verify. Nightly builds are produced.</p><p><strong><em>Tier 3: Build-verified.</em></strong> The platform is compiled in CI so that we do not
+knowingly break it, but no release artifacts are published and no testing is
+performed. This tier exists primarily to support the adoption of containerd on
+platforms that we do not have the resources to support at a stronger level.</p><p><strong><em>Unsupported.</em></strong> Any platform not listed below. containerd may still build and
+run on these platforms, but the project makes no commitments and performs no
+verification. Users are free to build from source for their own use.</p><h4 id=current-platforms>Current platforms</h4><table><thead><tr><th>Platform</th><th style=text-align:center>Tier</th><th style=text-align:center>Release artifacts</th><th style=text-align:center>Nightly builds</th><th style=text-align:center>Functional CI testing</th><th style=text-align:center>Build / compile check</th></tr></thead><tbody><tr><td>linux/amd64</td><td style=text-align:center>1</td><td style=text-align:center>✅</td><td style=text-align:center>✅</td><td style=text-align:center>✅</td><td style=text-align:center>✅</td></tr><tr><td>linux/arm64</td><td style=text-align:center>1</td><td style=text-align:center>✅</td><td style=text-align:center>✅</td><td style=text-align:center>✅</td><td style=text-align:center>✅</td></tr><tr><td>windows/amd64</td><td style=text-align:center>1</td><td style=text-align:center>✅</td><td style=text-align:center>✅</td><td style=text-align:center>✅</td><td style=text-align:center>✅</td></tr><tr><td>linux/ppc64le</td><td style=text-align:center>2</td><td style=text-align:center>✅</td><td style=text-align:center>✅</td><td style=text-align:center>❌</td><td style=text-align:center>✅</td></tr><tr><td>linux/riscv64</td><td style=text-align:center>2</td><td style=text-align:center>✅</td><td style=text-align:center>✅</td><td style=text-align:center>❌</td><td style=text-align:center>✅</td></tr><tr><td>linux/s390x</td><td style=text-align:center>2</td><td style=text-align:center>✅</td><td style=text-align:center>✅</td><td style=text-align:center>❌</td><td style=text-align:center>✅</td></tr><tr><td>linux/arm/v7</td><td style=text-align:center>3</td><td style=text-align:center>❌</td><td style=text-align:center>❌</td><td style=text-align:center>❌</td><td style=text-align:center>✅</td></tr><tr><td>linux/arm/v5</td><td style=text-align:center>3</td><td style=text-align:center>❌</td><td style=text-align:center>❌</td><td style=text-align:center>❌</td><td style=text-align:center>✅</td></tr><tr><td>linux/loong64</td><td style=text-align:center>3</td><td style=text-align:center>❌</td><td style=text-align:center>❌</td><td style=text-align:center>❌</td><td style=text-align:center>✅</td></tr><tr><td>darwin/arm64</td><td style=text-align:center>3</td><td style=text-align:center>❌</td><td style=text-align:center>❌</td><td style=text-align:center>❌</td><td style=text-align:center>✅</td></tr><tr><td>freebsd/amd64</td><td style=text-align:center>3</td><td style=text-align:center>❌</td><td style=text-align:center>❌</td><td style=text-align:center>❌</td><td style=text-align:center>✅</td></tr><tr><td>freebsd/arm64</td><td style=text-align:center>3</td><td style=text-align:center>❌</td><td style=text-align:center>❌</td><td style=text-align:center>❌</td><td style=text-align:center>✅</td></tr><tr><td>windows/arm64</td><td style=text-align:center>3</td><td style=text-align:center>❌</td><td style=text-align:center>❌</td><td style=text-align:center>❌</td><td style=text-align:center>✅</td></tr></tbody></table><p>containerd&rsquo;s build, testing, and release infrastructure is primarily defined
+in
+<a href=./.github/workflows>GitHub Actions</a>
+. Release artifacts and their platforms
+are defined in <code>release.yml</code>, nightly builds in <code>nightly.yml</code>, functional
+testing in <code>ci.yml</code>, and Tier 3 compile coverage in the <code>binaries</code> and
+<code>crossbuild</code> jobs of <code>ci.yml</code>. This table should be updated if the
+workflows are changed.</p><h4 id=requesting-a-new-platform-or-a-tier-change>Requesting a new platform or a tier change</h4><p>New platforms enter at the lowest tier that the maintainers can sustainably
+commit to, and most begin at Tier 3. To propose a new platform or a change in
+tier,
+<a href=https://github.com/containerd/containerd/issues>open an issue</a>
+describing the platform, its <code>GOOS/GOARCH</code>, the level of support being
+requested, and what you are able to contribute toward it.</p><p>What it takes to reach each tier:</p><ul><li><strong>Tier 3 (Build-verified):</strong> Go must support the platform as a port, and the
+platform must build (at minimum, <code>make build</code> and <code>make binaries</code>). Because
+the cost and risk are low, the maintainers will generally accept a new
+build-verified platform as long as it does not meaningfully complicate the
+build or slow CI. This is the recommended entry point for a new architecture.</li><li><strong>Tier 2 (Released, best-effort):</strong> In addition to Tier 3, the platform must
+produce working release artifacts through the existing release tooling. The
+maintainers decide whether to publish release artifacts for a platform at
+their discretion, weighing demonstrated demand, the risk of shipping binaries
+we cannot test, and the ongoing maintenance burden. A vendor or community
+sponsor who commits to triaging platform-specific issues is not required, but
+is strongly encouraged and makes promotion more likely.</li><li><strong>Tier 1 (Supported):</strong> In addition to Tier 2, the platform must be covered by
+automated functional tests in CI that are reliable enough to gate merges. This
+generally requires either hosted runners for the platform or a sponsor who
+provides and <em>maintains</em> suitable CI infrastructure (for example, self-hosted
+runners or hardware). Testing or infrastructure that is too slow or too flaky
+to reliably gate changes is not sufficient.</li></ul><h4 id=demotion-and-removal>Demotion and removal</h4><p>Tiers reflect what the project can sustain, so a platform may move down as well as
+up. The maintainers may demote or remove a platform when, for example:</p><ul><li>automated testing for the platform becomes too unreliable or too slow to gate
+changes;</li><li>the infrastructure or sponsorship that a tier depended on is no longer
+available;</li><li>supporting the platform meaningfully impedes development of containerd; or</li><li>the platform is no longer in meaningful use.</li></ul><p>When practical, the maintainers will give notice before lowering a platform&rsquo;s
+tier or removing it, and will prefer to make such changes at a minor-release
+boundary. Removing a platform does not retroactively affect artifacts already
+published for prior releases.</p><h3 id=backporting>Backporting</h3><p>Backports in containerd are community driven. As maintainers, we&rsquo;ll try to
+ensure that sensible bugfixes make it into <em>active</em> release, but our main focus
+will be features for the next <em>minor</em> or <em>major</em> release. For the most part,
+this process is straightforward, and we are here to help make it as smooth as
+possible. An exception to the general policy of primarily backporting bugfixes
+is for new deprecation warnings. To ensure users have adequate time to respond
+to upcoming breaking changes, new deprecation warnings may be backported to any
+supported release, including LTS releases.</p><p>If there are important fixes that need to be backported, please let us know in
+one of three ways:</p><ol><li>Open an issue.</li><li>Open a PR with cherry-picked change from main.</li><li>Open a PR with a ported fix.</li></ol><p><strong>If you are reporting a security issue:</strong></p><p>Please follow the instructions at
+<a href=https://github.com/containerd/project/blob/main/SECURITY.md#reporting-a-vulnerability>containerd/project</a></p><p>Remember that backported PRs must follow the versioning guidelines from this document.</p><p>Any release that is &ldquo;active&rdquo; can accept backports. Opening a backport PR is
+fairly straightforward. The steps differ depending on whether you are pulling
+a fix from main or need to draft a new commit specific to a particular
+branch.</p><p>To cherry-pick a straightforward commit from main, simply use the cherry-pick
+process:</p><ol><li><p>Pick the branch to which you want backported, usually in the format
+<code>release/&lt;major>.&lt;minor></code>. The following will create a branch you can
+use to open a PR:</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-console data-lang=console><span class=line><span class=cl><span class=gp>$</span> git checkout -b my-backport-branch release/&lt;major&gt;.&lt;minor&gt;.
+</span></span></code></pre></div></li><li><p>Find the commit you want backported.</p></li><li><p>Apply it to the release branch:</p><div class=highlight><pre tabindex=0 class=chroma><code class=language-console data-lang=console><span class=line><span class=cl><span class=gp>$</span> git cherry-pick -xsS &lt;commit&gt;
+</span></span></code></pre></div><p>If all of the work from a particular PR/set of PRs is wanted,
+cherry-pick the individual commits instead of the merge commit.
+Take #8624 for example, 82ec62b is favored over 9e834e7.</p><p>(Optional) If other commits exist in the main branch which are related
+to the cherry-picked commit; eg: fixes to the main PR. It is recommended
+to cherry-pick those commits also into this same <code>my-backport-branch</code>.</p></li><li><p>Push the branch and open up a PR against the <em>release branch</em>:</p><pre tabindex=0><code>$ git push -u stevvooe my-backport-branch
+</code></pre><p>Make sure to replace <code>stevvooe</code> with whatever fork you are using to open
+the PR. When you open the PR, make sure to switch <code>main</code> with whatever
+release branch you are targeting with the fix. Make sure the PR title has
+<code>[&lt;release branch>]</code> prefixed. e.g.:</p><pre tabindex=0><code>[release/1.4] Fix foo in bar
+</code></pre></li></ol><p>If there is no existing fix in main, you should first fix the bug in main,
+or ask us a maintainer or contributor to do it via an issue. Once that PR is
+completed, open a PR using the process above.</p><p>Only when the bug is not seen in main and must be made for the specific
+release branch should you open a PR with new code.</p><h3 id=upgrade-path>Upgrade Path</h3><p>Upgrades are supported for sequential minor releases. For example, an upgrade
+from 2.0 to 2.1 is supported, but an upgrade from 2.0 to 2.2 is not. Patch
+releases are always backward compatible with their minor version.</p><p>In addition to sequential minor release upgrades, direct upgrades between
+sequential LTS (Long Term Stable) releases are also supported. For example, a
+direct upgrade from 1.7 (LTS) to 2.3 (LTS) will be tested and supported, but 1.7
+(LTS) to 2.6 (LTS, tentatively) will not. This allows users who prefer to stay
+on LTS releases to have a clear and safe upgrade path.</p><p>There are no compatibility guarantees with upgrades to <em>major</em> versions. For 2.0, migration was
+added to ensure upgrading from 1.6 or 1.7 to 2.0 is easy. The latest releases of 1.6 and 1.7 provide
+deprecation warnings if any configuration is used which is incompatible with 2.0. If deprecation
+warnings are showing up, the configuration can be safely migrated in 1.6 or 1.7 before upgrading to
+2.0. Once no deprecation warnings are showing up, the upgrade to 2.0 should be smooth. Always
+check the release notes, breaking changes are listed there, and test your configuration before
+upgrading.</p><p>Features can only be removed in a release that immediately follows an LTS
+release. Before upgrading, especially across multiple minor versions or to a new
+LTS release, users should ensure that they have addressed any deprecation
+warnings from their current version. This practice ensures a smoother transition
+and avoids issues with removed features.</p><h2 id=public-api-stability>Public API Stability</h2><p>The following table provides an overview of the components covered by
+containerd versions:</p><table><thead><tr><th>Component</th><th>Status</th><th>Stabilized Version</th><th>Links</th></tr></thead><tbody><tr><td>GRPC API</td><td>Stable</td><td>1.0</td><td><a href=#grpc-api>gRPC API</a></td></tr><tr><td>Metrics API</td><td>Stable</td><td>1.0</td><td>-</td></tr><tr><td>Runtime Shim API</td><td>Stable</td><td>1.2</td><td>-</td></tr><tr><td>Daemon Config</td><td>Stable</td><td>1.0</td><td>-</td></tr><tr><td>CRI GRPC API</td><td>Stable</td><td>1.6 (<em>CRI v1</em>)</td><td><a href=https://github.com/kubernetes/cri-api/tree/master/pkg/apis/runtime/v1>cri-api</a></td></tr><tr><td>Go client API</td><td>Stable</td><td>2.0</td><td><a href=https://pkg.go.dev/github.com/containerd/containerd/v2/client>godoc</a></td></tr><tr><td><code>ctr</code> tool</td><td>Unstable</td><td>Out of scope</td><td>-</td></tr></tbody></table><p>From the version stated in the above table, that component must adhere to the
+stability constraints expected in release versions.</p><p>Unless explicitly stated here, components that are called out as unstable or
+not covered may change in a future minor version. Breaking changes to
+&ldquo;unstable&rdquo; components will be avoided in patch versions.</p><p>Go client API stability includes the <code>client</code>, <code>defaults</code> and <code>version</code> package
+as well as all packages under <code>pkg</code>, <code>core</code>, <code>api</code> and <code>protobuf</code>.
+All packages under <code>cmd</code>, <code>contrib</code>, <code>integration</code>, and <code>internal</code> are not
+considered part of the stable client API.</p><h3 id=grpc>GRPC API</h3><p>The primary product of containerd is the GRPC API. As of the 1.0.0 release, the
+GRPC API will not have any backwards incompatible changes without a <em>major</em>
+version jump.</p><p>To ensure compatibility, we have collected the entire GRPC API symbol set into
+a single file. At each <em>minor</em> release of containerd, we will move the current
+<code>next.pb.txt</code> file to a file named for the minor version, such as <code>1.0.pb.txt</code>,
+enumerating the support services and messages.</p><p>Note that new services may be added in <em>minor</em> releases. New service methods
+and new fields on messages may be added if they are optional.</p><p><code>*.pb.txt</code> files are generated at each API release. They prevent unintentional changes
+to the API by having a diff that the CI can run. These files are not intended to be
+consumed or used by clients.</p><p>As of containerd 2.0, the API version diverges from the main containerd version.
+While containerd 2.0 is a <em>major</em> version jump for containerd, the API will remain
+on 1.x to remain backwards compatible with prior releases and existing clients.
+The 2.0 release adds the API to a separate Go module which can remain as the
+<code>github.com/containerd/containerd/api</code> Go package and imported separately from the
+rest of containerd.</p><p>The API minor version will continue to be incremented for each major and minor
+version release of containerd. However, the API is tagged directly out of the
+main branch with the minor version incrementing earlier in the next release cycle
+rather than at the end. This means that after the containerd 2.0 release, the next
+API change is tagged as <code>api/v1.9.0</code> prior to any containerd 2.1 release. The
+latest API version should be backported to all supported versions and patch
+releases for prior API versions should be avoided if possible.</p><table><thead><tr><th>Containerd Version</th><th>API Version at Release</th></tr></thead><tbody><tr><td>v1.0</td><td>1.0</td></tr><tr><td>v1.1</td><td>1.1</td></tr><tr><td>v1.2</td><td>1.2</td></tr><tr><td>v1.3</td><td>1.3</td></tr><tr><td>v1.4</td><td>1.4</td></tr><tr><td>v1.5</td><td>1.5</td></tr><tr><td>v1.6</td><td>1.6</td></tr><tr><td>v1.7</td><td>1.7</td></tr><tr><td>v2.0</td><td>1.8</td></tr><tr><td>v2.1</td><td>1.9</td></tr><tr><td>v2.2</td><td>1.10</td></tr><tr><td>v2.3</td><td>1.11</td></tr><tr><td>v2.4</td><td>1.12</td></tr></tbody></table><h3 id=metrics-api>Metrics API</h3><p>The metrics API that outputs prometheus style metrics will be versioned independently,
+prefixed with the API version. i.e. <code>/v1/metrics</code>, <code>/v2/metrics</code>.</p><p>The metrics API version will be incremented when breaking changes are made to the prometheus
+output. New metrics can be added to the output in a backwards compatible manner without
+bumping the API version.</p><h3 id=plugins-api>Plugins API</h3><p>containerd is based on a modular design where plugins are implemented to provide the core functionality.
+Plugins implemented in tree are supported by the containerd community unless explicitly specified as non-stable.
+Out of tree plugins are not supported by the containerd maintainers.</p><p>Currently, the Windows runtime and snapshot plugins are not stable and not supported.
+Please refer to the GitHub milestones for Windows support in a future release.</p><h4 id=error-codes>Error Codes</h4><p>Error codes will not change in a patch release, unless a missing error code
+causes a blocking bug. Error codes of type &ldquo;unknown&rdquo; may change to more
+specific types in the future. Any error code that is not &ldquo;unknown&rdquo; that is
+currently returned by a service will not change without a <em>major</em> release or a
+new version of the service.</p><p>If you find that an error code that is required by your application is not
+well-documented in the protobuf service description or tested explicitly,
+please file an issue and we will clarify.</p><h4 id=opaque-fields>Opaque Fields</h4><p>Unless explicitly stated, the formats of certain fields may not be covered by
+this guarantee and should be treated opaquely. For example, don&rsquo;t rely on the
+format details of a URL field unless we explicitly say that the field will
+follow that format.</p><h3 id=go-client-api>Go client API</h3><p>As of containerd 2.0, the Go client API documented in
+<a href=https://godoc.org/github.com/containerd/containerd/v2/client>godoc</a>
+is stable.
+Note that because the Go client interfaces with the GRPC API, clients building on top
+of the Go client should remain compatible with future server releases implementing the
+same major GRPC API series. For backwards compatability and as a general rule of thumb,
+it is the client&rsquo;s responsibility to handle not implemented errors returned by the containerd daemon.</p><p>Any changes to the Go client API should be detectable at compile time, so upgrading will
+be a matter of fixing compilation errors and moving from there.</p><h3 id=cri-grpc-api>CRI GRPC API</h3><p>The CRI (Container Runtime Interface) GRPC API is used by a Kubernetes kubelet
+to communicate with a container runtime. This interface is used to manage
+container lifecycles and container images. Currently, this API is under
+development and unstable across Kubernetes releases. Each Kubernetes release
+only supports a single version of CRI and the CRI plugin only implements a
+single version of CRI.</p><p>Each <em>minor</em> release will support one version of CRI and at least one version
+of Kubernetes. Once this API is stable, a <em>minor</em> will be compatible with any
+version of Kubernetes which supports that version of CRI.</p><h3 id=ctr-tool><code>ctr</code> tool</h3><p>The <code>ctr</code> tool provides the ability to introspect and understand the containerd
+API. It is not considered a primary offering of the project and is unsupported in
+that sense. While we understand its value as a debug tool, it may be completely
+refactored or have breaking changes in <em>minor</em> releases.</p><p>Targeting <code>ctr</code> for feature additions reflects a misunderstanding of the containerd
+architecture. Feature addition should focus on the client Go API and additions to
+<code>ctr</code> may or may not be accepted at the discretion of the maintainers.</p><p>We will do our best to not break compatibility in the tool in <em>patch</em> releases.</p><h3 id=daemon-configuration>Daemon Configuration</h3><p>The daemon&rsquo;s configuration file, commonly located in <code>/etc/containerd/config.toml</code>
+is versioned and backwards compatible. The <code>version</code> field in the config
+file specifies the config&rsquo;s version. If no version number is specified inside
+the config file then it is assumed to be a version <code>1</code> config and parsed as such.
+The latest version is <code>version = 4</code>. The configuration is automatically migrated to
+the latest version on each startup, leaving the configuration file unchanged. To
+avoid the migration and optimize the daemon startup time, use <code>containerd config migrate</code> to output the configuration as the latest version. All prior versions are
+supported by migration.</p><p>Migrating a configuration to the latest version will limit the prior versions
+of containerd in which the configuration can be used. It is suggested not to
+migrate your configuration file until you are confident you do not need to
+quickly rollback your containerd version. Use the table of configuration
+versions to containerd releases to know the minimum version of containerd for
+each configuration version.</p><table><thead><tr><th>Configuration Version</th><th>Minimum containerd version</th></tr></thead><tbody><tr><td>1</td><td>v1.0.0</td></tr><tr><td>2</td><td>v1.3.0</td></tr><tr><td>3</td><td>v2.0.0</td></tr><tr><td>4</td><td>v2.3.0</td></tr></tbody></table><h3 id=not-covered>Not Covered</h3><p>As a general rule, anything not mentioned in this document is not covered by
+the stability guidelines and may change in any release. Explicitly, this
+pertains to this non-exhaustive list of components:</p><ul><li>File System layout</li><li>Storage formats</li><li>Snapshot formats</li></ul><p>Between upgrades of subsequent, <em>minor</em> versions, we may migrate these formats.
+Any outside processes relying on details of these file system layouts may break
+in that process. Container root file systems will be maintained on upgrade.</p><h3 id=exceptions>Exceptions</h3><p>We may make exceptions in the interest of <strong>security patches</strong>. If a break is
+required, it will be communicated clearly and the solution will be considered
+against total impact.</p><h2 id=deprecated-features>Deprecated features</h2><p>The deprecated features are shown in the following table:</p><table><thead><tr><th>Component</th><th>Deprecation release</th><th>Target release for removal</th><th>Recommendation</th></tr></thead><tbody><tr><td>Runtime V1 API and implementation (<code>io.containerd.runtime.v1.linux</code>)</td><td>containerd v1.4</td><td>containerd v2.0 ✅</td><td>Use <code>io.containerd.runc.v2</code></td></tr><tr><td>Runc V1 implementation of Runtime V2 (<code>io.containerd.runc.v1</code>)</td><td>containerd v1.4</td><td>containerd v2.0 ✅</td><td>Use <code>io.containerd.runc.v2</code></td></tr><tr><td>Built-in <code>aufs</code> snapshotter</td><td>containerd v1.5</td><td>containerd v2.0 ✅</td><td>Use <code>overlayfs</code> snapshotter</td></tr><tr><td>Container label <code>containerd.io/restart.logpath</code></td><td>containerd v1.5</td><td>containerd v2.0 ✅</td><td>Use <code>containerd.io/restart.loguri</code> label</td></tr><tr><td><code>cri-containerd-*.tar.gz</code> release bundles</td><td>containerd v1.6</td><td>containerd v2.0 ✅</td><td>Use <code>containerd-*.tar.gz</code> bundles</td></tr><tr><td>Pulling Schema 1 images (<code>application/vnd.docker.distribution.manifest.v1+prettyjws</code>)</td><td>containerd v1.7</td><td>containerd v2.1 (Disabled in v2.0) ✅</td><td>Use Schema 2 or OCI images</td></tr><tr><td>CRI <code>v1alpha2</code></td><td>containerd v1.7</td><td>containerd v2.0 ✅</td><td>Use CRI <code>v1</code></td></tr><tr><td>Legacy CRI implementation of podsandbox support</td><td>containerd v2.0</td><td>containerd v2.0 ✅</td><td></td></tr><tr><td>Go-Plugin library (<code>*.so</code>) as containerd runtime plugin</td><td>containerd v2.0</td><td>containerd v2.1 ✅</td><td>Use external plugins (proxy or binary)</td></tr><tr><td>NRI v0.1.0 plugin support</td><td>containerd v2.2</td><td>containerd v2.3</td><td>Use the v010-adapter NRI plugin, or update v0.1.0 plugins to use the current NRI API</td></tr><tr><td>cgroup v1 support</td><td>containerd v2.2</td><td>(May 2029)</td><td>Use cgroup v2</td></tr><tr><td>Restoring checkpoint data during CRI <code>CreateContainer</code></td><td>containerd v2.3</td><td>containerd v2.4 ✅</td><td>Follow
+<a href=https://github.com/kubernetes/enhancements/issues/5823>KEP-5823</a>
+for a replacement <code>RestorePod</code> API</td></tr></tbody></table><ul><li>Pulling Schema 1 images has been disabled in containerd v2.0, but it still can be enabled by setting an environment variable <code>CONTAINERD_ENABLE_DEPRECATED_PULL_SCHEMA_1_IMAGE=1</code>
+until containerd v2.1. <code>ctr</code> users have to specify <code>--local</code> too (e.g., <code>ctr images pull --local</code>). Users of CRI clients (such as Kubernetes and <code>crictl</code>) have to specify this environment variable on the containerd daemon (usually in the systemd unit).</li><li>The latest release in May 2029 may not necessarily support cgroup v1, but there will be at least one maintained branch with the support for cgroup v1 until that month. No branch will support cgroup v1 after that.</li></ul><h3 id=deprecated-config-properties>Deprecated config properties</h3><p>The deprecated properties in
+<a href=https://github.com/containerd/containerd/blob/main/docs/cri/config.md><code>config.toml</code></a>
+are shown in the following table:</p><table><thead><tr><th>Property Group</th><th>Property</th><th>Deprecation release</th><th>Target release for removal</th><th>Recommendation</th></tr></thead><tbody><tr><td><code>[plugins."io.containerd.grpc.v1.cri"]</code></td><td><code>systemd_cgroup</code></td><td>containerd v1.3</td><td>containerd v2.0 ✅</td><td>Use <code>SystemdCgroup</code> in runc options (see below)</td></tr><tr><td><code>[plugins."io.containerd.grpc.v1.cri".containerd]</code></td><td><code>untrusted_workload_runtime</code></td><td>containerd v1.2</td><td>containerd v2.0 ✅</td><td>Create <code>untrusted</code> runtime in <code>runtimes</code></td></tr><tr><td><code>[plugins."io.containerd.grpc.v1.cri".containerd]</code></td><td><code>default_runtime</code></td><td>containerd v1.3</td><td>containerd v2.0 ✅</td><td>Use <code>default_runtime_name</code></td></tr><tr><td><code>[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.*]</code></td><td><code>runtime_engine</code></td><td>containerd v1.3</td><td>containerd v2.0 ✅</td><td>Use runtime v2</td></tr><tr><td><code>[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.*]</code></td><td><code>runtime_root</code></td><td>containerd v1.3</td><td>containerd v2.0 ✅</td><td>Use <code>options.Root</code></td></tr><tr><td><code>[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.*]</code></td><td><code>disable_cgroup</code></td><td>-</td><td>containerd v2.0 ✅</td><td>Use
+<a href=https://rootlesscontaine.rs/getting-started/common/cgroup2/>cgroup v2 delegation</a></td></tr><tr><td><code>[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.*.options]</code></td><td><code>CriuPath</code></td><td>containerd v1.7</td><td>containerd v2.0 ✅</td><td>Set <code>$PATH</code> to the <code>criu</code> binary</td></tr><tr><td><code>[plugins."io.containerd.grpc.v1.cri".registry]</code></td><td><code>auths</code></td><td>containerd v1.3</td><td>containerd v2.7</td><td>Use
+<a href=https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/><code>ImagePullSecrets</code></a>
+. See also
+<a href=https://github.com/containerd/containerd/issues/8228>#8228</a>
+.</td></tr><tr><td><code>[plugins."io.containerd.grpc.v1.cri".registry]</code></td><td><code>configs</code></td><td>containerd v1.5</td><td>containerd v2.7</td><td>Use
+<a href=https://github.com/containerd/containerd/blob/main/docs/hosts.md><code>config_path</code></a></td></tr><tr><td><code>[plugins."io.containerd.grpc.v1.cri".registry]</code></td><td><code>mirrors</code></td><td>containerd v1.5</td><td>containerd v2.7</td><td>Use
+<a href=https://github.com/containerd/containerd/blob/main/docs/hosts.md><code>config_path</code></a></td></tr><tr><td><code>[plugins."io.containerd.tracing.processor.v1.otlp"]</code></td><td><code>endpoint</code>, <code>protocol</code>, <code>insecure</code></td><td>containerd v1.6.29</td><td>containerd v2.4 ✅</td><td>Use
+<a href=https://opentelemetry.io/docs/specs/otel/protocol/exporter/>OTLP environment variables</a>
+, e.g. OTEL_EXPORTER_OTLP_TRACES_ENDPOINT, OTEL_EXPORTER_OTLP_PROTOCOL, OTEL_SDK_DISABLED</td></tr><tr><td><code>[plugins."io.containerd.cri.v1.runtime".cni]</code></td><td><code>bin_dir</code></td><td>containerd v2.1</td><td>containerd v2.4 ✅</td><td>Use <code>bin_dirs</code>, which supports a list of directories</td></tr><tr><td><code>[plugins."io.containerd.internal.v1.tracing"]</code></td><td><code>service_name</code>, <code>sampling_ratio</code></td><td>containerd v1.6.29</td><td>containerd v2.4 ✅</td><td>Instead use
+<a href=https://opentelemetry.io/docs/specs/otel/configuration/sdk-environment-variables/>OTel environment variables</a>
+, e.g. OTEL_SERVICE_NAME, OTEL_TRACES_SAMPLER*</td></tr><tr><td><code>[plugins."io.containerd.cri.v1.runtime"]</code></td><td><code>enable_cdi</code></td><td>containerd v2.2</td><td>containerd v2.4 ✅</td><td>CDI support will always be enabled</td></tr></tbody></table><blockquote><p><strong>Note</strong></p><p>CNI Config Template (<code>plugins."io.containerd.grpc.v1.cri".cni.conf_template</code>) was once deprecated in v1.7.0,
+but its deprecation was cancelled in v1.7.3.</p></blockquote><div class=highlight><pre tabindex=0 class=chroma><code class=language-toml data-lang=toml><span class=line><span class=cl><span class=nx>version</span> <span class=p>=</span> <span class=mi>2</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c># OLD</span>
+</span></span><span class=line><span class=cl><span class=c># [plugins.&#34;io.containerd.grpc.v1.cri&#34;]</span>
+</span></span><span class=line><span class=cl><span class=c>#   systemd_cgroup = true</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c># NEW</span>
+</span></span><span class=line><span class=cl><span class=p>[</span><span class=nx>plugins</span><span class=p>.</span><span class=s2>&#34;io.containerd.grpc.v1.cri&#34;</span><span class=p>.</span><span class=nx>containerd</span><span class=p>.</span><span class=nx>runtimes</span><span class=p>.</span><span class=nx>runc</span><span class=p>.</span><span class=nx>options</span><span class=p>]</span>
+</span></span><span class=line><span class=cl>  <span class=nx>SystemdCgroup</span> <span class=p>=</span> <span class=kc>true</span>
+</span></span></code></pre></div><div class=highlight><pre tabindex=0 class=chroma><code class=language-toml data-lang=toml><span class=line><span class=cl><span class=nx>version</span> <span class=p>=</span> <span class=mi>2</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c># OLD</span>
+</span></span><span class=line><span class=cl><span class=c># [plugins.&#34;io.containerd.grpc.v1.cri&#34;.containerd.runtimes.runc]</span>
+</span></span><span class=line><span class=cl><span class=c>#   runtime_root = &#34;/path/to/runc/root&#34;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c># NEW</span>
+</span></span><span class=line><span class=cl><span class=p>[</span><span class=nx>plugins</span><span class=p>.</span><span class=s2>&#34;io.containerd.grpc.v1.cri&#34;</span><span class=p>.</span><span class=nx>containerd</span><span class=p>.</span><span class=nx>runtimes</span><span class=p>.</span><span class=nx>runc</span><span class=p>.</span><span class=nx>options</span><span class=p>]</span>
+</span></span><span class=line><span class=cl>  <span class=nx>Root</span> <span class=p>=</span> <span class=s2>&#34;/path/to/runc/root&#34;</span>
+</span></span></code></pre></div><h2 id=experimental-features>Experimental features</h2><p>Experimental features are new features added to containerd which do not have the
+same stability guarantees as the rest of containerd. An effort is made to avoid
+breaking interfaces between versions, but changes to experimental features before
+being fully supported is possible. Users can still expect experimental features
+to be high quality and are encouraged to use new features to help them stabilize
+more quickly.</p><table><thead><tr><th>Component</th><th>Initial Release</th><th>Target Supported Release</th></tr></thead><tbody><tr><td><a href=https://github.com/containerd/containerd/pull/6703>Sandbox Service</a></td><td>containerd v1.7</td><td>containerd v2.0</td></tr><tr><td><a href=https://github.com/containerd/containerd/pull/7228>Sandbox CRI Server</a></td><td>containerd v1.7</td><td>containerd v2.0</td></tr><tr><td><a href=https://github.com/containerd/containerd/pull/7320>Transfer Service</a></td><td>containerd v1.7</td><td>containerd v2.0</td></tr><tr><td><a href=https://github.com/containerd/containerd/pull/6019>NRI in CRI Support</a></td><td>containerd v1.7</td><td>containerd v2.0</td></tr><tr><td><a href=https://github.com/containerd/containerd/pull/8052>gRPC Shim</a></td><td>containerd v1.7</td><td>containerd v2.0</td></tr><tr><td><a href=https://github.com/containerd/containerd/pull/6899>CRI Runtime Specific Snapshotter</a></td><td>containerd v1.7</td><td>containerd v2.0</td></tr><tr><td><a href=https://github.com/containerd/containerd/blob/main/docs/user-namespaces/README.md>CRI Support for User Namespaces</a></td><td>containerd v1.7</td><td>containerd v2.0</td></tr></tbody></table></div></div></article></main><div class=footer><div class=container><div class=columns><div class=column><img src=/img/logos/footer-logo.png class=is-footer-logo alt="containerd footer logo"></div><div class=column><span class="is-size-4 is-size-5-mobile">Docs</span><hr class="hr has-background-grey"><ul><li><a href=/docs/2.4/>2.4.x</a></li><li><a href=/docs/2.3/>2.3.x</a></li><li><a href=/docs/2.2/>2.2.x</a></li><li><a href=/docs/2.1/>2.1.x</a></li><li><a href=/docs/1.7/>1.7.x</a></li><li><a href=/docs/main/>main</a></li></ul></div><div class=column><span class="is-size-4 is-size-5-mobile">Project</span><hr class="hr has-background-grey"><ul><li><a href=https://github.com/cncf/foundation/blob/master/code-of-conduct.md>Code of conduct</a></li><li><a href=/keps/>Collaboration with Kubernetes SIG-Node</a></li><li><a href=/contributing/>Contributing</a></li><li><a href=/roadmap/>Roadmap</a></li><li><a href=/scope/>Scope and principles</a></li><li><a href=/security/>Security and audits</a></li><li><a href=/releases/>Versioning and release</a></li></ul></div><div class=column><span class="is-size-4 is-size-5-mobile">Community</span><hr class="hr has-background-grey"><div class=buttons><a class="button is-borderless has-background-black has-text-white" href=https://github.com/containerd/containerd><span class=icon><i class="fab fa-github" aria-hidden=true></i></span>
+<span>GitHub</span></a>
+<a class="button is-borderless has-background-slack-green has-text-white" href=https://slack.containerd.io/><span class=icon><i class="fab fa-slack" aria-hidden=true></i></span>
+<span>Slack</span></a>
+<a class="button is-borderless has-background-bluesky-blue has-text-white" href=https://bsky.app/profile/containerd.dev><span class=icon><i class="fab fa-bluesky" aria-hidden=true></i></span>
+<span>Bluesky</span></a>
+<a class="button is-borderless has-background-mastodon-purple has-text-white" href=https://hachyderm.io/@containerd><span class=icon><i class="fab fa-mastodon" aria-hidden=true></i></span>
+<span>Mastodon</span></a>
+<a class="button has-background-twitter-blue is-borderless has-text-white" href=https://twitter.com/@containerd><span class=icon><i class="fab fa-twitter" aria-hidden=true></i></span>
+<span>Twitter</span></a>
+<a class="button is-borderless has-background-youtube-red has-text-white" href=https://www.youtube.com/@CNCFcontainerd><span class=icon><i class="fab fa-youtube" aria-hidden=true></i></span>
+<span>YouTube</span></a></div></div></div><hr class="hr has-background-grey-lighter"></div><div class="container has-text-centered"><div class=has-text-weight-light><p class="is-size-5 is-size-6-mobile">&copy; containerd Authors 2026 | Documentation Distributed under <a href=https://creativecommons.org/licenses/by/4.0/>CC-BY-4.0</a></p><br><p>&copy; 2026 The Linux Foundation. All rights reserved. The Linux Foundation has registered trademarks and uses trademarks. For a list of trademarks of The Linux Foundation, please see our <a href=https://www.linuxfoundation.org/trademark-usage>Trademark Usage</a> page.</p></div></div></div><script src=/js/tippy-3.1.1.min.63fe7258687ea683ab01fd463d14b350c9e020570f1d36eab5aab96304ca8b35.js integrity="sha256-Y/5yWGh+poOrAf1GPRSzUMngIFcPHTbqtaq5YwTKizU="></script>
+<script src=/js/jquery-3.6.0.min.c2156ca5c12237ebf18ff9ec78fc535fff871cc650b8afcb1538dec731a9df2c.js integrity="sha256-whVspcEiN+vxj/nsePxTX/+HHMZQuK/LFTjexzGp3yw="></script>
+<script src=/js/anchor-4.1.1.min.e7bdd354cae47f18095b8b258ef736d89d287649a05f7f25ee023d303d1410f5.js integrity="sha256-573TVMrkfxgJW4sljvc22J0odkmgX38l7gI9MD0UEPU="></script>
+<script src=/js/clipboard-2.0.0.min.ca2d628003949ac3388afb43fc5dd95550de7a5092b514655d381745e456e4cb.js integrity="sha256-yi1igAOUmsM4ivtD/F3ZVVDeelCStRRlXTgXReRW5Ms="></script>
+<script src=/js/app.min.f5d71b357770cfa702a856635ed1f602e19345dfc7c4432e7faa32251f0a1c69.js integrity="sha256-9dcbNXdwz6cCqFZjXtH2AuGTRd/HxEMuf6oyJR8KHGk="></script></body></html>

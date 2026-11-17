@@ -1,0 +1,45 @@
+# Shared read-only admission and serial, minimal repair for the project-owned
+# aggregator certificate. No certificate/key/CA or other unit option is changed.
+- name: Locate the actual API server unit
+  ansible.builtin.command:
+    argv: [systemctl, show, --property=FragmentPath, --value, kube-apiserver]
+  register: upgrade_api_fragment
+  changed_when: false
+- name: Require a regular API server unit
+  ansible.builtin.stat:
+    path: '{{ upgrade_api_fragment.stdout }}'
+    follow: false
+  register: upgrade_api_unit_stat
+- name: Refuse a foreign or missing API server unit
+  ansible.builtin.assert:
+    that:
+      - upgrade_api_unit_stat.stat.isreg | default(false)
+      - not (upgrade_api_unit_stat.stat.islnk | default(false))
+- name: Read the existing API server authentication settings
+  ansible.builtin.slurp:
+    src: '{{ upgrade_api_fragment.stdout }}'
+  register: upgrade_api_unit
+  no_log: true
+- name: Inspect the existing aggregator certificate identity
+  ansible.builtin.command:
+    argv: [openssl, x509, -in, '{{ ca_dir }}/aggregator-proxy.pem', -noout, -subject, -nameopt, RFC2253]
+  register: upgrade_aggregator_subject
+  changed_when: false
+- name: Admit only the reviewed project certificate and allowed-name boundary
+  vars:
+    upgrade_api_allowed_pattern: '--requestheader-allowed-names=([^\s\\]*)'
+    upgrade_allowed_names: '{{ (upgrade_api_unit.content | b64decode) | regex_findall(upgrade_api_allowed_pattern) }}'
+  ansible.builtin.assert:
+    that:
+      - upgrade_aggregator_subject.stdout is search('(?:^subject=\s*|,)CN=aggregator(?:,|$)')
+      - upgrade_allowed_names | length == 1
+      - upgrade_allowed_names[0] in ['', 'aggregator']
+    quiet: true
+    fail_msg: Existing aggregator identity or allowed-name policy requires review before upgrade.
+- name: Restrict proxy headers to the existing aggregator common name
+  ansible.builtin.replace:
+    path: '{{ upgrade_api_fragment.stdout }}'
+    regexp: '(--requestheader-allowed-names=)(?=[\t ]*(?:\\|\n|$))'
+    replace: '\g<1>aggregator'
+  register: upgrade_api_auth_repair
+  when: not (UPGRADE_API_AUTH_OBSERVE_ONLY | default(true) | bool)

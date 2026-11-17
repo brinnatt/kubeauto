@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "run_id": 43818570686,
+  "url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/43818570686",
+  "head_sha": "e897890dfe666703a544185ac5a836c80bd22c24",
+  "mode": "selected",
+  "conclusion": "success",
+  "records": [
+    {
+      "digest": "sha256:ba98c64244c221980ab5a7fc8e33f87cfd6cb2f5f0afcca3e7bc4d70bd926856",
+      "fingerprint": "8062e47f158604e6f77f6d1a5edce9164ea0eaba6cf92cb0875c1db6e9a05a80",
+      "head": "e897890dfe666703a544185ac5a836c80bd22c24",
+      "key": "brinnatt/openebs-kubectl:1.35.10",
+      "platforms": {
+        "linux/amd64": "sha256:82368e6b586d45b8c26eb26c7436aac34d9e7f2f0309fd42fe3f8d99197f18a4",
+        "linux/arm64": "sha256:129fbd0da2a783b838585acfd8a814e00e677e4516b7fe10579b40cb3dc9b443"
+      },
+      "run_id": "43818570686",
+      "schema": 1
+    },
+    {
+      "digest": "sha256:bc0236db9af2a081efe2902f3cf874cdc54210461e4d0ca4c1f1ed34ead53bd0",
+      "fingerprint": "9505cb3093d3bd8b9c393eff9c1c3266550dc2413d27bb16ff89620e6c3e7b51",
+      "head": "e897890dfe666703a544185ac5a836c80bd22c24",
+      "key": "brinnatt/kube-router:v2.12.0",
+      "platforms": {
+        "linux/amd64": "sha256:f09582c4767d4d806bef7ee19c37277bf335660cf8b5474d43ebe0e1f4f4f979",
+        "linux/arm64": "sha256:38c48d1d2566ad9d756b4858e212fffbda44e41babf8473f2a435d611fa84528"
+      },
+      "run_id": "43818570686",
+      "schema": 1
+    },
+    {
+      "digest": "sha256:50cc8f300e13a5bd5047e0f0fa7652f05240e725f650e30820d58bdefb2bb735",
+      "fingerprint": "ee1bf515e914a45ac5f3e6f21c29068cfbc4b6b02128895313047ba7e906a3f3",
+      "head": "e897890dfe666703a544185ac5a836c80bd22c24",
+      "key": "brinnatt/kube-ovn:v1.17.1",
+      "platforms": {
+        "linux/amd64": "sha256:8751a466f22e9a0ef950d0d74474af854181c70469496f3a77524d7521ab3172",
+        "linux/arm64": "sha256:eb4c64528f805e14bdeabccc8c7ac5a6d71d46b849e63774e564536619c81a80"
+      },
+      "run_id": "43818570686",
+      "schema": 1
+    }
+  ],
+  "durable_status": "rc=0\n",
+  "success_markers": [
+    "DUAL_PUSH_MANIFEST_PASS image=brinnatt/kube-router:v2.12.0 digest=sha256:bc0236db9af2a081efe2902f3cf874cdc54210461e4d0ca4c1f1ed34ead53bd0",
+    "DUAL_PUSH_MANIFEST_PASS image=brinnatt/kube-ovn:v1.17.1 digest=sha256:50cc8f300e13a5bd5047e0f0fa7652f05240e725f650e30820d58bdefb2bb735",
+    "DUAL_PUSH_MANIFEST_PASS image=brinnatt/openebs-kubectl:1.35.10 digest=sha256:ba98c64244c221980ab5a7fc8e33f87cfd6cb2f5f0afcca3e7bc4d70bd926856",
+    "IMAGE_SHARD_PASS shard=0 items=3"
+  ],
+  "artifact_id": 14203950578,
+  "artifact_sha256": "4a84652c53d7a2ce93acf8c99852583023f7f4853276434fa3fc9610d89eae81",
+  "plan_artifact_sha256": "64998a501cd9d4f4777bc1beba4668c2f77cad7e55679ee7f8ec160c09577a4e"
+}

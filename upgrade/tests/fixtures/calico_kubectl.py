@@ -51,6 +51,17 @@ elif args[0] == 'patch':
             current = current[key]
         assert current == op['value']
     result[ops[3]['path'][1:]] = ops[3]['value']
+    template_changed = (result.get('spec', {}).get('template') !=
+                        state['objects'][ref].get('spec', {}).get('template'))
+    if result['kind'] == 'DaemonSet' and template_changed:
+        key = 'deprecated.daemonset.template.generation'
+        annotations = result['metadata'].setdefault('annotations', {})
+        annotations[key] = str(int(annotations.get(key, '1')) + 1)
+    # Exact core/v1 default, including newly added hostPath volumes. The
+    # returned pointer to HostPathUnset serializes as type:"", not omission.
+    for volume in result.get('spec', {}).get('template', {}).get('spec', {}).get('volumes', []):
+        if 'hostPath' in volume:
+            volume['hostPath'].setdefault('type', '')
     if args[5:]:
         assert args[5:] == ['--dry-run=server', '-o', 'json']
         if state.get('admission_mutation') == ref:
@@ -60,6 +71,11 @@ elif args[0] == 'patch':
             raise SystemExit(42)
         result['metadata']['resourceVersion'] = '2'
         result['metadata']['generation'] = 2
+        if result['kind'] == 'Deployment' and template_changed:
+            # Deployment controller acts after persistence, never in dry-run.
+            key = 'deployment.kubernetes.io/revision'
+            annotations = result['metadata'].setdefault('annotations', {})
+            annotations[key] = str(int(annotations.get(key, '1')) + 1)
         if result['kind'] in ['DaemonSet', 'Deployment']:
             result['status']['observedGeneration'] = 2
             if state.get('stalled') == ref:

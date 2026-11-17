@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "classification": "test-gate fixture; found in pre-final review, no live product failure",
+  "cause": "The previous refusal test used the mutable real project matrix and assumed acceptance remained incomplete. Export legitimately succeeds after all 15 items pass; that success must not break a refusal test.",
+  "change": "Use the existing isolated checksum-bound LauncherContracts fixture and require the real launcher to identify pending UPG-03 before policy creation.",
+  "product_code_changed": false,
+  "live_scope_changed": false,
+  "checks": [
+    {
+      "command": ".venv/bin/python -B -m unittest upgrade.tests.test_release_policy upgrade.tests.test_launcher -v",
+      "rc": 0,
+      "tests": 10
+    }
+  ],
+  "inputs": {
+    "upgrade/tests/test_release_policy.py": "04a4c53b35f4bafaeae075dcf13274d14e5bc68873ced24af2d8ed2b7c1085db",
+    "upgrade/tests/test_launcher.py": "d84509e4448f10cb3a4028eb8e16a0a88e85981f835763fd6992a7b7e70f50a6",
+    "upgrade/product/release_policy.py": "ee4f2fce425d0be5e57c6f535ebb1d94f5611c421a4a38bc32e8270d2160e264"
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/release-fixture-repair/contracts.log",
+      "sha256": "298728770e9dd893080ef3823eb2b441ae0236a9742d01fac261d8b249a39b54"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/release-fixture-repair/original-test_release_policy.py.txt",
+      "sha256": "a82b18179743d2d1f45501bb5fabb14329821d9f8c41007d3edfba0366957e39"
+    }
+  ],
+  "boundary": "This independently qualifies only the changed test fixture; original UPG-04 static evidence and the in-flight source cleanup inputs remain unchanged."
+}

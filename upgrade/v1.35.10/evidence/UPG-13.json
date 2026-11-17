@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "accepted": true,
+  "source": "v1.34.13",
+  "target": "v1.35.10",
+  "case_ids": [
+    "UPG-13"
+  ],
+  "method": "live",
+  "claim": "源销毁且严格清理后，独立v1.35.10配置通过两次真实kubecli setup，节点UID幂等且与源不重叠；三API、六目标节点/containerd2.3.7、核心网络与DNS后端、六节点和16Pod指标、28初始化/运行容器已准入镜像摘要读回通过。产品destroy与既有固定六节点helper、严格残留及租约释放完成。本项不签未安装中间件、CSI或其它网络现场。",
+  "covered_subcases": [
+    "independent-clean-target-install-through-config-and-kubecli",
+    "target-version-network-dns-and-runtime-identity",
+    "metrics-api-readyz-and-no-failed-pods",
+    "second-setup-idempotence-and-image-digest-readback"
+  ],
+  "inputs": {
+    "upgrade/v1.35.10/release.yaml": "f69e9e88afa6a7cdc333240d62873ed120c7db981e20a6bf3cd68bbc0bf77625",
+    "upgrade/v1.35.10/artifact-pins.json": "6ceaf94c0fb6657a66017ff1563b9743c754ff1c7282b36242ade029b9a25047",
+    "upgrade/v1.35.10/evidence/UPG-03.json": "21e48fffcf72f10f194826e1170d985ad02822cb521cb6d9f87f3d38712fe853",
+    "upgrade/v1.35.10/evidence/UPG-04.json": "1cc8a4b64e23ec83eed133ceb2605f70047cd513daf49136d3f92d4d768c75ef",
+    "upgrade/v1.35.10/evidence/qualification-source-clean-e.json": "d13f3d5faadceef3493e4743d367a22407fc54361c947b737f3d0f6c7a3d3811",
+    "upgrade/v1.35.10/evidence/qualification-install-e.json": "6f4aac00f0dc05273abf52dec9cc20cc2822fdeed960ad777e4de00c159a8f94",
+    "upgrade/v1.35.10/evidence/qualification-complete-e.json": "4be402c9b4ed227bac05b48f60be894d7ee4d28bc546262b7f65bec1a8dc0698"
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/qualification-complete/v13510-qualify-20261116e.log",
+      "sha256": "bb1ccaebb85ddbe97c5175a0beedadc6af39d8b07a6325764be0042abb1ddfad"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/qualification-complete/v13510-qualify-20261116e.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/qualification-complete/v13510-qualify-20261116e.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/new-install/plan.json",
+      "sha256": "34ba084f923299bad3d0270556fe0536022ac0f3340da69e7306d91a5cfd6c0f"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/new-install/source-config.json",
+      "sha256": "be7439432cc8104b2c1c1fcb79574bf9c06cfc0220ee38927104dcd2c1574735"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/new-install/ledger-namespace.json",
+      "sha256": "3a7d75467b2c262178da3a6397457249e1cd8faa486212d0ecfab7a8b01b4dbd"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/new-install/continuity.json",
+      "sha256": "088ab6365c4657e6a88113296fd97a909e4da30212618ca8e911db73f3e605d0"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/new-install/prepared-boundary.json",
+      "sha256": "4a67aa7357dae0bf4b716a333f1a39d9c310fb269a6b3610a183640b79851ae3"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/new-install/target-install.json",
+      "sha256": "2e8c1f877d41c93d4fc7fec25e462be8a43e73fabeafa7fd223dac4a27b2b50b"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/new-install/target-config.json",
+      "sha256": "8268351eae8380a25b2efd2cf19390a9663bdb167df83d08216659abb046fd80"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/new-install/new-install.status.json",
+      "sha256": "5dfa582e28eb5ce084ca6040c5b053f424749d1a8358cd4eda7962278492f435"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/new-install/new-install.attempt-1.log",
+      "sha256": "0dc1e282902506b0ae2e7d5ffcef93c05bf3eb33018a8dcb81df19441acf6c03"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/new-install/new-install.attempt-1.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/new-install/new-install.attempt-1.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/target-clean/plan.json",
+      "sha256": "34ba084f923299bad3d0270556fe0536022ac0f3340da69e7306d91a5cfd6c0f"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/target-clean/source-config.json",
+      "sha256": "be7439432cc8104b2c1c1fcb79574bf9c06cfc0220ee38927104dcd2c1574735"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/target-clean/ledger-namespace.json",
+      "sha256": "3a7d75467b2c262178da3a6397457249e1cd8faa486212d0ecfab7a8b01b4dbd"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/target-clean/continuity.json",
+      "sha256": "088ab6365c4657e6a88113296fd97a909e4da30212618ca8e911db73f3e605d0"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/target-clean/prepared-boundary.json",
+      "sha256": "4a67aa7357dae0bf4b716a333f1a39d9c310fb269a6b3610a183640b79851ae3"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/target-clean/target-clean.status.json",
+      "sha256": "14ddbe38bdae87da23562e2214e3b7324efba63941e8ec9a83ed3c42cc073fe2"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/target-clean/target-clean.attempt-1.log",
+      "sha256": "f25449dc0c2f8b1fb20174e973e208717b7221d9c302a046676b7dc03d138b30"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/target-clean/target-clean.attempt-1.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/target-clean/target-clean.attempt-1.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/qualification-install-e.json",
+      "sha256": "6f4aac00f0dc05273abf52dec9cc20cc2822fdeed960ad777e4de00c159a8f94"
+    }
+  ],
+  "run_id": "v13510-qualify-20261116e",
+  "durable_rc": 0,
+  "finalized_rc": 0,
+  "failure_markers": 0,
+  "success_marker": "UPGRADE_NEXT_INSTALL_PASS",
+  "cleanup_marker": "LAB_CLEAN_VERIFY_PASS",
+  "log": {
+    "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/qualification-complete/v13510-qualify-20261116e.log",
+    "sha256": "bb1ccaebb85ddbe97c5175a0beedadc6af39d8b07a6325764be0042abb1ddfad"
+  },
+  "durable_exit": {
+    "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/qualification-complete/v13510-qualify-20261116e.exit",
+    "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+  },
+  "durable_finalized": {
+    "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/qualification-complete/v13510-qualify-20261116e.finalized",
+    "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+  },
+  "completed_ladder": 3,
+  "customer_signoff": null,
+  "business_assertions": [
+    "源销毁且严格清理后，独立v1.35.10配置通过两次真实kubecli setup，节点UID幂等且与源不重叠；三API、六目标节点/containerd2.3.7、核心网络与DNS后端、六节点和16Pod指标、28初始化/运行容器已准入镜像摘要读回通过。产品destroy与既有固定六节点helper、严格残留及租约释放完成。本项不签未安装中间件、CSI或其它网络现场。"
+  ]
+}

@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "registry": "http://192.168.122.2:5000",
+  "builds": [],
+  "existing_tags_overwritten": [],
+  "records": [
+    {
+      "image": "brinnatt/pause:3.10",
+      "source_child": "sha256:94b743db8a7016837cf705713fa31e9b9eed90c7cf2f8279470a597672d242b8",
+      "action": "reuse-equivalent-runtime-and-rootfs"
+    },
+    {
+      "image": "brinnatt/busybox:1.37",
+      "source_child": "sha256:91f1e8e9dd461f16a9a7625de0ea9568e6054f27896961234766bf36c0399f71",
+      "action": "reuse-equivalent-runtime-and-rootfs"
+    },
+    {
+      "image": "brinnatt/local-path-provisioner:v0.0.37",
+      "source_child": "sha256:13612ca9ffb4d1cccde1585fc0548642cbbce68547883a846775e95c44a505b3",
+      "action": "copied-missing-amd64-manifest"
+    },
+    {
+      "image": "brinnatt/calico-node:v3.28.4",
+      "source_child": "sha256:c54b9ebcd4c4504fb3d3916060bb326312103c9ab145403a6d2fe3a69074d8f2",
+      "action": "reuse-equivalent-runtime-and-rootfs"
+    },
+    {
+      "image": "brinnatt/calico-cni:v3.28.4",
+      "source_child": "sha256:79940dce90b5dd3e69914f77e1239bf4aac43977499266a55bd3576800f1b029",
+      "action": "reuse-equivalent-runtime-and-rootfs"
+    },
+    {
+      "image": "brinnatt/calico-kube-controllers:v3.28.4",
+      "source_child": "sha256:86f353f7975c5c270bea9554866494132769164014415a02103903476b08add7",
+      "action": "reuse-equivalent-runtime-and-rootfs"
+    },
+    {
+      "image": "brinnatt/calico-node:v3.31.7",
+      "source_child": "sha256:313d1f7602f56446042d3d8487ad2dc34e670d071852a924751d11bc57488e28",
+      "action": "copied-missing-amd64-manifest"
+    },
+    {
+      "image": "brinnatt/calico-cni:v3.31.7",
+      "source_child": "sha256:93054e1e9e501311669c31e9b0a4502db7bafe09885120baa1453b30b2988310",
+      "action": "copied-missing-amd64-manifest"
+    },
+    {
+      "image": "brinnatt/calico-kube-controllers:v3.31.7",
+      "source_child": "sha256:24f611b37e3361fad2d9b63c0ad7d04cd05c5aadbf5a74da81b4bb572d218429",
+      "action": "copied-missing-amd64-manifest"
+    },
+    {
+      "image": "brinnatt/calico-node:v3.32.4",
+      "source_child": "sha256:de0253a3a3eeb5d3179e0d55dd1b590efd8e51b3c5231dfd7e2bdeb1f6d498bf",
+      "action": "copied-missing-amd64-manifest"
+    },
+    {
+      "image": "brinnatt/calico-cni:v3.32.4",
+      "source_child": "sha256:3c288beff038cd960bb685cd7240faa4c310aecbc8936d318fa664650d2485c2",
+      "action": "copied-missing-amd64-manifest"
+    },
+    {
+      "image": "brinnatt/calico-kube-controllers:v3.32.4",
+      "source_child": "sha256:27dc7c6e418aa96a79fe4ae3e542002d4a90525b6d67aa811a356f4cbdda1fd3",
+      "action": "copied-missing-amd64-manifest"
+    },
+    {
+      "image": "brinnatt/coredns:1.12.4",
+      "source_child": "sha256:a1d9a81ba706cd4e3821d377c02d756d55241d42e9803b4a5ff43d90b6c6d8a9",
+      "action": "reuse-equivalent-runtime-and-rootfs"
+    },
+    {
+      "image": "brinnatt/coredns:1.15.0",
+      "source_child": "sha256:418bea67884ddd0ecbca0b4a9dbbbb62538320afa49f52373923ab02ffb1623f",
+      "action": "copied-missing-amd64-manifest"
+    },
+    {
+      "image": "brinnatt/k8s-dns-node-cache:1.26.4",
+      "source_child": "sha256:781f21cf30abdddcefb70b78de643f57f89fc55fa4c9a3ad17194f2ef9019134",
+      "action": "reuse-equivalent-runtime-and-rootfs"
+    },
+    {
+      "image": "brinnatt/k8s-dns-node-cache:1.26.8",
+      "source_child": "sha256:c392f1f91987742c2479270e91e8bccf3e90986d1b5da13b96465b9628cf39a9",
+      "action": "copied-missing-amd64-manifest"
+    },
+    {
+      "image": "brinnatt/metrics-server:v0.8.0",
+      "source_child": "sha256:d1d9381387647d22f0842ed7a24940e752b6204c82c550beacf3dfdeea62106f",
+      "action": "reuse-equivalent-runtime-and-rootfs"
+    },
+    {
+      "image": "brinnatt/metrics-server:v0.9.1",
+      "source_child": "sha256:85668af2a63a90a493f8f83e6281367c075a2d5e9a575c818e92af554d7e40d7",
+      "action": "copied-missing-amd64-manifest"
+    }
+  ],
+  "ready": true
+}

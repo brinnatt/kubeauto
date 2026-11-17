@@ -10,6 +10,18 @@ from upgrade.product import coordinator
 
 
 class CoordinatorContracts(unittest.TestCase):
+    @unittest.skipUnless(Path('/tmp/kubeauto-extbin-overlay-qualified/amd64/extra').is_dir(),
+                         'qualified published binary pack is unavailable')
+    def test_next_runtime_consumes_both_architecture_packs_without_download_or_execution(self):
+        for machine, architecture in [('x86_64','amd64'),('aarch64','arm64')]:
+            with self.subTest(architecture=architecture),patch.object(coordinator.platform,'machine',return_value=machine):
+                values=coordinator._next_runtime_inputs(
+                    Path('/tmp/kubeauto-extbin-overlay-qualified')/architecture/'extra')
+                self.assertEqual(set(values['UPGRADE_CONTAINERD_BUNDLES']),{'2.2.10','2.3.7'})
+                self.assertTrue(values['UPGRADE_CONTAINERD_ACCEPT_EXISTING_TARGET'])
+                for item in values['UPGRADE_CONTAINERD_BUNDLES'].values():
+                    self.assertTrue(Path(item['directory']).is_dir())
+
     def test_runtime_inputs_are_checksum_bound_to_both_adjacent_edges(self):
         values = coordinator._runtime_inputs()
         self.assertEqual(set(values['UPGRADE_CONTAINERD_BUNDLES']), {'2.2.10', '2.3.7'})

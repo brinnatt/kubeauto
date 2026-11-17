@@ -43,6 +43,12 @@
 - import_tasks: ../../prepare/tasks/podruntime-slice.yml
   tags: upgrade_k8s, restart_node
 
+- name: Require a boolean legacy cgroup policy
+  ansible.builtin.assert:
+    that:
+      - KUBELET_FAIL_CGROUP_V1 | default(true) is boolean
+  tags: upgrade_k8s, restart_node
+
 - name: create kubelet configuration file
   template: src=kubelet-config.yaml.j2 dest=/var/lib/kubelet/config.yaml
   tags: upgrade_k8s, restart_node

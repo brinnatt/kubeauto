@@ -1,0 +1,8 @@
+- name: Admit authentication compatibility on every master before platform changes
+  hosts: kube_master
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - ansible.builtin.import_tasks: api-auth.yml
+      vars:
+        UPGRADE_API_AUTH_OBSERVE_ONLY: true

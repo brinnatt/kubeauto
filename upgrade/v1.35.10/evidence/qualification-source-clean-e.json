@@ -1,0 +1,132 @@
+{
+  "schema_version": 1,
+  "run_id": "v13510-qualify-20261116e",
+  "phase": "source-clean",
+  "durable_rc": 0,
+  "finalized_rc": 0,
+  "parent_acceptance": false,
+  "marker": "UPGRADE_NEXT_SOURCE_CLEAN_PASS",
+  "scope": "Verified product destroy followed by unchanged fixed --rocky-only cleanup helper for exactly six leased pool nodes, strict process/service/directory readback, node owner retained for independent target install. No control host or raw-disk format.",
+  "references": [
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/source-clean/plan.json",
+      "sha256": "34ba084f923299bad3d0270556fe0536022ac0f3340da69e7306d91a5cfd6c0f"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/source-clean/source-config.json",
+      "sha256": "be7439432cc8104b2c1c1fcb79574bf9c06cfc0220ee38927104dcd2c1574735"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/source-clean/ledger-namespace.json",
+      "sha256": "3a7d75467b2c262178da3a6397457249e1cd8faa486212d0ecfab7a8b01b4dbd"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/source-clean/continuity.json",
+      "sha256": "088ab6365c4657e6a88113296fd97a909e4da30212618ca8e911db73f3e605d0"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/source-clean/prepared-boundary.json",
+      "sha256": "4a67aa7357dae0bf4b716a333f1a39d9c310fb269a6b3610a183640b79851ae3"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/source-clean/source-clean.status.json",
+      "sha256": "9aee050784bf36308d874701bf7c9c07d2ea8593e53c7859ef82c693b51f8ca3"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/source-clean/source-clean.attempt-1.log",
+      "sha256": "4237590aaec4961690994aea26845487752136cfa14fee98d7ebb9f4c971a8c1"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/source-clean/source-clean.attempt-1.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/source-clean/source-clean.attempt-1.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/source-clean/source-clean.attempt-1.product-state/calico-created-default-bgp.json",
+      "sha256": "46e1fa738f6d30f04ad0ec230abb81712ce9e27c10a4dffbc9cf3a46db9e56ef"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/source-clean/source-clean.attempt-1.product-state/calico-datastore.json",
+      "sha256": "3b27a4548b51a7cfb94daac136d8f9193a46bdf77ad64ef7d0858d36addd81b7"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/source-clean/source-clean.attempt-1.product-state/calico-edges.json",
+      "sha256": "126e9dd6680307084c5d9c017e6a16b76080ea4107162ce54ee1765b6628de1b"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/source-clean/source-clean.attempt-1.product-state/calico-v3.31.7.json",
+      "sha256": "9653c673fb4b565b05708f120f54268bba63dc74b1874f5c45fd4f7b70b98181"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/source-clean/source-clean.attempt-1.product-state/calico-v3.32.4.json",
+      "sha256": "5237589b46f50e42556b47126b3695202557df14137612bb3018a2c217655fa5"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/source-clean/source-clean.attempt-1.product-state/dns-source.json",
+      "sha256": "fd5d66afcfb685817dfaef62f133e2f630b6bcfa214d234da0422eb90e398cac"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/source-clean/source-clean.attempt-1.product-state/etcd-source.json",
+      "sha256": "4720f0704473d900f3fe98db454d64645b768471245db5b67d788ea3504173a2"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/source-clean/source-clean.attempt-1.product-state/etcd-unit-192.168.122.217.json",
+      "sha256": "6b794c77f65f5ff12d0818153a5a7da7769ae5c01781729a82987b353c92104a"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/source-clean/source-clean.attempt-1.product-state/etcd-unit-192.168.122.243.json",
+      "sha256": "b43d55049ac3f0042033ddb45aa0a292f07fa84de9dfc3ab735769b9b27f1277"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/source-clean/source-clean.attempt-1.product-state/etcd-unit-192.168.122.246.json",
+      "sha256": "46ef0315176300826db54abd2d3bea3ac4b54b35cde0f5c71a422f0c8f10dbbe"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/source-clean/source-clean.attempt-1.product-state/first-hop-result.json",
+      "sha256": "4ad9eebace5d001b8ee52f12b3dd4fd528189d3d79f1b129634ee81034101ccd"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/source-clean/source-clean.attempt-1.product-state/journal/journal.json",
+      "sha256": "953551471cb6cf7cf25c944ddf4f92f573d000c48fb5a6bea85eb0114dbc6af6"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/source-clean/source-clean.attempt-1.product-state/journal/owner.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/source-clean/source-clean.attempt-1.product-state/metrics-business-pods.json",
+      "sha256": "f08033e6b387703751f0f8da71445d3f1199664763632af04b0e97c1926937b5"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/source-clean/source-clean.attempt-1.product-state/metrics-source.json",
+      "sha256": "2afef63efc595f85d5df0552ee17c20b460e2140b7b8dd11838c1e0dbb52ac26"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/source-clean/source-clean.attempt-1.product-state/prepared-receipt.json",
+      "sha256": "4a67aa7357dae0bf4b716a333f1a39d9c310fb269a6b3610a183640b79851ae3"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/source-clean/source-clean.attempt-1.product-state/product-config.json",
+      "sha256": "a73e169d6134734dc6b1644f4a0921f48d0fba0ab126c98e702bcd135319b4af"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/source-clean/source-clean.attempt-1.product-state/snapshot.db",
+      "sha256": "96487df07b748e81a4f80722bf51c070a1168468d188f0d9930aad15b347f108"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/source-clean/source-clean.attempt-1.product-state/source-observation.json",
+      "sha256": "8dabd7facd937286565bebd06b0159cab9e6d73b7593068cfbba7a4fb81df775"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/source-clean/source-clean.attempt-1.product-state/v3.31.7-accepted.json",
+      "sha256": "5237589b46f50e42556b47126b3695202557df14137612bb3018a2c217655fa5"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/source-clean/source-clean.attempt-1.product-state/v3.32.4-accepted.json",
+      "sha256": "e02021638f237741fc73270ba017a0f8eb68e0d010c41c67e3e9b0b87eb649f5"
+    }
+  ]
+}

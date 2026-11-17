@@ -83,7 +83,7 @@ class KubernetesHandoffContracts(unittest.TestCase):
         self.variables = dict(UPGRADE_SOURCE_VERSION='v1.33.6', K8S_VER='1.34.13',
             UPGRADE_PRECONDITIONS_VERIFIED=True, UPGRADE_RUN_ID='handoff-1', SECURE_PORT=6443,
             UPGRADE_API_BACKENDS=['https://master-one:6443'],
-            base_dir='/fixture', cluster_dir='/fixture', bin_dir='/fixture/bin',
+            base_dir='/fixture', cluster_dir='/fixture', bin_dir='/fixture/bin', ca_dir='/fixture/ssl',
             UPGRADE_DRAIN_TIMEOUT_SECONDS=300, CONTAINER_RUNTIME='docker', CGROUP_DRIVER='systemd',
             DOCKER_STORAGE_DIR='/fixture/docker-data',
             UPGRADE_CRI_DOCKERD={'path': '/fixture/source/cri-dockerd', 'sha256': sha('cri0410')},
@@ -137,8 +137,8 @@ class KubernetesHandoffContracts(unittest.TestCase):
         self.assertNotIn('Unexpected templating', result.stdout+result.stderr)
         (self.root/(str(len(self.launched))+'-'+path.stem+'.log')).write_text(result.stdout+result.stderr)
         if result.returncode and not self.read().get('fail'):
-            self.assertIn('Assertion failed', result.stdout+result.stderr,
-                          result.stdout+result.stderr)
+            self.assertRegex(result.stdout+result.stderr, r'Assertion failed|"assertion":',
+                             result.stdout+result.stderr)
         return SimpleNamespace(rc=result.returncode)
 
     def business(self):

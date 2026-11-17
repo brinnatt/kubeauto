@@ -1,0 +1,623 @@
+{
+  "schema_version": 1,
+  "run_id": "v13510-final-20261117a",
+  "mode": "final",
+  "source": "v1.34.13",
+  "target": "v1.35.10",
+  "phases": [
+    {
+      "run_id": "v13510-final-20261117a",
+      "phase": "source",
+      "rc": 0,
+      "attempt": 1,
+      "log": "source.attempt-1.log",
+      "started": "2026-11-16T17:59:06.831159+00:00",
+      "finished": "2026-11-16T18:25:19.412726+00:00"
+    },
+    {
+      "run_id": "v13510-final-20261117a",
+      "phase": "control",
+      "rc": 0,
+      "attempt": 1,
+      "log": "control.attempt-1.log",
+      "started": "2026-11-16T18:25:19.418199+00:00",
+      "finished": "2026-11-16T18:46:44.135400+00:00"
+    },
+    {
+      "run_id": "v13510-final-20261117a",
+      "phase": "nodes",
+      "rc": 0,
+      "attempt": 1,
+      "log": "nodes.attempt-1.log",
+      "started": "2026-11-16T18:46:44.139755+00:00",
+      "finished": "2026-11-16T19:18:22.380319+00:00"
+    },
+    {
+      "run_id": "v13510-final-20261117a",
+      "phase": "source-clean",
+      "rc": 0,
+      "attempt": 1,
+      "log": "source-clean.attempt-1.log",
+      "started": "2026-11-16T19:18:22.384487+00:00",
+      "finished": "2026-11-16T19:26:59.092833+00:00"
+    },
+    {
+      "run_id": "v13510-final-20261117a",
+      "phase": "new-install",
+      "rc": 0,
+      "attempt": 1,
+      "log": "new-install.attempt-1.log",
+      "started": "2026-11-16T19:26:59.098577+00:00",
+      "finished": "2026-11-16T20:19:51.305335+00:00"
+    },
+    {
+      "run_id": "v13510-final-20261117a",
+      "phase": "target-clean",
+      "rc": 0,
+      "attempt": 1,
+      "log": "target-clean.attempt-1.log",
+      "started": "2026-11-16T20:19:51.312438+00:00",
+      "finished": "2026-11-16T20:27:19.538670+00:00"
+    }
+  ],
+  "durable_rc": 0,
+  "finalized_rc": 0,
+  "failure_markers": 0,
+  "journal_failures": [],
+  "completed_product_steps": [
+    "platform/etcd-v3.6.16",
+    "platform/calico-v3.31.7",
+    "platform/calico-v3.32.4",
+    "kubernetes/control-plane",
+    "kubernetes/node/upgrade-master-217",
+    "kubernetes/node/upgrade-master-243",
+    "kubernetes/node/upgrade-master-246",
+    "kubernetes/node/upgrade-worker-193",
+    "kubernetes/node/upgrade-worker-210",
+    "kubernetes/node/upgrade-worker-216",
+    "addons/dns",
+    "addons/metrics",
+    "product/config"
+  ],
+  "builds": [],
+  "middleware_deep_regressions": [],
+  "cleanup": "both clusters destroyed through product; fixed six-node cleanup twice, strict process/service/directory checks and ownership release; no control mutation or raw-disk formatting",
+  "references": [
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/final-complete/v13510-final-20261117a.log",
+      "sha256": "c9ed316644830ff3f62cdbf367a147541749595ce34777c1e6ef78ef3747880f"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/final-complete/v13510-final-20261117a.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/final-complete/v13510-final-20261117a.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/final-complete/owner-release.log",
+      "sha256": "f2ac523d80289b19e459ab8353bbbf6ae74b8b4390f3f74e1c426958f9e73c47"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source/plan.json",
+      "sha256": "5bbbae348e55bb9f05d1cd124ae7ee1933deda257e58e084d1821a51415a0e55"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source/source-config.json",
+      "sha256": "0dbbbc60e462edb0c943fb2c4288e704bb5e96aaff8bae15766470e31b4ecdf8"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source/ledger-namespace.json",
+      "sha256": "8587c26c40c5497025d02a94171c9f4d86c55e44195c5ab85c7a50c2baa14385"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source/continuity.json",
+      "sha256": "088ab6365c4657e6a88113296fd97a909e4da30212618ca8e911db73f3e605d0"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source/prepared-boundary.json",
+      "sha256": "0baa0a69d1c181873607d870fba4f1bd6eed1ec8a02f51849ac443397227727d"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source/source-health.json",
+      "sha256": "581973be07c543e09e6b029440651071c44fbb1ace0002871211aca2630a3942"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source/source.status.json",
+      "sha256": "fa753dab67ef948cecaaa18f74e5b9442a7cf2a2e87722fe64f5745208d750fa"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source/source.attempt-1.log",
+      "sha256": "f7e114e8417c79a5920aaae89bbe35e17a7aa5823b73619ad5fa716634f0fd68"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source/source.attempt-1.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source/source.attempt-1.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source/source.attempt-1.product-state/etcd-source.json",
+      "sha256": "6dcbe2a1dc6b9490dd7c29de8d16665d1a8e6d5400b1e483e71e6930eaae0bfa"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source/source.attempt-1.product-state/etcd-unit-192.168.122.217.json",
+      "sha256": "6b794c77f65f5ff12d0818153a5a7da7769ae5c01781729a82987b353c92104a"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source/source.attempt-1.product-state/etcd-unit-192.168.122.243.json",
+      "sha256": "b43d55049ac3f0042033ddb45aa0a292f07fa84de9dfc3ab735769b9b27f1277"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source/source.attempt-1.product-state/etcd-unit-192.168.122.246.json",
+      "sha256": "46ef0315176300826db54abd2d3bea3ac4b54b35cde0f5c71a422f0c8f10dbbe"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source/source.attempt-1.product-state/prepared-receipt.json",
+      "sha256": "0baa0a69d1c181873607d870fba4f1bd6eed1ec8a02f51849ac443397227727d"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source/source.attempt-1.product-state/product-config.json",
+      "sha256": "a73e169d6134734dc6b1644f4a0921f48d0fba0ab126c98e702bcd135319b4af"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source/source.attempt-1.product-state/snapshot.db",
+      "sha256": "6dd6c5854a28c365f7b7c8eafacab63920dbc3bb4cadeba82d7896d82221346a"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source/source.attempt-1.product-state/source-observation.json",
+      "sha256": "fd57ae3999d1cba95448bd91db9012adf746489dc77c452a86f89fcfa1e0a9a1"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/control/plan.json",
+      "sha256": "5bbbae348e55bb9f05d1cd124ae7ee1933deda257e58e084d1821a51415a0e55"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/control/source-config.json",
+      "sha256": "0dbbbc60e462edb0c943fb2c4288e704bb5e96aaff8bae15766470e31b4ecdf8"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/control/ledger-namespace.json",
+      "sha256": "8587c26c40c5497025d02a94171c9f4d86c55e44195c5ab85c7a50c2baa14385"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/control/continuity.json",
+      "sha256": "088ab6365c4657e6a88113296fd97a909e4da30212618ca8e911db73f3e605d0"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/control/prepared-boundary.json",
+      "sha256": "0baa0a69d1c181873607d870fba4f1bd6eed1ec8a02f51849ac443397227727d"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/control/control-boundary.json",
+      "sha256": "a87b407ad40161fe98458c6c9c4400743f6894ce4559d2b5e9eed1795037e555"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/control/control.status.json",
+      "sha256": "5c00fba4b301b10bb6ed4d26a31447baa61254804e024c48f3b7cca2d6ea7c70"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/control/control.attempt-1.log",
+      "sha256": "12dd06bafea881892266415a490102a36095f41f06d60535eb09e82b59640cc3"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/control/control.attempt-1.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/control/control.attempt-1.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/control/control.attempt-1.product-state/calico-created-default-bgp.json",
+      "sha256": "e6e4090becbbf41242d3e2496804ecea6ac56812a070c87f190d696a547eae0c"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/control/control.attempt-1.product-state/calico-datastore.json",
+      "sha256": "660aa1dda430afd3ace66e91ab1735d19340ad45183323ce46a26cf4eccae09c"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/control/control.attempt-1.product-state/calico-edges.json",
+      "sha256": "126e9dd6680307084c5d9c017e6a16b76080ea4107162ce54ee1765b6628de1b"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/control/control.attempt-1.product-state/calico-v3.31.7.json",
+      "sha256": "24dedc638e05fb01f55622d0839c9f1598d86cbbe801bdfbdc687da4bffe34f4"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/control/control.attempt-1.product-state/calico-v3.32.4.json",
+      "sha256": "ff22a5e75155e60c60ca09728643ffa3d080f00178465f705c5c97ab7f9c709e"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/control/control.attempt-1.product-state/dns-source.json",
+      "sha256": "4cacbd2200da2716c498b4d264d17e65e1d2b04effa7ea68023099019b8a40e4"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/control/control.attempt-1.product-state/etcd-source.json",
+      "sha256": "6dcbe2a1dc6b9490dd7c29de8d16665d1a8e6d5400b1e483e71e6930eaae0bfa"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/control/control.attempt-1.product-state/etcd-unit-192.168.122.217.json",
+      "sha256": "6b794c77f65f5ff12d0818153a5a7da7769ae5c01781729a82987b353c92104a"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/control/control.attempt-1.product-state/etcd-unit-192.168.122.243.json",
+      "sha256": "b43d55049ac3f0042033ddb45aa0a292f07fa84de9dfc3ab735769b9b27f1277"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/control/control.attempt-1.product-state/etcd-unit-192.168.122.246.json",
+      "sha256": "46ef0315176300826db54abd2d3bea3ac4b54b35cde0f5c71a422f0c8f10dbbe"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/control/control.attempt-1.product-state/first-hop-result.json",
+      "sha256": "a87b407ad40161fe98458c6c9c4400743f6894ce4559d2b5e9eed1795037e555"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/control/control.attempt-1.product-state/journal/journal.json",
+      "sha256": "fa75d3bebb03c5c58847aab3907231f45736aefb67e072d58d0f541b027b4cff"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/control/control.attempt-1.product-state/journal/owner.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/control/control.attempt-1.product-state/metrics-source.json",
+      "sha256": "013e780a47c618fdb3d6ffae43abb4f57526e7e64f9f7a2f44c080be580f211a"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/control/control.attempt-1.product-state/prepared-receipt.json",
+      "sha256": "0baa0a69d1c181873607d870fba4f1bd6eed1ec8a02f51849ac443397227727d"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/control/control.attempt-1.product-state/product-config.json",
+      "sha256": "a73e169d6134734dc6b1644f4a0921f48d0fba0ab126c98e702bcd135319b4af"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/control/control.attempt-1.product-state/snapshot.db",
+      "sha256": "6dd6c5854a28c365f7b7c8eafacab63920dbc3bb4cadeba82d7896d82221346a"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/control/control.attempt-1.product-state/source-observation.json",
+      "sha256": "fd57ae3999d1cba95448bd91db9012adf746489dc77c452a86f89fcfa1e0a9a1"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/control/control.attempt-1.product-state/v3.31.7-accepted.json",
+      "sha256": "ff22a5e75155e60c60ca09728643ffa3d080f00178465f705c5c97ab7f9c709e"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/control/control.attempt-1.product-state/v3.32.4-accepted.json",
+      "sha256": "a638c1b9d3ddd0125c8624c84fa0d37ddf4b78b182fb692a6ddb80774c2dbcda"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/nodes/plan.json",
+      "sha256": "5bbbae348e55bb9f05d1cd124ae7ee1933deda257e58e084d1821a51415a0e55"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/nodes/source-config.json",
+      "sha256": "0dbbbc60e462edb0c943fb2c4288e704bb5e96aaff8bae15766470e31b4ecdf8"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/nodes/ledger-namespace.json",
+      "sha256": "8587c26c40c5497025d02a94171c9f4d86c55e44195c5ab85c7a50c2baa14385"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/nodes/continuity.json",
+      "sha256": "088ab6365c4657e6a88113296fd97a909e4da30212618ca8e911db73f3e605d0"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/nodes/prepared-boundary.json",
+      "sha256": "0baa0a69d1c181873607d870fba4f1bd6eed1ec8a02f51849ac443397227727d"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/nodes/nodes-health.json",
+      "sha256": "8314ad62c8d098a20ad3c8c4f90d7cb86cec3bb0c7ec3a9a5caa215c74e8cc12"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/nodes/nodes-boundary.json",
+      "sha256": "b71526b6ee8861ae5bc8d2402f93e8af81e58dbb32a2f9657755bc1611a20c23"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/nodes/nodes.status.json",
+      "sha256": "8725f2129d0ff5eaf6116707cd9a08e5ed7e11a610e1c2a90465a5ca0472d392"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/nodes/nodes.attempt-1.log",
+      "sha256": "c2dad722aaa6d1b19946e2232313c1cbfda191e1c6536a31b5a538d6fc2cba35"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/nodes/nodes.attempt-1.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/nodes/nodes.attempt-1.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/nodes/nodes.attempt-1.product-state/calico-created-default-bgp.json",
+      "sha256": "e6e4090becbbf41242d3e2496804ecea6ac56812a070c87f190d696a547eae0c"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/nodes/nodes.attempt-1.product-state/calico-datastore.json",
+      "sha256": "660aa1dda430afd3ace66e91ab1735d19340ad45183323ce46a26cf4eccae09c"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/nodes/nodes.attempt-1.product-state/calico-edges.json",
+      "sha256": "126e9dd6680307084c5d9c017e6a16b76080ea4107162ce54ee1765b6628de1b"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/nodes/nodes.attempt-1.product-state/calico-v3.31.7.json",
+      "sha256": "24dedc638e05fb01f55622d0839c9f1598d86cbbe801bdfbdc687da4bffe34f4"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/nodes/nodes.attempt-1.product-state/calico-v3.32.4.json",
+      "sha256": "ff22a5e75155e60c60ca09728643ffa3d080f00178465f705c5c97ab7f9c709e"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/nodes/nodes.attempt-1.product-state/dns-source.json",
+      "sha256": "4cacbd2200da2716c498b4d264d17e65e1d2b04effa7ea68023099019b8a40e4"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/nodes/nodes.attempt-1.product-state/etcd-source.json",
+      "sha256": "6dcbe2a1dc6b9490dd7c29de8d16665d1a8e6d5400b1e483e71e6930eaae0bfa"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/nodes/nodes.attempt-1.product-state/etcd-unit-192.168.122.217.json",
+      "sha256": "6b794c77f65f5ff12d0818153a5a7da7769ae5c01781729a82987b353c92104a"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/nodes/nodes.attempt-1.product-state/etcd-unit-192.168.122.243.json",
+      "sha256": "b43d55049ac3f0042033ddb45aa0a292f07fa84de9dfc3ab735769b9b27f1277"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/nodes/nodes.attempt-1.product-state/etcd-unit-192.168.122.246.json",
+      "sha256": "46ef0315176300826db54abd2d3bea3ac4b54b35cde0f5c71a422f0c8f10dbbe"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/nodes/nodes.attempt-1.product-state/first-hop-result.json",
+      "sha256": "12c9de4dedf43bc254f83e46f38c55e01f8478418035a79347696bd2f02d7c59"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/nodes/nodes.attempt-1.product-state/journal/journal.json",
+      "sha256": "874c9c8e8912bc093d83ccfe810e1e591ff6ef36c9cc0e2566f5f4451d6b9ca9"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/nodes/nodes.attempt-1.product-state/journal/owner.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/nodes/nodes.attempt-1.product-state/metrics-business-pods.json",
+      "sha256": "258d5710e19a080500b2cbe6839431a380199acb03eb09b4ff0d9f10a7fd6b0e"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/nodes/nodes.attempt-1.product-state/metrics-source.json",
+      "sha256": "013e780a47c618fdb3d6ffae43abb4f57526e7e64f9f7a2f44c080be580f211a"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/nodes/nodes.attempt-1.product-state/prepared-receipt.json",
+      "sha256": "0baa0a69d1c181873607d870fba4f1bd6eed1ec8a02f51849ac443397227727d"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/nodes/nodes.attempt-1.product-state/product-config.json",
+      "sha256": "a73e169d6134734dc6b1644f4a0921f48d0fba0ab126c98e702bcd135319b4af"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/nodes/nodes.attempt-1.product-state/snapshot.db",
+      "sha256": "6dd6c5854a28c365f7b7c8eafacab63920dbc3bb4cadeba82d7896d82221346a"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/nodes/nodes.attempt-1.product-state/source-observation.json",
+      "sha256": "fd57ae3999d1cba95448bd91db9012adf746489dc77c452a86f89fcfa1e0a9a1"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/nodes/nodes.attempt-1.product-state/v3.31.7-accepted.json",
+      "sha256": "ff22a5e75155e60c60ca09728643ffa3d080f00178465f705c5c97ab7f9c709e"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/nodes/nodes.attempt-1.product-state/v3.32.4-accepted.json",
+      "sha256": "a638c1b9d3ddd0125c8624c84fa0d37ddf4b78b182fb692a6ddb80774c2dbcda"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source-clean/plan.json",
+      "sha256": "5bbbae348e55bb9f05d1cd124ae7ee1933deda257e58e084d1821a51415a0e55"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source-clean/source-config.json",
+      "sha256": "0dbbbc60e462edb0c943fb2c4288e704bb5e96aaff8bae15766470e31b4ecdf8"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source-clean/ledger-namespace.json",
+      "sha256": "8587c26c40c5497025d02a94171c9f4d86c55e44195c5ab85c7a50c2baa14385"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source-clean/continuity.json",
+      "sha256": "088ab6365c4657e6a88113296fd97a909e4da30212618ca8e911db73f3e605d0"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source-clean/prepared-boundary.json",
+      "sha256": "0baa0a69d1c181873607d870fba4f1bd6eed1ec8a02f51849ac443397227727d"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source-clean/source-clean.status.json",
+      "sha256": "33ecc54e6ac1f6bdd72cc0167409cb9f573d85d9791386d00d47bdfdea4917a7"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source-clean/source-clean.attempt-1.log",
+      "sha256": "d755bfd8827e153a3ac6c78167e079ad57cc53cb0e02dc07709f8437173192f1"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source-clean/source-clean.attempt-1.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source-clean/source-clean.attempt-1.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source-clean/source-clean.attempt-1.product-state/calico-created-default-bgp.json",
+      "sha256": "e6e4090becbbf41242d3e2496804ecea6ac56812a070c87f190d696a547eae0c"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source-clean/source-clean.attempt-1.product-state/calico-datastore.json",
+      "sha256": "660aa1dda430afd3ace66e91ab1735d19340ad45183323ce46a26cf4eccae09c"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source-clean/source-clean.attempt-1.product-state/calico-edges.json",
+      "sha256": "126e9dd6680307084c5d9c017e6a16b76080ea4107162ce54ee1765b6628de1b"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source-clean/source-clean.attempt-1.product-state/calico-v3.31.7.json",
+      "sha256": "24dedc638e05fb01f55622d0839c9f1598d86cbbe801bdfbdc687da4bffe34f4"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source-clean/source-clean.attempt-1.product-state/calico-v3.32.4.json",
+      "sha256": "ff22a5e75155e60c60ca09728643ffa3d080f00178465f705c5c97ab7f9c709e"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source-clean/source-clean.attempt-1.product-state/dns-source.json",
+      "sha256": "4cacbd2200da2716c498b4d264d17e65e1d2b04effa7ea68023099019b8a40e4"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source-clean/source-clean.attempt-1.product-state/etcd-source.json",
+      "sha256": "6dcbe2a1dc6b9490dd7c29de8d16665d1a8e6d5400b1e483e71e6930eaae0bfa"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source-clean/source-clean.attempt-1.product-state/etcd-unit-192.168.122.217.json",
+      "sha256": "6b794c77f65f5ff12d0818153a5a7da7769ae5c01781729a82987b353c92104a"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source-clean/source-clean.attempt-1.product-state/etcd-unit-192.168.122.243.json",
+      "sha256": "b43d55049ac3f0042033ddb45aa0a292f07fa84de9dfc3ab735769b9b27f1277"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source-clean/source-clean.attempt-1.product-state/etcd-unit-192.168.122.246.json",
+      "sha256": "46ef0315176300826db54abd2d3bea3ac4b54b35cde0f5c71a422f0c8f10dbbe"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source-clean/source-clean.attempt-1.product-state/first-hop-result.json",
+      "sha256": "12c9de4dedf43bc254f83e46f38c55e01f8478418035a79347696bd2f02d7c59"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source-clean/source-clean.attempt-1.product-state/journal/journal.json",
+      "sha256": "874c9c8e8912bc093d83ccfe810e1e591ff6ef36c9cc0e2566f5f4451d6b9ca9"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source-clean/source-clean.attempt-1.product-state/journal/owner.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source-clean/source-clean.attempt-1.product-state/metrics-business-pods.json",
+      "sha256": "258d5710e19a080500b2cbe6839431a380199acb03eb09b4ff0d9f10a7fd6b0e"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source-clean/source-clean.attempt-1.product-state/metrics-source.json",
+      "sha256": "013e780a47c618fdb3d6ffae43abb4f57526e7e64f9f7a2f44c080be580f211a"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source-clean/source-clean.attempt-1.product-state/prepared-receipt.json",
+      "sha256": "0baa0a69d1c181873607d870fba4f1bd6eed1ec8a02f51849ac443397227727d"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source-clean/source-clean.attempt-1.product-state/product-config.json",
+      "sha256": "a73e169d6134734dc6b1644f4a0921f48d0fba0ab126c98e702bcd135319b4af"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source-clean/source-clean.attempt-1.product-state/snapshot.db",
+      "sha256": "6dd6c5854a28c365f7b7c8eafacab63920dbc3bb4cadeba82d7896d82221346a"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source-clean/source-clean.attempt-1.product-state/source-observation.json",
+      "sha256": "fd57ae3999d1cba95448bd91db9012adf746489dc77c452a86f89fcfa1e0a9a1"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source-clean/source-clean.attempt-1.product-state/v3.31.7-accepted.json",
+      "sha256": "ff22a5e75155e60c60ca09728643ffa3d080f00178465f705c5c97ab7f9c709e"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/source-clean/source-clean.attempt-1.product-state/v3.32.4-accepted.json",
+      "sha256": "a638c1b9d3ddd0125c8624c84fa0d37ddf4b78b182fb692a6ddb80774c2dbcda"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/new-install/plan.json",
+      "sha256": "5bbbae348e55bb9f05d1cd124ae7ee1933deda257e58e084d1821a51415a0e55"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/new-install/source-config.json",
+      "sha256": "0dbbbc60e462edb0c943fb2c4288e704bb5e96aaff8bae15766470e31b4ecdf8"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/new-install/ledger-namespace.json",
+      "sha256": "8587c26c40c5497025d02a94171c9f4d86c55e44195c5ab85c7a50c2baa14385"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/new-install/continuity.json",
+      "sha256": "088ab6365c4657e6a88113296fd97a909e4da30212618ca8e911db73f3e605d0"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/new-install/prepared-boundary.json",
+      "sha256": "0baa0a69d1c181873607d870fba4f1bd6eed1ec8a02f51849ac443397227727d"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/new-install/target-install.json",
+      "sha256": "030868746689a78ceee635465b3057f5a43008a71b1c4b0748b01e58bcd40c6c"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/new-install/target-config.json",
+      "sha256": "a41c09cbbb874c53735ccadf5361bbd3bd09cfd93645bea97281150d8880b589"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/new-install/new-install.status.json",
+      "sha256": "7c6be76c4efc2a91c274a7da37ae054f1a5b4edf73838f9608eebaf5bdf6e8c9"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/new-install/new-install.attempt-1.log",
+      "sha256": "129666efe1792fc08a398790b13219e136ba37a45d3838ddc68155a3eeffc292"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/new-install/new-install.attempt-1.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/new-install/new-install.attempt-1.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/target-clean/plan.json",
+      "sha256": "5bbbae348e55bb9f05d1cd124ae7ee1933deda257e58e084d1821a51415a0e55"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/target-clean/source-config.json",
+      "sha256": "0dbbbc60e462edb0c943fb2c4288e704bb5e96aaff8bae15766470e31b4ecdf8"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/target-clean/ledger-namespace.json",
+      "sha256": "8587c26c40c5497025d02a94171c9f4d86c55e44195c5ab85c7a50c2baa14385"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/target-clean/continuity.json",
+      "sha256": "088ab6365c4657e6a88113296fd97a909e4da30212618ca8e911db73f3e605d0"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/target-clean/prepared-boundary.json",
+      "sha256": "0baa0a69d1c181873607d870fba4f1bd6eed1ec8a02f51849ac443397227727d"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/target-clean/target-clean.status.json",
+      "sha256": "87270c04db4f0880a587d2be2f829190f2a077421393b399185642e8599fe5b9"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/target-clean/target-clean.attempt-1.log",
+      "sha256": "13801fa7e95f3dd36fa1e0a2c016abeeea9730bdb3469efe885fac823d4ce972"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/target-clean/target-clean.attempt-1.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-final-20261117a/target-clean/target-clean.attempt-1.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    }
+  ]
+}

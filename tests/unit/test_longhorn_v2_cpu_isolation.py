@@ -133,7 +133,13 @@ class ReusePolicy(unittest.TestCase):
         self.proof['remote_stage'] = {'directory': str(self.stage), 'files': {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in self.stage.iterdir()}}
         self.proof['hosts'] = {node: self.proof['hosts'][node]}
         self.evidence = self.directory/'evidence.json'; self.save()
-        self.lab = SimpleNamespace(BASE=HELPER.parents[2], DIRECTORY=self.directory, NODES=(node,), owner=Mock(return_value=self.owner),
+        product = self.directory/'roles/longhorn/files/longhorn.py'
+        product.parent.mkdir(parents=True)
+        frozen = HELPER.parents[2]/'upgrade/tests/fixtures/longhorn-pre-1122-246651e1.py.txt'
+        self.assertEqual(hashlib.sha256(frozen.read_bytes()).hexdigest(),
+            '246651e1773dcf6bdcf5972f81a4b0aaee2dab9999997bfb11d5549fd166b578')
+        product.write_bytes(frozen.read_bytes())
+        self.lab = SimpleNamespace(BASE=self.directory, DIRECTORY=self.directory, NODES=(node,), owner=Mock(return_value=self.owner),
             get=Mock(side_effect=lambda kind,*a: {'value': '{"v2":"false"}'} if kind == 'settings.longhorn.io' else self.pod),
             installation_health=Mock(), remote=Mock(return_value=SimpleNamespace(stdout='{"original_custom_masks_restored":true}')))
         self.patcher = patch.object(cpu, 'empty', return_value=[self.manager]); self.patcher.start(); self.addCleanup(self.patcher.stop)
@@ -155,7 +161,7 @@ class ReusePolicy(unittest.TestCase):
 
     def test_nullable_source_reuse_refuses_any_other_product_change(self):
         name = 'roles/longhorn/files/longhorn.py'
-        product = self.directory/name; product.parent.mkdir(parents=True)
+        product = self.directory/name; product.parent.mkdir(parents=True, exist_ok=True)
         product.write_bytes((self.lab.BASE/name).read_bytes())
         self.lab.BASE = self.directory
         self.verify()
@@ -243,7 +249,7 @@ class FilesystemImpactReuse(unittest.TestCase):
   self.assertEqual(prior_ref['sha256'],hashlib.sha256(prior_path.read_bytes()).hexdigest())
   prior=json.loads(prior_path.read_text());review_ref=current['source']['compatibility_review'];review_path=root/review_ref['path']
   self.assertEqual(review_ref['sha256'],hashlib.sha256(review_path.read_bytes()).hexdigest())
-  source=(root/'roles/longhorn/files/longhorn.py').read_text()
+  source=(root/'upgrade/tests/fixtures/longhorn-pre-1122-246651e1.py.txt').read_text()
   for variable,key,count in (('status','name',1),('state','disk_name',2)):
    current_line=variable+" = (current.get('status', {}).get('diskStatus') or {}).get("+key+") or {}"
    previous_line=variable+" = current.get('status', {}).get('diskStatus', {}).get("+key+", {})"

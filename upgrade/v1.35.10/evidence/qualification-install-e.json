@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "run_id": "v13510-qualify-20261116e",
+  "phase": "new-install",
+  "parent_acceptance": false,
+  "durable_rc": 0,
+  "finalized_rc": 0,
+  "marker": "UPGRADE_NEXT_INSTALL_PASS",
+  "scope": "two real kubecli setup calls, node UIDs preserved between calls and disjoint from destroyed source, all three API backends target ready, six real metrics plus 16 Pod metrics, 28 init/container imageIDs equal admitted AMD64 manifest, one ready DNS endpoint; cleanup pending",
+  "references": [
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/new-install/plan.json",
+      "sha256": "34ba084f923299bad3d0270556fe0536022ac0f3340da69e7306d91a5cfd6c0f"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/new-install/source-config.json",
+      "sha256": "be7439432cc8104b2c1c1fcb79574bf9c06cfc0220ee38927104dcd2c1574735"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/new-install/ledger-namespace.json",
+      "sha256": "3a7d75467b2c262178da3a6397457249e1cd8faa486212d0ecfab7a8b01b4dbd"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/new-install/continuity.json",
+      "sha256": "088ab6365c4657e6a88113296fd97a909e4da30212618ca8e911db73f3e605d0"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/new-install/prepared-boundary.json",
+      "sha256": "4a67aa7357dae0bf4b716a333f1a39d9c310fb269a6b3610a183640b79851ae3"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/new-install/target-install.json",
+      "sha256": "2e8c1f877d41c93d4fc7fec25e462be8a43e73fabeafa7fd223dac4a27b2b50b"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/new-install/target-config.json",
+      "sha256": "8268351eae8380a25b2efd2cf19390a9663bdb167df83d08216659abb046fd80"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/new-install/new-install.status.json",
+      "sha256": "5dfa582e28eb5ce084ca6040c5b053f424749d1a8358cd4eda7962278492f435"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/new-install/new-install.attempt-1.log",
+      "sha256": "0dc1e282902506b0ae2e7d5ffcef93c05bf3eb33018a8dcb81df19441acf6c03"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/new-install/new-install.attempt-1.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/new-install/new-install.attempt-1.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/new-install/independent-readback.json",
+      "sha256": "87d9c9f8dc1093c2cdeaac2a4889cbf4f22ac8bb927b52ab3687d112456ab16e"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/new-install/independent-readback.py.txt",
+      "sha256": "121d6066f6c8a3e27634166a6b980c1013e69716eefebc21afdb4787dfc616b2"
+    }
+  ]
+}

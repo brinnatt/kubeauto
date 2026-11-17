@@ -8,8 +8,9 @@
     - name: Require the exact reviewed hosts and version sets
       ansible.builtin.assert:
         that:
-          - UPGRADE_SOURCE_VERSION == 'v1.33.6'
-          - K8S_VER == 'v1.34.13'
+          - >-
+            [UPGRADE_SOURCE_VERSION, K8S_VER] in
+            [['v1.33.6', 'v1.34.13'], ['v1.34.13', 'v1.35.10']]
           - UPGRADE_EXPECTED_NODE_VERSIONS.keys() | list | sort == (groups['kube_master'] + groups['kube_node']) | unique | sort
           - UPGRADE_EXPECTED_CONTROLLER_VERSIONS | length > 0
           - UPGRADE_EXPECTED_CONTROLLER_VERSIONS | difference([UPGRADE_SOURCE_VERSION, K8S_VER]) | length == 0

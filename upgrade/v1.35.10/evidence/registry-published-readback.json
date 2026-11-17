@@ -1,0 +1,48 @@
+{
+  "mode": "readback",
+  "built_images": [],
+  "published_images": [],
+  "records": [
+    {
+      "image": "hub.talkedu.cn/kubeauto/kubeauto-k8s-bin:v1.34.13",
+      "exists": true,
+      "platforms": {
+        "amd64": "sha256:4e494547894ccd9009383a1acae091a4f4d9036bb57457450fe7d061d25b4813",
+        "arm64": "sha256:56cf124d1c5e810eeb1b9d327cc1d59a7ac59b764fa06e3e728edf8aeccb0d1c"
+      },
+      "digest": "sha256:102ab56b22ea78c726949ff18c6798f6d7a1a53dd7debc07384373985e153d35"
+    },
+    {
+      "image": "hub.talkedu.cn/kubeauto/kubeauto-k8s-bin:v1.35.10",
+      "exists": true,
+      "platforms": {
+        "amd64": "sha256:e46c071a1744c079105a0b44e38398089ba2e2e49bed89f8e5d4131f11689d1f",
+        "arm64": "sha256:f2a8c4e60fea2217ca273d8de50c2dfaed02eea797b6fd6c756189f1f63af98a"
+      },
+      "digest": "sha256:dda1f153dd776d6c527521592f6fa6978df5ab929aad937a24f3e432af63287a"
+    },
+    {
+      "image": "docker.io/brinnatt/kubeauto-k8s-bin:v1.34.13",
+      "exists": true,
+      "platforms": {
+        "amd64": "sha256:4e494547894ccd9009383a1acae091a4f4d9036bb57457450fe7d061d25b4813",
+        "arm64": "sha256:56cf124d1c5e810eeb1b9d327cc1d59a7ac59b764fa06e3e728edf8aeccb0d1c"
+      },
+      "digest": "sha256:102ab56b22ea78c726949ff18c6798f6d7a1a53dd7debc07384373985e153d35"
+    },
+    {
+      "image": "docker.io/brinnatt/kubeauto-k8s-bin:v1.35.10",
+      "exists": true,
+      "platforms": {
+        "amd64": "sha256:e46c071a1744c079105a0b44e38398089ba2e2e49bed89f8e5d4131f11689d1f",
+        "arm64": "sha256:f2a8c4e60fea2217ca273d8de50c2dfaed02eea797b6fd6c756189f1f63af98a"
+      },
+      "digest": "sha256:dda1f153dd776d6c527521592f6fa6978df5ab929aad937a24f3e432af63287a"
+    }
+  ],
+  "marker": "K8S_REGISTRY_PROBE_PASS",
+  "run_id": 43820026445,
+  "head_sha": "81b8f16fcdd74dfb927a5394d8c9a3f860b7d773",
+  "artifact_sha256": "cf09838947e773e014e619723fbdb8448bde6d7fb12d9d97f3881ed59491e356",
+  "conclusion": "success"
+}

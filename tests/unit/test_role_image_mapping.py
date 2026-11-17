@@ -6,6 +6,7 @@ customer delivery. Does not require a live cluster.
 from __future__ import annotations
 
 import re
+import json
 import unittest
 from pathlib import Path
 
@@ -20,7 +21,20 @@ def _read(rel: str) -> str:
 def _image_dockerfile(name: str) -> Path:
     if not EXT_IMAGES.is_dir():
         return EXT_IMAGES / name / "Dockerfile"
-    matches = list(EXT_IMAGES.glob(f"**/{name}/Dockerfile"))
+    from common.constants import KubeConstant
+    constants = KubeConstant()
+    pins = {image for images in constants.component_images.values() for image in images}
+    core = {'calico-cni': constants.v_calico, 'calico-node': constants.v_calico,
+            'calico-kube-controllers': constants.v_calico, 'coredns': constants.v_coredns,
+            'kube-router': constants.v_kuberouter, 'kube-ovn': constants.v_kubeovn}
+    pins.update('brinnatt/'+name+':'+tag for name,tag in core.items())
+    catalog = json.loads((EXT_IMAGES/'catalog.json').read_text())
+    matches = [EXT_IMAGES/row['dockerfile'] for row in catalog
+               if row['image'] == 'brinnatt/'+name and row['image']+':'+row['tag'] in pins]
+    # openebs-kubectl is a chart-hook dependency pinned to this Kubernetes minor.
+    if name == 'openebs-kubectl':
+        matches = [EXT_IMAGES/row['dockerfile'] for row in catalog
+                   if row['image'] == 'brinnatt/'+name and row['tag'] == KubeConstant().v_k8s_bin.lstrip('v')]
     if len(matches) != 1:
         raise AssertionError(f"expected one Dockerfile for {name}, found {matches}")
     return matches[0]
@@ -133,7 +147,7 @@ class TestDockerfileFromMatchesComponentImages(unittest.TestCase):
         "calico-node": "docker.io/calico/node:",
         "calico-kube-controllers": "docker.io/calico/kube-controllers:",
         "coredns": "docker.io/coredns/coredns:",
-        "flannel": "docker.io/flannel/flannel:",
+        "flannel": "ghcr.io/flannel-io/flannel:",
         # Cilium official publish location for current tags is quay.io
         "cilium": "quay.io/cilium/cilium:",
         "cilium-operator-generic": "quay.io/cilium/operator-generic:",
