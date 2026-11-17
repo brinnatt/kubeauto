@@ -20,10 +20,14 @@ class ReadbackWorkflowContracts(unittest.TestCase):
     def test_real_step_checks_both_registries_and_preserves_failure(self):
         workflow = yaml.load(WORKFLOW.read_text(), Loader=yaml.BaseLoader)
         self.assertEqual(set(workflow['jobs']), {'verify'})
-        self.assertEqual(workflow['on']['push']['branches'], ['v1.34.13-readback'])
+        self.assertEqual(workflow['on']['push']['branches'], ['v1.34.13'])
         build_workflow = yaml.load((REPO / '.github/workflows/build.yml').read_text(),
                                    Loader=yaml.BaseLoader)
-        self.assertNotIn('v1.34.13-readback', build_workflow['on']['push']['branches'])
+        self.assertIn('v1.34.13', build_workflow['on']['push']['branches'])
+        self.assertEqual(set(build_workflow['on']['push']['paths']), {
+            'Dockerfile', 'multi-platform-download.sh', '.github/workflows/build.yml'})
+        self.assertNotIn(str(WORKFLOW.relative_to(REPO)),
+                         build_workflow['on']['push']['paths'])
         self.assertNotIn('docker/build-push-action', WORKFLOW.read_text())
         script = next(s['run'] for s in workflow['jobs']['verify']['steps'] if 'run' in s)
         with tempfile.TemporaryDirectory() as directory:
