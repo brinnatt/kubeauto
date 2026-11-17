@@ -1,0 +1,121 @@
+{
+  "schema_version": 1,
+  "kind": "scoped-branch-maintenance-receipt",
+  "recorded_on": "2026-11-17",
+  "scope": "Canonical branch consolidation, product/packaging branch pairing and isolated readback triggers; no product runtime change or new customer sign-off.",
+  "allowed_build_images": [],
+  "allowed_publish_images": [],
+  "root_cause": "Readback branches bypassed broad push-triggered builds and remained after acceptance. Readback now runs on the canonical version branches; binary build push events filter actual build inputs.",
+  "removed_branches": [
+    {
+      "repository": "kubeauto-k8s-bin-dockerfile",
+      "branch": "v1.34.13-readback",
+      "tip": "03e42a944a094d36f84981b293031d70cddabbd0",
+      "retained_by": "v1.34.13",
+      "commit_retention": "ancestor-proven"
+    },
+    {
+      "repository": "kubeauto-k8s-bin-dockerfile",
+      "branch": "v1.35.10-readback",
+      "tip": "81b8f16fcdd74dfb927a5394d8c9a3f860b7d773",
+      "retained_by": "v1.35.10",
+      "commit_retention": "ancestor-proven"
+    },
+    {
+      "repository": "kubeauto-ext-bin-dockerfile",
+      "branch": "v1.34.13-readback",
+      "tip": "efc1e23b6b6e81d75e71c70ffa610789f9f235fb",
+      "retained_by": "v1.34.13",
+      "commit_retention": "ancestor-proven"
+    }
+  ],
+  "paired_branches": [
+    "v1.34.13",
+    "v1.35.10"
+  ],
+  "packaging_boundary": "Matching maintenance branches record accepted functional source commits. Historical v0.1.8 release and workflow build input are not relabelled as new Kubernetes-baseline images; actual packaging requires a new product revision tag bound to the selected baseline.",
+  "checks": [
+    {
+      "command": ".venv/bin/python -B -m unittest upgrade.tests.test_artifact_readback_workflow upgrade.tests.test_next_hop_registry_probe upgrade.tests.test_extbin_base_readback upgrade.tests.test_k8s_artifact -q",
+      "tests": 14,
+      "rc": 0
+    },
+    {
+      "command": ".venv/bin/python -B -m unittest tests.unit.test_six_repo_version_sync -q",
+      "tests": 13,
+      "rc": 0
+    },
+    {
+      "scope": "Every active YAML workflow and embedded bash run step on all pushed branch tips parsed / bash -n",
+      "rc": 0
+    }
+  ],
+  "ci_readback": [
+    {
+      "repository": "kubeauto-k8s-bin-dockerfile",
+      "run_id": 43995327731,
+      "url": "https://github.com/brinnatt/kubeauto-k8s-bin-dockerfile/actions/runs/43995327731",
+      "branch": "v1.34.13",
+      "sha": "2e0260ea8e3bd14f15e475baba50afb8bd448bd2",
+      "conclusion": "success",
+      "marker": "K8S_DUAL_REGISTRY_READBACK_PASS",
+      "artifact_sha256": "e931578d3c1c85fcf44c7aad9f3cbc1b846035ad43f603c6649ff110ae5ea626",
+      "artifact_name": "k8s-v1.34.13-readback",
+      "built_images": [],
+      "published_images": []
+    },
+    {
+      "repository": "kubeauto-k8s-bin-dockerfile",
+      "run_id": 43995327642,
+      "url": "https://github.com/brinnatt/kubeauto-k8s-bin-dockerfile/actions/runs/43995327642",
+      "branch": "v1.35.10",
+      "sha": "86214ab1e1637ce95ddc75c48db8f826b984494e",
+      "conclusion": "success",
+      "marker": "K8S_REGISTRY_PROBE_PASS",
+      "artifact_sha256": "352cdb619b24f9711318d8d9376007daa8c9b5bc5d751a0aceebfa66aa29825e",
+      "artifact_name": "k8s-v1.35.10-probe",
+      "built_images": [],
+      "published_images": []
+    },
+    {
+      "repository": "kubeauto-ext-bin-dockerfile",
+      "run_id": 43995203278,
+      "url": "https://github.com/brinnatt/kubeauto-ext-bin-dockerfile/actions/runs/43995203278",
+      "branch": "v1.34.13",
+      "sha": "3fa34ad417a9121d695f665f0a860852b9bbdf66",
+      "conclusion": "success",
+      "marker": "EXT_BIN_RETAINED_BASE_READBACK_PASS",
+      "artifact_sha256": "38256c0820d9204908d3d8eb10466a7197c9819d24ef8c93f0c6138ccd4bc0fb",
+      "artifact_name": "ext-bin-v1.34.13-retained-base",
+      "built_images": [],
+      "published_images": []
+    }
+  ],
+  "superseded_run": {
+    "repository": "kubeauto-k8s-bin-dockerfile",
+    "run_id": 43814785885,
+    "conclusion": "cancelled",
+    "reason": "Queued historical probe superseded by successful readback; removed with its temporary branch."
+  },
+  "removed_temporary_worktree": "/tmp/kubeauto-v13413-baseline-audit",
+  "inputs_sha256": {
+    "AGENTS.md": "8636f8aa2653c8d7daaff4bb37bff4aa76a23198bb7bb4ef1bf34c843f2d9971",
+    "upgrade/policy.md": "5a8f312a6480df24a6ab007511d4734e69e7d2c63b5101aaaf3481988431bc57",
+    "upgrade/tests/test_artifact_readback_workflow.py": "8710fe954dc5a9096ad2c2854a6bc5c9e4c2fc7bb65b18526b435590937af7a7",
+    "upgrade/tests/test_next_hop_registry_probe.py": "fb04848902915a5c4b14149fb829c975900cc37abd93bc8969ab7def7412bc12",
+    "upgrade/tests/test_extbin_base_readback.py": "53a67325f9b03089467985f67f8a1a7cdee21c0526f4f96a284d0f9779196aac",
+    "../kubeauto-k8s-bin-dockerfile/.github/workflows/build.yml": "5920f45508ed447215d2bc8e5e27d1ae84a28c7cd2b74c3f707b23fac028f0e1",
+    "../kubeauto-k8s-bin-dockerfile/.github/workflows/verify-v1.34.13.yml": "1a87a7f5fb99161846e2cd669431d69c4e4a9f18e1abc7e1538686d1d8a870db",
+    "../kubeauto-k8s-bin-dockerfile/.github/workflows/probe-v1.35.10.yml": "c4be4b2d7ab6710b5d3db574542d1833fa356ef851dcc3e448d908154bd2b18a",
+    "../kubeauto-ext-bin-dockerfile/.github/workflows/verify-v1.34.13.yml": "69da12e209cdbb282db82196dab7a71a9b9786b3780efb267d91804569f5fc25"
+  },
+  "existing_upgrade_acceptance": {
+    "matrix": "upgrade/v1.35.10/test-matrix.yaml",
+    "validator_rc": 0,
+    "pass": 15,
+    "total": 15,
+    "completed_groups": 8,
+    "total_groups": 8,
+    "boundary": "Existing runtime and artifact acceptance inputs remain applicable; no evidence rewritten or product regression repeated."
+  }
+}
