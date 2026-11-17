@@ -106,11 +106,13 @@ Chart `appVersion`、镜像 tag 和二进制自报版本也分别核验；无源
 明确保留该边界，不能从依赖相同反推构建自同一提交。
 
 发布前给出仓库、分支、SHA、实际 mode、镜像列表/数量和必要性，证明实际集合
-包含于允许集合。ext-images 使用既有 changed/selected 能力；k8s-bin 当前会构建
-多个历史版本；本跳已补版本分支/dispatch精确选版合同，正式发布仍需真实计划
-和双端取证。ext-bin 只有其内容或契约确实
-变化才重建，sp1 无变化就复用。产品镜像与 release workflow 的触发、构建 tools
-副作用也要检查，不能推 tag 后才发现范围扩大。
+包含于允许集合。六仓触发方式统一执行[主仓 tag 规则](../AGENTS.md#版本分支与交付收尾)。
+k8s-bin 的 `vX.Y.Z` tag 只选择同名的一个 Kubernetes 版本；ext-images 使用
+`images-*` 附注 tag 的 JSON 说明冻结 mode、selected 名单或 changed 的 before SHA，
+具体命令见其 README。不得由 tag 事件的空 before 推断全目录，也不再从分支名、
+提交信息或定时任务启动发布。ext-bin 只有内容或契约确实变化才发布新制品 tag，
+sp1 无变化就复用。产品打包 tag 对应主仓已发布的产品修订，不能把 Kubernetes
+版本分支误当产品 release tag。只读核验 tag 与发布 tag 分开，不写镜像仓库。
 
 AMD64/ARM64 与 TalkEdu/Docker Hub 证据逐项绑定；临时加速器不固化。官方下载
 必须校验并原子落盘。正式构建不能以“已成功下载”替代校验；本次源码盘点发现的

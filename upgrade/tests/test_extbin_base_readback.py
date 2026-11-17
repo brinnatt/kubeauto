@@ -140,14 +140,10 @@ class RetainedBaseReadbackContracts(unittest.TestCase):
     def test_actual_push_workflow_has_no_build_publication_or_container_execution(self):
         data = yaml.safe_load((SIBLING/'.github/workflows/verify-v1.34.13.yml').read_text())
         event = data.get('on',data.get(True))
-        self.assertEqual(event['push']['branches'],['v1.34.13'])
-        build = yaml.load((SIBLING/'.github/workflows/build.yml').read_text(), Loader=yaml.BaseLoader)
-        self.assertEqual(set(build['on']['push']), {'tags'})
+        self.assertEqual(event, {'push': {'tags': ['verify-ext-bin-v1.34.13-*']}})
         overlay = yaml.load((SIBLING/'.github/workflows/upgrade-v1.34.13.yml').read_text(),
                             Loader=yaml.BaseLoader)
-        self.assertNotIn('.github/workflows/verify-v1.34.13.yml',
-                         overlay['on']['push']['paths'])
-        self.assertNotIn('AGENTS.md', overlay['on']['push']['paths'])
+        self.assertEqual(overlay['on'], {'push': {'tags': ['1.17.0']}})
         steps = data['jobs']['verify']['steps']
         scripts = [s['run'] for s in steps if 'run' in s]
         self.assertEqual(len(scripts),1)
