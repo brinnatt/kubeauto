@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "kind": "scoped-tag-trigger-acceptance",
+  "recorded_on": "2026-11-17",
+  "scope": "Six-repository Actions trigger migration; no runtime, Dockerfile, catalog or component-version changes. No live tag-triggered build claim or customer sign-off.",
+  "allowed_build_images": [],
+  "allowed_publish_images": [],
+  "pushed_tags": [],
+  "official_references": [
+    "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax",
+    "https://raw.githubusercontent.com/git/git/v2.47.0/Documentation/git-tag.txt"
+  ],
+  "acceptance_inputs": {
+    "kubeauto": {
+      "dev": "6327273e81adb45ea3aab3a45aecad12d478caf0",
+      "master": "978738e1623f9e6967c6652365026becf5374282",
+      "v1.34.13": "6327273e81adb45ea3aab3a45aecad12d478caf0",
+      "v1.35.10": "503414872c333191c29a5c6f58ac3be60b6c0d47"
+    },
+    "kubeauto-dockerfile": {
+      "dev": "0c0ecca124e9caa8da32c99c82e95431d32c00d8",
+      "main": "f950720aad92b92121cecf7a458d668a2b8d15f5",
+      "v1.34.13": "13182a9db73362b81a5f9783df794f95954bb00c",
+      "v1.35.10": "abf638b0612229c9092156427f409ee5e4c8faf0"
+    },
+    "kubeauto-k8s-bin-dockerfile": {
+      "dev": "221a5f86cd25f97404b854fdbdcd75653fb6e835",
+      "main": "bee75306cb6e65568f7ccd5907b118d67156495f",
+      "v1.34.13": "221a5f86cd25f97404b854fdbdcd75653fb6e835",
+      "v1.35.10": "b0c77b7aaa3756dfdaac38dce9352320f27c6294"
+    },
+    "kubeauto-ext-bin-dockerfile": {
+      "dev": "8c12d12a6d7c5c5c15f1968833b8a51ff8573741",
+      "main": "74bd8707c844b3b5154ca31df94beb06788d1420",
+      "v1.34.13": "958c034e29c35c5dd44241bdc70160e1ae4eed81"
+    },
+    "kubeauto-ext-bin-sp1-dockerfile": {
+      "dev": "abdda8cbcd23a2bae24acc6e226f83b56a348aad",
+      "main": "340552fcc0c83eb4f980eb4c54dd90eb593483fd"
+    },
+    "kubeauto-ext-images-dockerfile": {
+      "dev": "28800008bfda654df285a81e14e1bacb2f435b7a",
+      "main": "60c6b5e58bd0bfdffdec0be27aa6fbe346c00fbe",
+      "v1.34.13": "28800008bfda654df285a81e14e1bacb2f435b7a",
+      "v1.35.10": "5abaf3559fc8ba2a96508543316dd55c9ec436a7"
+    }
+  },
+  "branch_workflow_contract": {
+    "branches": 21,
+    "result": "PASS",
+    "checks": [
+      "Only push.tags events in active workflows and backup templates",
+      "No branch push, schedule or dispatch trigger",
+      "Non-publishing behavior on tag deletion",
+      "Version and consumer pins preserved across maintenance branches",
+      "Embedded Shell syntax",
+      "Changes restricted to workflow, tag request, focused tests and entry documentation"
+    ]
+  },
+  "local_contracts": [
+    {
+      "log": "upgrade/v1.35.10/evidence/raw/tag-only-delivery-20261117/root-final-contracts.log",
+      "sha256": "df933ce2183794562aa6f70a074c579199a17a23cb0f149b1e7b77bdb07e22c6",
+      "tests": 39,
+      "rc": 0
+    },
+    {
+      "log": "upgrade/v1.35.10/evidence/raw/tag-only-delivery-20261117/kubeauto-ext-images-tag-contracts.log",
+      "sha256": "a8c322f292f5db7d993bf6ed412929b173d8a5887ca608dd6dfc91695ce90608",
+      "tests": 92,
+      "rc": 0
+    },
+    {
+      "log": "upgrade/v1.35.10/evidence/raw/tag-only-delivery-20261117/images-dev-tests.log",
+      "sha256": "082f161210bb310febe3ec1777ecbd713affb9389b969422ac9fd0644b17480f",
+      "tests": 90,
+      "rc": 0
+    },
+    {
+      "log": "upgrade/v1.35.10/evidence/raw/tag-only-delivery-20261117/images-main-tests.log",
+      "sha256": "03b9e152923e8287a52bbc0c5aed1ae915bbc430ad397238fe9a1e8e326062ba",
+      "tests": 90,
+      "rc": 0
+    },
+    {
+      "log": "upgrade/v1.35.10/evidence/raw/tag-only-delivery-20261117/root-master-repaired.log",
+      "sha256": "8f8ead09fd4b334723b7b2c44cb13abbf4d63e891c14c115e3eceedca4cc7fbe",
+      "tests": 12,
+      "rc": 0
+    }
+  ],
+  "catalog": {
+    "rows": 219,
+    "dockerfiles": 219,
+    "result": "PASS"
+  },
+  "failure_resolution": {
+    "initial_ext_images_failure": "Obsolete branch/dispatch guard assertion replaced with real annotated-tag-to-plan handoff; exact allowed images and zero builds verified.",
+    "master_initial_failure": "Original master assertion reproduced against unchanged multi-version catalog: it assumed one version per directory. Reused accepted exact-consumer-pin selection and deterministic missing/duplicate refusal tests; 12/12 PASS. Production versions untouched."
+  },
+  "remote_verification": {
+    "initial_readback": "upgrade/v1.35.10/evidence/raw/tag-only-delivery-20261117/initial-remote-readback.json",
+    "initial_verified_branches": 21,
+    "initial_new_actions": 0,
+    "final_readback": "upgrade/v1.35.10/evidence/raw/tag-only-delivery-20261117/final-remote-readback.json",
+    "contract": "Final raw record checks exact final branch tips (including this receipt commit) and no Actions at those SHAs."
+  },
+  "existing_upgrade_evidence": {
+    "pass": 15,
+    "total": 15,
+    "completed_groups": 8,
+    "total_groups": 8,
+    "effect": "Validated without re-signing historical evidence; only trigger routing and tests changed."
+  }
+}
