@@ -3,13 +3,14 @@ name: Release kubecli
 on:
   push:
     tags:
-      - "v*"
+      - "v[0-9]*.[0-9]*.[0-9]*"
 
 permissions:
   contents: write  # 🔑 必须有权限创建 release
 
 jobs:
   build:
+    if: github.event.deleted == false
     strategy:
       matrix:
         arch: [amd64, arm64]
