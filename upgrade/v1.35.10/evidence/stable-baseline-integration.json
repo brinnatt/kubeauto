@@ -1,0 +1,426 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-11-17T05:09:26.998790+00:00",
+  "scope": "Stable v1.33.6 source preservation and accepted v1.35.10 integration into dev; not a new product GA or customer sign-off.",
+  "branch_policy": {
+    "stable": {
+      "kubeauto": "master",
+      "siblings": "main",
+      "kubernetes": "v1.33.6"
+    },
+    "integration": "dev",
+    "accepted_kubernetes": "v1.35.10",
+    "version_branches_retained": true,
+    "history_preserved": true
+  },
+  "stable_audit": {
+    "kubeauto": {
+      "stable_branch": "master",
+      "stable_tip": "1e1303bafcad06cbd1d7907503b93c67ab09f6e7",
+      "source_snapshot": "940c9020144a88b370cba36793a4d7fad6a347ab",
+      "changed_files": [
+        ".github/workflows/release-official-runner.yml.bak",
+        ".github/workflows/release.yml",
+        "AGENTS.md",
+        "tests/unit/test_six_repo_version_sync.py"
+      ],
+      "product_tag": "v0.1.8",
+      "product_tag_commit": "940c9020144a88b370cba36793a4d7fad6a347ab",
+      "version_fields": {
+        "v_docker": "28.5.2",
+        "v_docker_compose": "2.40.3",
+        "v_docker_buildx": "0.29.1",
+        "v_docker_registry": "2",
+        "v_cri_dockerd": "0.3.26",
+        "v_kubeauto": "v0.1.8",
+        "v_talkedu_registry": "hub.talkedu.cn/kubeauto",
+        "v_ansible_core": "2.18.6",
+        "v_ansible_core_py314": "2.20.9",
+        "v_k8s_bin": "v1.33.6",
+        "v_extra_bin": "1.16.0",
+        "v_extra_bin_sp1": "1.3.1",
+        "v_nerdctl": "2.3.4",
+        "v_harbor": "v2.13.0",
+        "v_kube_state_metrics": "v2.18.0",
+        "v_webhook_certgen": "v1.6.0",
+        "v_prometheus_operator": "v0.93.0",
+        "v_prometheus_config_reloader": "v0.93.0",
+        "v_prometheus": "v3.13.1-distroless",
+        "v_alertmanager": "v0.33.1",
+        "v_node_exporter": "v1.12.1",
+        "v_grafana": "13.1.1",
+        "v_busybox": "1.37",
+        "v_k8s_sidecar": "1.30.5",
+        "v_prometheus_admission_webhook": "v0.93.0",
+        "v_prometheus_webhook_certgen": "1.8.5",
+        "v_thanos": "v0.41.0",
+        "v_prometheus_adapter": "v0.12.0",
+        "v_blackbox_exporter": "v0.27.0",
+        "v_eck_operator": "3.5.0",
+        "v_elasticsearch": "9.5.1",
+        "v_kibana": "9.5.1",
+        "v_business_elasticsearch": "9.5.6",
+        "v_elasticsearch_upgrade_source": "9.5.5",
+        "v_elasticsearch_exporter": "v1.11.0",
+        "v_elasticsearch_client": "9.5.1-kubeauto.1",
+        "v_elasticsearch_rally": "2.13.0-kubeauto.1",
+        "v_fluent_bit": "5.1.1",
+        "v_logstash": "9.5.1",
+        "v_loki_chart": "18.9.0",
+        "v_loki": "3.7.6",
+        "v_alloy_chart": "1.11.1",
+        "v_alloy": "1.18.1",
+        "v_ingress_nginx_controller": "v1.13.0",
+        "v_json_mock": "v1.3.1",
+        "v_alpine_curl": "v7.85.0",
+        "v_snapshot_controller": "v8.3.0",
+        "v_csi_node_driver_registrar": "v2.13.0",
+        "v_csi_provisioner": "v5.2.0",
+        "v_csi_resizer": "v1.11.2",
+        "v_csi_snapshotter": "v7.0.0",
+        "v_ceph": "20.2.4",
+        "v_ceph_upgrade_source": "20.2.3",
+        "v_cephadm_sha256": "5b78c8d5772ef7c5c8619dac6ee0b36716b829338ea7a11c9f2b896626ab354f",
+        "v_ceph_csi": "v3.17.1",
+        "v_ceph_csi_registrar": "v2.16.0",
+        "v_ceph_csi_provisioner": "v6.2.0",
+        "v_ceph_csi_attacher": "v4.11.0",
+        "v_ceph_csi_resizer": "v2.1.0",
+        "v_ceph_csi_snapshotter": "v8.5.0",
+        "v_longhorn": "1.12.1",
+        "v_longhorn_upgrade_source": "1.12.0",
+        "v_longhorn_snapshot_controller": "v8.6.0",
+        "v_calico": "v3.28.4",
+        "v_coredns": "1.12.4",
+        "v_dnsnodecache": "1.26.4",
+        "v_dashboard": "7.14.0",
+        "v_dashboardmetricsscraper": "1.2.2",
+        "v_metricsserver": "v0.8.0",
+        "v_pause": "3.10",
+        "v_flannel": "v0.28.4",
+        "v_flannel_cni": "v1.8.0-flannel1",
+        "v_cilium": "v1.19.5",
+        "v_cilium_hubble_ui": "v0.13.5",
+        "v_kuberouter": "v1.5.4",
+        "v_kubeovn": "v1.11.5",
+        "v_localpathprovisioner": "v0.0.31",
+        "v_nfsprovisioner": "v4.0.2",
+        "v_promchart": "88.0.0",
+        "v_miniooperator": "7.1.1",
+        "v_openebs": "4.3.2",
+        "v_ingressnginx": "4.13.0",
+        "v_pxc_operator": "1.20.0",
+        "v_pxc": "8.4.8-8.1",
+        "v_pxc_xtrabackup": "8.4.0-5.1",
+        "v_pxc_haproxy": "2.8.18-1",
+        "v_pxc_fluentbit": "5.0.6-1",
+        "v_pxc_operator_chart_sha256": "b8bff81d0f9691b1e495f958fba1bb268e48838cf548adf6ae6570ea0e0059cf",
+        "v_strimzi_operator": "1.2.0",
+        "v_kafka": "4.3.1",
+        "v_kafka_metadata": "4.3-IV0",
+        "v_strimzi_drain_cleaner": "1.6.1",
+        "v_strimzi_operator_chart_sha256": "0f8a50b2f19bd99482f9fd6e17cf42902f72f9e594a136813ac3f0b7af422efd",
+        "v_strimzi_drain_cleaner_chart_sha256": "ce84b8ddcd105f1b10d085fe69ed0d9185f798d009de3fba967386af2b8f6fdd",
+        "v_mongodb_operator": "1.23.1",
+        "v_mongodb_operator_chart": "1.23.2",
+        "v_mongodb_operator_chart_sha256": "80e629dc31f8cfe2615a5efb8b0d1d2ed418f25e8c0b168f981412c8594a07e9",
+        "v_mongodb": "8.0.32-14",
+        "v_mongodb_backup": "2.15.0",
+        "v_mongodb_fluentbit": "5.1.2-1",
+        "v_mongodb_exporter": "0.53.0",
+        "v_redis_operator": "0.27.0",
+        "v_redis_operator_image": "0.27.0-kubeauto.2",
+        "v_redis": "8.10.2",
+        "v_redis_cluster_image": "8.10.2-kubeauto.1",
+        "v_redis_exporter": "v1.93.0",
+        "v_redis_operator_chart_sha256": "4eabe2cde88657f8b7b21c2ec5ddafa3a305d35c9877021f9be89ac3beeb0f7f",
+        "BASE_PATH": "/usr/local/kubeauto",
+        "IMAGE_DIR": "/usr/local/kubeauto/down",
+        "KUBE_BIN_DIR": "/usr/local/kubeauto/kube-bin",
+        "EXTRA_BIN_DIR": "/usr/local/kubeauto/extra-bin",
+        "DOCKER_BIN_DIR": "/usr/local/kubeauto/docker-bin",
+        "DOCKER_PROXY_DIR": "/etc/systemd/system/docker.service.d",
+        "SYS_BIN_DIR": "/usr/local/bin",
+        "BASE_DATA_PATH": "/data",
+        "TEMP_PATH": "/tmp"
+      },
+      "production_unchanged": true
+    },
+    "kubeauto-dockerfile": {
+      "stable_branch": "main",
+      "stable_tip": "a77be14a4e3a04c65a024bd1eae64c6cfa650626",
+      "source_snapshot": "39b75668c901a93fa9fa10d35402999f20ff503f",
+      "changed_files": [
+        ".github/workflows/build_and_push.yml",
+        "AGENTS.md"
+      ],
+      "dockerfile_unchanged": true
+    },
+    "kubeauto-k8s-bin-dockerfile": {
+      "stable_branch": "main",
+      "stable_tip": "534bdc4c7517e1abbdde0731cf932e72892928f4",
+      "source_snapshot": "b9c52d89684a05d6072eab0bc4f6c84ff135ebdd",
+      "changed_files": [
+        ".github/workflows/build.yml",
+        "AGENTS.md",
+        "multi-platform-download.sh"
+      ],
+      "dockerfile_unchanged": true,
+      "retained_fix": "Official per-binary checksum verification, unsupported-architecture refusal and atomic complete-bundle installation; version is explicit tag input; no component pin change."
+    },
+    "kubeauto-ext-bin-dockerfile": {
+      "stable_branch": "main",
+      "stable_tip": "74bd8707c844b3b5154ca31df94beb06788d1420",
+      "source_snapshot": "8d102d25d5acac6768ffad8341d8dd8abb422e36",
+      "changed_files": [
+        ".github/workflows/build.yml",
+        "AGENTS.md"
+      ],
+      "dockerfile_unchanged": true
+    },
+    "kubeauto-ext-bin-sp1-dockerfile": {
+      "stable_branch": "main",
+      "stable_tip": "340552fcc0c83eb4f980eb4c54dd90eb593483fd",
+      "source_snapshot": "b154b48f041811425626d6ed8d709446b7b500bf",
+      "changed_files": [
+        ".github/workflows/build.yml",
+        "AGENTS.md"
+      ],
+      "dockerfile_unchanged": true
+    },
+    "kubeauto-ext-images-dockerfile": {
+      "stable_branch": "main",
+      "stable_tip": "c804762584f4d271536f61fa9d040f15ea4c4962",
+      "source_snapshot": "33a209565a37c5b476c4730b692fdc51ffd04275",
+      "changed_files": [
+        ".github/workflows/build.yml",
+        ".github/workflows/build.yml.backup",
+        "AGENTS.md",
+        "README.md",
+        "catalog.json",
+        "scripts/image_release.py",
+        "scripts/release_history.py",
+        "scripts/release_tag.py",
+        "tests/test_image_release.py",
+        "tests/test_incremental_release.py",
+        "tests/test_release_tag.py",
+        "tooling/test-support/image-release/busybox/Dockerfile",
+        "tooling/test-support/image-release/pause/Dockerfile"
+      ],
+      "baseline_rows": 178,
+      "current_rows": 180,
+      "unchanged_ga_contexts": 178,
+      "retained_test_rows": [
+        {
+          "dockerfile": "tooling/test-support/image-release/busybox/Dockerfile",
+          "ctx": "tooling/test-support/image-release/busybox",
+          "image": "brinnatt/busybox",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/busybox",
+          "tag": "1.37-release-smoke.1"
+        },
+        {
+          "dockerfile": "tooling/test-support/image-release/pause/Dockerfile",
+          "ctx": "tooling/test-support/image-release/pause",
+          "image": "brinnatt/pause",
+          "talkedu_image": "hub.talkedu.cn/kubeauto/pause",
+          "tag": "3.10-release-smoke.1"
+        }
+      ]
+    }
+  },
+  "integration": {
+    "kubeauto": {
+      "stable_branch": "master",
+      "refs": {
+        "dev": "50992907c5ec88b8e04359088696ac839dc8b2cd",
+        "master": "1e1303bafcad06cbd1d7907503b93c67ab09f6e7",
+        "v1.34.13": "545d80cbfa41477a34120dd0d750878752f84749",
+        "v1.35.10": "ffc4067faaf12c45623ce6ee20f805387e803d04"
+      },
+      "original_dev_preserved": true,
+      "accepted_target_preserved": true,
+      "worktree_status": "Only the declared local admission contract repair and this receipt; pending merge preserves latest v1.35.10 governance commit.",
+      "pending_merge_parent": "ffc4067faaf12c45623ce6ee20f805387e803d04"
+    },
+    "kubeauto-dockerfile": {
+      "stable_branch": "main",
+      "refs": {
+        "dev": "40ae1e84545d7171e1eb4930de16a5ef82846d8c",
+        "main": "a77be14a4e3a04c65a024bd1eae64c6cfa650626",
+        "v1.34.13": "13182a9db73362b81a5f9783df794f95954bb00c",
+        "v1.35.10": "abf638b0612229c9092156427f409ee5e4c8faf0"
+      },
+      "original_dev_preserved": true,
+      "accepted_target_preserved": true,
+      "worktree_status": ""
+    },
+    "kubeauto-k8s-bin-dockerfile": {
+      "stable_branch": "main",
+      "refs": {
+        "dev": "b569a93e5c246bbbfc79784131a714649b026310",
+        "main": "534bdc4c7517e1abbdde0731cf932e72892928f4",
+        "v1.34.13": "221a5f86cd25f97404b854fdbdcd75653fb6e835",
+        "v1.35.10": "b0c77b7aaa3756dfdaac38dce9352320f27c6294"
+      },
+      "original_dev_preserved": true,
+      "accepted_target_preserved": true,
+      "worktree_status": ""
+    },
+    "kubeauto-ext-bin-dockerfile": {
+      "stable_branch": "main",
+      "refs": {
+        "dev": "23113ac8a39db1637aa4ceadf93d0cc834910649",
+        "main": "74bd8707c844b3b5154ca31df94beb06788d1420",
+        "v1.34.13": "958c034e29c35c5dd44241bdc70160e1ae4eed81"
+      },
+      "original_dev_preserved": true,
+      "accepted_target_preserved": true,
+      "worktree_status": ""
+    },
+    "kubeauto-ext-bin-sp1-dockerfile": {
+      "stable_branch": "main",
+      "refs": {
+        "dev": "abdda8cbcd23a2bae24acc6e226f83b56a348aad",
+        "main": "340552fcc0c83eb4f980eb4c54dd90eb593483fd"
+      },
+      "original_dev_preserved": true,
+      "accepted_target_preserved": true,
+      "worktree_status": ""
+    },
+    "kubeauto-ext-images-dockerfile": {
+      "stable_branch": "main",
+      "refs": {
+        "dev": "f366d82579d2541b6cae25e18a45680d7cb6020a",
+        "main": "c804762584f4d271536f61fa9d040f15ea4c4962",
+        "v1.34.13": "28800008bfda654df285a81e14e1bacb2f435b7a",
+        "v1.35.10": "5abaf3559fc8ba2a96508543316dd55c9ec436a7"
+      },
+      "original_dev_preserved": true,
+      "accepted_target_preserved": true,
+      "worktree_status": ""
+    }
+  },
+  "production_diff_from_accepted_v135": "No product runtime or component pin changes. Only branch governance, this receipt and a deterministic local admission contract repair.",
+  "catalog_isolation": {
+    "stable_original_ga_contexts_unchanged": 178,
+    "upgrade_only_rows_removed_from_stable": 36,
+    "stable_catalog_rows": 180,
+    "integrated_catalog_rows": 219,
+    "removed_rows_preserved_in_version_branches": true,
+    "registry_artifacts_deleted": false
+  },
+  "verification": {
+    "stable_six_repo_contracts": {
+      "tests": 12,
+      "rc": 0
+    },
+    "stable_image_contracts": {
+      "tests": 79,
+      "rc": 0
+    },
+    "integrated_focused_contracts": {
+      "tests": 34,
+      "rc": 0
+    },
+    "integrated_image_contracts": {
+      "tests": 92,
+      "rc": 0
+    },
+    "upgrade_local_suite_initial": {
+      "tests": 377,
+      "failures": 1,
+      "skipped": 4,
+      "rc": 1
+    },
+    "entrypoint_repair_focused": {
+      "tests": 12,
+      "rc": 0
+    },
+    "first_hop_in_original_branch": {
+      "pass": 15,
+      "total": 15,
+      "fail": 0,
+      "completed_groups": 8,
+      "total_groups": 8
+    },
+    "latest_in_integration_branch": {
+      "pass": 15,
+      "total": 15,
+      "fail": 0,
+      "completed_groups": 8,
+      "total_groups": 8
+    }
+  },
+  "failure_classification": {
+    "layer": "test-gate",
+    "cause": "Entry-point test assumed the delivered matrix was still pending; once accepted it reached the next legitimate private-lease refusal.",
+    "repair": "Construct isolated pending matrix state in a temporary YAML file; exercise real admission and assert coordinator is never called.",
+    "affected_path": "upgrade/tests/test_entrypoint.py",
+    "product_implementation_changed": false,
+    "historical_evidence_modified": false,
+    "focused_recheck": "upgrade.tests.test_entrypoint upgrade.tests.test_launcher upgrade.tests.test_coordinator"
+  },
+  "limits": {
+    "live_lab_operations": 0,
+    "image_builds": 0,
+    "image_publications": 0,
+    "tags_created_or_moved": 0,
+    "historical_ga_recertified": false,
+    "customer_upgrade_production_use_claimed": false,
+    "restore": "Restore from pre-upgrade configuration, certificates, control-plane snapshot and consistent application/volume recovery points; switching branches is not an in-place downgrade."
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/stable-baseline-integration-20261117/initial.json",
+      "sha256": "bb84e4cea4ee74dfede48bf513afc48afbf91a8296ae737deb3c83eecef474d0"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/stable-baseline-integration-20261117/final-stable-audit.json",
+      "sha256": "146262deb1c2f3631c64d9f554b3a1ea21268adb9d00fcbe96c545393e4e76d5"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/stable-baseline-integration-20261117/final-stable-audit.log",
+      "sha256": "ecf0f561eb50e3ec1cc7892d4b437013ec5b73c8552a18d4fd3cf50d322a80c0"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/stable-baseline-integration-20261117/integration-audit.json",
+      "sha256": "feeaf25cc2dff09ac1a1bcf7ae942ded7fdd2abdfab38e6de39ceada91f61462"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/stable-baseline-integration-20261117/isolated-upgrade-images.json",
+      "sha256": "d1fd8aa29b7319b568797f4e62b91ebe515c12a9dc75af753bab162abc08d359"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/stable-baseline-integration-20261117/stable-six-repo-tests.log",
+      "sha256": "e890934b4b58b881f8bff99281712a4dd201d2f29de05280007093f958412f3d"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/stable-baseline-integration-20261117/stable-images-tests.log",
+      "sha256": "7e31134986aa5bc6bb28451970b7ab0047fd8d825ec9f29d284328b11df7b004"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/stable-baseline-integration-20261117/integrated-contracts.log",
+      "sha256": "a05383fa533221f0fcd1ca9d51b84e44e33902cae522a6cf27d2adc64740d806"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/stable-baseline-integration-20261117/integrated-images-tests.log",
+      "sha256": "e7407e5a344a893c87740fb830e3419f62e43b2b85af992369b7864c2e213584"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/stable-baseline-integration-20261117/integrated-upgrade-tests.log",
+      "sha256": "397bbf0746a0b3109bd4e54cbbf99795ecd12f7d36ee5d28ac86355b32fccaed"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/stable-baseline-integration-20261117/entrypoint-focused.log",
+      "sha256": "a51d02aed22b145601ea19858bc749da3fc938eccdb348781eca4b52c8434c32"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/stable-baseline-integration-20261117/integrated-matrix.json",
+      "sha256": "1069ac431be81da2c0dcf8d6c67f54ff4220c37238f0da1c158d6b8277d9e10d"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/stable-baseline-integration-20261117/first-hop-own-branch-status.json",
+      "sha256": "89d1984c74b652fecb4bcd92e5641c3d12415f7293daa4865a506d287c5b7481"
+    }
+  ]
+}
