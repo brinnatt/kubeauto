@@ -114,34 +114,29 @@ else:
                              Loader=yaml.BaseLoader)
         script = workflow['jobs']['plan']['steps'][0]['run']
         output = self.root / 'github-output'
-        for event, branch, version, expected in [
-            ('workflow_dispatch', 'v1.34.13', 'v1.34.13', ['v1.34.13']),
-            ('push', 'v1.34.13', '', ['v1.34.13']),
-            ('workflow_dispatch', 'v1.35.10', 'v1.35.10', ['v1.35.10']),
-            ('push', 'v1.35.10', '', ['v1.35.10']),
-            ('push', 'dev', '', ['v1.34.2', 'v1.33.6', 'v1.33.5', 'v1.32.10', 'v1.31.14']),
-        ]:
-            with self.subTest(event=event):
-                output.write_text('')
-                result = subprocess.run(['bash', '-euc', script], capture_output=True,
-                                        env=os.environ | {'EVENT_NAME': event, 'REF_NAME': branch,
-                                            'SELECTED_VERSION': version,
-                                            'GITHUB_OUTPUT': str(output)}, text=True)
-                self.assertEqual(result.returncode, 0, result.stderr)
-                matrix = json.loads(output.read_text().removeprefix('matrix='))
-                self.assertEqual(matrix, {'include': [{'version': v} for v in expected]})
-        for event, version in [('workflow_dispatch', 'v1.36.6'),
-                               ('workflow_dispatch', 'v1.34.13\nattack'), ('pull_request', '')]:
+        for version in ['v1.33.5', 'v1.34.13', 'v1.35.10']:
             output.write_text('')
             result = subprocess.run(['bash', '-euc', script], capture_output=True,
-                                    env=os.environ | {'EVENT_NAME': event, 'REF_NAME': 'v1.34.13',
-                                        'SELECTED_VERSION': version,
-                                        'GITHUB_OUTPUT': str(output)}, text=True)
+                                    env=os.environ | {'EVENT_NAME': 'push', 'REF_TYPE': 'tag',
+                                        'REF_NAME': version, 'GITHUB_OUTPUT': str(output)}, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            matrix = json.loads(output.read_text().removeprefix('matrix='))
+            self.assertEqual(matrix, {'include': [{'version': version}]})
+        for event, kind, version in [('push', 'branch', 'v1.34.13'),
+                                      ('push', 'branch', 'dev'),
+                                      ('workflow_dispatch', 'tag', 'v1.34.13'),
+                                      ('push', 'tag', 'v1.34.13-rc.1'),
+                                      ('push', 'tag', 'v1.34.13\nattack'),
+                                      ('push', 'tag', 'verify-k8s-v1.34.13-1')]:
+            output.write_text('')
+            result = subprocess.run(['bash', '-euc', script], capture_output=True,
+                                    env=os.environ | {'EVENT_NAME': event, 'REF_TYPE': kind,
+                                        'REF_NAME': version, 'GITHUB_OUTPUT': str(output)}, text=True)
             self.assertNotEqual(result.returncode, 0)
             self.assertEqual(output.read_text(), '')
         docker = workflow['jobs']['docker']
         self.assertEqual(docker['needs'], 'plan')
-        self.assertEqual(workflow['on']['push']['branches'], ['dev', 'v1.34.13', 'v1.35.10'])
+        self.assertEqual(workflow['on'], {'push': {'tags': ['v[0-9]*.[0-9]*.[0-9]*']}})
         self.assertEqual(docker['strategy']['matrix'], '${{ fromJSON(needs.plan.outputs.matrix) }}')
         build = next(s for s in docker['steps'] if s.get('name') == 'Build and push')
         self.assertEqual(build['with']['build-args'], 'K8S_VER=${{ matrix.version }}')

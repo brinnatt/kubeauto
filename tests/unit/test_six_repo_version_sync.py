@@ -223,42 +223,27 @@ class TestSixRepoVersionSync(unittest.TestCase):
         df = (k8s_bin / "Dockerfile").read_text()
         self.assertIn("ARG K8S_VER", df)
         ci = (k8s_bin / ".github/workflows/build.yml").read_text()
-        published = set(re.findall(r"version:\s*(v?[0-9]+\.[0-9]+\.[0-9]+)", ci))
-        # Exercise the real selector for both the legacy publication path and
-        # each approved selected release. A string present in YAML is not proof
-        # that a workflow can actually select it.
         import yaml
         workflow = yaml.safe_load(ci)
         events = workflow.get('on', workflow.get(True, {}))
-        options = events.get('workflow_dispatch', {}).get('inputs', {}).get('version', {}).get('options', [])
-        for step in workflow.get('jobs', {}).get('plan', {}).get('steps', []):
-            script = step.get('run', '')
-            if not script.startswith("python3 - <<'PY'\n"):
-                continue
-            source = script.split('\n', 1)[1].rsplit('\nPY', 1)[0]
-            ast.parse(source)
-            for version in [None, *options]:
-                with tempfile.TemporaryDirectory() as directory:
-                    output = Path(directory) / 'output'
-                    result = subprocess.run([sys.executable, '-c', source], env={
-                        **os.environ, 'EVENT_NAME': 'workflow_dispatch' if version else 'push',
-                        'REF_NAME': version or 'dev', 'SELECTED_VERSION': version or '',
-                        'GITHUB_OUTPUT': str(output)}, capture_output=True, text=True, timeout=10)
-                    self.assertEqual(result.returncode, 0, result.stderr)
-                    matrix = json.loads(output.read_text().removeprefix('matrix='))
-                    selected = {row['version'] for row in matrix['include']}
-                    if version:
-                        self.assertEqual(selected, {version}, 'selected publication exceeded its scope')
-                    published.update(selected)
+        self.assertEqual(events, {'push': {'tags': ['v[0-9]*.[0-9]*.[0-9]*']}})
+        script = workflow['jobs']['plan']['steps'][0]['run']
+        source = script.split('\n', 1)[1].rsplit('\nPY', 1)[0]
+        ast.parse(source)
         upgrade_gate = (ROOT / "kubeauto" / "tests" / "helpers" / "delivery-upgrade-smoke.sh").read_text()
         upgrade_source = re.search(r"^OLD_VERSION=(v?[0-9]+\.[0-9]+\.[0-9]+)$", upgrade_gate, re.MULTILINE)
         self.assertIsNotNone(upgrade_source, msg="upgrade gate must pin its source fixture")
         required = {*self.kc.k8s_bin_pack_tags, upgrade_source.group(1)}
-        self.assertEqual(
-            required - published,
-            set(),
-            msg="k8s-bin CI must dual-push every required current/upgrade tag",
-        )
+        for version in required:
+            with tempfile.TemporaryDirectory() as directory:
+                output = Path(directory) / 'output'
+                result = subprocess.run([sys.executable, '-c', source], env={
+                    **os.environ, 'EVENT_NAME': 'push', 'REF_TYPE': 'tag',
+                    'REF_NAME': version, 'GITHUB_OUTPUT': str(output)},
+                    capture_output=True, text=True, timeout=10)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                matrix = json.loads(output.read_text().removeprefix('matrix='))
+                self.assertEqual(matrix, {'include': [{'version': version}]})
 
     def test_component_images_tags_exist_in_ext_images_ci(self):
         """Every brinnatt image pin in component_images must have matching CI tag (no local fork)."""

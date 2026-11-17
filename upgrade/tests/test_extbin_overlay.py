@@ -172,13 +172,11 @@ class OverlayContracts(unittest.TestCase):
         import yaml
         path=SIBLING/'.github/workflows/upgrade-v1.34.13.yml'
         data=yaml.safe_load(path.read_text());event=data.get('on',data.get(True))
-        self.assertEqual(set(event),{'push','workflow_dispatch'})
-        self.assertEqual(event['push']['branches'],['v1.34.13'])
-        self.assertEqual(event['workflow_dispatch']['inputs']['mode']['options'],['selected'])
-        self.assertFalse(event['workflow_dispatch']['inputs']['publish']['default'])
+        self.assertEqual(event, {'push': {'tags': ['1.17.0']}})
+        self.assertEqual(data['jobs']['selected']['if'], 'github.event.deleted == false')
         steps=data['jobs']['selected']['steps']
         build=next(s for s in steps if s.get('uses')=='docker/build-push-action@v6')
-        self.assertEqual(build['if'],'inputs.publish')
+        self.assertNotIn('if', build)
         self.assertEqual(build['with']['file'],'upgrade/Dockerfile.v1.34.13')
         self.assertEqual(set(build['with']['tags'].split()),{
             'hub.talkedu.cn/kubeauto/kubeauto-ext-bin:1.17.0','brinnatt/kubeauto-ext-bin:1.17.0'})

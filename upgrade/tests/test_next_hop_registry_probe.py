@@ -14,10 +14,7 @@ WORKFLOW = ROOT.parent/'kubeauto-k8s-bin-dockerfile/.github/workflows/probe-v1.3
 class RegistryProbeContracts(unittest.TestCase):
     def test_probe_scope_and_real_failure_classification(self):
         data = yaml.load(WORKFLOW.read_text(), Loader=yaml.BaseLoader)
-        self.assertEqual(data['on']['push']['branches'], ['v1.35.10'])
-        build = yaml.load(WORKFLOW.with_name('build.yml').read_text(), Loader=yaml.BaseLoader)
-        self.assertNotIn(str(WORKFLOW.relative_to(ROOT.parent/'kubeauto-k8s-bin-dockerfile')),
-                         build['on']['push']['paths'])
+        self.assertEqual(data['on'], {'push': {'tags': ['probe-k8s-v1.35.10-*']}})
         self.assertNotIn('build-push-action', WORKFLOW.read_text())
         script = next(s['run'] for s in data['jobs']['probe']['steps'] if 'run' in s)
         with tempfile.TemporaryDirectory() as tmp:
