@@ -146,7 +146,7 @@
       vars:
         # Completed members are a legitimate part of this serial stage. The
         # initial observation above separately refuses an unowned target.
-        UPGRADE_ETCD_RESUME: true
+        upgrade_etcd_serial_started: true
 
     - name: Read this member current server version
       ansible.builtin.set_fact:
@@ -160,12 +160,15 @@
         dest: "{{ bin_dir }}/etcd"
         mode: '0755'
       register: upgrade_etcd_copy
+      when: not (UPGRADE_ETCD_VERIFY_ONLY | default(false) | bool)
 
     - name: Restart only this member when its live or disk identity changes
       ansible.builtin.systemd_service:
         name: etcd
         state: restarted
-      when: upgrade_etcd_copy.changed or upgrade_etcd_current.Status.version != '3.6.16'
+      when: >-
+        not (UPGRADE_ETCD_VERIFY_ONLY | default(false) | bool) and
+        (upgrade_etcd_copy.changed or upgrade_etcd_current.Status.version != '3.6.16')
 
     - name: Observe quorum identities and the completed member before the next
       ansible.builtin.import_tasks: etcd-observe.yml
@@ -216,7 +219,7 @@
     - name: Reobserve all target members with original cluster identities
       ansible.builtin.import_tasks: etcd-observe.yml
       vars:
-        UPGRADE_ETCD_RESUME: true
+        upgrade_etcd_serial_started: true
 
     - name: Reject a previously completed member that regressed during the serial stage
       ansible.builtin.assert:

@@ -4,6 +4,7 @@
 from pathlib import Path
 
 from common.utils import get_pkg_dir
+from upgrade.product.release_policy import export as export_upgrade_policy
 
 block_cipher = None
 
@@ -11,12 +12,20 @@ project_root = Path(SPECPATH)
 
 ANSIBLE_RUNNER_DIR = get_pkg_dir('ansible_runner')
 
+# A customer binary cannot rely on a development checkout or silently bypass
+# unfinished acceptance. Export only after the authoritative matrix is complete.
+export_upgrade_policy(project_root, project_root/'upgrade/v1.35.10/test-matrix.yaml',
+                      project_root/'build/upgrade-policy/release-policy.json')
+
 # Data files: first path = source (relative to spec dir), second = destination in bundle.
 added_files = [
     ('playbooks', 'playbooks'),
     ('roles', 'roles'),
     ('conf', 'conf'),
     ('upgrade/product/*.yml', 'upgrade/product'),
+    ('upgrade/product/*.toml', 'upgrade/product'),
+    ('upgrade/v1.35.10/artifact-pins.json', 'upgrade/v1.35.10'),
+    ('build/upgrade-policy/release-policy.json', 'upgrade/v1.35.10'),
 ]
 
 a = Analysis(

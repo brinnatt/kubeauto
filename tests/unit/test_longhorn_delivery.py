@@ -37,7 +37,8 @@ host = module('host-check.py')
 
 def configuration():
     c = yaml.safe_load((ROOT / 'roles/longhorn/defaults/main.yml').read_text())
-    c.update(longhorn_install=True, longhorn_grpc_tls_required=False,
+    # Historical behavior fixtures remain pinned; the default is checked separately.
+    c.update(longhorn_version='1.12.1', longhorn_install=True, longhorn_grpc_tls_required=False,
              longhorn_storage_nodes=['192.168.122.212', '192.168.122.165', '192.168.122.238'])
     c['longhorn_inventory_nodes'] = c['longhorn_storage_nodes'] + ['192.168.122.135']
     c['longhorn_client_nodes'] = list(c['longhorn_storage_nodes'])
@@ -853,7 +854,9 @@ class PinnedSourceContracts(unittest.TestCase):
         self.assertEqual(tags['1.12.0']['longhorn-manager'], 'v1.12.0')
         self.assertEqual(tags['1.12.0']['longhorn-instance-manager'], 'v1.12.0')
         self.assertEqual(len(evidence['images']), 24)
-        self.assertEqual({row['key'] for row in evidence['images']}, set(constants.component_images['longhorn']))
+        self.assertEqual({row['key'] for row in evidence['images']}, {f'brinnatt/{name}:{tag}' for version in ['1.12.0','1.12.1']
+             for name,tag in constants.longhorn_image_tags(version).items()} |
+             {f'brinnatt/snapshot-controller:{constants.v_longhorn_snapshot_controller}'})
 
     def test_snapshot_controller_exact_image_and_rbac_identity(self):
         objects = product.snapshot_objects(configuration())

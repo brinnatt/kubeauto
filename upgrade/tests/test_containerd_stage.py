@@ -27,7 +27,7 @@ def recording_tasks(tasks):
     for task in tasks:
         for key in list(task):
             if key.startswith('ansible.builtin.') and key.rsplit('.', 1)[1] in {
-                    'command', 'shell', 'stat', 'copy', 'systemd_service', 'file'}:
+                    'command', 'shell', 'stat', 'copy', 'systemd_service', 'file', 'slurp', 'lineinfile', 'replace'}:
                 values = task.pop(key)
                 if isinstance(values, str):
                     values = {'_raw_params': values}
@@ -124,6 +124,15 @@ class ContainerdStageContracts(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout+result.stderr)
         self.assertFalse([c for c in self.trace if c['module'] in ['copy', 'systemd_service']])
         self.assertEqual(len([c for c in self.trace if c['name'].startswith('Reobserve final on-disk')]), 4)
+
+    def test_reviewed_next_hop_retains_existing_target_without_replaying_edges(self):
+        self.state.update(version='2.3.7', config_hash=digest('target-config'),
+                          disk_hashes=self.variables['UPGRADE_CONTAINERD_BUNDLES']['2.3.7']['sha256'])
+        self.variables['UPGRADE_CONTAINERD_ACCEPT_EXISTING_TARGET'] = True
+        result = self.run_stage()
+        self.assertEqual(result.returncode, 0, result.stdout+result.stderr)
+        self.assertFalse([c for c in self.trace if c['module'] in ['copy', 'systemd_service']])
+        self.assertEqual(self.final['version'], '2.3.7')
 
     def test_target_resume_with_disk_drift_is_not_accepted(self):
         self.state.update(version='2.3.7', config_hash=digest('target-config'))

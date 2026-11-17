@@ -1,0 +1,20 @@
+- name: Verify the existing Calico host prerequisites without changing networking
+  hosts: kube_master:kube_node
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - name: Observe the actual kernel
+      ansible.builtin.command:
+        argv: [uname, -r]
+      changed_when: false
+    - name: Require existing TLS material and IPv4 forwarding
+      ansible.builtin.shell: |
+        set -eu
+        test -s /etc/calico/ssl/ca.pem
+        test -s /etc/calico/ssl/calico.pem
+        test -s /etc/calico/ssl/calico-key.pem
+        test -s /etc/cni/net.d/10-calico.conflist
+        test "$(cat /proc/sys/net/ipv4/ip_forward)" = 1
+      args:
+        executable: /bin/bash
+      changed_when: false

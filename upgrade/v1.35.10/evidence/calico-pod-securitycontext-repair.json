@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "run_id": "v13510-qualify-20261116b",
+  "matrix_id": "UPG-06",
+  "category": "product",
+  "first_failure": "new Calico field conflicts with existing configuration",
+  "causal_difference": "source API materialized PodSpec.securityContext={} on both Calico workload templates; target adds reviewed RuntimeDefault seccomp",
+  "cluster_mutation_before_failure": "etcd patch completed; no Calico or Kubernetes upgrade writes",
+  "official_source_id": "K8S-13413-PODSPEC-SECURITYCONTEXT-DEFAULT",
+  "fix": "normalize omitted PodSpec securityContext to the exact official empty-map default; recursively apply reviewed additions, retain rejection of actual seccomp conflicts",
+  "journal": "private original retained; completed platform/etcd-v3.6.16, active platform/calico-v3.31.7; no edits or implementation rebinding",
+  "ga_claim": false,
+  "references": [
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116b/control-failure/control.status.json",
+      "sha256": "65a0605ace977bc190c5cc9f1f8a503ae611112a46cba9aa27593af69b3e40e9"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116b/control-failure/control.failure-1.json",
+      "sha256": "65a0605ace977bc190c5cc9f1f8a503ae611112a46cba9aa27593af69b3e40e9"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116b/control-failure/control.attempt-1.log",
+      "sha256": "915ddb23f096bb2d45e85c7e888eed7a41ccd2f1903e61ab25ad079b724e5e89"
+    }
+  ],
+  "static_qualification": {
+    "tests": 21,
+    "elapsed_seconds": 87.611,
+    "rc": 0,
+    "references": [
+      {
+        "path": "upgrade/v1.35.10/evidence/raw/calico-pod-securitycontext-repair/kubeauto-v13510-pod-securitycontext-contracts.log",
+        "sha256": "cd8dce7720d886cb8f42d4c9707d318837d916a4e99e13f88a6f10a37328e07f"
+      },
+      {
+        "path": "upgrade/v1.35.10/evidence/raw/calico-pod-securitycontext-repair/kubeauto-v13510-pod-securitycontext-first-disproof.log",
+        "sha256": "478c775f419427dfa2bcc225bdc610d9d4d671e551021f4ded6da79db6b31099"
+      }
+    ]
+  },
+  "saved_actual_delta_check": "Both 3.28.4->3.31.7 and 3.31.7->3.32.4 transformations match reviewed target against the private actual source objects; static only",
+  "cleanup": {
+    "marker": "NEXT_SESSION_ABORT_CLEAN_VERIFY_PASS",
+    "parent_exit": 1,
+    "parent_finalized": 1,
+    "original_failure_preserved": true,
+    "references": [
+      {
+        "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116b/cleanup/v13510-qualify-20261116b.exit",
+        "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+      },
+      {
+        "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116b/cleanup/v13510-qualify-20261116b.finalized",
+        "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+      },
+      {
+        "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116b/cleanup/v13510-qualify-20261116b.log",
+        "sha256": "ee57e7c6d8fd7304651515a384faf9dfe4f3e86d34d26eaae0639e9cbe1e786b"
+      }
+    ]
+  }
+}

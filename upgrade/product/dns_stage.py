@@ -64,7 +64,15 @@ def healthy(obj):
 
 
 class DNSStage:
-    def __init__(self, kubectl, kubeconfig, api_backends, nodes, *, timeout=600, progress=None):
+    def __init__(self, kubectl, kubeconfig, api_backends, nodes, *, timeout=600, progress=None,
+                 target_version='v1.34.13', originally_schedulable=None):
+        if target_version not in ['v1.34.13', 'v1.35.10']:
+            raise DNSRefused('exact reviewed platform target required')
+        self.target_version = target_version
+        self.schedulable = ({name: True for name in nodes} if originally_schedulable is None
+                            else deepcopy(originally_schedulable))
+        if set(self.schedulable) != set(nodes) or any(type(v) is not bool for v in self.schedulable.values()):
+            raise DNSRefused('complete original scheduling state required')
         self.kubectl = str(Path(kubectl).resolve())
         self.kubeconfig = str(Path(kubeconfig).resolve())
         self.backends = [endpoint(server) for server in api_backends]
@@ -102,7 +110,7 @@ class DNSStage:
 
     def platform_barrier(self):
         for backend in self.backends:
-            if self.read(['get', '--raw=/version'], backend).get('gitVersion') != 'v1.34.13':
+            if self.read(['get', '--raw=/version'], backend).get('gitVersion') != self.target_version:
                 raise DNSRefused('every API backend must reach the exact target before DNS')
             self.command(['get', '--raw=/readyz'], backend)
         nodes = self.read(['get', 'nodes', '-o', 'json']).get('items')
@@ -113,8 +121,9 @@ class DNSStage:
             meta, status = node.get('metadata', {}), node.get('status', {})
             name = meta.get('name')
             if (name not in self.nodes or meta.get('uid') != self.nodes[name] or
-                    meta.get('deletionTimestamp') or node.get('spec', {}).get('unschedulable', False) or
-                    status.get('nodeInfo', {}).get('kubeletVersion') != 'v1.34.13' or
+                    meta.get('deletionTimestamp') or
+                    node.get('spec', {}).get('unschedulable', False) != (not self.schedulable[name]) or
+                    status.get('nodeInfo', {}).get('kubeletVersion') != self.target_version or
                     [c.get('status') for c in status.get('conditions', [])
                      if c.get('type') == 'Ready'] != ['True']):
                 raise DNSRefused('node identity, target version, readiness or scheduling differs')
@@ -163,7 +172,7 @@ class DNSStage:
                     wanted.get('metadata', {}).get('namespace') != 'kube-system' or
                     wanted.get('metadata', {}).get('name') != ref.split('/')[1] or
                     len(containers) != 1 or containers[0].get('name') != container or
-                    containers[0].get('image') != source):
+                    containers[0].get('image') not in EDGES[ref][1:]):
                 raise DNSRefused('reviewed DNS workload differs from the exact source')
         # Only the image may already be target on an interrupted invocation.
         for ref in refs:
@@ -171,6 +180,9 @@ class DNSStage:
             image = obj.get('spec', {}).get('template', {}).get('spec', {}).get('containers', [{}])[0].get('image')
             if image not in EDGES[ref][1:]:
                 raise DNSRefused('DNS image is outside the reviewed transition')
+            if (reviewed[ref]['spec']['template']['spec']['containers'][0]['image'] == EDGES[ref][2]
+                    and image != EDGES[ref][2]):
+                raise DNSRefused('an admitted target DNS workload regressed')
             expected[ref]['spec']['template']['spec']['containers'][0]['image'] = image
         observed = self.check_objects(expected)
         for ref in refs:

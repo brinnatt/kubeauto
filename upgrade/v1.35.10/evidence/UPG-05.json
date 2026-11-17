@@ -1,0 +1,300 @@
+{
+  "schema_version": 1,
+  "accepted": true,
+  "source": "v1.34.13",
+  "target": "v1.35.10",
+  "case_ids": [
+    "UPG-05"
+  ],
+  "method": "live",
+  "claim": "六节点源集群由精确GA提交创建，三API及六kubelet均为1.34.13；恢复后原节点UID未变、Ready及PVC/Service账本一致，实际源etcd新快照经离线restore校验。只签本源准备边界，健康基线和排他租约保留供控制面步骤复用。",
+  "covered_subcases": [
+    "clean-six-node-source-identity",
+    "api-and-kubelet-exact-v13413",
+    "all-nodes-ready-and-pods-healthy",
+    "etcd-backup-recovery-point",
+    "exclusive-lease-and-journal",
+    "time-qualified-source-environment"
+  ],
+  "inputs": {
+    "upgrade/v1.35.10/source-baseline.yaml": "91612ce24d24bf02b381e7ca783a3312270022b3a9ac64174a6acecbf59e9c12",
+    "upgrade/v1.35.10/release.yaml": "f69e9e88afa6a7cdc333240d62873ed120c7db981e20a6bf3cd68bbc0bf77625",
+    "upgrade/v1.35.10/artifact-pins.json": "6ceaf94c0fb6657a66017ff1563b9743c754ff1c7282b36242ade029b9a25047",
+    "upgrade/product/prepare.py": "fe5606569233a2e0166eeced42ff507e0764dd562cbd98405526187e36759fb8",
+    "upgrade/product/continuity.py": "c5834306448f21dd167e4909cfe6380a1d29f10f908cefc2ded450aed65a6538"
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116a/source/ledger-namespace.json",
+      "sha256": "c9623144b6b32a72647f9222fa08c1656ee3430fee487ed883e34ca46528716c"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116a/source/plan.json",
+      "sha256": "2f38e81722fd3a213bdccfea2b24db8004e4aabe7d66a86b18c1ce26dcd0b9a4"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116a/source/prepared-boundary.json",
+      "sha256": "e2d0ab0c45c37519e363f46edd4ff9b55898f455ef0a955a06d0a0aa64d4fdf6"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116a/source/product-state/etcd-source.json",
+      "sha256": "01e3a4d079b511415845cc1785e41a9a4711cbb2f6d3925bc7567d0467bfe35f"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116a/source/product-state/etcd-unit-192.168.122.217.json",
+      "sha256": "6b794c77f65f5ff12d0818153a5a7da7769ae5c01781729a82987b353c92104a"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116a/source/product-state/etcd-unit-192.168.122.243.json",
+      "sha256": "b43d55049ac3f0042033ddb45aa0a292f07fa84de9dfc3ab735769b9b27f1277"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116a/source/product-state/etcd-unit-192.168.122.246.json",
+      "sha256": "46ef0315176300826db54abd2d3bea3ac4b54b35cde0f5c71a422f0c8f10dbbe"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116a/source/product-state/prepared-receipt.json",
+      "sha256": "e2d0ab0c45c37519e363f46edd4ff9b55898f455ef0a955a06d0a0aa64d4fdf6"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116a/source/product-state/product-config.json",
+      "sha256": "a73e169d6134734dc6b1644f4a0921f48d0fba0ab126c98e702bcd135319b4af"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116a/source/product-state/snapshot.db",
+      "sha256": "5af59952863abcd4642bc49d01039674ad3c355792147bb6c4e134052f84ff19"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116a/source/product-state/source-observation.json",
+      "sha256": "a5281ab4574784e891c536090c75167b6bb84609b15657090be222940cf388fb"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116a/source/source-config.json",
+      "sha256": "0fd224a0843dbf9298b172492c7329795c049f40b40e0bb249568b929dd2894c"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116a/source/source-health.json",
+      "sha256": "404b94bb6ef0ed63c36c855bdc7c009504f1c1fb7ce76b9be64af1ed8d466855"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116a/source/source-initial-health.json",
+      "sha256": "0841536737e38a682550ba7993c09fcafec3f9044b640b60aad3f72d08140c41"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116a/source/source-pack-inode-repair.json",
+      "sha256": "215e697300f5c2c2909a7928654d7df6081b6b06414303d4afe8f08d4fc3f708"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116a/source/source.attempt-2.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116a/source/source.attempt-2.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116a/source/source.attempt-2.log",
+      "sha256": "7381be2d99343b11821a9939b44c1114c9505b9cf41f95c1a230ca61e0e8ade8"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116a/source/source.failure-1.json",
+      "sha256": "10704cc8cdae45e8dddf9f7f3b14bb7ff7a8e7768e47149e27cc1e316e2346c2"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116a/source/source.status.json",
+      "sha256": "08124ee764bbc1d854c55ceeffe64a122c810c8b9d3faf2db04e0917f03b51a4"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116a/source/staged-input-manifest.json",
+      "sha256": "7a59d0607b1fe170a32f706cf7ba55b8a36412651a8dbc06c592ab755e87ab6a"
+    }
+  ],
+  "run_id": "v13510-qualify-20261116a/source.attempt-2",
+  "durable_rc": 0,
+  "finalized_rc": 0,
+  "failure_markers": 0,
+  "success_marker": "UPGRADE_NEXT_SOURCE_PASS",
+  "cleanup_marker": "NEXT_SESSION_PHASE_SCOPE_VERIFY_PASS phase=source ownership=retained",
+  "log": {
+    "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116a/source/source.attempt-2.log",
+    "sha256": "7381be2d99343b11821a9939b44c1114c9505b9cf41f95c1a230ca61e0e8ade8"
+  },
+  "durable_exit": {
+    "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116a/source/source.attempt-2.exit",
+    "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+  },
+  "durable_finalized": {
+    "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116a/source/source.attempt-2.finalized",
+    "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+  },
+  "business_assertions": [
+    "实际三个API后端1.34.13且readyz成功",
+    "六个源kubelet1.34.13、Ready且原节点UID保持",
+    "原namespace/Service/PVC/PV UID与HTTP账本SHA256绑定",
+    "etcd snapshot revision=3920、678 keys、SHA256一致、离线restore完整性验证",
+    "共享池租约及六节点owner标记保留；原控制机home隔离",
+    "实际主机时间准入通过"
+  ],
+  "prior_attempts": [
+    {
+      "attempt": 1,
+      "rc": 1,
+      "classification": "test-gate",
+      "cause": "qualified source/target pack hard-link reuse exposed shutil.copytree SameFileError; no control-plane migration occurred",
+      "recovery": "35 same-content input inodes separated under fixed source-boundary ownership; original healthy cluster and PVC reused",
+      "failure_reference": {
+        "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116a/source/source.failure-1.json",
+        "sha256": "10704cc8cdae45e8dddf9f7f3b14bb7ff7a8e7768e47149e27cc1e316e2346c2"
+      }
+    }
+  ],
+  "customer_signoff": null,
+  "current_qualification_source": {
+    "run_id": "v13510-qualify-20261116d",
+    "durable_rc": 0,
+    "finalized_rc": 0,
+    "marker": "UPGRADE_NEXT_SOURCE_PASS",
+    "source_scope_marker": "NEXT_SESSION_PHASE_SCOPE_VERIFY_PASS phase=source ownership=retained",
+    "actual_node_versions": "6 × v1.34.13 Ready",
+    "ledger_sha256": "16ac847af55c87f9ff86d59d1af125a58e588b2dd1fe9b9bc009717c5ea6ccb7",
+    "snapshot_sha256": "6d65c8c4aa2ee73ac4dd7cdb7628396198d081684b08dd57298acf326ff99ff1",
+    "snapshot_status": {
+      "hash": 1814303143,
+      "revision": 2763,
+      "totalKey": 678,
+      "totalSize": 3960832,
+      "version": "3.6.0"
+    },
+    "offline_restore_verified": true,
+    "original_acceptance_preserved": true,
+    "references": [
+      {
+        "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/source/plan.json",
+        "sha256": "8aa4788a3d418407ce104a6023ad0f3173ad84f1c25581185111e079db4a50df"
+      },
+      {
+        "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/source/source-config.json",
+        "sha256": "2c433f769d1459e9c8d943a648ead836d5a4d550895e7645c0bba843d62c3387"
+      },
+      {
+        "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/source/ledger-namespace.json",
+        "sha256": "91f95a55a3bbcb68c10b9d379ecd366dffbf7ca770b1f0243b2d865210faf5b1"
+      },
+      {
+        "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/source/continuity.json",
+        "sha256": "088ab6365c4657e6a88113296fd97a909e4da30212618ca8e911db73f3e605d0"
+      },
+      {
+        "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/source/prepared-boundary.json",
+        "sha256": "b74462d784126800195f9f485cba6b543057dfb31e46c9d55b948af36e0fa6ab"
+      },
+      {
+        "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/source/source-health.json",
+        "sha256": "0b3fc3b6411c0f79ebf8c4a83b7fcba5c4a8941943443539bcaf7ada01b7764a"
+      },
+      {
+        "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/source/source.status.json",
+        "sha256": "9bd31f8ff16a15d262f1c195ce217edb55f74d4d220b8f5352017662019b34a2"
+      },
+      {
+        "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/source/source.attempt-1.log",
+        "sha256": "a3c78dbfe8d3b9c1f0281f137fad3a6e1ddae3573751807ff054234587808066"
+      },
+      {
+        "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/source/source.attempt-1.exit",
+        "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+      },
+      {
+        "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/source/source.attempt-1.finalized",
+        "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+      },
+      {
+        "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/source/source.attempt-1.product-state/etcd-source.json",
+        "sha256": "5e3eca6fa5e0a77749f448763a5ca33fce3ea4ee35f335c09ff0b28b71817ac3"
+      },
+      {
+        "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/source/source.attempt-1.product-state/etcd-unit-192.168.122.217.json",
+        "sha256": "6b794c77f65f5ff12d0818153a5a7da7769ae5c01781729a82987b353c92104a"
+      },
+      {
+        "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/source/source.attempt-1.product-state/etcd-unit-192.168.122.243.json",
+        "sha256": "b43d55049ac3f0042033ddb45aa0a292f07fa84de9dfc3ab735769b9b27f1277"
+      },
+      {
+        "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/source/source.attempt-1.product-state/etcd-unit-192.168.122.246.json",
+        "sha256": "46ef0315176300826db54abd2d3bea3ac4b54b35cde0f5c71a422f0c8f10dbbe"
+      },
+      {
+        "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/source/source.attempt-1.product-state/prepared-receipt.json",
+        "sha256": "b74462d784126800195f9f485cba6b543057dfb31e46c9d55b948af36e0fa6ab"
+      },
+      {
+        "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/source/source.attempt-1.product-state/product-config.json",
+        "sha256": "a73e169d6134734dc6b1644f4a0921f48d0fba0ab126c98e702bcd135319b4af"
+      },
+      {
+        "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/source/source.attempt-1.product-state/snapshot.db",
+        "sha256": "6d65c8c4aa2ee73ac4dd7cdb7628396198d081684b08dd57298acf326ff99ff1"
+      },
+      {
+        "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/source/source.attempt-1.product-state/source-observation.json",
+        "sha256": "2ef2d5baa92a9d3d88e69650923378a7ed2e00301cb95efe1d7b93a1a78b8e5e"
+      }
+    ]
+  },
+  "previous_qualification_sources": [
+    {
+      "run_id": "v13510-qualify-20261116c",
+      "durable_rc": 0,
+      "finalized_rc": 0,
+      "marker": "UPGRADE_NEXT_SOURCE_PASS",
+      "source_scope_marker": "NEXT_SESSION_PHASE_SCOPE_VERIFY_PASS phase=source ownership=retained",
+      "actual_node_versions": "6 × v1.34.13 Ready",
+      "ledger_sha256": "16ac847af55c87f9ff86d59d1af125a58e588b2dd1fe9b9bc009717c5ea6ccb7",
+      "snapshot_sha256": "bbd79417d1f8a37d0ecf505fd933d657c414640a0b536d287c8cf2e7aef438d9",
+      "snapshot_status": {
+        "hash": 3427883808,
+        "revision": 2785,
+        "totalKey": 675,
+        "totalSize": 3792896,
+        "version": "3.6.0"
+      },
+      "offline_restore_verified": true,
+      "original_acceptance_preserved": true,
+      "references": [
+        {
+          "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116c/source/ledger-namespace.json",
+          "sha256": "777ca7cec50e50f9c3f834db002d08ba21607c3069db958d74836f5dc21f3528"
+        },
+        {
+          "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116c/source/plan.json",
+          "sha256": "403ec4a83b425fd5f811811acddad138ea69afe2a1124492ab379c219b40507e"
+        },
+        {
+          "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116c/source/prepared-boundary.json",
+          "sha256": "f06bdc836c6941497e0a58b68ee646287b5c2751e0626d8649d07058a78235ac"
+        },
+        {
+          "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116c/source/source-health.json",
+          "sha256": "f7659ff4cb6e0873ea9e6a98c187a26853c05f19d5d9ce9652579b8687d003e3"
+        },
+        {
+          "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116c/source/source.attempt-1.exit",
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+        },
+        {
+          "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116c/source/source.attempt-1.finalized",
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+        },
+        {
+          "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116c/source/source.attempt-1.log",
+          "sha256": "3f4f1acf56c026e1dff2a413313bb66e7579952e59ac5c4d200a95bf8156465f"
+        },
+        {
+          "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116c/source/source.status.json",
+          "sha256": "c637d8b740d3a36e60e06e0f26fe4f8331f6dcc3fc7ad770f5c462a559ebf92e"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "matrix_id": "UPG-06",
+  "category": "product-and-test-gate",
+  "failed_run": "v13510-qualify-20261116c/control.attempt-2",
+  "rc": 1,
+  "completed_before_failure": [
+    "platform/etcd-v3.6.16",
+    "platform/calico-v3.31.7"
+  ],
+  "failed_step": "platform/calico-v3.32.4",
+  "official_source_id": "CALICO-3324-CREATED-DEFAULT-BGP",
+  "cause": "v3.32 node creates previously absent default BGPConfiguration and Validate applies CRD defaults even for direct etcd; blanket datastore byte identity falsely rejects the documented default addition.",
+  "fix": "Only on v3.32 edge accept absent-to-exact Info/Enabled default with no route/mesh/ASN customization, then persist and verify its exact UID/content; all original resources retain exact comparison. Keep the original datastore snapshot unchanged.",
+  "checks": [
+    {
+      "command": ".venv/bin/python -B -m unittest upgrade.tests.test_next_platform upgrade.tests.test_next_coordinator -v",
+      "tests": 11,
+      "rc": 0
+    },
+    {
+      "command": ".venv/bin/python -B -m unittest upgrade.tests.test_next_platform.NextPlatformContracts.test_existing_custom_bgp_object_is_preserved_instead_of_defaulted -v",
+      "tests": 1,
+      "rc": 0
+    }
+  ],
+  "fixture_correction": "Nonempty IPPool wire data; real subprocess observes updated node image and creates exact default only at v3.32; first capture/reload identity tested.",
+  "references": [
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/calico-bgp-repair/control.attempt-2.log",
+      "sha256": "a913933b9d2165da1a3931339f8b827031df1f40dad527dcd1435741035ac3d5"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/calico-bgp-repair/control.failure-2.json",
+      "sha256": "25a4c49175ff402c00d6ca84708993c39bcc2207163736b8cfbaea7ec1e35ab8"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/calico-bgp-repair/control.status.json",
+      "sha256": "25a4c49175ff402c00d6ca84708993c39bcc2207163736b8cfbaea7ec1e35ab8"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/calico-bgp-repair/kubeauto-v13510-bgp-default-contracts.log",
+      "sha256": "2b72ac344b417552d1fe5873ff15299f13a68ca00b42aacacd08f7b0a508a2af"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/calico-bgp-repair/kubeauto-v13510-bgp-default-first-disproof.log",
+      "sha256": "22935174ddaad6e3e34593856e48b801aa459597745538d4de262b5a0d4dc09a"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/calico-bgp-repair/kubeauto-v13510-bgp-existing-custom-contract.log",
+      "sha256": "345e9bcfc80fd4bdc4e3f4945e0991962389ee3d37c17f4c76c2280263fa92d1"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/calico-bgp-repair/kubeauto-v13510-bgp-real-handoff-contracts.log",
+      "sha256": "ef5bac9d312a1c5a742ce431b2f2968aaddcc898402cd80c9da0f6de244e18ad"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/calico-bgp-repair/kubeauto-v13510-calico-bgp-source.json",
+      "sha256": "f96c78d5874081d67b288b85b0f99fcfb3c91d74eb5cfeb1d20769db207371d9"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/calico-bgp-repair/kubeauto-v13510-calico-datastore-second-disproof.log",
+      "sha256": "962ffe24e5e49543a7a4cbc98d9a3176244eeeb9650bd69488e9da763f6f7ce9"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/calico-bgp-repair/kubeauto-v13510-datastore-type-contracts.log",
+      "sha256": "6ccefeb0834e5e56b755f2bb93eb39872f4954d2af4ea5cba5beeeb6910288e4"
+    }
+  ],
+  "live_requalification": "pending new clean qualification; old journal/code binding is not rewritten",
+  "cleanup": {
+    "marker": "NEXT_SESSION_ABORT_CLEAN_VERIFY_PASS",
+    "parent_exit": 1,
+    "parent_finalized": 1,
+    "owner_released": true,
+    "references": [
+      {
+        "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116c/cleanup/supervisor.exit",
+        "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+      },
+      {
+        "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116c/cleanup/supervisor.finalized",
+        "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+      },
+      {
+        "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116c/cleanup/supervisor.log",
+        "sha256": "9bbb0715900b6ef44f7d44d87ff732e3ffc90fe5b724464550acecf7f171571f"
+      }
+    ]
+  }
+}

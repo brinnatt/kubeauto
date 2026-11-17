@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "matrix_id": "UPG-06",
+  "run_id": "v13510-qualify-20261116c/control.attempt-1",
+  "category": "product-and-test-gate",
+  "rc": 1,
+  "cause": "First snapshot returns list of tuples; JSON persistence converts nested pairs to lists. First comparison falsely rejects nonempty identical Calico IPPool data. Empty datastore fixture hid the bug.",
+  "actual_datastore_changed": false,
+  "completed": [
+    "platform/etcd-v3.6.16"
+  ],
+  "failed_step": "platform/calico-v3.31.7",
+  "calico_mutation": false,
+  "recovery_policy": "Keep exact journal/code binding and persisted snapshot; verify existing snapshot reload, original Calico objects and TLS Secret, source API/nodes and HTTP ledger; resume original product only after read-only proof. Correct first-collection representation before fresh final chain.",
+  "references": [
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/calico-datastore-repair/control.attempt-1.log",
+      "sha256": "4247de5cc3d5b4518d170b78e8232b938156a8bcc35f61675d0e796f809cabc5"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/calico-datastore-repair/control.failure-1.json",
+      "sha256": "8b942696ef12a85cb05d6e5e4c8d4c512abc2134d601cf4de1f2a947f13193a5"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/calico-datastore-repair/control.status.json",
+      "sha256": "8b942696ef12a85cb05d6e5e4c8d4c512abc2134d601cf4de1f2a947f13193a5"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/calico-datastore-repair/kubeauto-v13510-calico-datastore-first-disproof.log",
+      "sha256": "5b3be956f7baa8b269ab8042322a65861e963517b17324ba8bc80f6448210c7a"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/calico-datastore-repair/kubeauto-v13510-datastore-type-first-disproof.log",
+      "sha256": "8c0139a3fcb60def5f3b007e6821dd2531c780707285db00450822ef236772b9"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/calico-datastore-repair/kubeauto-v13510-calico-datastore-reload-recovery.log",
+      "sha256": "22089d4d92c016b925b3551f432f588ae6b261ff496e0789e17d43661d09d3e7"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/calico-datastore-repair/kubeauto-v13510-datastore-reload-contract.log",
+      "sha256": "41f4551faa423a71916e90b31d203dbafa40443ea14bb2efa24468d30d6ecf92"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/calico-bgp-repair/kubeauto-v13510-datastore-type-contracts.log",
+      "sha256": "6ccefeb0834e5e56b755f2bb93eb39872f4954d2af4ea5cba5beeeb6910288e4"
+    }
+  ],
+  "recovery_verified": {
+    "existing_nonempty_snapshot_reload_contract_rc": 0,
+    "live_readonly_recovery_rc": 0,
+    "original_calico_objects_and_tls_secret_unchanged": true,
+    "six_source_nodes_and_three_source_apis_healthy": true,
+    "original_http_ledger_matches": true,
+    "remote_code_unchanged": true,
+    "journal_unchanged": true,
+    "first_collection_repair": "local red disproof retained; blocks next fresh launch until fixed, does not enter frozen recovery run"
+  },
+  "official_python_basis": {
+    "documentation": "https://docs.python.org/3.12/library/json.html#json.JSONEncoder",
+    "encoding": "list and tuple become JSON array",
+    "decoding": "JSON array becomes Python list",
+    "installed_source_files": [
+      {
+        "name": "encoder.py",
+        "sha256": "52bfb1b66029cc70fa3bd7fe11df9f2e03922d413407a341b387a22c987f24f8"
+      },
+      {
+        "name": "decoder.py",
+        "sha256": "382cd02af6f7efede5a6d4abbcda1015e5c7a75794b0016022878f9cf32a24f6"
+      }
+    ],
+    "mechanism": "First snapshot returns collector object directly, re-open returns json.loads. Empty fixture yields equal empty lists and misses nonempty tuple/list mismatch."
+  },
+  "permanent_fix": "Collector returns sorted JSON-native lists for key/value pairs; first capture and reloaded snapshot are now equal even with nonempty resource data.",
+  "checks": [
+    {
+      "command": ".venv/bin/python -B -m unittest upgrade.tests.test_next_platform -v",
+      "tests": 7,
+      "rc": 0
+    }
+  ],
+  "live_requalification": "pending clean run with permanent fix"
+}

@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "classification": "product: asynchronous eviction/deletion handoff",
+  "first_failure": "v13510-qualify-20261116d/nodes-protection.attempt-1",
+  "upstream_source_ids": [
+    "K8S-13413-EVICTION-DELETION-HANDOFF"
+  ],
+  "cause": "UID-bound policy/v1 Eviction succeeded, but graceful deletion was unfinished when actual kubectl drain ran; its emptyDir filter refused the same metrics-server Pod in 0.149 seconds. This did not reach the intended PDB negative case.",
+  "change": "Wait for deletion of the admitted Metrics Server pod by its exact name, bounded by the declared drain timeout. Failure stops before normal drain; PDB, UID preconditions, local-data filtering and graceful termination remain enforced.",
+  "contracts": [
+    {
+      "command": ".venv/bin/python -B -m unittest upgrade.tests.test_metrics_eviction -v",
+      "rc": 0,
+      "tests": 6
+    },
+    {
+      "command": ".venv/bin/python -B -m unittest upgrade.tests.test_containerd_stage upgrade.tests.test_kubernetes_stage upgrade.tests.test_next_coordinator -v",
+      "rc": 0,
+      "tests": 25
+    }
+  ],
+  "fixture_correction": "Actual metrics helper followed by the actual node.yml drain task; Eviction leaves deletion_pending=true, wait must clear it. Timeout must prevent drain. Foreign owner/data and PDB denial continue refusing.",
+  "references": [
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/metrics-eviction-repair/expected-pdb-refusal-1.log",
+      "sha256": "bf5511b1e2e568787932916d528a938d28a2086767d60ae086dd878e1711e6e1"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/metrics-eviction-repair/nodes-protection.failure-1.json",
+      "sha256": "32975fb423e76e89c94e889acbd75c9a9f097976f8b84605cb5f7fbe04362a42"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/metrics-eviction-repair/nodes-protection.status.json",
+      "sha256": "32975fb423e76e89c94e889acbd75c9a9f097976f8b84605cb5f7fbe04362a42"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/metrics-eviction-repair/nodes-protection.attempt-1.log",
+      "sha256": "2e7cf42b35e2abfe285f5edbe0e213b516b387d5c1d28b54bf3552b36992adb5"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/metrics-eviction-repair/nodes-protection-failure-1-pods.txt",
+      "sha256": "f1af36ed3fe9eb2cbe3b97af57ef221250ef9cbc567133785207a76caa2ac51f"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/metrics-eviction-repair/kubeauto-v13510-metrics-eviction-first-disproof.log",
+      "sha256": "0f6b4564806504c9ae2f953deb57285eb53e15d901838a1abf3a5ec6af607b39"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/metrics-eviction-repair/kubeauto-v13510-metrics-eviction-contracts.log",
+      "sha256": "7636547a0a39b350519066efe45376edb996e6e3235690418723ca27ad902b9c"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/metrics-eviction-repair/kubeauto-v13510-metrics-eviction-affected-contracts.log",
+      "sha256": "4080c877535a732966cfc44a105b2f14d75284b473a58fffd5534d40950dfe44"
+    }
+  ],
+  "cleanup": {
+    "marker": "NEXT_SESSION_ABORT_CLEAN_VERIFY_PASS",
+    "parent_exit": 1,
+    "parent_finalized": 1,
+    "owner_released": true,
+    "recovery": "Existing fixed lab-wipe-nodes.sh --rocky-only for exactly the six already-owned nodes; no control host or disk formats. Product destroy had already removed its cluster directory. Final readback: every API unit inactive and zero full-argv runtime shims.",
+    "references": [
+      {
+        "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/cleanup/v13510-qualify-20261116d.exit",
+        "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+      },
+      {
+        "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/cleanup/v13510-qualify-20261116d.finalized",
+        "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+      },
+      {
+        "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/cleanup/v13510-qualify-20261116d.log",
+        "sha256": "47ea17ed924e76323e98078ffef171bc65624c829b1b1946aa4ff0f755b8c915"
+      }
+    ]
+  },
+  "live_requalification": "pending new clean qualification; original journal binding is never edited"
+}

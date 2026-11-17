@@ -1,0 +1,112 @@
+# Only the six-node pool declared by root AGENTS; no disk formatting or control
+# host cleanup. An exclusive shared-pool lease is held by next-session.sh.
+- name: Verify the fixed host set and the requested ownership operation
+  hosts: localhost
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - ansible.builtin.assert:
+        that:
+          - groups['kube_master'] | sort == ['192.168.122.217', '192.168.122.243', '192.168.122.246']
+          - groups['kube_node'] | sort == ['192.168.122.193', '192.168.122.210', '192.168.122.216']
+          - groups['etcd'] | sort == groups['kube_master'] | sort
+          - NEXT_RUN_ID is match('^v13510-[a-z0-9-]{1,48}$')
+          - NEXT_HOST_OPERATION in ['admit', 'claim', 'marked', 'owned', 'storage-clean', 'clean', 'release']
+
+- name: Check all hosts before any marker or cleanup change
+  hosts: kube_master:kube_node
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - name: Verify transport address, kernel and current ownership
+      ansible.builtin.shell: |
+        set -eu
+        hostname -I | tr ' ' '\n' | grep -Fx -- {{ inventory_hostname | quote }}
+        uname -r
+        marker=/var/tmp/kubeauto-v13510-node-owner
+        if test -L "$marker"; then exit 1; fi
+        if test -e "$marker"; then
+          test "$(stat -c '%u:%a' "$marker")" = 0:600
+          test "$(cat "$marker")" = {{ NEXT_RUN_ID | quote }}
+        else
+          case {{ NEXT_HOST_OPERATION | quote }} in admit|claim|clean|release) : ;; *) exit 1 ;; esac
+        fi
+      args:
+        executable: /bin/bash
+      changed_when: false
+    - name: Refuse foreign services or source residue at initial admission and after cleanup
+      ansible.builtin.shell: |
+        set -eu
+        for unit in kubelet kube-proxy kube-apiserver kube-controller-manager kube-scheduler kube-lb etcd containerd docker cri-dockerd; do
+          state=$(systemctl show "$unit" --property=ActiveState --value)
+          test "$state" = inactive
+        done
+        for path in /etc/kubernetes /var/lib/etcd /var/lib/kubelet /var/lib/kube-proxy /var/lib/containerd /etc/cni /etc/containerd /etc/kube-lb /run/calico /opt/local-path-provisioner; do
+          test ! -e "$path" && test ! -L "$path"
+        done
+        ! ps -eww -o cgroup= | grep -Eq '(^|[,:/])(kubepods|podruntime)([.]slice|/|$)'
+        ! ps -eww -o args= | grep -E '^(/[^ ]*/)?containerd-shim-runc-v2([[:space:]]|$)'
+      args:
+        executable: /bin/bash
+      when: NEXT_HOST_OPERATION in ['admit', 'claim', 'clean', 'release']
+      changed_when: false
+    - name: Read the actual clock before certificate creation
+      ansible.builtin.command:
+        argv: [date, -u, '+%s']
+      register: next_host_clock
+      changed_when: false
+      when: NEXT_HOST_OPERATION in ['admit', 'claim']
+    - name: Refuse stale snapshot clocks before claiming nodes
+      ansible.builtin.assert:
+        that:
+          - next_host_clock.stdout is match('^[0-9]+$')
+          - ((next_host_clock.stdout | int) - (lookup('pipe', 'date -u +%s') | int)) | abs < 120
+      when: NEXT_HOST_OPERATION in ['admit', 'claim']
+    - name: Bind cleanup to this cluster CA rather than its directory name
+      ansible.builtin.shell: |
+        set -eu
+        if test -e /etc/kubernetes/ssl/ca.pem; then
+          test ! -L /etc/kubernetes/ssl/ca.pem
+          digest=$(sha256sum /etc/kubernetes/ssl/ca.pem)
+          test "${digest%% *}" = {{ NEXT_CA_SHA256 | quote }}
+        else
+          for unit in kubelet etcd kube-apiserver; do
+            test "$(systemctl show "$unit" --property=ActiveState --value)" = inactive
+          done
+        fi
+      args:
+        executable: /bin/bash
+      when: NEXT_HOST_OPERATION in ['owned', 'storage-clean']
+      changed_when: false
+
+- name: Remove only the empty fixture storage parent after verified volume deletion
+  hosts: kube_master:kube_node
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - ansible.builtin.shell: |
+        set -eu
+        path=/opt/local-path-provisioner
+        test ! -L "$path"
+        if test -e "$path"; then rmdir -- "$path"; fi
+      args:
+        executable: /bin/bash
+      when: NEXT_HOST_OPERATION == 'storage-clean'
+
+- name: Publish or release ownership only after every host passed observation
+  hosts: kube_master:kube_node
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - name: Claim a clean node without overwriting any existing owner
+      ansible.builtin.copy:
+        dest: /var/tmp/kubeauto-v13510-node-owner
+        content: "{{ NEXT_RUN_ID }}\n"
+        mode: '0600'
+        force: false
+      when: NEXT_HOST_OPERATION == 'claim'
+    - name: Release exactly the verified clean node's marker
+      ansible.builtin.file:
+        path: /var/tmp/kubeauto-v13510-node-owner
+        state: absent
+      when: NEXT_HOST_OPERATION == 'release'

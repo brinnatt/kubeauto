@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "run_id": 43815218544,
+  "url": "https://github.com/brinnatt/kubeauto-k8s-bin-dockerfile/actions/runs/43815218544",
+  "head_sha": "686e0efa2e81da2a0e1334ed638d9a0c9f445862",
+  "branch": "v1.35.10",
+  "mode": "selected",
+  "images": [
+    "kubeauto-k8s-bin:v1.35.10"
+  ],
+  "architectures": [
+    "amd64",
+    "arm64"
+  ],
+  "jobs_conclusion": "success",
+  "build_started_at": "2026-11-16T06:13:18Z",
+  "build_completed_at": "2026-11-16T06:14:26Z",
+  "independent_manifest_and_content_checks": "k8s-binary-private-readback.json + k8s-binary-content.json",
+  "boundary": "Build\u6210\u529f\u4e0d\u4ee3\u7b7e\u53cc\u7aef\u5f53\u524d\u56de\u8bfb\u6216\u4ea7\u54c1\u73b0\u573aGA"
+}

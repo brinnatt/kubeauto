@@ -16,6 +16,10 @@ CONTEXT_NAME: "context-{{ CLUSTER_NAME }}"
 # k8s version
 K8S_VER: "__k8s_ver__"
 
+# Kubernetes >=1.35 defaults to refusing legacy cgroup v1. Set false explicitly
+# only for a reviewed transitional cgroup v1 deployment; prefer cgroup v2.
+KUBELET_FAIL_CGROUP_V1: true
+
 # set unique 'k8s_nodename' for each node, if not set(default:'') ip add will be used
 # CAUTION: 'k8s_nodename' must consist of lower case alphanumeric characters, '-' or '.',
 # and must start and end with an alphanumeric character (e.g. 'example.com'),
@@ -41,6 +45,9 @@ ETCD_WAL_DIR: ""
 ############################
 # role:runtime [containerd,docker]
 ############################
+# containerd 2.3 uses the v3 CRI plugin configuration shipped by this branch.
+CONTAINERD_CONFIG_VERSION: 3
+
 # [.]enable accelerated registry
 ENABLE_MIRROR_REGISTRY: true
 

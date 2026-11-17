@@ -1,0 +1,105 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: upgrade-ledger
+  labels:
+    kubeauto-upgrade-owner: v13510-lab
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ledger
+  namespace: upgrade-ledger
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 64Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ledger
+  namespace: upgrade-ledger
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: upgrade-ledger
+  template:
+    metadata:
+      labels:
+        app: upgrade-ledger
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: upgrade-worker-193
+      initContainers:
+        - name: initial-ledger
+          image: registry.talkschool.cn:5000/brinnatt/busybox:1.37
+          command: [sh, -ec]
+          args:
+            - test -s /data/ledger || printf 'kubeauto-v13413-to-v13510-persistent-ledger\n' > /data/ledger
+          volumeMounts:
+            - name: ledger
+              mountPath: /data
+      containers:
+        - name: ledger
+          image: registry.talkschool.cn:5000/brinnatt/busybox:1.37
+          command: [httpd, -f, -p, '8080', -h, /data]
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              port: 8080
+              path: /ledger
+          resources:
+            requests: {cpu: 10m, memory: 8Mi}
+            limits: {memory: 32Mi}
+          volumeMounts:
+            - name: ledger
+              mountPath: /data
+              readOnly: true
+      volumes:
+        - name: ledger
+          persistentVolumeClaim:
+            claimName: ledger
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ledger
+  namespace: upgrade-ledger
+spec:
+  selector:
+    app: upgrade-ledger
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: upgrade-client
+  namespace: upgrade-ledger
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: upgrade-client
+  template:
+    metadata:
+      labels:
+        app: upgrade-client
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: upgrade-worker-210
+      containers:
+        - name: client
+          image: registry.talkschool.cn:5000/brinnatt/busybox:1.37
+          command: [sleep, '86400']
+          resources:
+            requests: {cpu: 10m, memory: 8Mi}
+            limits: {memory: 32Mi}

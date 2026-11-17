@@ -139,9 +139,16 @@ CLUSTER_NETWORK=calico
         self.hosts = self.hosts.replace('[etcd]\n192.168.47.134', '[etcd]')
         with self.assertRaisesRegex(Refused, 'observation failed'):
             self.observed()
-        with self.assertRaisesRegex(Refused, 'exact first-hop'):
-            observe_source(self.runner, {'K8S_VER': '1.35.10'}, kubectl=self.binary,
+        with self.assertRaisesRegex(Refused, 'exact reviewed'):
+            observe_source(self.runner, {'K8S_VER': '1.36.6'}, kubectl=self.binary,
                 kubectl_sha256='', kubeconfig=self.kubeconfig, output=self.root/'receipt.json')
+
+    def test_unreviewed_source_pair_refuses_before_inventory_callback(self):
+        with self.assertRaisesRegex(Refused, 'reviewed transition'):
+            observe_source(self.runner, {'K8S_VER': '1.35.10',
+                'UPGRADE_SOURCE_VERSION': 'v1.33.6'}, kubectl=self.binary,
+                kubectl_sha256='', kubeconfig=self.kubeconfig, output=self.root/'receipt.json')
+        self.assertEqual(self.calls, [])
 
     def test_runner_nonzero_missing_duplicate_or_foreign_events_never_accept(self):
         result = self.runner()

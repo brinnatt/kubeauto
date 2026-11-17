@@ -25,7 +25,7 @@ class ActionModule(ActionBase):
                 sha = state['disk_hash'][host]
             else:
                 targets = [t for t in task_vars['UPGRADE_ETCD_TARGETS'].values() if t['path'] == path]
-                if len(targets) != 1:
+                if not targets or len({target['sha256'] for target in targets}) != 1:
                     return {'failed': True, 'msg': 'unmodelled stat'}
                 sha = state.get('artifact_hash', targets[0]['sha256'])
             result['stat'] = {'isreg': True, 'executable': True, 'checksum': sha}

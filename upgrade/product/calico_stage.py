@@ -44,6 +44,16 @@ def content(obj):
     value = {k: deepcopy(v) for k, v in obj.items() if k not in {'metadata', 'status'}}
     value['metadata'] = {k: deepcopy(v) for k, v in meta.items() if k not in
                          {'resourceVersion', 'generation', 'managedFields', 'creationTimestamp'}}
+    # Upstream owns these rollout counters. DaemonSet conversion exposes its
+    # internal TemplateGeneration as an annotation (including server dry-run);
+    # Deployment's controller advances revision after the update is persisted.
+    revision = {'DaemonSet': 'deprecated.daemonset.template.generation',
+                'Deployment': 'deployment.kubernetes.io/revision'}.get(obj.get('kind'))
+    if revision:
+        annotations = value['metadata'].get('annotations', {})
+        annotations.pop(revision, None)
+        if not annotations:
+            value['metadata'].pop('annotations', None)
     return value
 
 
@@ -64,6 +74,13 @@ def named(items):
 def matches(live, declared):
     """Allow API defaults in maps; never silently accept extra list members."""
     if isinstance(declared, dict):
+        if 'mountPath' in declared and 'name' in declared:
+            # core/v1.VolumeMount.ReadOnly is bool/json omitempty. Missing is
+            # writable, but an actual read-only permission change is not a default.
+            if (not isinstance(live, dict) or
+                    type(live.get('readOnly', False)) is not bool or
+                    live.get('readOnly', False) != declared.get('readOnly', False)):
+                return False
         return isinstance(live, dict) and all(k in live and matches(live[k], v)
                                              for k, v in declared.items())
     if isinstance(declared, list):
@@ -106,18 +123,36 @@ def manifests(variables, version):
         undefined=jinja2.StrictUndefined, trim_blocks=True)
     text = env.get_template(f'calico-{version.rsplit(".", 1)[0]}.yaml.j2').render(
         **{**variables, 'calico_ver': version})
-    return {obj['kind'].lower()+'/'+obj['metadata']['name']: obj
-            for obj in yaml.safe_load_all(text) if obj}
+    objects = {obj['kind'].lower()+'/'+obj['metadata']['name']: obj
+               for obj in yaml.safe_load_all(text) if obj}
+    for obj in objects.values():
+        pod = obj.get('spec', {}).get('template', {}).get('spec', {})
+        if pod:
+            # SetDefaults_PodSpec materializes this empty map in both workload
+            # templates. Compare its fields so a reviewed seccomp addition can
+            # replace that default while real security conflicts still refuse.
+            pod.setdefault('securityContext', {})
+        for container in pod.get('containers', []) + pod.get('initContainers', []):
+            for mount in container.get('volumeMounts', []):
+                if mount.get('readOnly') is False:
+                    del mount['readOnly']
+    return objects
 
 
 def new_container_defaults(before, desired):
-    """Kubernetes v1 core defaults for newly added, non-latest init images.
+    """Kubernetes v1 core defaults for new init containers and hostPath volumes.
 
     Existing defaults are copied from the source. Unknown admission mutations
     are refused by the exact server dry-run comparison, not silently adopted.
     """
     if desired['kind'] != 'DaemonSet':
         return
+    old_volumes = {v['name'] for v in before['spec']['template']['spec'].get('volumes', [])}
+    for volume in desired['spec']['template']['spec'].get('volumes', []):
+        if volume['name'] not in old_volumes and 'hostPath' in volume:
+            # SetDefaults_HostPathVolumeSource uses a pointer to HostPathUnset.
+            # Its empty string is returned by the API even when YAML omitted it.
+            volume['hostPath'].setdefault('type', '')
     names = {c['name'] for c in before['spec']['template']['spec']['initContainers']}
     for container in desired['spec']['template']['spec']['initContainers']:
         if container['name'] not in names:
@@ -152,6 +187,8 @@ class CalicoStage:
                 not re.fullmatch(r'[a-zA-Z0-9][a-zA-Z0-9_.-]{0,95}', run_id)):
             raise CalicoRefused('an exact reviewed Calico edge and outer run identity are required')
         self.edge, self.platform = tuple(edge), EDGES[tuple(edge)]
+        if (source.get('source'), source.get('target')) == ('v1.34.13', 'v1.35.10'):
+            self.platform = 'v1.34.13'
         self.before = manifests(variables, edge[0])
         self.after = manifests(variables, edge[1])
         self.new = sorted(self.after.keys()-self.before.keys())
@@ -166,7 +203,8 @@ class CalicoStage:
         self.backends = [endpoint(b['server']) for b in source.get('api_backends', [])]
         nodes = source.get('nodes', [])
         self.nodes = {n['name']: n['uid'] for n in nodes}
-        if (source.get('source') != 'v1.33.6' or source.get('target') != 'v1.34.13' or
+        if ((source.get('source'), source.get('target')) not in {
+                ('v1.33.6', 'v1.34.13'), ('v1.34.13', 'v1.35.10')} or
                 source.get('mutation') != 'none' or
                 source.get('cluster_identity', {}).get('namespace') != 'kube-system' or
                 not source.get('cluster_identity', {}).get('uid') or
@@ -176,6 +214,7 @@ class CalicoStage:
                 type(timeout) is not int or not 30 <= timeout <= 900):
             raise CalicoRefused('exact cluster/node identity and bounded timeout are required')
         self.kubectl, self.kubeconfig = str(Path(kubectl).resolve()), str(Path(kubeconfig).resolve())
+        self.schedulable = {n['name']: n.get('originally_schedulable', True) for n in nodes}
         self.timeout = timeout
         self.progress = progress or (lambda message: print(message, flush=True))
 
@@ -216,7 +255,9 @@ class CalicoStage:
         if (len(nodes) != len(self.nodes) or
                 {n.get('metadata', {}).get('name'): n.get('metadata', {}).get('uid')
                  for n in nodes} != self.nodes or any(
-                    n['metadata'].get('deletionTimestamp') or n.get('spec', {}).get('unschedulable') or
+                    n['metadata'].get('deletionTimestamp') or
+                    n.get('spec', {}).get('unschedulable', False) !=
+                    (not self.schedulable[n['metadata']['name']]) or
                     n.get('status', {}).get('nodeInfo', {}).get('kubeletVersion') != self.platform or
                     [c.get('status') for c in n.get('status', {}).get('conditions', [])
                      if c.get('type') == 'Ready'] != ['True'] for n in nodes)):

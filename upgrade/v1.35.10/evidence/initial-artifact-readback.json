@@ -1,0 +1,30 @@
+[
+  {
+    "image": "kubeauto-k8s-bin:v1.35.10",
+    "http": 404
+  },
+  {
+    "image": "kubeauto-k8s-bin:v1.34.13",
+    "digest": "sha256:102ab56b22ea78c726949ff18c6798f6d7a1a53dd7debc07384373985e153d35",
+    "architectures": [
+      "amd64",
+      "arm64",
+      "unknown",
+      "unknown"
+    ]
+  },
+  {
+    "image": "kubeauto-ext-bin:1.17.0",
+    "digest": "sha256:0029d1d4f4dba068c7a79461a6ec2378b84524e6de5110c52a0730e1dc5f37b8",
+    "architectures": [
+      "amd64",
+      "arm64",
+      "unknown",
+      "unknown"
+    ]
+  },
+  {
+    "registry": "docker.io",
+    "error_type": "URLError"
+  }
+]

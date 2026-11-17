@@ -601,7 +601,7 @@ class PrometheusDeliveryTests(unittest.TestCase):
             'PROM_ARTIFACT_DOCKERHUB_VERIFY_PREFIX:-docker.io',
             'test("^sha256:[0-9a-f]{64}$")',
             "printf '%s\\n' \"$digest\"",
-            "local-path-provisioner:v0.0.31",
+            "local-path-provisioner:v0.0.37",
             "json-mock:v1.3.1",
         ):
             self.assertIn(phrase, ARTIFACT_GATE)

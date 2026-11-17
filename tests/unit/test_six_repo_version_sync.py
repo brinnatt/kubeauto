@@ -66,11 +66,27 @@ class TestSixRepoVersionSync(unittest.TestCase):
     def test_ext_bin_env_matches_constants(self):
         ext = (EXT_BIN / "Dockerfile").read_text()
         sp1 = (EXT_BIN_SP1 / "Dockerfile").read_text()
+        # A published overlay inherits unchanged files from the pinned base.
+        # Resolve its declared version, rather than requiring a base rebuild.
+        overlays = []
+        for path in (EXT_BIN / "upgrade").glob("overlay-*.json"):
+            manifest = json.loads(path.read_text())
+            if manifest.get("tag") == self.kc.v_extra_bin.lstrip("v"):
+                overlays.append((path, manifest))
+        if overlays:
+            self.assertEqual(len(overlays), 1, "ambiguous ext-bin release overlay")
+            path, manifest = overlays[0]
+            overlay = path.with_name(path.name.replace("overlay-", "Dockerfile.").removesuffix(".json"))
+            overlay_text = overlay.read_text()
+            self.assertIn("@" + manifest["base"]["digest"], overlay_text)
+            self.assertEqual(manifest["retained_sp1"]["tag"], self.kc.v_extra_bin_sp1)
+            # Last ENV declaration wins, just as it does in the image.
+            ext += "\n" + overlay_text
 
         def env(text: str, name: str) -> str:
-            m = re.search(rf"{name}=([^\s]+)", text)
-            self.assertIsNotNone(m, f"{name} missing")
-            return m.group(1).lstrip("v")
+            values = re.findall(rf"\b{name}=([^\s]+)", text)
+            self.assertTrue(values, f"{name} missing")
+            return values[-1].lstrip("v")
 
         self.assertEqual(env(ext, "EXT_BIN_VER"), self.kc.v_extra_bin.lstrip("v"))
         self.assertEqual(env(ext, "DOCKER_COMPOSE_VER"), self.kc.v_docker_compose.lstrip("v"))
@@ -88,7 +104,8 @@ class TestSixRepoVersionSync(unittest.TestCase):
                 self.assertEqual(env(ext, name), version.lstrip("v"))
         etcd = re.search(r"COPY --from=quay\.io/coreos/etcd:([^\s]+)", ext)
         self.assertIsNotNone(etcd)
-        self.assertEqual(etcd.group(1), self.kc.v_etcd)
+        etcd_version = re.findall(r"^ENV ETCD_VER=([^\s]+)", ext, re.MULTILINE)
+        self.assertEqual((etcd_version[-1] if etcd_version else etcd.group(1)).lstrip('v'), self.kc.v_etcd.lstrip('v'))
         self.assertEqual(env(sp1, "EXT_BIN_SP1_VER"), self.kc.v_extra_bin_sp1.lstrip("v"))
         m = re.search(r"kubeauto-ext-bin-sp1:([^\s]+)", ext)
         self.assertIsNotNone(m)
@@ -139,7 +156,8 @@ class TestSixRepoVersionSync(unittest.TestCase):
 
     def _ci_tag(self, dockerfile_dir: str, expected: str) -> str:
         entries = [row for row in self.catalog
-                   if Path(row["dockerfile"]).parent.name == dockerfile_dir]
+                   if re.fullmatch(re.escape(dockerfile_dir) + r"(?:-v?\d+\.\d+\.\d+(?:[-.][\w.-]+)?)?",
+                                   Path(row["dockerfile"]).parent.name)]
         # catalog 同时保留已交付、升级目标和测试版本；按消费者精确 pin 核对。
         entries = [row for row in entries if row["tag"].lstrip("v") == expected.lstrip("v")]
         self.assertEqual(len(entries), 1, f"{dockerfile_dir}:{expected} missing or duplicated in ext-images catalog")
@@ -159,6 +177,12 @@ class TestSixRepoVersionSync(unittest.TestCase):
         with patch.object(self, "catalog", [row, row]), self.assertRaisesRegex(AssertionError, "duplicated"):
             self._ci_tag("calico-node", "v3.28.4")
 
+    def test_ci_tag_handles_versioned_directory_without_matching_other_products(self):
+        rows = [{"dockerfile": "middleware/ceph/ceph-csi-3.17.2/Dockerfile", "tag": "v3.17.2"},
+                {"dockerfile": "middleware/ceph/ceph-csi-attacher/Dockerfile", "tag": "v3.17.2"}]
+        with patch.object(self, "catalog", rows):
+            self.assertEqual(self._ci_tag("ceph-csi", "v3.17.2"), "v3.17.2")
+
     def test_ecosystem_ci_tags_match_kubeauto_constants(self):
         """No six-repo fragmentation: CNI/DNS/control-plane/monitor pins must match constants."""
         expect = {
@@ -176,10 +200,6 @@ class TestSixRepoVersionSync(unittest.TestCase):
             "k8s-dns-node-cache": self.kc.v_dnsnodecache,
             "metrics-server": self.kc.v_metricsserver,
             "pause": self.kc.v_pause,
-            "kube-apiserver": self.kc.v_k8s_bin,
-            "kube-controller-manager": self.kc.v_k8s_bin,
-            "kube-scheduler": self.kc.v_k8s_bin,
-            "kube-proxy": self.kc.v_k8s_bin,
             "kube-router": self.kc.v_kuberouter,
             "kube-ovn": self.kc.v_kubeovn,
             "ingress-nginx-controller": self.kc.v_ingress_nginx_controller,

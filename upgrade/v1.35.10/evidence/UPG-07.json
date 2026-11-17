@@ -1,0 +1,202 @@
+{
+  "schema_version": 1,
+  "accepted": true,
+  "source": "v1.34.13",
+  "target": "v1.35.10",
+  "case_ids": [
+    "UPG-07"
+  ],
+  "method": "live",
+  "claim": "e资格链经原产品入口完成六节点逐一drain、containerd2.1.4→2.2.10→2.3.7及kubelet/proxy1.35.10。原节点UID、三主cordon/三从调度状态保持，CRI与原Ready sandbox按每段复验；实际metrics承载节点216的限定驱逐后删除等待成功。worker193真实PDB拒绝与解除同UID测试PDB后的原journal续跑均有独立原始证据。",
+  "covered_subcases": [
+    "all-six-nodes-exact-target-and-ready",
+    "runtime-adjacent-bridge-cri-health-and-sandbox-retention",
+    "master-cordon-and-worker-uncordon-original-state",
+    "eviction-pdb-and-local-data-protection-stop",
+    "journal-ordered-resume-and-first-failure-preservation"
+  ],
+  "inputs": {
+    "upgrade/v1.35.10/release.yaml": "f69e9e88afa6a7cdc333240d62873ed120c7db981e20a6bf3cd68bbc0bf77625",
+    "upgrade/v1.35.10/source-baseline.yaml": "91612ce24d24bf02b381e7ca783a3312270022b3a9ac64174a6acecbf59e9c12",
+    "upgrade/v1.35.10/artifact-pins.json": "6ceaf94c0fb6657a66017ff1563b9743c754ff1c7282b36242ade029b9a25047",
+    "upgrade/v1.35.10/evidence/UPG-02.json": "2822ef10928d0602ed0e263ef559d19e3bf62f3f536dad8df411afe7f3a3d771",
+    "upgrade/v1.35.10/evidence/UPG-04.json": "1cc8a4b64e23ec83eed133ceb2605f70047cd513daf49136d3f92d4d768c75ef",
+    "upgrade/v1.35.10/evidence/qualification-source-e.json": "09be634b73748aa4e485887f68c164c737580a9a035ba2d5841b647beb379e12",
+    "upgrade/v1.35.10/evidence/qualification-control-e.json": "e8b58104de4d8c5d8dcef0a10559333969777956f5aa9cb16411e79e1e71b949",
+    "upgrade/v1.35.10/evidence/qualification-protection-e.json": "47afdaf8ff17112551556273d85bf50b14fc508cc66734101efccdb8a3519392",
+    "upgrade/v1.35.10/evidence/qualification-nodes-e.json": "fc3df62a9e1760b06d563a80810e0550ee6172f96fe811047a5bcfc7d79d04f7"
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/nodes/plan.json",
+      "sha256": "34ba084f923299bad3d0270556fe0536022ac0f3340da69e7306d91a5cfd6c0f"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/nodes/source-config.json",
+      "sha256": "be7439432cc8104b2c1c1fcb79574bf9c06cfc0220ee38927104dcd2c1574735"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/nodes/ledger-namespace.json",
+      "sha256": "3a7d75467b2c262178da3a6397457249e1cd8faa486212d0ecfab7a8b01b4dbd"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/nodes/continuity.json",
+      "sha256": "088ab6365c4657e6a88113296fd97a909e4da30212618ca8e911db73f3e605d0"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/nodes/prepared-boundary.json",
+      "sha256": "4a67aa7357dae0bf4b716a333f1a39d9c310fb269a6b3610a183640b79851ae3"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/nodes/nodes-health.json",
+      "sha256": "6e48f171a4a4740913e7c2f6739913fd5e292df645e842fca08e2a7914ad504b"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/nodes/nodes-boundary.json",
+      "sha256": "9118bba4ff7af71e37d0311120c0e3611d6943547b45daeef8e1cb3a776551b6"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/nodes/protection-released.json",
+      "sha256": "2cadd607027e8b00fe939ef4faf9881bafaa84198027707f89ab6f8263c21cee"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/nodes/nodes.status.json",
+      "sha256": "d2935edd7f9aa8da52959eac5b90ad93da9537270199d6b02f09199b1abf12d2"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/nodes/nodes.attempt-1.log",
+      "sha256": "9c94d8076ba4e6f3210457ad48b5953f1a26e0b02d07ce6093fbce3b46b98e84"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/nodes/nodes.attempt-1.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/nodes/nodes.attempt-1.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/nodes/nodes.attempt-1.product-state/calico-created-default-bgp.json",
+      "sha256": "46e1fa738f6d30f04ad0ec230abb81712ce9e27c10a4dffbc9cf3a46db9e56ef"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/nodes/nodes.attempt-1.product-state/calico-datastore.json",
+      "sha256": "3b27a4548b51a7cfb94daac136d8f9193a46bdf77ad64ef7d0858d36addd81b7"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/nodes/nodes.attempt-1.product-state/calico-edges.json",
+      "sha256": "126e9dd6680307084c5d9c017e6a16b76080ea4107162ce54ee1765b6628de1b"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/nodes/nodes.attempt-1.product-state/calico-v3.31.7.json",
+      "sha256": "9653c673fb4b565b05708f120f54268bba63dc74b1874f5c45fd4f7b70b98181"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/nodes/nodes.attempt-1.product-state/calico-v3.32.4.json",
+      "sha256": "5237589b46f50e42556b47126b3695202557df14137612bb3018a2c217655fa5"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/nodes/nodes.attempt-1.product-state/dns-source.json",
+      "sha256": "fd5d66afcfb685817dfaef62f133e2f630b6bcfa214d234da0422eb90e398cac"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/nodes/nodes.attempt-1.product-state/etcd-source.json",
+      "sha256": "4720f0704473d900f3fe98db454d64645b768471245db5b67d788ea3504173a2"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/nodes/nodes.attempt-1.product-state/etcd-unit-192.168.122.217.json",
+      "sha256": "6b794c77f65f5ff12d0818153a5a7da7769ae5c01781729a82987b353c92104a"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/nodes/nodes.attempt-1.product-state/etcd-unit-192.168.122.243.json",
+      "sha256": "b43d55049ac3f0042033ddb45aa0a292f07fa84de9dfc3ab735769b9b27f1277"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/nodes/nodes.attempt-1.product-state/etcd-unit-192.168.122.246.json",
+      "sha256": "46ef0315176300826db54abd2d3bea3ac4b54b35cde0f5c71a422f0c8f10dbbe"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/nodes/nodes.attempt-1.product-state/first-hop-result.json",
+      "sha256": "4ad9eebace5d001b8ee52f12b3dd4fd528189d3d79f1b129634ee81034101ccd"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/nodes/nodes.attempt-1.product-state/journal/journal.json",
+      "sha256": "953551471cb6cf7cf25c944ddf4f92f573d000c48fb5a6bea85eb0114dbc6af6"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/nodes/nodes.attempt-1.product-state/journal/owner.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/nodes/nodes.attempt-1.product-state/metrics-business-pods.json",
+      "sha256": "f08033e6b387703751f0f8da71445d3f1199664763632af04b0e97c1926937b5"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/nodes/nodes.attempt-1.product-state/metrics-source.json",
+      "sha256": "2afef63efc595f85d5df0552ee17c20b460e2140b7b8dd11838c1e0dbb52ac26"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/nodes/nodes.attempt-1.product-state/prepared-receipt.json",
+      "sha256": "4a67aa7357dae0bf4b716a333f1a39d9c310fb269a6b3610a183640b79851ae3"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/nodes/nodes.attempt-1.product-state/product-config.json",
+      "sha256": "a73e169d6134734dc6b1644f4a0921f48d0fba0ab126c98e702bcd135319b4af"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/nodes/nodes.attempt-1.product-state/snapshot.db",
+      "sha256": "96487df07b748e81a4f80722bf51c070a1168468d188f0d9930aad15b347f108"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/nodes/nodes.attempt-1.product-state/source-observation.json",
+      "sha256": "8dabd7facd937286565bebd06b0159cab9e6d73b7593068cfbba7a4fb81df775"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/nodes/nodes.attempt-1.product-state/v3.31.7-accepted.json",
+      "sha256": "5237589b46f50e42556b47126b3695202557df14137612bb3018a2c217655fa5"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/nodes/nodes.attempt-1.product-state/v3.32.4-accepted.json",
+      "sha256": "e02021638f237741fc73270ba017a0f8eb68e0d010c41c67e3e9b0b87eb649f5"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/nodes/nodes-readback.json",
+      "sha256": "f6c7b29b1e6632b606cad26f4d210dd0e9164e7ffb9a8cf7f77f016f5197898b"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/combination-review.json",
+      "sha256": "526d80507f5749756d971abdb1dfbb5b6f45db4a072eb1525f70930836758e8a"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/UPG-07.json",
+      "sha256": "a6fc8cf5e162f1aca78a2de811289324c7012a7408d6b9f962ac87409f7674ff"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/UPG-12.json",
+      "sha256": "802c7370e414802527977caf14dbb402bb0d5caf8f788b312089248937b855c9"
+    }
+  ],
+  "run_id": "v13510-qualify-20261116e/nodes.attempt-1",
+  "business_assertions": [
+    "e资格链经原产品入口完成六节点逐一drain、containerd2.1.4→2.2.10→2.3.7及kubelet/proxy1.35.10。原节点UID、三主cordon/三从调度状态保持，CRI与原Ready sandbox按每段复验；实际metrics承载节点216的限定驱逐后删除等待成功。worker193真实PDB拒绝与解除同UID测试PDB后的原journal续跑均有独立原始证据。"
+  ],
+  "completed_ladder": 3,
+  "customer_signoff": null,
+  "durable_rc": 0,
+  "finalized_rc": 0,
+  "failure_markers": 0,
+  "success_marker": "UPGRADE_NEXT_NODES_PASS",
+  "cleanup_marker": "NEXT_SESSION_PHASE_SCOPE_VERIFY_PASS phase=nodes ownership=retained",
+  "log": {
+    "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/nodes/nodes.attempt-1.log",
+    "sha256": "9c94d8076ba4e6f3210457ad48b5953f1a26e0b02d07ce6093fbce3b46b98e84"
+  },
+  "durable_exit": {
+    "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/nodes/nodes.attempt-1.exit",
+    "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+  },
+  "durable_finalized": {
+    "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116e/nodes/nodes.attempt-1.finalized",
+    "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+  }
+}

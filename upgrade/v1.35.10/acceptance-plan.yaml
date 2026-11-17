@@ -1,0 +1,142 @@
+schema_version: 1
+recorded_on: '2026-11-16'
+source_release: upgrade/v1.34.13/release.yaml
+source_identity: upgrade/v1.35.10/source-baseline.yaml
+target_release: upgrade/v1.35.10/release.yaml
+owning_matrix: upgrade/v1.35.10/test-matrix.yaml
+scope_frozen: true
+authorization: 已授权v1.34.13到v1.35.10逐minor实现及GA验收；不授权无关全量镜像构建、旧GA重签或客户生产变更。
+evidence_policy: upgrade/acceptance.md
+claim_boundary:
+  inherited: 既有功能、业务、灾备、故障、性能及长稳深测按原始输入和主张复用；原证据保存在upgrade内，旧状态不改写。
+  new: 源1.34.13真实状态到1.35.10的迁移、变更后的核心附件、目标新建/幂等和当前产品入口。
+  excluded: 不引入DRA、GangScheduling、新CSI token语义、CNI数据面切换或数据库引擎/schema迁移。
+  unknown: 官方或旧证据不能覆盖的实际组合先分析；不能静默复用，也不能默认全量回归。
+artifact_scope:
+  consumer_inventory: upgrade/v1.35.10/evidence/consumer-image-scope.json
+  current_readback: upgrade/v1.35.10/evidence/consumer-readback-plan.json
+  consumer_tags: 165
+  allowed_new_builds:
+    kubeauto-k8s-bin-dockerfile:
+      mode: selected
+      images:
+      - kubeauto-k8s-bin:v1.35.10
+      run_id: 43815218544
+      readback_run_id: 43820026445
+    kubeauto-ext-images-dockerfile:
+      mode: selected
+      images:
+      - kube-router:v2.12.0
+      - kube-ovn:v1.17.1
+      - openebs-kubectl:1.35.10
+      run_id: 43818570686
+      readback_run_id: 43820462230
+  reused_binary_pack: kubeauto-ext-bin:1.17.0
+  unchanged_tags: 双端同index、AMD64/ARM64齐全就复用；不因本分支SHA变化重新构建。
+local_admission:
+  static:
+  - 语法/YAML/模板及精确版本合同
+  - 原始历史证据fixture隔离，不把当前源码哈希冒签为旧证据
+  - 准备入口的排他所有权、失败清理和不覆盖边界
+  - etcd实际serial playbook、首次显式resume=false及重入只读核验
+  - Calico真实模块桥接、原策略/IP池及调度状态保持
+  - 1.35认证CA校验的官方二进制反证及最小unit修改
+  - 实际控制面/节点/运行时模块调用顺序、首失败停止、重入与拒绝
+  - 发行包数据闭包、未验收发行拒绝、缺准入不回落93旧入口
+  narrow_gate: 任何变化断言先在最窄固定分支取得证据；失败不扩大执行。
+  source_command: kubecli upgrade CLUSTER --prepare --continuity CONTINUITY.json
+  upgrade_command: kubecli upgrade CLUSTER
+  prepare_marker: UPGRADE_PREPARE_PASS
+  complete_marker: UPGRADE_NEXT_HOP_STAGE_PASS
+  prepare_data: namespace、Service、PVC、单一Ready客户端selector及预先记录的ledger SHA256；客户端经HTTP
+    Service读取8080/ledger。
+  backup: 通过实际源etcd TLS端点保存新快照，核对revision和内容，执行隔离离线restore校验附带SHA256；不启动恢复服务，不替代业务恢复演练。
+lab_scope:
+  control: 192.168.122.2
+  control_rule: 只用独立路径，不接管控制机已有集群或现存中间件。
+  masters:
+  - 192.168.122.217
+  - 192.168.122.243
+  - 192.168.122.246
+  workers:
+  - 192.168.122.193
+  - 192.168.122.210
+  - 192.168.122.216
+  os: Rocky9.8，实际内核5.14满足Calico3.32的5.10下限；运行前重新读取。
+  lease: 先取得固定共享池租约及控制端排他权，再做任何集群变更；只读盘点不算租约。
+  source_cluster: upgrade-v13413-source
+  target_cluster: upgrade-v13510-clean
+  storage_fixture: 原项目local-path产品入口创建PVC，固定初始卷和数据；通过Service读回，升级后保留UID/绑定/账本。
+  cleanup: 只清理本runner创建且库存/集群UID已验证的集群与数据目录，保留证据及首失败；不碰控制机原集群、外来配置、原始GA归档和其它存储设备。
+  control_state: /var/tmp/kubeauto-v13510-lab
+  control_home: 每次kubecli命令使用私有mount namespace，原/root/.ssh只读挂载；原kubeconfig不变
+  fixed_runner: upgrade/lab/next-session.sh
+  frontend: bash upgrade/lab/next-control.sh
+  cluster_identity: 固定source/target名称前缀加run_id的SHA256前8位，资格与最终验收各自独立配置、receipt和journal
+  readback: 每阶段独立不可覆盖attempt日志、durable exit/finalized，product-state私有快照；fetch收取，acceptance仅同步矩阵和证据
+  ledger_availability: 单副本local-path PVC固定worker193。drain可短暂不可用，等待原数据重挂；不承诺零停机或localPV高可用。
+live_steps:
+- id: source
+  acceptance:
+  - UPG-05
+  gap: 下一跳尚无真实源身份、恢复点与PVC业务边界。
+  cannot_reuse: 原最终回归是1.33到1.34；原存储观测没有PV/PVC，不能证明本跳卷迁移。
+  completion: 干净自有源安装、健康和时间资格、prepare成功、独立快照校验及业务账本；准入拒绝不改变集群。
+  cost_bound: 一次六节点源新建，保留健康自有边界供后续模块复用；不做全部中间件长链。
+- id: control
+  acceptance:
+  - UPG-06
+  - UPG-08
+  - UPG-12
+  gap: etcd/Calico桥接和1.35认证校验、混合API顺序没有本跳实测。
+  cannot_reuse: 版本、内核门槛和认证启动约束变化。
+  completion: 顺序屏障、etcd成员身份、Calico对象及真实网络/PVC账本；控制面完成时源节点版本保持。
+  cost_bound: 复用source，逐成员/逐API更新；首失败只修所属边界。
+- id: nodes-protection
+  acceptance:
+  - UPG-07
+  - UPG-12
+  gap: 真实PDB必须拒绝迁移且原账本保持，解除同UID测试PDB后续跑。
+  cannot_reuse: 本跳节点迁移和运行时输入已变化。
+  completion: 预期拒绝原始日志独立保存；journal停在worker193、kubelet仍源版本且保持cordon，账本一致。
+  cost_bound: 只在资格链执行一次PDB负例；最终正向链不注入该故障。
+- id: nodes
+  acceptance:
+  - UPG-07
+  - UPG-08
+  - UPG-09
+  - UPG-11
+  - UPG-12
+  gap: 新kubelet/cgroup及核心附件在本项目的实际接口组合。
+  cannot_reuse: 1.35默认failCgroupV1变化；DNS/metrics版本和认证实际消费者需补证。
+  completion: 每节点drain/PDB保护与限定恢复、目标Ready、原调度状态、PVC/Service账本及真实metrics样本；无强删本地数据。
+  cost_bound: 复用control边界；只执行已安装DNS/metrics，不重建数据库或卷。
+- id: new-install
+  acceptance:
+  - UPG-13
+  gap: 下一跳默认制品和认证unit的新建与重复setup。
+  cannot_reuse: 当前主分支默认值及二进制包变化。
+  completion: 独立干净目标安装、真实接口及第二次setup幂等；不得借源集群隐式资源。
+  cost_bound: 同一独占池串行复用，源阶段证据和清理确认后才新建。
+- id: final
+  acceptance:
+  - UPG-15
+  gap: 本跳当前冻结输入下的一次完整范围验收。
+  cannot_reuse: 原最终日志不能签新主张。
+  completion: 所有前置当前有效、干净source/control/nodes/new-install全链、durable rc=0、零失败标志及LAB_CLEAN_VERIFY_PASS。
+  cost_bound: 只重复此处冻结的迁移/新建主线；旧中间件、存储故障/灾备/性能作为已核验前置复用。
+remaining_before_execution:
+- 固定共享池租约及全部节点清理/时间准入由runner启动时重新核验；不预签已取得租约
+execution_commands:
+  qualify: bash upgrade/lab/next-control.sh launch qualify v13510-qualify-20261116a
+  final: bash upgrade/lab/next-control.sh launch final v13510-final-20261116a
+  status: bash upgrade/lab/next-control.sh status RUN_ID
+  fetch: bash upgrade/lab/next-control.sh fetch RUN_ID
+  handoff: bash upgrade/lab/next-control.sh acceptance RUN_ID; bash upgrade/lab/next-control.sh
+    signal RUN_ID PHASE advance
+  repair: 保留首失败与租约；仅修所属因果层，通过最窄合同后才重试。产品代码变化时先收证据并分析journal绑定，禁止静默续用。
+budget:
+  source: 六节点一次setup90，单命令3600秒上限；每20秒runner心跳，异常先诊断
+  control_nodes: 串行成员/API/节点，PDB受保护失败独立取证；不启动无关业务长链
+  target: 独立干净setup90及一次幂等重入
+  final: 冻结范围的一次source/control/nodes/cleanup/new-install/cleanup，不做全组件构建或全中间件回归

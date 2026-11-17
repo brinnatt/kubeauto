@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "classification": "test-gate: lab destroy/cleanup handoff and process observation",
+  "first_failure": "v13510-qualify-20261116d abort cleanup after successful product destroy",
+  "cause": "kube-apiserver timeout left a failed not-found unit record. Runtime KillMode=process retained shim children. comm matching used an overlong name and missed the kernel-truncated process name.",
+  "change": "After verified fixture volume release and successful product destroy, invoke existing lab-wipe-nodes.sh with --rocky-only and exactly MASTERS+WORKERS; then retain strict clean observation. Check full ps -eww args for shim residue. No production roles or general cleanup helper changed.",
+  "references": [
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/cleanup-repair/kubeauto-v13510-cleanup-contracts.log",
+      "sha256": "052d25674cbcd1f448597b02512da31e211b3b2e14931848d4fba52d55ca1067"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/cleanup-repair/kubeauto-v13510-cleanup-first-disproof.log",
+      "sha256": "07dd91d1d88bd6c009fb2a96b7a33bf0165f2ed732ae4dbf490a677912eb3275"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/cleanup-repair/ps.1.txt",
+      "sha256": "41c40d8a68fd4c2f841ff352e266169325ee192a15647e27b9f49b6b635d1d01"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/cleanup-repair/scoped-cleanup-recovery.log",
+      "sha256": "ad46ca979b857500a340f346c45075a647361f8b5e9f6aa1cfe5a3701cc4868f"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/cleanup-repair/systemctl.1.txt",
+      "sha256": "c6563ed5ffac47d62a92238d05c59cb1928999ac29ff8e772cbbd2c56e81c8bf"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/cleanup/v13510-qualify-20261116d.exit",
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/cleanup/v13510-qualify-20261116d.finalized",
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/v13510-qualify-20261116d/cleanup/v13510-qualify-20261116d.log",
+      "sha256": "47ea17ed924e76323e98078ffef171bc65624c829b1b1946aa4ff0f755b8c915"
+    }
+  ],
+  "official_manuals": [
+    {
+      "official_document": "https://www.freedesktop.org/software/systemd/man/systemctl.html",
+      "obtained_as": "locally installed upstream manual; no claim of matching remote systemd patch",
+      "reference": {
+        "path": "upgrade/v1.35.10/evidence/raw/cleanup-repair/systemctl.1.txt",
+        "sha256": "c6563ed5ffac47d62a92238d05c59cb1928999ac29ff8e772cbbd2c56e81c8bf"
+      }
+    },
+    {
+      "official_document": "https://gitlab.com/procps-ng/procps/-/blob/master/man/ps.1",
+      "obtained_as": "locally installed upstream manual; no claim of matching remote systemd patch",
+      "reference": {
+        "path": "upgrade/v1.35.10/evidence/raw/cleanup-repair/ps.1.txt",
+        "sha256": "41c40d8a68fd4c2f841ff352e266169325ee192a15647e27b9f49b6b635d1d01"
+      }
+    }
+  ],
+  "contracts": [
+    {
+      "command": ".venv/bin/python -B -m unittest upgrade.tests.test_next_session -v",
+      "rc": 0,
+      "tests": 23
+    }
+  ],
+  "live_recovery": "Existing fixed cleanup helper returned rc0 for six nodes, orphan shim argv absent, unit records inactive, original session released ownership and retained failed parent rc1. New launcher cleanup path still requires qualification.",
+  "cleanup_marker": "NEXT_SESSION_ABORT_CLEAN_VERIFY_PASS"
+}

@@ -226,6 +226,10 @@ class KubeautoCLI:
             help="Upgrade the cluster components"
         )
         self._add_common_cluster_args(parser)
+        parser.add_argument('--prepare', action='store_true',
+                            help='Verify the source and save an isolated recovery boundary')
+        parser.add_argument('--continuity', metavar='JSON',
+                            help='Existing Service/PVC ledger contract, required with --prepare')
 
     def _setup_backup_command(self) -> None:
         """Setup 'backup' command"""
@@ -1102,8 +1106,16 @@ Examples:
 
     def _handle_upgrade(self, args: argparse.Namespace) -> None:
         """Handle 'upgrade' command"""
+        preparing = getattr(args, 'prepare', False)
+        continuity = getattr(args, 'continuity', None)
+        if preparing != bool(continuity):
+            raise ValueError('--prepare and --continuity JSON must be supplied together')
         cm = ClusterManager()
-        cm.cluster_command(args.cluster, "upgrade")
+        if preparing:
+            from upgrade.product.entrypoint import prepare_minor_upgrade
+            prepare_minor_upgrade(cm, args.cluster, continuity)
+        else:
+            cm.cluster_command(args.cluster, "upgrade")
 
     def _handle_backup(self, args: argparse.Namespace) -> None:
         """Handle 'backup' command"""

@@ -449,7 +449,7 @@ if mode=='readback':
                         self.assertEqual(defect=='none',REVISION.accepted_input_current(evidence,name,current))
 
     def test_completed_adoption_nullable_source_reuse_remains_whole_file_and_caller_bound(self):
-        source = (ROOT/REVISION.SOURCE).read_text()
+        source = (ROOT/'upgrade/tests/fixtures/longhorn-pre-1122-246651e1.py.txt').read_text()
         original = source
         for variable, key in (('status', 'name'), ('state', 'disk_name')):
             original = original.replace(variable+" = (current.get('status', {}).get('diskStatus') or {}).get("+key+") or {}",

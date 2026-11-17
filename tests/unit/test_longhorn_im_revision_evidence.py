@@ -244,6 +244,9 @@ class RevisionEvidenceContracts(unittest.TestCase):
             'service/cluster/downloader.py': 'longhorn-im-revision-2-downloader-b66cf3de.py.txt',
             'service/cluster/registry.py': 'longhorn-im-revision-2-registry-89f06daf.py.txt',
         }
+        frozen_product_inputs['controller/cluster/cli.py'] = '../../upgrade/tests/fixtures/longhorn-im-revision-2-cli-e5f0f081.py.txt'
+        frozen_product_inputs['playbooks/93.upgrade.yml'] = '../../upgrade/tests/fixtures/longhorn-im-revision-2-upgrade-101fe547.yml.txt'
+        frozen_product_inputs['roles/longhorn/defaults/main.yml'] = '../../upgrade/tests/fixtures/longhorn-im-revision-2-defaults-3b8ba55f.yml.txt'
         for name, filename in frozen_product_inputs.items():
             fixture = ROOT/'tests/fixtures'/filename
             expected = plan['profiles']['v2']['inputs'][name]['sha256']
@@ -260,7 +263,9 @@ class RevisionEvidenceContracts(unittest.TestCase):
         # The immutable .2 cohort predates nullable disk-status handling. Its
         # exact populated-state source remains an isolated historical fixture.
         path = base/REVISION.SOURCE
-        historical = path.read_text()
+        historical = (ROOT/'upgrade/tests/fixtures/longhorn-pre-1122-246651e1.py.txt').read_text()
+        self.assertEqual(hashlib.sha256(historical.encode()).hexdigest(),
+                         '246651e1773dcf6bdcf5972f81a4b0aaee2dab9999997bfb11d5549fd166b578')
         for variable, key, count in (('status', 'name', 1), ('state', 'disk_name', 2)):
             current = variable+" = (current.get('status', {}).get('diskStatus') or {}).get("+key+") or {}"
             prior = variable+" = current.get('status', {}).get('diskStatus', {}).get("+key+", {})"
@@ -272,6 +277,8 @@ class RevisionEvidenceContracts(unittest.TestCase):
         # This suite verifies the immutable .2 receipt chain. Current .3 pins
         # belong to the separate .3 adoption suite, not this historical fixture.
         # Restore only the IM and Manager pins and prove the complete old bytes.
+        shutil.copyfile(ROOT/'upgrade/tests/fixtures/longhorn-pre-1122-images-9879b430.json',
+                        base/REVISION.CATALOG)
         for name in ('common/constants.py', REVISION.CATALOG):
             path = base/name
             historical = path.read_bytes()
@@ -296,7 +303,7 @@ class RevisionEvidenceContracts(unittest.TestCase):
         # This immutable .2 fixture predates the parameterless retirement RPC
         # correction. Restore its exact old bytes, never widen .2 runtime reuse.
         name = 'roles/longhorn/files/block-retire.py'; path = base/name
-        historical = path.read_bytes().replace(
+        historical = (ROOT/'upgrade/tests/fixtures/longhorn-pre-1122-block-retire.py.txt').read_bytes().replace(
             b"{'jsonrpc':'2.0','id':index,'method':method}",
             b"{'jsonrpc':'2.0','id':index,'method':method,'params':{}}", 1)
         self.assertEqual(plan['profiles']['v2']['inputs'][name]['sha256'],

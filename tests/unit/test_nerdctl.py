@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+import json
 import unittest
 from pathlib import Path
 
@@ -75,24 +76,28 @@ class TestNerdctlPin(unittest.TestCase):
     def test_ext_bin_dockerfile_pins_match_constants(self):
         df = (EXT_BIN / "Dockerfile").read_text()
         sh = (EXT_BIN / "multi-platform-download.sh").read_text()
+        for path in (EXT_BIN/'upgrade').glob('overlay-*.json'):
+            if json.loads(path.read_text()).get('tag') == self.kc.v_extra_bin:
+                df += '\n'+path.with_name(path.name.replace('overlay-','Dockerfile.').removesuffix('.json')).read_text()
+
 
         m_ver = re.search(r"NERDCTL_VER=([^\s]+)", df)
         self.assertIsNotNone(m_ver, "NERDCTL_VER missing from ext-bin Dockerfile")
         self.assertEqual(m_ver.group(1).lstrip("v"), self.kc.v_nerdctl.lstrip("v"))
 
-        m_pack = re.search(r"EXT_BIN_VER=([^\s]+)", df)
+        m_pack = re.findall(r"EXT_BIN_VER=([^\s]+)", df)
         self.assertIsNotNone(m_pack)
-        self.assertEqual(m_pack.group(1).lstrip("v"), self.kc.v_extra_bin.lstrip("v"))
+        self.assertEqual(m_pack[-1].lstrip("v"), self.kc.v_extra_bin.lstrip("v"))
 
         # Must download minimal package only (avoid overwriting project containerd/runc).
         self.assertIn("nerdctl-${NERDCTL_VER}-linux-${ARCH}.tar.gz", sh)
         self.assertNotRegex(sh, r"wget[^\n]*nerdctl-full")
         self.assertIn("mv /tmp/nerdctl /ext-bin/nerdctl", sh)
 
-        # Still compatible with current containerd pin (2.1.x).
-        m_ct = re.search(r"CONTAINERD_VER=([^\s]+)", df)
+        # The minimal CLI must match the consumed pack, including its overlay.
+        m_ct = re.findall(r"CONTAINERD_VER=([^\s]+)", df)
         self.assertIsNotNone(m_ct)
-        self.assertTrue(m_ct.group(1).startswith("2.1."), m_ct.group(1))
+        self.assertEqual(m_ct[-1], self.kc.v_containerd)
 
 
 if __name__ == "__main__":

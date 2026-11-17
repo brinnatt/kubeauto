@@ -1,6 +1,6 @@
 longhorn_install: 'no'
 longhorn_action: present
-longhorn_version: 1.12.1
+longhorn_version: 1.12.2
 longhorn_namespace: longhorn-system
 longhorn_image_prefix: registry.talkschool.cn:5000/brinnatt
 longhorn_storage_nodes: []

@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "accepted": true,
+  "source": "v1.34.13",
+  "target": "v1.35.10",
+  "case_ids": [
+    "UPG-03"
+  ],
+  "method": "analysis",
+  "claim": "171个外部组件tag（165个目标消费者及6个源安装tag）已通过当前只读双端双架构回查；K8s1.35.10六文件官方SHA/ELF/0755及双端回查已核验，1.34.13六文件和1.16.0源包、1.17.0叠加包按原双端制品身份/本次提取字节复用。本轮仅发布1个K8s包及3个必要外部镜像，无全量构建；不能将本项制品身份当成产品现场PASS。",
+  "covered_subcases": [
+    "complete-consumer-inventory-and-scope",
+    "changed-artifacts-publication-and-readback",
+    "unchanged-artifacts-reuse-boundary",
+    "kubernetes-and-binary-pack-identity"
+  ],
+  "inputs": {
+    "upgrade/v1.35.10/artifact-pins.json": "6ceaf94c0fb6657a66017ff1563b9743c754ff1c7282b36242ade029b9a25047",
+    "upgrade/v1.35.10/evidence/consumer-image-scope.json": "ee30de2c8037ca827bb5b47547c9c4e9d123dcb75686b77ee60f520ec828eda3"
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.35.10/evidence/consumer-readback-plan.json",
+      "sha256": "9e7a3da159261b4518dab465ce6fdc4530c78bacb9562f36cc4f3a0c78f6f0dd"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/source-image-readback.json",
+      "sha256": "20ca202473bfe74070bffeffebff4826079149a25bea0ea31165701d54276cf6"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/ext-images-publication.json",
+      "sha256": "78b4241793849c292229ce1c13cc89d7f81155005950ee7e21ab51e465120f61"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/k8s-binary-publication.json",
+      "sha256": "3640bc7720d7263b6e2e0feea1cd030b3e68777dff0e8a6ab8e983b912ac16a2"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/k8s-binary-content.json",
+      "sha256": "c199e0242b22459c6c24f1350ee4ef794c54f7d1e7d6dcf4185b39895ba0b195"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/registry-published-readback.json",
+      "sha256": "69bcf56d9af1c47e53dbda1cf3ee70d45055596584badcf092a6e0026300b603"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/source-pack-content.json",
+      "sha256": "f71cb49e10a5cb3bd45d04069d6f23d33d7a45cbc044b1ea1515c795a6815171"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/extbin-retained-base-readback.json",
+      "sha256": "fc13d2afa4d180cefb540358ba49d1900c6807644cf89851d2b0ef4ed380d5c2"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/extbin-overlay-qualification.json",
+      "sha256": "69a82065bf6ded00837b4daf507d77fb3f5c95fd9d3240ff32cf6e69763e45d8"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/UPG-03.json",
+      "sha256": "dd5028e3e04411a4ca84bd714b510ee5e115768e09e3c88e629619f83b95acd5"
+    },
+    {
+      "path": "upgrade/v1.34.13/evidence/k8s-binary-content.json",
+      "sha256": "290b31f7b8a562b9f3a0e6fc9bc555434b87a427adf5ad1d059731995aa6e7f2"
+    }
+  ],
+  "applicability": {
+    "conditions": "精确image:tag、目录与架构对应；原成功双端证据仍可读，本次私库所见index及提取字节与原记录一致。",
+    "differences": "增加1.35.10二进制及kube-router2.12.0、Kube-OVN1.17.1、openebs-kubectl1.35.10；未变tag复用；旧失败回查run保留但不作为成功证据。",
+    "reason": "以实际tag与manifest判断复用，不因Git SHA、历史context fingerprint或开发机Docker Hub网络故障重建已存在制品。"
+  },
+  "checks": [
+    {
+      "command": "inspect readback plans from runs 43820462230 and 43841549563; compare both registries and exact linux/amd64+arm64",
+      "rc": 0
+    },
+    {
+      "command": "verify 46 source-pack files against original GA checksums",
+      "rc": 0
+    }
+  ],
+  "customer_signoff": null
+}

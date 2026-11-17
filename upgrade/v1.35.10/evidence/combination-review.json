@@ -1,0 +1,973 @@
+{
+  "schema_version": 1,
+  "source": "v1.34.13",
+  "target": "v1.35.10",
+  "components": [
+    {
+      "component_id": "product",
+      "target_pins": {
+        "kubeauto": "v0.1.8",
+        "ansible_core": "2.18.6",
+        "ansible_core_py314": "2.20.9",
+        "kubecli_scope": "kubecli-only"
+      },
+      "decision": "keep",
+      "official_source_ids": [
+        "ACTIONS-PRODUCT-RELEASE-SCOPE",
+        "PYINSTALLER-616-UPGRADE-DATA",
+        "ANSIBLE-UPGRADE-INVENTORY-CONTRACT"
+      ],
+      "steps": [
+        "保留kubeauto0.1.8及既有Python/外部Ansible依赖；不在客户升级时自动安装新Python、Ansible或PyInstaller。",
+        "通过当前目标kubecli的prepare、upgrade及幂等入口运行；缺少当前矩阵/发行策略拒绝，不回落93。"
+      ],
+      "evidence_strength_rule": "逐条按official-sources原facts解释；含1.35的tested/support表与仅minimum/API/source-pin不能互换。",
+      "live_claim": "尚无本跳现场PASS；目标迁移与新建由UPG-05至13分别验证；未部署组件不冒称本跳业务实测。"
+    },
+    {
+      "component_id": "kubernetes",
+      "target_pins": {
+        "kubernetes": "v1.35.10"
+      },
+      "decision": "update",
+      "official_source_ids": [
+        "K8S-SKEW",
+        "K8S-13510-STABLE",
+        "K8S-13510-RELEASE",
+        "K8S-13510-CHANGELOG",
+        "K8S-13510-PATCH-DELTA",
+        "K8S-13510-KUBELET-CONFIG",
+        "K8S-13510-PROXY-CONFIG",
+        "K8S-13510-DEPENDENCIES",
+        "K8S-135-DEPRECATION-DIRECTORY",
+        "K8S-13510-AGGREGATOR-CA-VALIDATION"
+      ],
+      "steps": [
+        "逐实际后端观察1.34.13、UID、Ready、配置及API/feature-gate准入；准备带SHA校验的etcd离线恢复点与原PVC/Service账本。",
+        "修复共享聚合CA的allowed-names=aggregator，保留原证书；全部API实例逐台升级到1.35.10并Ready后，才升级controller/scheduler。",
+        "首次调用停在控制面屏障；后续逐节点cordon/drain，PDB拒绝则保持cordon并停止，不强删本地数据；节点恢复后读原PVC/Service账本。",
+        "完成DNS/metrics既有消费者，最后仅原子更新已推进的配置字段；再次调用只验证已接受边界。"
+      ],
+      "evidence_strength_rule": "逐条按official-sources原facts解释；含1.35的tested/support表与仅minimum/API/source-pin不能互换。",
+      "live_claim": "尚无本跳现场PASS；目标迁移与新建由UPG-05至13分别验证；未部署组件不冒称本跳业务实测。"
+    },
+    {
+      "component_id": "binary-packs",
+      "target_pins": {
+        "v_extra_bin": "1.17.0",
+        "v_extra_bin_sp1": "1.3.1",
+        "ext_bin_index_digest": "sha256:0029d1d4f4dba068c7a79461a6ec2378b84524e6de5110c52a0730e1dc5f37b8",
+        "etcd": "3.6.16"
+      },
+      "decision": "update",
+      "official_source_ids": [
+        "ETCD-373-RELEASE",
+        "ETCD-3616-RELEASE",
+        "ETCD-36-PATCH-DELTA",
+        "ETCD-36-MINOR-PRECONDITIONS",
+        "ETCD-36-PATCH-POLICY",
+        "RUNC-137-RELEASE",
+        "ETCD-36-SUPPORTED-UPGRADE-POLICY",
+        "EXTBIN-OFFICIAL-ASSETS-CALICO-3317",
+        "EXTBIN-OFFICIAL-ASSETS-CALICO-3324",
+        "EXTBIN-OFFICIAL-ASSETS-CONTAINERD-2210",
+        "EXTBIN-OFFICIAL-ASSETS-CONTAINERD-237",
+        "EXTBIN-OFFICIAL-ASSETS-CRIDOCKERD-0410",
+        "EXTBIN-OFFICIAL-ASSETS-ETCD-3616",
+        "EXTBIN-OFFICIAL-ASSETS-RUNC-152",
+        "ETCD-3616-SNAPSHOT-COMMAND",
+        "ETCD-3616-SNAPSHOT-INTEGRITY",
+        "ETCD-3616-SNAPSHOT-OUTPUT"
+      ],
+      "steps": [
+        "源新建使用GA1.16.0保留包和官方1.34.13六文件；目标使用已发布1.17.0叠加包及官方1.35.10六文件。",
+        "逐文件、双架构验证官方SHA和ELF、双端manifest；控制机采用源基础46文件加目标叠加，不重新构建或把整个包无差别覆盖所有节点。"
+      ],
+      "evidence_strength_rule": "逐条按official-sources原facts解释；含1.35的tested/support表与仅minimum/API/source-pin不能互换。",
+      "live_claim": "尚无本跳现场PASS；目标迁移与新建由UPG-05至13分别验证；未部署组件不冒称本跳业务实测。"
+    },
+    {
+      "component_id": "runtime",
+      "target_pins": {
+        "containerd": "2.3.7",
+        "containerd_bridge": "2.2.10",
+        "runc": "1.5.2",
+        "v_nerdctl": "2.3.4",
+        "v_docker": "28.5.2",
+        "v_cri_dockerd": "0.4.10"
+      },
+      "decision": "update",
+      "official_source_ids": [
+        "CONTAINERD",
+        "CONTAINERD-FIRST-HOP",
+        "K8S-13413-CRI-CGROUP",
+        "CONTAINERD-219-RELEASE",
+        "CRI-DOCKERD-0410-RELEASE",
+        "CRI-DOCKERD-040-DELTA",
+        "CRI-DOCKERD-0410-CGROUP",
+        "K8S-13413-EXACT-PATCH-DELTA",
+        "CONTAINERD-215-DELTA",
+        "CONTAINERD-216-DELTA",
+        "CONTAINERD-217-DELTA",
+        "CONTAINERD-218-DELTA",
+        "RUNC-137-RELEASE",
+        "CONTAINERD-22-23-RELEASES",
+        "CONTAINERD-237-RUNC-POLICY",
+        "CONTAINERD-2210-RUNC-POLICY",
+        "CONTAINERD-237-RUNC-PIN",
+        "CONTAINERD-2210-RUNC-PIN",
+        "CONTAINERD-237-SCHEMA",
+        "CONTAINERD-237-CONFIG-LOADER",
+        "CONTAINERD-237-CONFIG-CLI",
+        "CONTAINERD-237-CRI-CONFIG",
+        "CONTAINERD-2210-CRI-CONFIG",
+        "CONTAINERD-237-OPS",
+        "RUNC-152-RELEASE",
+        "RUNC-15-CUMULATIVE",
+        "RUNC-152-CGROUPV2",
+        "RUNC-152-SPEC",
+        "NERDCTL-234-COMPATIBILITY",
+        "CRI-DOCKERD-0410-CLIENT",
+        "CRI-DOCKERD-0410-DOCKER-CLIENT",
+        "DOCKER-2852-PATCH-POLICY",
+        "DOCKER-2852-API-CONTRACT",
+        "CRI-DOCKERD-0410-SDK",
+        "CRI-DOCKERD-0410-FLAGS",
+        "CRI-DOCKERD-0410-ENDPOINT-FLAG",
+        "CRI-DOCKERD-0326-0410-DELTA",
+        "CRI-DOCKERD-0326-BACKPORTS",
+        "CRI-DOCKERD-0326-CGROUP-BASELINE",
+        "CRI-DOCKERD-0326-DEPENDENCIES",
+        "CRI-DOCKERD-04-PATCHES",
+        "CRI-DOCKERD-0410-CRI-V1",
+        "CONTAINERD-K8S135-COMPAT"
+      ],
+      "steps": [
+        "源containerd2.1.4逐节点drain后，经2.2.10再到2.3.7；两步使用官方允许>=策略的同一runc1.5.2、静态包与显式schema3配置。",
+        "保留原root/state/socket/registry/CNI/SystemdCgroup及shim进程；每步核CRI与新sandbox，失败停止后续节点，不清空metadata。",
+        "源已2.3.7/runc1.5.2只核验，不回退到桥接；Docker路径保留既有引擎/运行时，不能将独立runc更新宣称为Docker私有runc更新。"
+      ],
+      "evidence_strength_rule": "逐条按official-sources原facts解释；含1.35的tested/support表与仅minimum/API/source-pin不能互换。",
+      "live_claim": "尚无本跳现场PASS；目标迁移与新建由UPG-05至13分别验证；未部署组件不冒称本跳业务实测。"
+    },
+    {
+      "component_id": "calico",
+      "target_pins": {
+        "v_calico": "v3.32.4",
+        "v_calico_source_bridge": "v3.31.7",
+        "calicoctl": "v3.32.4",
+        "calicoctl_source_bridge": "v3.31.7",
+        "cniVersion": "1.0.0",
+        "datastore": "etcdv3",
+        "dataplane": "iptables"
+      },
+      "decision": "update",
+      "official_source_ids": [
+        "CALICO-328",
+        "CALICO-331-FIRST-HOP",
+        "CALICO-331-UPGRADE",
+        "CALICO-332-FIRST-HOP",
+        "CALICO-332-UPGRADE",
+        "CALICO-333-FIRST-HOP",
+        "CALICO-3317-RELEASE",
+        "CALICO-332-TAGS",
+        "CALICO-3324-RELEASE",
+        "CALICO-3317-MANIFEST",
+        "CALICO-3324-MANIFEST",
+        "CALICO-3317-PATCH-NOTES",
+        "CALICO-3324-PATCH-NOTES",
+        "CALICO-3317-KERNEL-FEATURES",
+        "CALICO-3324-KERNEL-FEATURES",
+        "CALICO-3317-KERNEL-TESTS",
+        "CALICO-3324-KERNEL-TESTS",
+        "CALICO-331-SYSTEM-SOURCE",
+        "CALICO-330-SYSTEM",
+        "CALICO-KERNEL-POLICY-HISTORY",
+        "CALICO-KERNEL-POLICY-REVIEW",
+        "CALICO-329-DELTA",
+        "CALICO-330-DELTA",
+        "CALICO-331-DELTA",
+        "CALICO-332-DELTA",
+        "CALICO-331-CUMULATIVE",
+        "CALICO-332-CUMULATIVE",
+        "CALICO-3324-FELIX-API",
+        "CALICO-3324-FELIX-CONFIG",
+        "K8S134-CORE-DEFAULTS",
+        "K8S1336-CORE-DEFAULTS",
+        "CALICO-332-HOST-PLATFORM"
+      ],
+      "steps": [
+        "只准入已评审的3.28.4/3.31.7/3.32.4直接etcd源，要求实际kernel>=5.10。",
+        "3.28.4→3.31.7→3.32.4，已3.31.7只走后一边，已3.32.4只核验；保留直接etcd、原Pool/BGP/策略/HostEndpoint与原cordon状态。",
+        "每边原对象resourceVersion/身份绑定、DS逐台收敛、真实跨节点Service/PVC读回；不转换KDD/iptables模式或重建Node。"
+      ],
+      "evidence_strength_rule": "逐条按official-sources原facts解释；含1.35的tested/support表与仅minimum/API/source-pin不能互换。",
+      "live_claim": "尚无本跳现场PASS；目标迁移与新建由UPG-05至13分别验证；未部署组件不冒称本跳业务实测。"
+    },
+    {
+      "component_id": "flannel",
+      "target_pins": {
+        "v_flannel": "v0.28.10",
+        "v_flannel_cni": "v1.9.1-flannel3",
+        "cniVersion": "1.0.0",
+        "healthz_address": "127.0.0.1:8081"
+      },
+      "decision": "keep",
+      "official_source_ids": [
+        "FLANNEL-02810-FIRST-HOP",
+        "FLANNEL-LATEST-RELEASE",
+        "FLANNEL-02810-MANIFEST",
+        "FLANNEL-0284-MANIFEST",
+        "FLANNEL-028-PATCH-DELTA",
+        "FLANNEL-CNI-191-RELEASE",
+        "FLANNEL-CNI-191-MECHANISM",
+        "FLANNEL-02810-INSTALL-CONF",
+        "FLANNEL-02810-KIND-E2E",
+        "FLANNEL-02810-HEALTH",
+        "FLANNEL-02810-BUILD",
+        "FLANNEL-CNI-180-191-EXACT-DELTA"
+      ],
+      "steps": [
+        "本跳不重放本组件安装/升级角色，不推进数据库引擎、CRD、存储格式或外部服务版本；保留实际源配置、补丁及对象身份。",
+        "target_pins是目标新建/固定组合及准入依据，不能据此宣称在役组件已自动升级；既有GA深测按相同输入复用，未知或不同组合先停止本组件路径并评审。",
+        "核对本组件实际使用的稳定API、最低要求或明确目标测试范围；官方逐版测试、最低版本、稳定接口分别标记；最小集成缺口留在所属矩阵，不把未部署组件冒签现场PASS。"
+      ],
+      "evidence_strength_rule": "逐条按official-sources原facts解释；含1.35的tested/support表与仅minimum/API/source-pin不能互换。",
+      "live_claim": "尚无本跳现场PASS；目标迁移与新建由UPG-05至13分别验证；未部署组件不冒称本跳业务实测。"
+    },
+    {
+      "component_id": "cilium",
+      "target_pins": {
+        "v_cilium": "v1.20.4",
+        "v_cilium_source_bridge": "v1.19.10",
+        "v_cilium_hubble_ui": "v0.13.6",
+        "upgradeCompatibility": "1.19",
+        "vendored_charts_sha256": {
+          "roles/cilium/files/cilium-1.19.10.tgz": "b7252afca3413a33e2b987c954e52441e96979e411e1495ecc6aefe8cd258863",
+          "roles/cilium/files/cilium-1.20.4.tgz": "505abff8385811df1a949776fc42e9f10697989a332acc86d6e8933efcb855ed"
+        }
+      },
+      "decision": "keep",
+      "official_source_ids": [
+        "CILIUM-1195",
+        "CILIUM-1204-FIRST-HOP",
+        "CILIUM-LATEST-RELEASE",
+        "CILIUM-1204-UPGRADE",
+        "CILIUM-1204-WARNING",
+        "CILIUM-1204-NOTES",
+        "CILIUM-119-TAGS",
+        "CILIUM-11910-RELEASE",
+        "CILIUM-1204-REQUIRED",
+        "CILIUM-CHART-INDEX",
+        "CILIUM-1204-VALUES",
+        "CILIUM-11910-VALUES",
+        "CILIUM-1204-FLAGS",
+        "CILIUM-119-PATCH-DELTA",
+        "HELM-319-CMD-HELM-STATUS",
+        "HELM-319-PKG-RELEASE-RELEASE",
+        "HELM-319-PKG-ACTION-STATUS",
+        "HELM-319-CMD-HELM-UPGRADE",
+        "HELM-319-CMD-HELM-INSTALL",
+        "HELM-319-CMD-HELM-GET_METADATA",
+        "HELM-319-PKG-ACTION-GET_METADATA",
+        "HELM-319-PKG-STORAGE-DRIVER-SECRETS",
+        "HELM-319-PKG-ACTION-INSTALL",
+        "HELM-319-PKG-ACTION-UPGRADE"
+      ],
+      "steps": [
+        "本跳不重放本组件安装/升级角色，不推进数据库引擎、CRD、存储格式或外部服务版本；保留实际源配置、补丁及对象身份。",
+        "target_pins是目标新建/固定组合及准入依据，不能据此宣称在役组件已自动升级；既有GA深测按相同输入复用，未知或不同组合先停止本组件路径并评审。",
+        "核对本组件实际使用的稳定API、最低要求或明确目标测试范围；官方逐版测试、最低版本、稳定接口分别标记；最小集成缺口留在所属矩阵，不把未部署组件冒签现场PASS。"
+      ],
+      "evidence_strength_rule": "逐条按official-sources原facts解释；含1.35的tested/support表与仅minimum/API/source-pin不能互换。",
+      "live_claim": "尚无本跳现场PASS；目标迁移与新建由UPG-05至13分别验证；未部署组件不冒称本跳业务实测。"
+    },
+    {
+      "component_id": "kube-router",
+      "target_pins": {
+        "v_kuberouter": "v2.12.0",
+        "source_bridge": "v1.5.4",
+        "cni_config": "v1",
+        "iptables_mode": "explicit-project-default"
+      },
+      "decision": "keep",
+      "official_source_ids": [
+        "KUBEROUTER-212-UPGRADE",
+        "KUBEROUTER-212-GUIDE",
+        "KUBEROUTER-212-E2E",
+        "KUBEROUTER-212-BREAKING-RELEASES",
+        "KUBEROUTER-212-HEALTH",
+        "KUBEROUTER-212-TUNNELS",
+        "KUBEROUTER-212-IMAGE",
+        "KUBEROUTER-212-MANIFEST",
+        "KUBEROUTER-212-INFORMERS",
+        "KUBEROUTER-212-CNI-INSTALL",
+        "KUBEROUTER-212-NODE-IDENTITY",
+        "KUBEROUTER-212-CNI-CONFIG"
+      ],
+      "steps": [
+        "本跳不重放本组件安装/升级角色，不推进数据库引擎、CRD、存储格式或外部服务版本；保留实际源配置、补丁及对象身份。",
+        "target_pins是目标新建/固定组合及准入依据，不能据此宣称在役组件已自动升级；既有GA深测按相同输入复用，未知或不同组合先停止本组件路径并评审。",
+        "核对本组件实际使用的稳定API、最低要求或明确目标测试范围；官方逐版测试、最低版本、稳定接口分别标记；最小集成缺口留在所属矩阵，不把未部署组件冒签现场PASS。"
+      ],
+      "evidence_strength_rule": "逐条按official-sources原facts解释；含1.35的tested/support表与仅minimum/API/source-pin不能互换。",
+      "live_claim": "尚无本跳现场PASS；目标迁移与新建由UPG-05至13分别验证；未部署组件不冒称本跳业务实测。"
+    },
+    {
+      "component_id": "kube-ovn",
+      "target_pins": {
+        "v_kubeovn": "v1.17.1",
+        "source_bridge": "v1.11.5",
+        "chart_app_version": "1.17.1",
+        "kube_minimum": "v1.29.0"
+      },
+      "decision": "keep",
+      "official_source_ids": [
+        "KUBEOVN-1171-CHART",
+        "KUBEOVN-1171-RELEASE",
+        "KUBEOVN-117-REQUIREMENTS",
+        "KUBEOVN-117-MAINTENANCE",
+        "KUBEOVN-117-INSTALL-UPGRADE-PROCEDURE",
+        "KUBEOVN-117-PRODUCTION-PREPARATION",
+        "KUBEOVN-117-OVN-RECOVERY"
+      ],
+      "steps": [
+        "本跳不重放本组件安装/升级角色，不推进数据库引擎、CRD、存储格式或外部服务版本；保留实际源配置、补丁及对象身份。",
+        "target_pins是目标新建/固定组合及准入依据，不能据此宣称在役组件已自动升级；既有GA深测按相同输入复用，未知或不同组合先停止本组件路径并评审。",
+        "核对本组件实际使用的稳定API、最低要求或明确目标测试范围；官方逐版测试、最低版本、稳定接口分别标记；最小集成缺口留在所属矩阵，不把未部署组件冒签现场PASS。"
+      ],
+      "evidence_strength_rule": "逐条按official-sources原facts解释；含1.35的tested/support表与仅minimum/API/source-pin不能互换。",
+      "live_claim": "尚无本跳现场PASS；目标迁移与新建由UPG-05至13分别验证；未部署组件不冒称本跳业务实测。"
+    },
+    {
+      "component_id": "dns",
+      "target_pins": {
+        "v_coredns": "1.15.0",
+        "v_dnsnodecache": "1.26.8",
+        "nodecache_embedded_coredns": "1.13.2"
+      },
+      "decision": "update",
+      "official_source_ids": [
+        "COREDNS-115-OPERATIONS",
+        "COREDNS-115-KUBERNETES",
+        "COREDNS-115-CONTROLLER",
+        "COREDNS-113-115-DELTA",
+        "COREDNS-115-CACHE",
+        "COREDNS-115-FORWARD",
+        "COREDNS-115-METRICS",
+        "K8S-13413-COREDNS-PIN",
+        "K8S-13413-COREDNS-MANIFEST",
+        "DNS-1268-VERSION-POLICY",
+        "DNS-1268-TAGS",
+        "DNS-1268-PROMOTION",
+        "DNS-1264-1268-DELTA",
+        "DNS-1268-MAIN",
+        "DNS-1268-CACHE-APP",
+        "DNS-1268-DEPS",
+        "K8S-13413-NODELOCAL-MANIFEST",
+        "K8S-NODELOCAL-OPERATIONS",
+        "K8S134-JSON-PATCH",
+        "K8S134-API-CONCURRENCY"
+      ],
+      "steps": [
+        "只在全部节点/API到1.35.10后，对已安装CoreDNS/NodeLocalDNS执行精确镜像迁移；未安装不新建。",
+        "保留Corefile、Service/ConfigMap/RBAC/IPVS与iptables分支及UID；原1.12.4/1.26.4到1.15.0/1.26.8，已目标只核验。",
+        "保留官方forward新RCODE语义；客户自定义依赖旧RCODE failover的配置须先评审，不偷偷重写Corefile。"
+      ],
+      "evidence_strength_rule": "逐条按official-sources原facts解释；含1.35的tested/support表与仅minimum/API/source-pin不能互换。",
+      "live_claim": "尚无本跳现场PASS；目标迁移与新建由UPG-05至13分别验证；未部署组件不冒称本跳业务实测。"
+    },
+    {
+      "component_id": "metrics",
+      "target_pins": {
+        "v_metricsserver": "v0.9.1"
+      },
+      "decision": "update",
+      "official_source_ids": [
+        "METRICS-080",
+        "METRICS-091-FIRST-HOP",
+        "METRICS-LATEST-RELEASE",
+        "METRICS-090-DELTA",
+        "METRICS-091-FAQ",
+        "METRICS-091-KNOWN-ISSUES",
+        "METRICS-V1BETA1-WIRE-CONTRACT",
+        "K8S-RESOURCE-QUANTITY-CONTRACT",
+        "K8S-METAV1-DURATION-CONTRACT"
+      ],
+      "steps": [
+        "全部API和节点1.35.10后将已安装0.8.0/0.8.1升级0.9.1，已0.9.1只验证。",
+        "保留聚合CA/Service/APIService身份，真实读取所有节点及原业务Pod的鲜活CPU/内存样本。",
+        "节点drain前只对已核实Deployment/RS/Pod UID链和镜像/卷边界的单实例metrics缓存执行policy/v1 Eviction，尊重PDB；其它emptyDir不放宽。"
+      ],
+      "evidence_strength_rule": "逐条按official-sources原facts解释；含1.35的tested/support表与仅minimum/API/source-pin不能互换。",
+      "live_claim": "尚无本跳现场PASS；目标迁移与新建由UPG-05至13分别验证；未部署组件不冒称本跳业务实测。"
+    },
+    {
+      "component_id": "ingress",
+      "target_pins": {
+        "v_ingressnginx": "4.15.1",
+        "v_ingress_nginx_controller": "v1.15.1",
+        "v_webhook_certgen": "v1.6.9",
+        "chart_sha256": "3eff0bd18151d6e6b1c441463410571443dda1ac78292cb189346628de784f0c"
+      },
+      "decision": "update",
+      "official_source_ids": [
+        "INGRESS-LIFECYCLE",
+        "INGRESS-FIRST-HOP",
+        "INGRESS-ARCHIVED",
+        "INGRESS-1140-DELTA",
+        "INGRESS-1150-DELTA",
+        "INGRESS-1151-RELEASE",
+        "INGRESS-1151-UPGRADE",
+        "INGRESS-1151-MANIFEST",
+        "INGRESS-4151-RELEASE",
+        "INGRESS-4151-VALUES",
+        "INGRESS-4151-CHART"
+      ],
+      "steps": [
+        "本跳不重放本组件安装/升级角色，不推进数据库引擎、CRD、存储格式或外部服务版本；保留实际源配置、补丁及对象身份。",
+        "target_pins是目标新建/固定组合及准入依据，不能据此宣称在役组件已自动升级；既有GA深测按相同输入复用，未知或不同组合先停止本组件路径并评审。",
+        "核对本组件实际使用的稳定API、最低要求或明确目标测试范围；官方逐版测试、最低版本、稳定接口分别标记；最小集成缺口留在所属矩阵，不把未部署组件冒签现场PASS。"
+      ],
+      "evidence_strength_rule": "逐条按official-sources原facts解释；含1.35的tested/support表与仅minimum/API/source-pin不能互换。",
+      "live_claim": "尚无本跳现场PASS；目标迁移与新建由UPG-05至13分别验证；未部署组件不冒称本跳业务实测。"
+    },
+    {
+      "component_id": "dashboard",
+      "target_pins": {
+        "chart": "7.14.0",
+        "api": "1.14.0",
+        "auth": "1.4.0",
+        "web": "1.7.0",
+        "metrics_scraper": "1.2.2",
+        "kong": "3.9"
+      },
+      "decision": "keep",
+      "official_source_ids": [
+        "DASHBOARD-714-PINS",
+        "DASHBOARD-714-INSTALL-CONTRACT",
+        "DASHBOARD-ARCHIVED"
+      ],
+      "steps": [
+        "本跳不重放本组件安装/升级角色，不推进数据库引擎、CRD、存储格式或外部服务版本；保留实际源配置、补丁及对象身份。",
+        "target_pins是目标新建/固定组合及准入依据，不能据此宣称在役组件已自动升级；既有GA深测按相同输入复用，未知或不同组合先停止本组件路径并评审。",
+        "核对本组件实际使用的稳定API、最低要求或明确目标测试范围；官方逐版测试、最低版本、稳定接口分别标记；最小集成缺口留在所属矩阵，不把未部署组件冒签现场PASS。"
+      ],
+      "evidence_strength_rule": "逐条按official-sources原facts解释；含1.35的tested/support表与仅minimum/API/source-pin不能互换。",
+      "live_claim": "尚无本跳现场PASS；目标迁移与新建由UPG-05至13分别验证；未部署组件不冒称本跳业务实测。"
+    },
+    {
+      "component_id": "local-storage",
+      "target_pins": {
+        "local_path_provisioner": "v0.0.37",
+        "local_path_helper": "busybox:1.37",
+        "nfs_provisioner": "v4.0.2",
+        "openebs_chart": "4.3.2",
+        "openebs_hostpath": "4.3.0",
+        "openebs_lvm": "1.7.0"
+      },
+      "decision": "keep",
+      "official_source_ids": [
+        "NFS-402-BEHAVIOR",
+        "LOCALPATH-037-BEHAVIOR",
+        "OPENEBS-432-ENGINE-BOUNDARY",
+        "OPENEBS-LVM-170-SYSTEM",
+        "OPENEBS-HOSTPATH-430-MATRIX",
+        "LOCALPATH-031-037-DELTA",
+        "LOCALPATH-037-SCRATCH-IMAGE",
+        "LOCALPATH-037-OFFICIAL-DEPLOYMENT",
+        "LOCALPATH-037-CLIENT-PIN",
+        "NFS-402-CLIENT-PIN",
+        "LOCALPATH-037-CONFIG-RELOAD-CONTRACT"
+      ],
+      "steps": [
+        "本跳不重放本组件安装/升级角色，不推进数据库引擎、CRD、存储格式或外部服务版本；保留实际源配置、补丁及对象身份。",
+        "target_pins是目标新建/固定组合及准入依据，不能据此宣称在役组件已自动升级；既有GA深测按相同输入复用，未知或不同组合先停止本组件路径并评审。",
+        "核对本组件实际使用的稳定API、最低要求或明确目标测试范围；官方逐版测试、最低版本、稳定接口分别标记；最小集成缺口留在所属矩阵，不把未部署组件冒签现场PASS。"
+      ],
+      "evidence_strength_rule": "逐条按official-sources原facts解释；含1.35的tested/support表与仅minimum/API/source-pin不能互换。",
+      "live_claim": "尚无本跳现场PASS；目标迁移与新建由UPG-05至13分别验证；未部署组件不冒称本跳业务实测。"
+    },
+    {
+      "component_id": "ceph",
+      "target_pins": {
+        "v_ceph": "20.2.4",
+        "v_ceph_upgrade_source": "20.2.3",
+        "v_cephadm_sha256": "5b78c8d5772ef7c5c8619dac6ee0b36716b829338ea7a11c9f2b896626ab354f",
+        "v_ceph_csi": "v3.17.2",
+        "v_ceph_csi_registrar": "v2.16.0",
+        "v_ceph_csi_provisioner": "v6.2.0",
+        "v_ceph_csi_attacher": "v4.11.0",
+        "v_ceph_csi_resizer": "v2.1.0",
+        "v_ceph_csi_snapshotter": "v8.5.0",
+        "vendored_charts_sha256": {
+          "roles/ceph/files/ceph-csi-cephfs-3.17.1.tgz": "100c00932b1969df63400e5bb477b5ef2701371fb350e5b8cb8c4fb2873aa117",
+          "roles/ceph/files/ceph-csi-rbd-3.17.1.tgz": "75527adefcdf248e9acd2e9759205ddf4fd444824157e3e1914cf9659544bffc"
+        }
+      },
+      "decision": "keep",
+      "official_source_ids": [
+        "CEPHCSI-3171",
+        "CEPHCSI-3182-FIRST-HOP",
+        "CEPH-CSI-LATEST-RELEASE",
+        "CEPHCSI-3172-RELEASE",
+        "CEPHCSI-3172-README",
+        "CEPHCSI-3172-RBD-COMPOSITION",
+        "CEPHCSI-3172-CEPHFS-COMPOSITION",
+        "CEPHCSI-3172-EXACT-DELTA"
+      ],
+      "steps": [
+        "本跳不重放本组件安装/升级角色，不推进数据库引擎、CRD、存储格式或外部服务版本；保留实际源配置、补丁及对象身份。",
+        "target_pins是目标新建/固定组合及准入依据，不能据此宣称在役组件已自动升级；既有GA深测按相同输入复用，未知或不同组合先停止本组件路径并评审。",
+        "核对本组件实际使用的稳定API、最低要求或明确目标测试范围；官方逐版测试、最低版本、稳定接口分别标记；最小集成缺口留在所属矩阵，不把未部署组件冒签现场PASS。"
+      ],
+      "evidence_strength_rule": "逐条按official-sources原facts解释；含1.35的tested/support表与仅minimum/API/source-pin不能互换。",
+      "live_claim": "尚无本跳现场PASS；目标迁移与新建由UPG-05至13分别验证；未部署组件不冒称本跳业务实测。"
+    },
+    {
+      "component_id": "longhorn",
+      "target_pins": {
+        "v_longhorn": "1.12.2",
+        "v_longhorn_upgrade_source": "1.12.1",
+        "v_longhorn_snapshot_controller": "v8.6.0",
+        "chart_sha256": "3514c3a802ec910b3e97698f0b816c038d66547e1bf3d1a4ebad44a9f5b8ac8a",
+        "images": {
+          "longhorn-engine": "v1.12.2",
+          "longhorn-manager": "v1.12.2-kubeauto.1",
+          "longhorn-ui": "v1.12.2",
+          "longhorn-instance-manager": "v1.12.2-kubeauto.1",
+          "longhorn-share-manager": "v1.12.2",
+          "longhorn-backing-image-manager": "v1.12.2",
+          "longhorn-support-bundle-kit": "v1.0.5",
+          "longhorn-csi-attacher": "v4.13.0-20261028",
+          "longhorn-csi-provisioner": "v5.3.0-20261028",
+          "longhorn-csi-node-driver-registrar": "v2.18.0-20261028",
+          "longhorn-csi-resizer": "v2.3.0-20261028",
+          "longhorn-csi-snapshotter": "v8.7.0-20261028",
+          "longhorn-livenessprobe": "v2.20.0-20261028"
+        }
+      },
+      "decision": "keep",
+      "official_source_ids": [
+        "LONGHORN-1121",
+        "LONGHORN-LATEST-RELEASE",
+        "LONGHORN-1122-RELEASE",
+        "LONGHORN-1122-EVICTION",
+        "LONGHORN-1122-PENDING",
+        "LONGHORN-1122-SETTINGS",
+        "LONGHORN-1122-IM-ENGINE",
+        "LONGHORN-1122-IM-REPLICA",
+        "LONGHORN-1122-MANAGER-IDENTITY",
+        "LONGHORN-1122-IM-IDENTITY",
+        "LONGHORN-1122-CHART-COMPOSITION",
+        "LONGHORN-1122-CHART-METADATA",
+        "LONGHORN-1122-UPGRADE",
+        "LONGHORN-1122-MAINTENANCE",
+        "LONGHORN-1122-PLATFORM",
+        "LONGHORN-1122-CHART-INDEX",
+        "LONGHORN-1122-MANAGER-GOMOD",
+        "LONGHORN-1122-IM-GOMOD",
+        "LONGHORN-1122-MANAGER-BUILD",
+        "LONGHORN-1122-IM-BUILD",
+        "LONGHORN-1122-IM-LINK",
+        "LONGHORN-1122-DEP-IDENTITY",
+        "LONGHORN-1122-DEPENDENCIES"
+      ],
+      "steps": [
+        "本跳不重放本组件安装/升级角色，不推进数据库引擎、CRD、存储格式或外部服务版本；保留实际源配置、补丁及对象身份。",
+        "target_pins是目标新建/固定组合及准入依据，不能据此宣称在役组件已自动升级；既有GA深测按相同输入复用，未知或不同组合先停止本组件路径并评审。",
+        "核对本组件实际使用的稳定API、最低要求或明确目标测试范围；官方逐版测试、最低版本、稳定接口分别标记；最小集成缺口留在所属矩阵，不把未部署组件冒签现场PASS。"
+      ],
+      "evidence_strength_rule": "逐条按official-sources原facts解释；含1.35的tested/support表与仅minimum/API/source-pin不能互换。",
+      "live_claim": "尚无本跳现场PASS；目标迁移与新建由UPG-05至13分别验证；未部署组件不冒称本跳业务实测。"
+    },
+    {
+      "component_id": "monitoring",
+      "target_pins": {
+        "v_promchart": "88.0.0",
+        "v_prometheus_operator": "v0.93.0",
+        "v_prometheus_config_reloader": "v0.93.0",
+        "v_prometheus_admission_webhook": "v0.93.0",
+        "v_prometheus": "v3.13.1-distroless",
+        "v_alertmanager": "v0.33.1",
+        "v_node_exporter": "v1.12.1",
+        "v_kube_state_metrics": "v2.18.0",
+        "v_grafana": "13.1.1",
+        "v_k8s_sidecar": "1.30.5",
+        "v_prometheus_webhook_certgen": "1.8.5",
+        "v_thanos": "v0.41.0",
+        "v_prometheus_adapter": "v0.12.0",
+        "v_blackbox_exporter": "v0.27.0",
+        "vendored_charts_sha256": {
+          "roles/cluster-addon/files/kube-prometheus-stack-88.0.0.tgz": "f96cb0a0999f7375b2899e4b60e6ec0e8f7133e5847f39ac87d53baea765eb32"
+        }
+      },
+      "decision": "keep",
+      "official_source_ids": [
+        "PROM-093-REQUIREMENTS",
+        "PROM-STACK-880-PINS",
+        "PROM-093-COMPATIBILITY",
+        "KSM-218-K8S134-MATRIX",
+        "KSM-LATEST-RELEASE-OBSERVATION",
+        "PROM-ADAPTER-012-API"
+      ],
+      "steps": [
+        "本跳不重放本组件安装/升级角色，不推进数据库引擎、CRD、存储格式或外部服务版本；保留实际源配置、补丁及对象身份。",
+        "target_pins是目标新建/固定组合及准入依据，不能据此宣称在役组件已自动升级；既有GA深测按相同输入复用，未知或不同组合先停止本组件路径并评审。",
+        "核对本组件实际使用的稳定API、最低要求或明确目标测试范围；官方逐版测试、最低版本、稳定接口分别标记；最小集成缺口留在所属矩阵，不把未部署组件冒签现场PASS。"
+      ],
+      "evidence_strength_rule": "逐条按official-sources原facts解释；含1.35的tested/support表与仅minimum/API/source-pin不能互换。",
+      "live_claim": "尚无本跳现场PASS；目标迁移与新建由UPG-05至13分别验证；未部署组件不冒称本跳业务实测。"
+    },
+    {
+      "component_id": "logging",
+      "target_pins": {
+        "eck_operator": "3.5.0",
+        "elasticsearch": "9.5.1",
+        "kibana": "9.5.1",
+        "fluent_bit": "5.1.1",
+        "loki": "3.7.6",
+        "loki_chart": "18.9.0",
+        "alloy": "1.18.1",
+        "alloy_chart": "1.11.1"
+      },
+      "decision": "keep",
+      "official_source_ids": [
+        "ECK-350-SUPPORTED",
+        "ALLOY1181-KUBERNETES-DISCOVERY",
+        "ALLOY1181-KUBERNETES-LOGS",
+        "LOKI1890-CHART",
+        "ALLOY1111-CHART",
+        "HELM319-CHART-DEPENDENCY"
+      ],
+      "steps": [
+        "本跳不重放本组件安装/升级角色，不推进数据库引擎、CRD、存储格式或外部服务版本；保留实际源配置、补丁及对象身份。",
+        "target_pins是目标新建/固定组合及准入依据，不能据此宣称在役组件已自动升级；既有GA深测按相同输入复用，未知或不同组合先停止本组件路径并评审。",
+        "核对本组件实际使用的稳定API、最低要求或明确目标测试范围；官方逐版测试、最低版本、稳定接口分别标记；最小集成缺口留在所属矩阵，不把未部署组件冒签现场PASS。"
+      ],
+      "evidence_strength_rule": "逐条按official-sources原facts解释；含1.35的tested/support表与仅minimum/API/source-pin不能互换。",
+      "live_claim": "尚无本跳现场PASS；目标迁移与新建由UPG-05至13分别验证；未部署组件不冒称本跳业务实测。"
+    },
+    {
+      "component_id": "elasticsearch",
+      "target_pins": {
+        "v_eck_operator": "3.5.0",
+        "v_elasticsearch": "9.5.1",
+        "v_business_elasticsearch": "9.5.6",
+        "v_elasticsearch_upgrade_source": "9.5.5",
+        "v_elasticsearch_exporter": "v1.11.0",
+        "v_elasticsearch_client": "9.5.1-kubeauto.1",
+        "v_elasticsearch_rally": "2.13.0-kubeauto.1"
+      },
+      "decision": "keep",
+      "official_source_ids": [
+        "ECK-350-SUPPORTED",
+        "ECK-LATEST-RELEASE"
+      ],
+      "steps": [
+        "本跳不重放本组件安装/升级角色，不推进数据库引擎、CRD、存储格式或外部服务版本；保留实际源配置、补丁及对象身份。",
+        "target_pins是目标新建/固定组合及准入依据，不能据此宣称在役组件已自动升级；既有GA深测按相同输入复用，未知或不同组合先停止本组件路径并评审。",
+        "核对本组件实际使用的稳定API、最低要求或明确目标测试范围；官方逐版测试、最低版本、稳定接口分别标记；最小集成缺口留在所属矩阵，不把未部署组件冒签现场PASS。"
+      ],
+      "evidence_strength_rule": "逐条按official-sources原facts解释；含1.35的tested/support表与仅minimum/API/source-pin不能互换。",
+      "live_claim": "尚无本跳现场PASS；目标迁移与新建由UPG-05至13分别验证；未部署组件不冒称本跳业务实测。"
+    },
+    {
+      "component_id": "mysql",
+      "target_pins": {
+        "v_pxc_operator": "1.20.0",
+        "v_pxc": "8.4.8-8.1",
+        "v_pxc_xtrabackup": "8.4.0-5.1",
+        "v_pxc_haproxy": "2.8.18-1",
+        "v_pxc_fluentbit": "5.0.6-1",
+        "v_pxc_operator_chart_sha256": "b8bff81d0f9691b1e495f958fba1bb268e48838cf548adf6ae6570ea0e0059cf"
+      },
+      "decision": "keep",
+      "official_source_ids": [
+        "PXC-120-FIRST-HOP",
+        "PXC-LATEST-RELEASE"
+      ],
+      "steps": [
+        "本跳不重放本组件安装/升级角色，不推进数据库引擎、CRD、存储格式或外部服务版本；保留实际源配置、补丁及对象身份。",
+        "target_pins是目标新建/固定组合及准入依据，不能据此宣称在役组件已自动升级；既有GA深测按相同输入复用，未知或不同组合先停止本组件路径并评审。",
+        "核对本组件实际使用的稳定API、最低要求或明确目标测试范围；官方逐版测试、最低版本、稳定接口分别标记；最小集成缺口留在所属矩阵，不把未部署组件冒签现场PASS。"
+      ],
+      "evidence_strength_rule": "逐条按official-sources原facts解释；含1.35的tested/support表与仅minimum/API/source-pin不能互换。",
+      "live_claim": "尚无本跳现场PASS；目标迁移与新建由UPG-05至13分别验证；未部署组件不冒称本跳业务实测。"
+    },
+    {
+      "component_id": "kafka",
+      "target_pins": {
+        "v_strimzi_operator": "1.2.0",
+        "v_kafka": "4.3.1",
+        "v_kafka_metadata": "4.3-IV0",
+        "v_strimzi_drain_cleaner": "1.6.1",
+        "v_strimzi_operator_chart_sha256": "0f8a50b2f19bd99482f9fd6e17cf42902f72f9e594a136813ac3f0b7af422efd",
+        "v_strimzi_drain_cleaner_chart_sha256": "ce84b8ddcd105f1b10d085fe69ed0d9185f798d009de3fba967386af2b8f6fdd"
+      },
+      "decision": "keep",
+      "official_source_ids": [
+        "STRIMZI-120",
+        "STRIMZI-131-RELEASE-DELTA",
+        "STRIMZI-131-SUPPORTED-UPGRADE-PATH",
+        "STRIMZI-131-UPGRADE-SEQUENCE",
+        "STRIMZI-131-OPERATOR-PRESERVATION",
+        "STRIMZI-131-CHART-FEATURE-GATES",
+        "STRIMZI-131-KAFKA-PINS",
+        "KAFKA-432-STABLE-CHECKSUM",
+        "KAFKA-432-RELEASE-DELTA",
+        "KAFKA-43-UPGRADE-CONTRACT",
+        "STRIMZI-DRAIN-161-BEHAVIOR",
+        "STRIMZI-DRAIN-LATEST",
+        "K8S-13413-CHANGELOG"
+      ],
+      "steps": [
+        "本跳不重放本组件安装/升级角色，不推进数据库引擎、CRD、存储格式或外部服务版本；保留实际源配置、补丁及对象身份。",
+        "target_pins是目标新建/固定组合及准入依据，不能据此宣称在役组件已自动升级；既有GA深测按相同输入复用，未知或不同组合先停止本组件路径并评审。",
+        "核对本组件实际使用的稳定API、最低要求或明确目标测试范围；官方逐版测试、最低版本、稳定接口分别标记；最小集成缺口留在所属矩阵，不把未部署组件冒签现场PASS。"
+      ],
+      "evidence_strength_rule": "逐条按official-sources原facts解释；含1.35的tested/support表与仅minimum/API/source-pin不能互换。",
+      "live_claim": "尚无本跳现场PASS；目标迁移与新建由UPG-05至13分别验证；未部署组件不冒称本跳业务实测。"
+    },
+    {
+      "component_id": "mongodb",
+      "target_pins": {
+        "v_mongodb_operator": "1.23.1",
+        "v_mongodb_operator_chart": "1.23.2",
+        "v_mongodb_operator_chart_sha256": "80e629dc31f8cfe2615a5efb8b0d1d2ed418f25e8c0b168f981412c8594a07e9",
+        "v_mongodb": "8.0.32-14",
+        "v_mongodb_backup": "2.15.0",
+        "v_mongodb_fluentbit": "5.1.2-1",
+        "v_mongodb_exporter": "0.53.0"
+      },
+      "decision": "keep",
+      "official_source_ids": [
+        "MONGODB-REQUIREMENTS-FIRST-HOP",
+        "MONGODB-1231-FIRST-HOP",
+        "MONGODB-LATEST-RELEASE"
+      ],
+      "steps": [
+        "本跳不重放本组件安装/升级角色，不推进数据库引擎、CRD、存储格式或外部服务版本；保留实际源配置、补丁及对象身份。",
+        "target_pins是目标新建/固定组合及准入依据，不能据此宣称在役组件已自动升级；既有GA深测按相同输入复用，未知或不同组合先停止本组件路径并评审。",
+        "核对本组件实际使用的稳定API、最低要求或明确目标测试范围；官方逐版测试、最低版本、稳定接口分别标记；最小集成缺口留在所属矩阵，不把未部署组件冒签现场PASS。"
+      ],
+      "evidence_strength_rule": "逐条按official-sources原facts解释；含1.35的tested/support表与仅minimum/API/source-pin不能互换。",
+      "live_claim": "尚无本跳现场PASS；目标迁移与新建由UPG-05至13分别验证；未部署组件不冒称本跳业务实测。"
+    },
+    {
+      "component_id": "redis",
+      "target_pins": {
+        "v_redis_operator": "0.27.0",
+        "v_redis_operator_image": "0.27.0-kubeauto.2",
+        "v_redis": "8.10.2",
+        "v_redis_cluster_image": "8.10.2-kubeauto.1",
+        "v_redis_exporter": "v1.93.0",
+        "v_redis_operator_chart_sha256": "4eabe2cde88657f8b7b21c2ec5ddafa3a305d35c9877021f9be89ac3beeb0f7f"
+      },
+      "decision": "keep",
+      "official_source_ids": [
+        "REDIS-027-CI-SCOPE",
+        "REDIS-027-CHART-CI",
+        "REDIS-027-CLIENT-DEPENDENCIES",
+        "REDIS-027-README",
+        "REDIS-027-CHART",
+        "REDIS-INSTALLATION-MINIMUM",
+        "REDIS-027-RBAC-API"
+      ],
+      "steps": [
+        "本跳不重放本组件安装/升级角色，不推进数据库引擎、CRD、存储格式或外部服务版本；保留实际源配置、补丁及对象身份。",
+        "target_pins是目标新建/固定组合及准入依据，不能据此宣称在役组件已自动升级；既有GA深测按相同输入复用，未知或不同组合先停止本组件路径并评审。",
+        "核对本组件实际使用的稳定API、最低要求或明确目标测试范围；官方逐版测试、最低版本、稳定接口分别标记；最小集成缺口留在所属矩阵，不把未部署组件冒签现场PASS。"
+      ],
+      "evidence_strength_rule": "逐条按official-sources原facts解释；含1.35的tested/support表与仅minimum/API/source-pin不能互换。",
+      "live_claim": "尚无本跳现场PASS；目标迁移与新建由UPG-05至13分别验证；未部署组件不冒称本跳业务实测。"
+    },
+    {
+      "component_id": "minio",
+      "target_pins": {
+        "operator_chart": "7.1.1",
+        "tenant_chart": "7.1.1",
+        "v_miniooperator": "7.1.1",
+        "minio_server": "RELEASE.2025-04-08T15-41-24Z"
+      },
+      "decision": "keep",
+      "official_source_ids": [
+        "MINIO-711-LATEST",
+        "MINIO-711-REQUIREMENTS",
+        "MINIO-711-CI-SCOPE"
+      ],
+      "steps": [
+        "本跳不重放本组件安装/升级角色，不推进数据库引擎、CRD、存储格式或外部服务版本；保留实际源配置、补丁及对象身份。",
+        "target_pins是目标新建/固定组合及准入依据，不能据此宣称在役组件已自动升级；既有GA深测按相同输入复用，未知或不同组合先停止本组件路径并评审。",
+        "核对本组件实际使用的稳定API、最低要求或明确目标测试范围；官方逐版测试、最低版本、稳定接口分别标记；最小集成缺口留在所属矩阵，不把未部署组件冒签现场PASS。"
+      ],
+      "evidence_strength_rule": "逐条按official-sources原facts解释；含1.35的tested/support表与仅minimum/API/source-pin不能互换。",
+      "live_claim": "尚无本跳现场PASS；目标迁移与新建由UPG-05至13分别验证；未部署组件不冒称本跳业务实测。"
+    },
+    {
+      "component_id": "nacos",
+      "target_pins": {
+        "nacos_server": "2.4.3",
+        "peer_finder_plugin": "1.1",
+        "mysql": "8.0.46",
+        "connector_j": "8.2.0"
+      },
+      "decision": "keep",
+      "official_source_ids": [
+        "NACOS-DOCKER-243-README",
+        "NACOS-DOCKER-243-DOCKERFILE",
+        "NACOS-243-COMPATIBLE",
+        "K8S134-DEPRECATION-GUIDE",
+        "K8S134-DEPRECATION-POLICY",
+        "NACOS-PEERFINDER-130-MAIN",
+        "NACOS-PEERFINDER-130-README",
+        "NACOS-K8S-PLUGIN-DOCKERFILE",
+        "NACOS-243-SCHEMA",
+        "NACOS24-TAGS",
+        "NACOS243-RELEASE"
+      ],
+      "steps": [
+        "本跳不重放本组件安装/升级角色，不推进数据库引擎、CRD、存储格式或外部服务版本；保留实际源配置、补丁及对象身份。",
+        "target_pins是目标新建/固定组合及准入依据，不能据此宣称在役组件已自动升级；既有GA深测按相同输入复用，未知或不同组合先停止本组件路径并评审。",
+        "核对本组件实际使用的稳定API、最低要求或明确目标测试范围；官方逐版测试、最低版本、稳定接口分别标记；最小集成缺口留在所属矩阵，不把未部署组件冒签现场PASS。"
+      ],
+      "evidence_strength_rule": "逐条按official-sources原facts解释；含1.35的tested/support表与仅minimum/API/source-pin不能互换。",
+      "live_claim": "尚无本跳现场PASS；目标迁移与新建由UPG-05至13分别验证；未部署组件不冒称本跳业务实测。"
+    },
+    {
+      "component_id": "rocketmq",
+      "target_pins": {
+        "operator_chart": "0.1.0",
+        "operator_image_index_digest": "sha256:66516b068aa9b73bee2b218556f551111fc75721a32aa183f655106ef10bcfdf",
+        "broker": "4.5.0-alpine-operator-0.3.0",
+        "nameserver": "4.5.0-alpine-operator-0.3.0",
+        "console": "2.0.0"
+      },
+      "decision": "keep",
+      "official_source_ids": [
+        "ROCKETMQ-030-FIRST-HOP",
+        "ROCKETMQ-OP-LATEST-RELEASE",
+        "ROCKETMQ-030-GO-DEPS",
+        "ROCKETMQ-CURRENT-OFFICIAL-BUILD",
+        "CLIENTGO-0221-SHARED-API",
+        "CONTROLLER-RUNTIME-010-VERSIONING-ENTRY",
+        "CONTROLLER-RUNTIME-010-REST-POLICY",
+        "ROCKETMQ-030-API-AND-EXEC-BOUNDARY"
+      ],
+      "steps": [
+        "本跳不重放本组件安装/升级角色，不推进数据库引擎、CRD、存储格式或外部服务版本；保留实际源配置、补丁及对象身份。",
+        "target_pins是目标新建/固定组合及准入依据，不能据此宣称在役组件已自动升级；既有GA深测按相同输入复用，未知或不同组合先停止本组件路径并评审。",
+        "核对本组件实际使用的稳定API、最低要求或明确目标测试范围；官方逐版测试、最低版本、稳定接口分别标记；最小集成缺口留在所属矩阵，不把未部署组件冒签现场PASS。"
+      ],
+      "evidence_strength_rule": "逐条按official-sources原facts解释；含1.35的tested/support表与仅minimum/API/source-pin不能互换。",
+      "live_claim": "尚无本跳现场PASS；目标迁移与新建由UPG-05至13分别验证；未部署组件不冒称本跳业务实测。"
+    },
+    {
+      "component_id": "registry",
+      "target_pins": {
+        "harbor": "v2.13.0",
+        "distribution": "v2.8.3",
+        "product_registry_tag": "2.8.3"
+      },
+      "decision": "keep",
+      "official_source_ids": [
+        "HARBOR-213-INSTALL-PREREQS",
+        "DISTRIBUTION-283-RELEASE"
+      ],
+      "steps": [
+        "本跳不重放本组件安装/升级角色，不推进数据库引擎、CRD、存储格式或外部服务版本；保留实际源配置、补丁及对象身份。",
+        "target_pins是目标新建/固定组合及准入依据，不能据此宣称在役组件已自动升级；既有GA深测按相同输入复用，未知或不同组合先停止本组件路径并评审。",
+        "核对本组件实际使用的稳定API、最低要求或明确目标测试范围；官方逐版测试、最低版本、稳定接口分别标记；最小集成缺口留在所属矩阵，不把未部署组件冒签现场PASS。"
+      ],
+      "evidence_strength_rule": "逐条按official-sources原facts解释；含1.35的tested/support表与仅minimum/API/source-pin不能互换。",
+      "live_claim": "尚无本跳现场PASS；目标迁移与新建由UPG-05至13分别验证；未部署组件不冒称本跳业务实测。"
+    },
+    {
+      "component_id": "control-client",
+      "target_pins": {
+        "kubernetes-python": "35.0.0"
+      },
+      "decision": "keep",
+      "official_source_ids": [
+        "PYTHONCLIENT-350-COMPATIBILITY"
+      ],
+      "steps": [
+        "本跳不重放本组件安装/升级角色，不推进数据库引擎、CRD、存储格式或外部服务版本；保留实际源配置、补丁及对象身份。",
+        "target_pins是目标新建/固定组合及准入依据，不能据此宣称在役组件已自动升级；既有GA深测按相同输入复用，未知或不同组合先停止本组件路径并评审。",
+        "核对本组件实际使用的稳定API、最低要求或明确目标测试范围；官方逐版测试、最低版本、稳定接口分别标记；最小集成缺口留在所属矩阵，不把未部署组件冒签现场PASS。"
+      ],
+      "evidence_strength_rule": "逐条按official-sources原facts解释；含1.35的tested/support表与仅minimum/API/source-pin不能互换。",
+      "live_claim": "尚无本跳现场PASS；目标迁移与新建由UPG-05至13分别验证；未部署组件不冒称本跳业务实测。"
+    },
+    {
+      "component_id": "test-infrastructure",
+      "target_pins": {
+        "ansible_core": "2.18.6",
+        "ansible_core_py314": "2.20.9",
+        "pyinstaller": "v6.16.0",
+        "runner_contract": "upgrade/validate.py:v1",
+        "lab_authority": "AGENTS.md-fixed-whitelist"
+      },
+      "decision": "keep",
+      "official_source_ids": [
+        "K8S-SKEW",
+        "K8S-API-HEALTH-CONTRACT",
+        "K8S-13413-VERSION-CONTRACT",
+        "ACTIONS-PRODUCT-RELEASE-SCOPE",
+        "PYINSTALLER-616-UPGRADE-DATA",
+        "ANSIBLE-UPGRADE-INVENTORY-CONTRACT"
+      ],
+      "steps": [
+        "本跳不重放本组件安装/升级角色，不推进数据库引擎、CRD、存储格式或外部服务版本；保留实际源配置、补丁及对象身份。",
+        "target_pins是目标新建/固定组合及准入依据，不能据此宣称在役组件已自动升级；既有GA深测按相同输入复用，未知或不同组合先停止本组件路径并评审。",
+        "核对本组件实际使用的稳定API、最低要求或明确目标测试范围；官方逐版测试、最低版本、稳定接口分别标记；最小集成缺口留在所属矩阵，不把未部署组件冒签现场PASS。"
+      ],
+      "evidence_strength_rule": "逐条按official-sources原facts解释；含1.35的tested/support表与仅minimum/API/source-pin不能互换。",
+      "live_claim": "尚无本跳现场PASS；目标迁移与新建由UPG-05至13分别验证；未部署组件不冒称本跳业务实测。"
+    },
+    {
+      "component_id": "tools",
+      "target_pins": {
+        "scripts_sha256": {
+          "CalicoPolicyCli": "8b172fcdd8a13110e24327d7ed720fc812191aae67607dc3132ec74da5c9f137",
+          "KubeBackupCli": "ce1a03afaaac8e6ccd7b61256265fade8e51780214b8f1ae9b7f14fa6b281d00",
+          "KubePublishCli": "df122fe8d2d0a02258085bfe9818c923cd6ddb4ce65b68e6a34417452af8187b"
+        },
+        "kubernetes_python": "35.0.0",
+        "nerdctl": "2.3.4",
+        "docker": "28.5.2",
+        "calicoctl_target": "v3.32.4",
+        "calicoctl_bridge": "v3.31.7"
+      },
+      "decision": "keep",
+      "official_source_ids": [
+        "PYTHONCLIENT-350-COMPATIBILITY",
+        "K8S134-DEPRECATION-GUIDE",
+        "K8S134-DEPRECATION-POLICY",
+        "CALICO3324-HOSTENDPOINT-API",
+        "CALICO3324-GLOBALNETWORKPOLICY-API",
+        "NERDCTL-234-COMPATIBILITY",
+        "NERDCTL234-CLI-REFERENCE"
+      ],
+      "steps": [
+        "本跳不重放本组件安装/升级角色，不推进数据库引擎、CRD、存储格式或外部服务版本；保留实际源配置、补丁及对象身份。",
+        "target_pins是目标新建/固定组合及准入依据，不能据此宣称在役组件已自动升级；既有GA深测按相同输入复用，未知或不同组合先停止本组件路径并评审。",
+        "核对本组件实际使用的稳定API、最低要求或明确目标测试范围；官方逐版测试、最低版本、稳定接口分别标记；最小集成缺口留在所属矩阵，不把未部署组件冒签现场PASS。"
+      ],
+      "evidence_strength_rule": "逐条按official-sources原facts解释；含1.35的tested/support表与仅minimum/API/source-pin不能互换。",
+      "live_claim": "尚无本跳现场PASS；目标迁移与新建由UPG-05至13分别验证；未部署组件不冒称本跳业务实测。"
+    }
+  ],
+  "source_pins": "upgrade/v1.35.10/source-baseline.yaml；现场prepare逐项实际读回，不能用候选组合倒推实装。",
+  "removed_api_and_default_review": [
+    "源服务中移除/锁定/alpha gates拒绝",
+    "StorageVersionMigration旧API及alphaDRA计数数据拒绝",
+    "WebSocket streaming需要create，发现get-only显式grant保守拒绝而不自动拓权",
+    "聚合CA空allowednames硬拒绝已以官方1.35.10二进制和源码证明",
+    "cgroupv1默认拒绝，可显式deprecated过渡；IPVS弃用仍保留"
+  ],
+  "lifecycle_boundary": "Dashboard归档、Harbor2.13停止维护及其它源生命周期限制原样保留为过渡，不宣称上游维护；不以本轮K8s升级顺带替换。",
+  "documentation_complete": false,
+  "live_acceptance": false,
+  "official_certification_of_kubeauto": false
+}

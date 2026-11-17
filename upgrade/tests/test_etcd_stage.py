@@ -88,6 +88,9 @@ class EtcdStageContracts(unittest.TestCase):
             self.assertFalse(any(t['module'] in ['copy', 'systemd_service'] for t in self.trace))
 
     def test_three_members_are_replaced_serially_with_complete_cluster_checks_between(self):
+        # Extra-vars outrank imported task vars. The coordinator explicitly
+        # sends false on a first run, so serial progress needs its own scope.
+        self.variables['UPGRADE_ETCD_RESUME'] = False
         result = self.run_stage()
         self.assertEqual(result.returncode, 0, result.stdout+result.stderr)
         self.assertIn('UPGRADE_ETCD_STAGE_PASS', result.stdout)
@@ -178,6 +181,16 @@ class EtcdStageContracts(unittest.TestCase):
         self.assertTrue(any(t['module'] == 'command' for t in self.trace))
         self.variables.pop('UPGRADE_ETCD_RESUME')
         self.refuse('Refuse foreign cluster identities revisions versions or alarms')
+
+    def test_accepted_boundary_is_read_only_and_refuses_disk_drift(self):
+        self.variables.update(UPGRADE_ETCD_RESUME=True, UPGRADE_ETCD_VERIFY_ONLY=True)
+        self.state['version'] = {h: '3.6.16' for h in HOSTS}
+        self.state['disk_hash'] = {h: self.variables['UPGRADE_ETCD_TARGETS'][h]['sha256'] for h in HOSTS}
+        result = self.run_stage()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse(any(t['module'] in ['copy', 'systemd_service'] for t in self.trace))
+        self.state['disk_hash'][HOSTS[0]] = '0' * 64
+        self.refuse('Require the exact installed target after restart')
 
 
 if __name__ == '__main__':

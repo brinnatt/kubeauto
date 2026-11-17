@@ -1,0 +1,42 @@
+# Only the drained, journal-owned 1.35 node consumes this task file. Preserve
+# every other kubelet option, including TLS, reservations and registry policy.
+- name: Require an explicit boolean cgroup v1 policy
+  ansible.builtin.assert:
+    that:
+      - KUBELET_FAIL_CGROUP_V1 | default(true) is boolean
+
+- name: Observe the actual cgroup hierarchy
+  ansible.builtin.command:
+    argv: [stat, -fc, '%T', /sys/fs/cgroup]
+  register: upgrade_cgroup_filesystem
+  changed_when: false
+
+- name: Refuse legacy cgroup v1 unless the operator explicitly opted in
+  ansible.builtin.assert:
+    that:
+      - upgrade_cgroup_filesystem.stdout in ['cgroup2fs', 'tmpfs']
+      - upgrade_cgroup_filesystem.stdout == 'cgroup2fs' or not (KUBELET_FAIL_CGROUP_V1 | default(true))
+    fail_msg: Kubernetes 1.35 refuses cgroup v1 by default; a reviewed legacy transition must explicitly set KUBELET_FAIL_CGROUP_V1=false.
+
+- name: Read the existing kubelet configuration without replacing it
+  ansible.builtin.slurp:
+    src: /var/lib/kubelet/config.yaml
+  register: upgrade_cgroup_config
+  no_log: true
+
+- name: Require the existing typed kubelet configuration
+  vars:
+    upgrade_cgroup_yaml: "{{ upgrade_cgroup_config.content | b64decode | from_yaml }}"
+  ansible.builtin.assert:
+    that:
+      - upgrade_cgroup_yaml is mapping
+      - upgrade_cgroup_yaml.kind == 'KubeletConfiguration'
+      - upgrade_cgroup_yaml.apiVersion == 'kubelet.config.k8s.io/v1beta1'
+      - upgrade_cgroup_yaml.failCgroupV1 | default(true) is boolean
+
+- name: Set only the reviewed cgroup compatibility option on the drained node
+  ansible.builtin.lineinfile:
+    path: /var/lib/kubelet/config.yaml
+    regexp: '^failCgroupV1:'
+    line: "failCgroupV1: {{ KUBELET_FAIL_CGROUP_V1 | default(true) | lower }}"
+  when: not (UPGRADE_CGROUP_OBSERVE_ONLY | default(false))

@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "accepted": true,
+  "source": "v1.34.13",
+  "target": "v1.35.10",
+  "case_ids": [
+    "UPG-14"
+  ],
+  "method": "static",
+  "claim": "本跳增量操作文档通过来源/内容/源码与发行包读者路径/静态和实测转化分层检查。精确patch、顺序、主机准入、输入、停止和恢复、EOL/非逐版认证、可复用范围及制品/交付身份明确；实际迁移和新建结果逐项取自UPG-06至13。原全站正文缺口保持false，不签客户签收、尚未执行的发行包smoke或最终链。",
+  "covered_subcases": [
+    "customer-operator-entry-and-preflight",
+    "frozen-component-combination-and-evidence-boundary",
+    "stop-resume-recovery-and-rollback-limits",
+    "official-source-directory-and-reader-path"
+  ],
+  "inputs": {
+    "upgrade/v1.35.10/operations-manual.md": "eb089e02afaeaf2a81ecbd326282988c78841b5cfce4d239d4e8378d53ade5ed",
+    "upgrade/v1.35.10/research.yaml": "bf7b9249d4dec563a402af1a1b6c68780abcbc27fa63ee2b23f585f1de82a4ce",
+    "upgrade/v1.35.10/release.yaml": "f69e9e88afa6a7cdc333240d62873ed120c7db981e20a6bf3cd68bbc0bf77625",
+    "upgrade/v1.35.10/artifact-pins.json": "6ceaf94c0fb6657a66017ff1563b9743c754ff1c7282b36242ade029b9a25047",
+    "upgrade/v1.35.10/evidence/official-directory-scope.json": "b9753fb597fb7c9ebfc08247dd02851925a7b3036fa7b5f8cb9aef8b0da253a3",
+    "upgrade/v1.35.10/evidence/release-fixture-repair.json": "e25a625235720bae2fb457a789c86f787d1ad593e8cc473343a63d66b0a06611",
+    "upgrade/workflow.md": "86d1a0cb571d3c6d9a0478f8ad8066544568a93c13be5c536c9d0c7fffc8446c",
+    "upgrade/acceptance.md": "1fd150a97eb055a62ffd1153d9fc30003da4eacce458fe652b53d42e4e49ead5",
+    "upgrade/official-sources.yaml": "44bdfd174a39a6e6752f13720b1bf2318ab8876cf3bb51cfd41cdd7109ffc978",
+    "upgrade/v1.35.10/evidence/UPG-02.json": "2822ef10928d0602ed0e263ef559d19e3bf62f3f536dad8df411afe7f3a3d771",
+    "upgrade/v1.35.10/evidence/UPG-06.json": "27e9215936f47d1e3ad0d33ceb4d1c0b2ca5ac2963541390d1f5996a9c486352",
+    "upgrade/v1.35.10/evidence/UPG-07.json": "1ebf1df4fa74408c03544174b811b7a213f209780256f2637d57ddf8fe632a3a",
+    "upgrade/v1.35.10/evidence/UPG-08.json": "3f5bc1e04000733c2de91c8b8c367f0cdbfbac91db1a854c6fb8251ecb7148af",
+    "upgrade/v1.35.10/evidence/UPG-09.json": "be616966a1aa7b86ec7d867162df5674d13ee70d718325efd75020bde8bb0fbe",
+    "upgrade/v1.35.10/evidence/UPG-10.json": "b0258b75fbd5a6ba1a99f427f714ad97f2d30e09fcab4d98e26d71f809b7840d",
+    "upgrade/v1.35.10/evidence/UPG-11.json": "73346a89268575ab7677ad2692c9abefc6c29e9b124145a355a503cdd8e1df91",
+    "upgrade/v1.35.10/evidence/UPG-12.json": "4522b1e7bdc0ba5edfdd2290184ac42fb291e4c7a92f41c19a06c077a60c5d81",
+    "upgrade/v1.35.10/evidence/UPG-13.json": "7a2e0de9ae4a2e349cc3addb4af5031cb1902a56e487cd135391c26ab37a7079"
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/document-review/kubeauto-v13510-document-static.log",
+      "sha256": "a6573daa4d4001ccd33ab17b169a47d6f17434b8f21b3ffce908c3834c2bcafa"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/official-directory-scope.json",
+      "sha256": "b9753fb597fb7c9ebfc08247dd02851925a7b3036fa7b5f8cb9aef8b0da253a3"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/release-fixture-repair.json",
+      "sha256": "e25a625235720bae2fb457a789c86f787d1ad593e8cc473343a63d66b0a06611"
+    }
+  ],
+  "checks": [
+    {
+      "command": "Bash/Python/JSON fenced-block syntax, YAML/JSON parsing and local-link checks",
+      "rc": 0
+    },
+    {
+      "command": ".venv/bin/python -B upgrade/validate.py upgrade/v1.35.10/test-matrix.yaml --combination-preflight",
+      "rc": 0
+    },
+    {
+      "command": "git diff --check -- upgrade",
+      "rc": 0
+    },
+    {
+      "command": ".venv/bin/python -B -m unittest upgrade.tests.test_release_policy upgrade.tests.test_launcher -v",
+      "rc": 0,
+      "tests": 10
+    }
+  ],
+  "business_assertions": [
+    "完整增量目录、正文归属和两类读者路径有作者走查记录，原完整研究状态保留",
+    "手册说明真实迁移和独立两次新建结果及其部署范围，未部署场景不冒签",
+    "发行包内嵌小策略、源码验收树与实验室入口独立，最终准入拒绝未完成前置"
+  ],
+  "customer_signoff": null,
+  "live_execution": false,
+  "completed_ladder": 2
+}

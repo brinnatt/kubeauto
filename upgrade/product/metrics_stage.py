@@ -100,7 +100,8 @@ class MetricsStage:
     def __init__(self, kubectl, kubeconfig, source, pods, *, timeout=600, progress=None):
         nodes = source.get('nodes', [])
         self.cluster_uid = source.get('cluster_identity', {}).get('uid')
-        if (source.get('source') != 'v1.33.6' or source.get('target') != 'v1.34.13' or
+        if ((source.get('source'), source.get('target')) not in {
+                ('v1.33.6', 'v1.34.13'), ('v1.34.13', 'v1.35.10')} or
                 source.get('mutation') != 'none' or not self.cluster_uid or
                 source.get('cluster_identity', {}).get('namespace') != 'kube-system' or
                 not isinstance(nodes, list) or not nodes or
@@ -122,7 +123,8 @@ class MetricsStage:
         self.pods = deepcopy(pods)
         self.transport = DNSStage(kubectl, kubeconfig,
             [b['server'] for b in source.get('api_backends', [])], self.nodes,
-            timeout=timeout, progress=progress)
+            timeout=timeout, progress=progress, target_version=source['target'],
+            originally_schedulable={n['name']: n.get('originally_schedulable', True) for n in nodes})
         self.kubectl, self.kubeconfig = str(Path(kubectl).resolve()), str(Path(kubeconfig).resolve())
         self.timeout = timeout
         self.progress = progress or (lambda message: print(message, flush=True))
@@ -236,7 +238,7 @@ class MetricsStage:
                 source.get('metadata', {}).get('namespace') != 'kube-system' or
                 source.get('metadata', {}).get('name') != 'metrics-server' or
                 len(containers) != 1 or containers[0].get('name') != 'metrics-server' or
-                containers[0].get('image') != SOURCE or
+                containers[0].get('image') not in [SOURCE, TARGET] or
                 containers[0].get('args', []).count('--metric-resolution=15s') != 1):
             raise MetricsRefused('metrics source deployment/image/explicit resolution differs')
         self.barrier()
@@ -244,6 +246,8 @@ class MetricsStage:
         image = current.get('spec', {}).get('template', {}).get('spec', {}).get('containers', [{}])[0].get('image')
         if image not in [SOURCE, TARGET]:
             raise MetricsRefused('metrics image is outside the exact transition')
+        if containers[0]['image'] == TARGET and image != TARGET:
+            raise MetricsRefused('an admitted target metrics workload regressed')
         expected[WORKLOAD]['spec']['template']['spec']['containers'][0]['image'] = image
         observed = self.check(expected)
         baseline = None

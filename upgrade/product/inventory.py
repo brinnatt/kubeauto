@@ -27,7 +27,7 @@ def inventory_event(event):
     if not isinstance(message, dict) or message.get('contract') != CONTRACT:
         return None
     keys = ('contract', 'kind', 'groups') if message.get('kind') == 'topology' else (
-        'contract', 'kind', 'host', 'transport_host', 'node_name', 'api_port', 'runtime', 'network')
+        'contract', 'kind', 'host', 'transport_host', 'node_name', 'api_port', 'runtime', 'network', 'parameters')
     return {'event': 'runner_on_ok', 'event_data': {
         'host': data.get('host'), 'task': data.get('task'),
         'res': {'msg': {key: deepcopy(message[key]) for key in keys if key in message}}}}
@@ -112,8 +112,12 @@ def observe_source(run_playbook, variables, *, kubectl, kubectl_sha256, kubeconf
     Output remains owned by the observer's caller; no file is written here.
     """
     if (not callable(run_playbook) or not isinstance(variables, dict) or
-            variables.get('K8S_VER') not in ('1.34.13', 'v1.34.13')):
-        raise Refused('exact first-hop target config and actual product runner are required')
+            variables.get('K8S_VER') not in ('1.34.13', 'v1.34.13', '1.35.10', 'v1.35.10')):
+        raise Refused('exact reviewed target config and actual product runner are required')
+    target = 'v' + variables['K8S_VER'].removeprefix('v')
+    source = {'v1.34.13': 'v1.33.6', 'v1.35.10': 'v1.34.13'}[target]
+    if variables.get('UPGRADE_SOURCE_VERSION', source) != source:
+        raise Refused('source configuration does not match the reviewed transition')
     before = hashlib.sha256(BOOK.read_bytes()).hexdigest()
     inventory = collect(run_playbook(BOOK, extra_vars=deepcopy(variables), controller_only=True))
     if hashlib.sha256(BOOK.read_bytes()).hexdigest() != before:
@@ -127,7 +131,7 @@ def observe_source(run_playbook, variables, *, kubectl, kubectl_sha256, kubeconf
             name: host in inventory['groups']['kube_node']
             for host, name in inventory['nodes'].items()
         }
-    receipt = observe(SimpleNamespace(source='v1.33.6', target='v1.34.13',
+    receipt = observe(SimpleNamespace(source=source, target=target,
         api_server=inventory['api_backends'], node=list(inventory['nodes'].values()),
         **({} if expected_schedulable is None else
            {'originally_schedulable': expected_schedulable}),

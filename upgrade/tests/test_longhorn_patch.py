@@ -53,11 +53,11 @@ class LonghornPatchContracts(unittest.TestCase):
         mapping = json.loads((ROOT / 'roles/longhorn/files/images.json').read_text())
         self.assertEqual(mapping['1.12.2'], tags)
 
-    def test_source_pins_and_default_remain_unchanged(self):
+    def test_source_tags_remain_unchanged_and_target_default_selects_reviewed_patch(self):
         mapping = json.loads((ROOT / 'roles/longhorn/files/images.json').read_text())
         for version in ('1.12.0', '1.12.1'):
             self.assertEqual(mapping[version], KubeConstant.longhorn_image_tags(version))
-        self.assertEqual(KubeConstant().v_longhorn, '1.12.1')
+        self.assertEqual(KubeConstant().v_longhorn, '1.12.2')
         self.assertEqual(mapping['1.12.1']['longhorn-manager'], 'v1.12.1-kubeauto.2')
         self.assertEqual(mapping['1.12.1']['longhorn-instance-manager'], 'v1.12.1-kubeauto.3')
 

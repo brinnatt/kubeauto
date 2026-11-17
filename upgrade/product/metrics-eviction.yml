@@ -1,0 +1,137 @@
+# The only admitted emptyDir exception is the project's stateless Metrics
+# Server cache. Eviction uses policy/v1 and UID preconditions, respecting PDB;
+# other local data keeps kubectl drain's normal refusal semantics.
+- name: Read Metrics Server pods currently on this node
+  ansible.builtin.command:
+    argv:
+      - '{{ base_dir }}/kube-bin/kubectl'
+      - '--kubeconfig={{ cluster_dir }}/kubectl.kubeconfig'
+      - '--server={{ UPGRADE_API_BACKENDS[0] }}'
+      - --insecure-skip-tls-verify=false
+      - --request-timeout=10s
+      - -n
+      - kube-system
+      - get
+      - pods
+      - -l
+      - k8s-app=metrics-server
+      - '--field-selector=spec.nodeName={{ UPGRADE_NODE_NAME }}'
+      - -o
+      - json
+  register: upgrade_metrics_pods
+  changed_when: false
+  delegate_to: localhost
+
+- name: Validate pod observation before considering stateless eviction
+  ansible.builtin.assert:
+    that:
+      - (upgrade_metrics_pods.stdout | from_json)['items'] is sequence
+      - (upgrade_metrics_pods.stdout | from_json)['items'] | length <= 1
+
+- name: Verify the actual Metrics Server controller ownership chain
+  ansible.builtin.command:
+    argv:
+      - '{{ base_dir }}/kube-bin/kubectl'
+      - '--kubeconfig={{ cluster_dir }}/kubectl.kubeconfig'
+      - '--server={{ UPGRADE_API_BACKENDS[0] }}'
+      - --insecure-skip-tls-verify=false
+      - --request-timeout=10s
+      - -n
+      - kube-system
+      - get
+      - replicasets,deployments
+      - -l
+      - k8s-app=metrics-server
+      - -o
+      - json
+  register: upgrade_metrics_controllers
+  changed_when: false
+  delegate_to: localhost
+  when: (upgrade_metrics_pods.stdout | from_json)['items'] | length > 0
+
+- name: Admit only the reviewed stateless cache and exact owner UIDs
+  vars:
+    upgrade_metrics_pod: '{{ (upgrade_metrics_pods.stdout | from_json)["items"][0] }}'
+    upgrade_metrics_owner: '{{ upgrade_metrics_pod.metadata.ownerReferences | selectattr("controller", "defined") | selectattr("controller", "equalto", true) | list }}'
+    upgrade_metrics_rs: '{{ (upgrade_metrics_controllers.stdout | from_json)["items"] | selectattr("kind", "equalto", "ReplicaSet") | selectattr("metadata.uid", "equalto", upgrade_metrics_owner[0].uid) | list }}'
+    upgrade_metrics_deploy: '{{ (upgrade_metrics_controllers.stdout | from_json)["items"] | selectattr("kind", "equalto", "Deployment") | selectattr("metadata.name", "equalto", "metrics-server") | list }}'
+  ansible.builtin.assert:
+    that:
+      - upgrade_metrics_pod.metadata.namespace == 'kube-system'
+      - upgrade_metrics_pod.metadata.uid | length > 0
+      - upgrade_metrics_pod.metadata.deletionTimestamp | default(none) == none
+      - upgrade_metrics_pod.spec.nodeName == UPGRADE_NODE_NAME
+      - upgrade_metrics_pod.spec.containers | length == 1
+      - upgrade_metrics_pod.spec.initContainers | default([]) | length == 0
+      - upgrade_metrics_pod.spec.containers[0].name == 'metrics-server'
+      - upgrade_metrics_pod.spec.containers[0].image is match('^registry\.talkschool\.cn:5000/brinnatt/metrics-server:v0\.(8\.[01]|9\.1)$')
+      - upgrade_metrics_owner | length == 1
+      - upgrade_metrics_owner[0].kind == 'ReplicaSet'
+      - upgrade_metrics_rs | length == 1
+      - upgrade_metrics_rs[0].metadata.name == upgrade_metrics_owner[0].name
+      - upgrade_metrics_deploy | length == 1
+      - upgrade_metrics_deploy[0].metadata.namespace == 'kube-system'
+      - upgrade_metrics_deploy[0].spec.replicas == 1
+      - upgrade_metrics_rs[0].metadata.ownerReferences | selectattr('controller', 'equalto', true) | selectattr('kind', 'equalto', 'Deployment') | selectattr('uid', 'equalto', upgrade_metrics_deploy[0].metadata.uid) | list | length == 1
+  when: (upgrade_metrics_pods.stdout | from_json)['items'] | length > 0
+
+- name: Refuse a Metrics Server pod with persistent or unknown volume sources
+  ansible.builtin.assert:
+    that:
+      - item.keys() | list | difference(['name', 'emptyDir', 'projected']) | length == 0
+      - ('emptyDir' in item) != ('projected' in item)
+      - "'projected' not in item or item.name is match('^kube-api-access-')"
+  loop: '{{ (upgrade_metrics_pods.stdout | from_json)["items"][0].spec.volumes | default([]) if (upgrade_metrics_pods.stdout | from_json)["items"] | length > 0 else [] }}'
+
+- name: Cordon the admitted node before evicting its stateless cache pod
+  ansible.builtin.command:
+    argv:
+      - '{{ base_dir }}/kube-bin/kubectl'
+      - '--kubeconfig={{ cluster_dir }}/kubectl.kubeconfig'
+      - '--server={{ UPGRADE_API_BACKENDS[0] }}'
+      - --insecure-skip-tls-verify=false
+      - --request-timeout=10s
+      - cordon
+      - '{{ UPGRADE_NODE_NAME }}'
+  delegate_to: localhost
+  when: (upgrade_metrics_pods.stdout | from_json)['items'] | length > 0
+
+- name: Evict only that stateless pod with its observed UID and normal PDB enforcement
+  vars:
+    upgrade_metrics_pod: '{{ (upgrade_metrics_pods.stdout | from_json)["items"][0] }}'
+  ansible.builtin.command:
+    argv:
+      - '{{ base_dir }}/kube-bin/kubectl'
+      - '--kubeconfig={{ cluster_dir }}/kubectl.kubeconfig'
+      - '--server={{ UPGRADE_API_BACKENDS[0] }}'
+      - --insecure-skip-tls-verify=false
+      - --request-timeout=10s
+      - create
+      - '--raw=/api/v1/namespaces/kube-system/pods/{{ upgrade_metrics_pod.metadata.name }}/eviction'
+      - -f
+      - '-'
+    stdin: '{{ {"apiVersion": "policy/v1", "kind": "Eviction", "metadata": {"name": upgrade_metrics_pod.metadata.name, "namespace": "kube-system"}, "deleteOptions": {"preconditions": {"uid": upgrade_metrics_pod.metadata.uid}}} | to_json }}'
+  delegate_to: localhost
+  when: (upgrade_metrics_pods.stdout | from_json)['items'] | length > 0
+
+# Eviction acknowledges a graceful deletion request, not its completion.
+# Drain still rejects the terminating pod's emptyDir until that pod is gone.
+- name: Wait for the evicted Metrics Server pod to disappear before normal drain
+  vars:
+    upgrade_metrics_pod: '{{ (upgrade_metrics_pods.stdout | from_json)["items"][0] }}'
+  ansible.builtin.command:
+    argv:
+      - '{{ base_dir }}/kube-bin/kubectl'
+      - '--kubeconfig={{ cluster_dir }}/kubectl.kubeconfig'
+      - '--server={{ UPGRADE_API_BACKENDS[0] }}'
+      - --insecure-skip-tls-verify=false
+      - '--request-timeout={{ UPGRADE_DRAIN_TIMEOUT_SECONDS | int }}s'
+      - -n
+      - kube-system
+      - wait
+      - --for=delete
+      - 'pod/{{ upgrade_metrics_pod.metadata.name }}'
+      - '--timeout={{ UPGRADE_DRAIN_TIMEOUT_SECONDS | int }}s'
+  changed_when: false
+  delegate_to: localhost
+  when: (upgrade_metrics_pods.stdout | from_json)['items'] | length > 0

@@ -1,6 +1,6 @@
 # Direct dependencies maintained for kubecli and the frozen tools:
 # ansible-runner, cryptography, distro, docker, kubernetes, paramiko, psutil,
-# PyMySQL, PyYAML, taskflow, and tenacity. The remaining entries are selected
+# Jinja2, PyMySQL, PyYAML, taskflow, and tenacity. The remaining entries are selected
 # transitive versions retained from the validated build environment; they are
 # not additional application-level dependencies.
 # pip resolves transitive dependencies automatically, but its repeatable-install
@@ -22,9 +22,11 @@ fasteners==0.20
 futurist==3.2.1
 idna==3.10
 iso8601==2.1.0
+Jinja2==3.1.6
 jsonschema==4.25.1
 jsonschema-specifications==2025.9.1
 lockfile==0.12.2
+MarkupSafe==3.0.3
 msgpack==1.1.2
 netaddr==1.3.0
 networkx==3.6

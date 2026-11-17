@@ -1,0 +1,114 @@
+# Read-only whole-cluster admission. Run before any CNI/control-plane mutation.
+- name: Admit the official platform and cgroup requirements on every node
+  hosts: kube_master:kube_node
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - name: Read actual kernel release
+      ansible.builtin.command:
+        argv: [uname, -r]
+      register: upgrade_kernel
+      changed_when: false
+    - name: Require the official Calico kernel floor
+      ansible.builtin.assert:
+        that:
+          - upgrade_kernel.stdout is match('^[0-9]+\.[0-9]+\.')
+          - upgrade_kernel.stdout.split('-')[0] is version('5.10', '>=')
+        fail_msg: Calico 3.32 requires kernel >= 5.10; prepare a supported OS before this upgrade, without changing the running cluster here.
+    - name: Read actual cgroup filesystem
+      ansible.builtin.command:
+        argv: [stat, -fc, '%T', /sys/fs/cgroup]
+      register: upgrade_cgroup_filesystem
+      changed_when: false
+    - name: Admit explicit legacy cgroup policy before any maintenance
+      ansible.builtin.assert:
+        that:
+          - KUBELET_FAIL_CGROUP_V1 | default(true) is boolean
+          - upgrade_cgroup_filesystem.stdout in ['cgroup2fs', 'tmpfs']
+          - upgrade_cgroup_filesystem.stdout == 'cgroup2fs' or not (KUBELET_FAIL_CGROUP_V1 | default(true))
+    - name: Read existing Kubernetes effective service definitions
+      ansible.builtin.command:
+        argv: [systemctl, cat, '{{ item }}']
+      loop: "{{ ['kubelet', 'kube-proxy', 'kube-apiserver', 'kube-controller-manager', 'kube-scheduler'] if inventory_hostname in groups['kube_master'] else ['kubelet', 'kube-proxy'] }}"
+      register: upgrade_existing_units
+      changed_when: false
+      no_log: true
+    - name: Refuse removed, locked or alpha migration feature settings before any change
+      vars:
+        upgrade_removed_gates: '(SizeMemoryBackedVolumes|ComponentSLIs|UserNamespacesPodSecurityStandards|StrictCostEnforcementForVAP|StrictCostEnforcementForWebhooks)\s*='
+        upgrade_locked_gates: '(DynamicResourceAllocation|JobManagedBy|ExecProbeTimeout|AggregatedDiscoveryRemoveBetaType|SystemdWatchdog)\s*=\s*false'
+        upgrade_alpha_gates: '(StorageVersionMigrator|DRAPartitionableDevices)\s*=\s*true'
+      ansible.builtin.assert:
+        that:
+          - "'--pod-infra-container-image' not in item.stdout"
+          - item.stdout is not regex(upgrade_removed_gates)
+          - item.stdout is not regex(upgrade_locked_gates)
+          - item.stdout is not regex(upgrade_alpha_gates)
+          - "'storagemigration.k8s.io/v1alpha1=true' not in item.stdout"
+      loop: '{{ upgrade_existing_units.results }}'
+      no_log: true
+    - name: Read the actual kubelet typed configuration before maintenance
+      ansible.builtin.slurp:
+        src: /var/lib/kubelet/config.yaml
+      register: upgrade_admission_kubelet_config
+      no_log: true
+    - name: Refuse removed or locked typed feature gates without changing configuration
+      vars:
+        upgrade_admission_yaml: '{{ upgrade_admission_kubelet_config.content | b64decode | from_yaml }}'
+        upgrade_admission_gates: '{{ upgrade_admission_yaml.featureGates | default({}) }}'
+      ansible.builtin.assert:
+        that:
+          - upgrade_admission_yaml is mapping
+          - upgrade_admission_yaml.kind == 'KubeletConfiguration'
+          - upgrade_admission_yaml.apiVersion == 'kubelet.config.k8s.io/v1beta1'
+          - upgrade_admission_gates is mapping
+          - upgrade_admission_gates.keys() | list | intersect(['SizeMemoryBackedVolumes', 'ComponentSLIs', 'UserNamespacesPodSecurityStandards', 'StrictCostEnforcementForVAP', 'StrictCostEnforcementForWebhooks']) | length == 0
+          - upgrade_admission_gates.DynamicResourceAllocation | default(true) == true
+          - upgrade_admission_gates.JobManagedBy | default(true) == true
+          - upgrade_admission_gates.ExecProbeTimeout | default(true) == true
+          - upgrade_admission_gates.AggregatedDiscoveryRemoveBetaType | default(true) == true
+          - upgrade_admission_gates.SystemdWatchdog | default(true) == true
+          - upgrade_admission_gates.DRAPartitionableDevices | default(false) == false
+      no_log: true
+
+- name: Retain private etcd service identities for the admitted patch stage
+  hosts: etcd
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - name: Read the actual etcd unit path
+      ansible.builtin.command:
+        argv: [systemctl, show, --property=FragmentPath, --value, etcd]
+      register: upgrade_etcd_fragment
+      changed_when: false
+    - name: Hash the current regular etcd unit
+      ansible.builtin.stat:
+        path: '{{ upgrade_etcd_fragment.stdout }}'
+        checksum_algorithm: sha256
+        follow: false
+      register: upgrade_etcd_unit_identity
+    - name: Require the current unit to be a regular file
+      ansible.builtin.assert:
+        that:
+          - upgrade_etcd_unit_identity.stat.isreg | default(false)
+          - not (upgrade_etcd_unit_identity.stat.islnk | default(false))
+          - upgrade_etcd_unit_identity.stat.checksum is match('^[a-f0-9]{64}$')
+    - name: Retain only the initial unit hash in the private cluster state directory
+      ansible.builtin.copy:
+        dest: '{{ UPGRADE_STATE_DIRECTORY }}/etcd-unit-{{ inventory_hostname }}.json'
+        content: '{{ {"host": inventory_hostname, "sha256": upgrade_etcd_unit_identity.stat.checksum} | to_json }}'
+        mode: '0600'
+        force: false
+      delegate_to: localhost
+    - name: Read back the retained initial unit identity
+      ansible.builtin.slurp:
+        src: '{{ UPGRADE_STATE_DIRECTORY }}/etcd-unit-{{ inventory_hostname }}.json'
+      register: upgrade_etcd_retained_unit
+      delegate_to: localhost
+    - name: Refuse any unit drift from the admitted initial boundary
+      vars:
+        upgrade_etcd_retained: '{{ upgrade_etcd_retained_unit.content | b64decode | from_json }}'
+      ansible.builtin.assert:
+        that:
+          - upgrade_etcd_retained.host == inventory_hostname
+          - upgrade_etcd_retained.sha256 == upgrade_etcd_unit_identity.stat.checksum

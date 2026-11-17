@@ -14,7 +14,7 @@ SPEC.loader.exec_module(entrypoint)
 class EntryPointContracts(unittest.TestCase):
     def test_pending_first_hop_prerequisites_refuse_before_stage_callback(self):
         manager = object()
-        with self.assertRaisesRegex(ValueError, "UPG-03|UPG-05|execution remains disabled|source cluster"):
+        with self.assertRaisesRegex(ValueError, "UPG-03|UPG-05|execution remains disabled|source cluster|combination is not frozen"):
             entrypoint.run_minor_upgrade(manager, "dev")
 
     def test_target_entrypoint_binds_no_legacy_93_playbook(self):

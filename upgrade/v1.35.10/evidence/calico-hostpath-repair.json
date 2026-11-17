@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "matrix_id": "UPG-06",
+  "category": "product-and-test-gate",
+  "discovered_in": "local precise API-default contract before control phase of v13510-qualify-20261116c",
+  "first_disproof": "server dry-run changed reviewed Calico content",
+  "official_source_id": "K8S-13413-HOSTPATH-DEFAULT",
+  "fix": "Add only the official HostPathUnset type default to newly added hostPath volumes; preserve existing types, paths and unknown admission refusal",
+  "source_fixture_correction": "Actual source hostPaths include type empty string; patch fixture now applies the same official default",
+  "remote_repair_boundary": "Only successful held source phase, no control attempt/status or mutation journal; exact five-file transport; acceptance sync separate",
+  "live_qualification": {
+    "command": "guarded real API get and server-dry-run create/patch only",
+    "rc": 0,
+    "marker": "CALICO_PRECONTROL_SERVER_DRYRUN_PASS mutation=none journal=absent",
+    "calls": 50,
+    "product_migration_pass": false
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/calico-hostpath-repair/kubeauto-v13510-hostpath-first-disproof.log",
+      "sha256": "303389ee4002311c80d33a3f306c6db28963f7ff928308bffbbeb10c3eb5bfcc"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/calico-hostpath-repair/kubeauto-v13510-hostpath-contracts.log",
+      "sha256": "a617cc1212d892917367c40cab6e1cdbff4c13707b536ffb8a4b7659296ccc29"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/calico-hostpath-repair/kubeauto-v13510-hostpath-transport-contracts.log",
+      "sha256": "a81587a43362f8d407b5d8958d507cd352b1f43224400323e029cebe97a74daa"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/calico-revision-repair/kubeauto-v13510-calico-post-revision-server-dry-run.log",
+      "sha256": "5ac4a16e40e72633b95da87ea000d6b8332aa58e3826b952ffc8dbdc9ccb90cf"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/raw/calico-revision-repair/kubeauto-v13510-calico-revision-remote-sha256.txt",
+      "sha256": "1b35a40f12e4c98bd59d74ed274a53778450fc7c3d372f3b824f7d38abbfe7a8"
+    }
+  ],
+  "checks": [
+    {
+      "command": ".venv/bin/python -B -m unittest upgrade.tests.test_calico_stage upgrade.tests.test_next_platform upgrade.tests.test_next_coordinator -v",
+      "rc": 0,
+      "tests": 22
+    },
+    {
+      "command": ".venv/bin/python -B -m unittest upgrade.tests.test_next_session.NextTransportContracts -v",
+      "rc": 0,
+      "tests": 6
+    }
+  ]
+}

@@ -2405,7 +2405,7 @@ class LabBoundaryContracts(unittest.TestCase):
             with self.subTest(data=data), self.assertRaises(ValueError): ARTIFACTS.records(data)
         self.assertIn('brinnatt/elasticsearch:9.5.6', ARTIFACTS.inventory())
         self.assertIn('brinnatt/pause:3.10', ARTIFACTS.inventory())
-        self.assertIn('brinnatt/longhorn-engine:v1.12.0', ARTIFACTS.inventory())
+        self.assertIn('brinnatt/longhorn-engine:v1.12.1', ARTIFACTS.inventory())
 
 
 

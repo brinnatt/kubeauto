@@ -1,0 +1,78 @@
+[
+  {
+    "name": "k8s-stable-135",
+    "url": "https://dl.k8s.io/release/stable-1.35.txt",
+    "path": "upgrade/official-snapshots/2026-11-16-next-hop/k8s-stable-135.txt",
+    "sha256": "f9ab224724f494c9bc9bc0ab3fb2ead590349b0685bfe98d6a1eb88d9d901fb6",
+    "bytes": 8,
+    "status": "obtained"
+  },
+  {
+    "name": "k8s-13510-changelog",
+    "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/v1.35.10/CHANGELOG/CHANGELOG-1.35.md",
+    "status": "unavailable",
+    "error": "RemoteDisconnected"
+  },
+  {
+    "name": "k8s-13510-release",
+    "url": "https://api.github.com/repos/kubernetes/kubernetes/releases/tags/v1.35.10",
+    "path": "upgrade/official-snapshots/2026-11-16-next-hop/k8s-13510-release.txt",
+    "sha256": "2265e4e91e839f1f2277fbcfd7f77501b5bce259354a5e48baa3bff7bc93d37c",
+    "bytes": 2235,
+    "status": "obtained"
+  },
+  {
+    "name": "k8s-135-dependencies",
+    "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/v1.35.10/build/dependencies.yaml",
+    "status": "unavailable",
+    "error": "RemoteDisconnected"
+  },
+  {
+    "name": "k8s-skew",
+    "url": "https://kubernetes.io/releases/version-skew-policy/",
+    "path": "upgrade/official-snapshots/2026-11-16-next-hop/k8s-skew.txt",
+    "sha256": "12c9be3242687d98b25a7fe7780cae36704e5e56c021c94abd08a47337d77de9",
+    "bytes": 57155,
+    "status": "obtained"
+  },
+  {
+    "name": "k8s-135-deprecations",
+    "url": "https://kubernetes.io/docs/reference/using-api/deprecation-guide/",
+    "path": "upgrade/official-snapshots/2026-11-16-next-hop/k8s-135-deprecations.txt",
+    "sha256": "91b939e601783be505a719334de7b30be8559e3e516464439254b34ee202b6a4",
+    "bytes": 530251,
+    "status": "obtained"
+  },
+  {
+    "name": "k8s-135-blog",
+    "url": "https://kubernetes.io/blog/2025/12/17/kubernetes-v1-35-release/",
+    "path": "upgrade/official-snapshots/2026-11-16-next-hop/k8s-135-blog.txt",
+    "sha256": "3679cf5a1565e2fcdda984857ed81202d9c34751367a778296776221749a7dcf",
+    "bytes": 546541,
+    "status": "obtained"
+  },
+  {
+    "name": "containerd-compatibility",
+    "url": "https://containerd.io/releases/",
+    "path": "upgrade/official-snapshots/2026-11-16-next-hop/containerd-compatibility.txt",
+    "sha256": "a03ca12c441aab024ad9581e8e5d0ee62bcd8b85e11911dd4975665e671fdf5c",
+    "bytes": 58512,
+    "status": "obtained"
+  },
+  {
+    "name": "calico-332-requirements",
+    "url": "https://docs.tigera.io/calico/3.32/getting-started/kubernetes/requirements",
+    "path": "upgrade/official-snapshots/2026-11-16-next-hop/calico-332-requirements.txt",
+    "sha256": "db111252895bc56ca2b2ab9b62238f8f5444406d856355656315d8be8620d6c5",
+    "bytes": 68328,
+    "status": "obtained"
+  },
+  {
+    "name": "k8s-135-changelog-github",
+    "url": "https://github.com/kubernetes/kubernetes/blob/v1.35.10/CHANGELOG/CHANGELOG-1.35.md",
+    "path": "upgrade/official-snapshots/2026-11-16-next-hop/k8s-135-changelog-github.txt",
+    "sha256": "7fcd7c69df4b6d95597061c08b17c730b4dbe972fc1a1e263e97f62ae03a6797",
+    "bytes": 166661,
+    "status": "obtained"
+  }
+]

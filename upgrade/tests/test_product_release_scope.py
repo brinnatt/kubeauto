@@ -15,13 +15,38 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class ProductReleaseScopeContracts(unittest.TestCase):
+    def test_upgrade_direct_dependencies_are_explicit_in_frozen_requirements(self):
+        # An external Ansible installation must not accidentally supply a
+        # library that the frozen upgrade entry point imports directly.
+        aliases = {'yaml': 'pyyaml'}
+        normalize = lambda name: name.lower().replace('_', '-')
+        requirements = {normalize(line.split('==', 1)[0])
+                        for line in (ROOT/'requirements').read_text().splitlines()
+                        if line and not line.startswith('#')}
+        imports = set()
+        for source in (ROOT/'upgrade/product').glob('*.py'):
+            for node in ast.walk(ast.parse(source.read_text())):
+                if isinstance(node, ast.Import):
+                    imports.update(alias.name.split('.')[0] for alias in node.names)
+                elif isinstance(node, ast.ImportFrom) and node.module and not node.level:
+                    imports.add(node.module.split('.')[0])
+        for name in imports - sys.stdlib_module_names:
+            if (ROOT/name).is_dir() or (ROOT/(name+'.py')).is_file():
+                continue
+            with self.subTest(module=name):
+                self.assertIn(normalize(aliases.get(name, name)), requirements,
+                              'Direct upgrade dependency is absent from the frozen requirements')
+
     def test_product_bundle_includes_the_actual_playbook_closure_without_upgrade_evidence_or_tools(self):
         tree = ast.parse((ROOT/'kubecli-onefile.spec').read_text())
         assignment = next(node for node in tree.body if isinstance(node, ast.Assign) and
                           any(isinstance(t, ast.Name) and t.id == 'added_files' for t in node.targets))
         data = ast.literal_eval(assignment.value)
         entries = [entry for entry in data if entry[0].startswith('upgrade')]
-        self.assertEqual(entries, [('upgrade/product/*.yml', 'upgrade/product')])
+        self.assertEqual(entries, [('upgrade/product/*.yml', 'upgrade/product'),
+            ('upgrade/product/*.toml', 'upgrade/product'),
+            ('upgrade/v1.35.10/artifact-pins.json', 'upgrade/v1.35.10')])
+        self.assertIn(('build/upgrade-policy/release-policy.json', 'upgrade/v1.35.10'), data)
         bundled = {path.resolve() for path in ROOT.glob(entries[0][0])}
         self.assertIn((ROOT/'upgrade/product/node.yml').resolve(), bundled)
         for path in bundled:
