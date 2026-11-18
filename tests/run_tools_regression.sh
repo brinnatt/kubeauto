@@ -48,6 +48,10 @@ EOF
 }
 
 case "${1:---preflight}" in
+  --star-compose-preflight|--star-compose-status|--star-compose-be|--star-compose-cn|--star-compose-full)
+    stage="${1#--star-compose-}"
+    "$PY" "$ROOT/tests/helpers/starrocks-compose-live.py" "$stage"
+    ;;
   --preflight)
     "$PY" "$ROOT/tests/helpers/validate_tools_test_matrix.py" "$MATRIX"
     "$PY" -m compileall -q "$ROOT/tools"

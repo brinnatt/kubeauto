@@ -1,0 +1,64 @@
+name: ${BE_COMPOSE_PROJECT:-starrocks-be}
+
+services:
+  starrocks-be:
+    image: ${BE_IMAGE:-hub.talkedu.cn/kubeauto/starrocks-allin1:3.5.7}
+    hostname: ${BE_HOSTNAME:-starrocks-be}
+    restart: unless-stopped
+    stop_grace_period: 60s
+    environment:
+      TZ: Asia/Shanghai
+      RUN_MODE: shared_nothing
+      # Supplies credentials to the official director and healthcheck.
+      # This variable does NOT create or change the database password.
+      MYSQL_PWD: ${BE_ROOT_PASSWORD:-}
+    ports:
+      - "${BE_BIND_IP:-127.0.0.1}:${BE_QUERY_PORT:-9030}:9030"
+      - "${BE_BIND_IP:-127.0.0.1}:${BE_FE_HTTP_PORT:-8030}:8030"
+      - "${BE_BIND_IP:-127.0.0.1}:${BE_NODE_HTTP_PORT:-8040}:8040"
+    mem_limit: ${BE_MEMORY_LIMIT:-16g}
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
+      nproc:
+        soft: 65535
+        hard: 65535
+    volumes:
+      # Local host storage. Never mount an empty directory over SR_HOME.
+      - ${BE_DATA_ROOT:-./data-be}/fe/meta:/data/deploy/starrocks/fe/meta
+      - ${BE_DATA_ROOT:-./data-be}/be/storage:/data/deploy/starrocks/be/storage
+      - ${BE_DATA_ROOT:-./data-be}/logs/fe:/data/deploy/starrocks/fe/log
+      - ${BE_DATA_ROOT:-./data-be}/logs/be:/data/deploy/starrocks/be/log
+      - ${BE_DATA_ROOT:-./data-be}/logs/supervisor:/data/deploy/starrocks/supervisor/log
+      - ${BE_DATA_ROOT:-./data-be}/logs/feproxy:/data/deploy/starrocks/feproxy/log
+      # The official entrypoint appends priority_networks; these must be writable.
+      - type: bind
+        source: ./conf/fe-be.conf
+        target: /data/deploy/starrocks/fe/conf/fe.conf
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./conf/node-be.conf
+        target: /data/deploy/starrocks/be/conf/be.conf
+        bind:
+          create_host_path: false
+    healthcheck:
+      # Check authenticated FE access and at least one live BE.
+      # Find Alive by its column name instead of assuming a column number.
+      test:
+        - CMD-SHELL
+        - >-
+          mysql --protocol=TCP --connect-timeout=3
+          -h 127.0.0.1 -P 9030 -u root --batch --execute='SHOW BACKENDS'
+          | awk -F '\t' 'NR == 1 {for (i=1; i<=NF; i++) if ($$i == "Alive") c=i; next}
+          c && $$c == "true" {ok=1} END {exit !ok}'
+      interval: 30s
+      timeout: 10s
+      start_period: 120s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"

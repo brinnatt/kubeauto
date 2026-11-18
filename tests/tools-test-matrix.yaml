@@ -347,3 +347,113 @@ mysql_migration_requalification:
       command: "MigrationCli -c /tmp/migration-live.json --native-option mysqldump=--kubeauto-invalid-option; MigrationCli -c /tmp/migration-live.json --native-option mysql=--kubeauto-invalid-option"
       expected: "导出/导入真实失败非0；可选回滚仅删除专用目标；恢复重试读回；并发上下文独立；MIGRATION_NATIVE_IMPORT_ROLLBACK_RETRY_PASS、MIGRATION_NATIVE_CONCURRENT_ISOLATION_PASS、TOOLS_CLEAN_VERIFY_PASS"
       smallest_disproof: "MIGRATION_TEST_HOST=ubuntu@192.168.47.138 MIGRATION_STAGE=native bash tests/run_tools_regression.sh --migration-live"
+
+starrocks_compose:
+  product: tools/starrocks/starrocks-3.5.7
+  review_status: approved
+  authorization: 2026-11-18 用户授权仅发布所需镜像并回归 FE+BE、FE+CN+RustFS 两条容器线路；StarCli 二进制及其它功能保持原证据
+  host: root@192.168.122.216
+  images:
+    allin1:
+      primary: hub.talkedu.cn/kubeauto/starrocks-allin1:3.5.7
+      fallback: brinnatt/starrocks-allin1:3.5.7
+      digest: sha256:007798f73e58cac2c70538e8e855d76361be13391af26958e9065ea03bc503be
+      platforms:
+        linux/amd64: sha256:64e5e48912ca325f52b21cef013d9cf2398ce5c4764ddf7a145bc7f776116fda
+        linux/arm64: sha256:c653e37e1d4423e54b7cde031c96c2578dc600868b7a829aefe44f4fba015d41
+      evidence: tests/evidence/starrocks-compose-image-allin1.json
+    fe:
+      primary: hub.talkedu.cn/kubeauto/starrocks-fe:3.5.7
+      fallback: brinnatt/starrocks-fe:3.5.7
+      digest: sha256:857e53af9a6d91f6c0660dc553ab9c2a6db535a960dae14695e2c8b6ddd4ca19
+      platforms:
+        linux/amd64: sha256:e574ac2fb9a708111a1210c22c824d3e1e9e8487dfe2c785c474714b107745a4
+        linux/arm64: sha256:4dcd93ac963f04d4a357bee4a31c94d9a810fd78dbba0b60fda436b579fb9d5b
+      evidence: tests/evidence/starrocks-compose-image-fe.json
+    cn:
+      primary: hub.talkedu.cn/kubeauto/starrocks-cn:3.5.7
+      fallback: brinnatt/starrocks-cn:3.5.7
+      digest: sha256:67ccd9deafeef89246f25d0632a72211860c3870441dc2cb6d4a8ed729f07dad
+      platforms:
+        linux/amd64: sha256:f21c58142a2f0421fce71d0e34dd13c3d87fe01c3f528bca4d6fcbc75c7f9eae
+        linux/arm64: sha256:2537d79296b0468246c60a65a76620aa4365dcf29eb39106712d670b08c832c9
+      evidence: tests/evidence/starrocks-compose-image-cn.json
+    rustfs:
+      primary: hub.talkedu.cn/kubeauto/rustfs:1.0.5
+      fallback: brinnatt/rustfs:1.0.5
+      digest: sha256:05ab211b158c5f5c92b41217fe62591202f850b2e3c1104b56636e5b0f78044c
+      platforms:
+        linux/amd64: sha256:0a0eadc52d3f9f5298caffe195ae1bc9d2df5baf9b806713a8eb9c88e5649a2e
+        linux/arm64: sha256:ab2407497ae79a247dbd7fae932789e215483c5ab5fd3b67f048ff36e465e4dc
+      evidence: tests/evidence/starrocks-compose-image-rustfs.json
+    aws-cli:
+      primary: hub.talkedu.cn/kubeauto/aws-cli:2.27.49
+      fallback: brinnatt/aws-cli:2.27.49
+      digest: sha256:20f13bfc6bacc5ab8442a3cd4455b30c4180c3879dd8fb6949fd0258ccb3b49a
+      platforms:
+        linux/amd64: sha256:89e184ef7b3612adbfda5cc90b97be32b8d95f5df92fb27eb215ba89e8c17ef3
+        linux/arm64: sha256:db07b8f48e304e9bf711e621cbe2869d101246a071e7c7a05393ee2fc9457258
+      evidence: tests/evidence/starrocks-compose-image-aws-cli.json
+  test_cases:
+  - id: TL-SRC-01
+    scenario: 容器配置、脚本与隔离运行器合同
+    status: pass
+    command: bash tests/run_tools_regression.sh --star-compose-preflight
+    expected: STARROCKS_COMPOSE_PREFLIGHT_PASS
+    official:
+    - https://github.com/StarRocks/starrocks/tree/3.5.7/docker/dockerfiles
+    - https://github.com/StarRocks/starrocks/blob/3.5.7/docs/en/quick_start/shared-data.md
+    - https://github.com/rustfs/rustfs/tree/1.0.5
+    - https://docs.docker.com/reference/cli/dockerd/
+    fixture: 仅本目录配置与脚本、官方校验和固定的 Compose 2.40.3 离线渲染和确定性合同；不访问测试节点、不拉取镜像、不调用 StarCli
+    cleanup: 本轮 /tmp/kubeauto-starrocks-compose-<runid>/work、私有 daemon、容器、网络与数据；既有服务/防火墙/镜像不变；私有原始证据保留
+    disproof: python3 tests/helpers/starrocks-compose-live.py preflight
+    evidence: tests/evidence/starrocks-compose-3.5.7-preflight.json
+  - id: TL-SRC-02
+    scenario: FE+BE 容器读写、Stream Load、改密重建与冷备恢复
+    status: pass
+    command: bash tests/run_tools_regression.sh --star-compose-be
+    expected: STARROCKS_COMPOSE_PASS stage=be; durable exit/finalized=0; TOOLS_CLEAN_VERIFY_PASS
+      scope=starrocks-compose
+    official:
+    - https://github.com/StarRocks/starrocks/tree/3.5.7/docker/dockerfiles
+    - https://github.com/StarRocks/starrocks/blob/3.5.7/docs/en/quick_start/shared-data.md
+    - https://github.com/rustfs/rustfs/tree/1.0.5
+    - https://docs.docker.com/reference/cli/dockerd/
+    fixture: 仅 FE+BE 产品副本与已双端核验的 allin1 3.5.7 固定镜像、本轮私有 Docker 28.5.2/Compose 2.40.3；凭据只经
+      stdin 进入内存，不触碰 StarCli 与既有集群
+    cleanup: 本轮 /tmp/kubeauto-starrocks-compose-<runid>/work、私有 daemon、容器、网络与数据；既有服务/防火墙/镜像不变；私有原始证据保留
+    disproof: python3 tests/helpers/starrocks-compose-live.py be
+    evidence: tests/evidence/starrocks-compose-3.5.7-be.json
+  - id: TL-SRC-03
+    scenario: FE+CN+RustFS 初始化、S3/SQL 读写、改密重建与冷备恢复
+    status: pass
+    command: bash tests/run_tools_regression.sh --star-compose-cn
+    expected: STARROCKS_COMPOSE_PASS stage=cn; durable exit/finalized=0; TOOLS_CLEAN_VERIFY_PASS
+      scope=starrocks-compose
+    official:
+    - https://github.com/StarRocks/starrocks/tree/3.5.7/docker/dockerfiles
+    - https://github.com/StarRocks/starrocks/blob/3.5.7/docs/en/quick_start/shared-data.md
+    - https://github.com/rustfs/rustfs/tree/1.0.5
+    - https://docs.docker.com/reference/cli/dockerd/
+    fixture: 仅 FE+CN 产品副本与已双端核验的 FE/CN 3.5.7、RustFS 1.0.5、AWS CLI 2.27.49 四个固定镜像、本轮私有
+      Docker 28.5.2/Compose 2.40.3；凭据只经 stdin 进入内存，不触碰 StarCli 与既有集群
+    cleanup: 本轮 /tmp/kubeauto-starrocks-compose-<runid>/work、私有 daemon、容器、网络与数据；既有服务/防火墙/镜像不变；私有原始证据保留
+    disproof: python3 tests/helpers/starrocks-compose-live.py cn
+    evidence: tests/evidence/starrocks-compose-3.5.7-cn.json
+  - id: TL-SRC-04
+    scenario: 两条容器线路最终干净完整回归
+    status: pass
+    command: bash tests/run_tools_regression.sh --star-compose-full
+    expected: STARROCKS_COMPOSE_PASS stage=full; durable exit/finalized=0; TOOLS_CLEAN_VERIFY_PASS
+      scope=starrocks-compose
+    official:
+    - https://github.com/StarRocks/starrocks/tree/3.5.7/docker/dockerfiles
+    - https://github.com/StarRocks/starrocks/blob/3.5.7/docs/en/quick_start/shared-data.md
+    - https://github.com/rustfs/rustfs/tree/1.0.5
+    - https://docs.docker.com/reference/cli/dockerd/
+    fixture: 仅本目录产品副本、5 个已双端核验固定镜像、本轮私有 Docker 28.5.2/Compose 2.40.3；凭据从 stdin 进入内存，不触碰
+      StarCli 与既有集群
+    cleanup: 本轮 /tmp/kubeauto-starrocks-compose-<runid>/work、私有 daemon、容器、网络与数据；既有服务/防火墙/镜像不变；私有原始证据保留
+    disproof: python3 tests/helpers/starrocks-compose-live.py full
+    evidence: tests/evidence/starrocks-compose-3.5.7-full.json

@@ -1,0 +1,153 @@
+name: ${CN_COMPOSE_PROJECT:-starrocks-cn}
+
+x-starrocks-runtime: &starrocks-runtime
+  restart: unless-stopped
+  stop_grace_period: 60s
+  ulimits:
+    nofile: {soft: 65535, hard: 65535}
+    nproc: {soft: 65535, hard: 65535}
+  logging:
+    driver: json-file
+    options: {max-size: "50m", max-file: "5"}
+
+services:
+  rustfs:
+    <<: *starrocks-runtime
+    image: ${CN_RUSTFS_IMAGE:-hub.talkedu.cn/kubeauto/rustfs:1.0.5}
+    hostname: rustfs
+    user: "10001:10001"
+    mem_limit: ${CN_RUSTFS_MEMORY_LIMIT:-4g}
+    environment:
+      RUSTFS_VOLUMES: /data
+      RUSTFS_ADDRESS: 0.0.0.0:9000
+      RUSTFS_CONSOLE_ADDRESS: 0.0.0.0:9001
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_ACCESS_KEY: ${CN_RUSTFS_ACCESS_KEY:?Set CN_RUSTFS_ACCESS_KEY in .env.cn}
+      RUSTFS_SECRET_KEY: ${CN_RUSTFS_SECRET_KEY:?Set CN_RUSTFS_SECRET_KEY in .env.cn}
+      RUSTFS_OBS_LOGGER_LEVEL: info
+      RUSTFS_OBS_LOG_DIRECTORY: /logs
+    ports:
+      - "${CN_RUSTFS_BIND_IP:-127.0.0.1}:${CN_RUSTFS_S3_PORT:-9000}:9000"
+      - "${CN_RUSTFS_BIND_IP:-127.0.0.1}:${CN_RUSTFS_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - ${CN_RUSTFS_DATA_ROOT:-./data-cn/rustfs}/data:/data
+      - ${CN_RUSTFS_LOG_ROOT:-./data-cn/logs/rustfs}:/logs
+    healthcheck:
+      test: ["CMD", "sh", "-ec", "curl -fsS http://127.0.0.1:9000/health && curl -fsS http://127.0.0.1:9001/rustfs/console/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 40s
+      retries: 5
+
+  rustfs-init:
+    image: ${CN_AWS_CLI_IMAGE:-hub.talkedu.cn/kubeauto/aws-cli:2.27.49}
+    restart: "no"
+    environment:
+      AWS_ACCESS_KEY_ID: ${CN_RUSTFS_ACCESS_KEY:?Set CN_RUSTFS_ACCESS_KEY in .env.cn}
+      AWS_SECRET_ACCESS_KEY: ${CN_RUSTFS_SECRET_KEY:?Set CN_RUSTFS_SECRET_KEY in .env.cn}
+      AWS_DEFAULT_REGION: ${CN_RUSTFS_REGION:-us-east-1}
+      AWS_EC2_METADATA_DISABLED: "true"
+      AWS_PAGER: ""
+      RUSTFS_BUCKET: ${CN_RUSTFS_BUCKET:-starrocks}
+    depends_on:
+      rustfs:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "/bootstrap/init-rustfs-cn.sh"]
+    volumes:
+      - ./scripts/init-rustfs-cn.sh:/bootstrap/init-rustfs-cn.sh:ro
+
+  starrocks-fe:
+    <<: *starrocks-runtime
+    image: ${CN_FE_IMAGE:-hub.talkedu.cn/kubeauto/starrocks-fe:3.5.7}
+    hostname: starrocks-fe
+    user: root
+    mem_limit: ${CN_FE_MEMORY_LIMIT:-6g}
+    environment:
+      TZ: Asia/Shanghai
+      AWS_EC2_METADATA_DISABLED: "true"
+      MYSQL_PWD: ${CN_ROOT_PASSWORD:-}
+    command: ["/opt/starrocks/fe/bin/start_fe.sh", "--host_type", "FQDN"]
+    ports:
+      - "${CN_BIND_IP:-127.0.0.1}:${CN_QUERY_PORT:-9030}:9030"
+      - "${CN_BIND_IP:-127.0.0.1}:${CN_FE_HTTP_PORT:-8030}:8030"
+    volumes:
+      - ${CN_DATA_ROOT:-./data-cn}/fe/meta:/opt/starrocks/fe/meta
+      - ${CN_DATA_ROOT:-./data-cn}/logs/fe:/opt/starrocks/fe/log
+      - type: bind
+        source: ./conf/fe-cn.conf
+        target: /opt/starrocks/fe/conf/fe.conf
+        bind:
+          create_host_path: false
+    depends_on:
+      rustfs:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          mysql --protocol=TCP --connect-timeout=3 -h 127.0.0.1 -P 9030
+          -u root --batch --execute='SHOW FRONTENDS'
+          | awk -F '\t' 'NR == 1 {for (i=1; i<=NF; i++) if ($$i == "Alive") c=i; next}
+          c && $$c == "true" {ok=1} END {exit !ok}'
+      interval: 20s
+      timeout: 10s
+      start_period: 90s
+      retries: 6
+
+  starrocks-init:
+    image: ${CN_FE_IMAGE:-hub.talkedu.cn/kubeauto/starrocks-fe:3.5.7}
+    restart: "no"
+    environment:
+      MYSQL_PWD: ${CN_ROOT_PASSWORD:-}
+      RUSTFS_ACCESS_KEY: ${CN_RUSTFS_ACCESS_KEY:?Set CN_RUSTFS_ACCESS_KEY in .env.cn}
+      RUSTFS_SECRET_KEY: ${CN_RUSTFS_SECRET_KEY:?Set CN_RUSTFS_SECRET_KEY in .env.cn}
+      RUSTFS_BUCKET: ${CN_RUSTFS_BUCKET:-starrocks}
+      RUSTFS_REGION: ${CN_RUSTFS_REGION:-us-east-1}
+    depends_on:
+      starrocks-fe:
+        condition: service_healthy
+      rustfs-init:
+        condition: service_completed_successfully
+    entrypoint: ["/bin/bash", "/bootstrap/init-storage-volume-cn.sh"]
+    volumes:
+      - ./scripts/init-storage-volume-cn.sh:/bootstrap/init-storage-volume-cn.sh:ro
+
+  starrocks-cn:
+    <<: *starrocks-runtime
+    image: ${CN_NODE_IMAGE:-hub.talkedu.cn/kubeauto/starrocks-cn:3.5.7}
+    hostname: starrocks-cn
+    user: root
+    mem_limit: ${CN_NODE_MEMORY_LIMIT:-10g}
+    environment:
+      TZ: Asia/Shanghai
+      HOST_TYPE: FQDN
+      FE_QUERY_PORT: "9030"
+      LOG_CONSOLE: "1"
+      AWS_EC2_METADATA_DISABLED: "true"
+      MYSQL_PWD: ${CN_ROOT_PASSWORD:-}
+    command: ["/opt/starrocks/cn_entrypoint.sh", "starrocks-fe"]
+    ports:
+      # Keep host and container ports identical for FE HTTP redirects.
+      - "${CN_BIND_IP:-127.0.0.1}:8040:8040"
+    volumes:
+      # This is a local cache only. Source data remains in RustFS.
+      - ${CN_DATA_ROOT:-./data-cn}/cn/cache:/opt/starrocks/cn/storage
+      - ${CN_DATA_ROOT:-./data-cn}/logs/cn:/opt/starrocks/cn/log
+      - ./scripts/healthcheck-cn.sh:/bootstrap/healthcheck-cn.sh:ro
+      - type: bind
+        source: ./conf/node-cn.conf
+        target: /opt/starrocks/cn/conf/cn.conf
+        bind:
+          create_host_path: false
+    depends_on:
+      starrocks-init:
+        condition: service_completed_successfully
+      starrocks-fe:
+        condition: service_healthy
+        restart: true
+    healthcheck:
+      test: ["CMD", "/bin/bash", "/bootstrap/healthcheck-cn.sh"]
+      interval: 20s
+      timeout: 10s
+      start_period: 90s
+      retries: 6

@@ -1,0 +1,33 @@
+{
+  "image": {
+    "primary": "hub.talkedu.cn/kubeauto/starrocks-allin1:3.5.7",
+    "fallback": "brinnatt/starrocks-allin1:3.5.7",
+    "digest": "sha256:007798f73e58cac2c70538e8e855d76361be13391af26958e9065ea03bc503be",
+    "platforms": {
+      "linux/amd64": "sha256:64e5e48912ca325f52b21cef013d9cf2398ce5c4764ddf7a145bc7f776116fda",
+      "linux/arm64": "sha256:c653e37e1d4423e54b7cde031c96c2578dc600868b7a829aefe44f4fba015d41"
+    },
+    "evidence": "tests/evidence/starrocks-compose-image-allin1.json"
+  },
+  "conclusion": "success",
+  "publication": {
+    "digest": "sha256:007798f73e58cac2c70538e8e855d76361be13391af26958e9065ea03bc503be",
+    "fingerprint": "8883686b8b3d4183de7c4cd33d0c9708a19e7537f7fc53d8c04fb784fe9f9267",
+    "head": "81da2f5c2996c0eee06ff50c8336b91f4090e600",
+    "key": "brinnatt/starrocks-allin1:3.5.7",
+    "platforms": {
+      "linux/amd64": "sha256:64e5e48912ca325f52b21cef013d9cf2398ce5c4764ddf7a145bc7f776116fda",
+      "linux/arm64": "sha256:c653e37e1d4423e54b7cde031c96c2578dc600868b7a829aefe44f4fba015d41"
+    },
+    "run_id": "44245277489",
+    "schema": 1
+  },
+  "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/44245277489",
+  "files": {
+    "logs/starrocks-compose-images-44245277489/release-evidence-0-2.zip": "b9a29550ab400f33daeb21a3323c89e02922b2ba59f9404a8c0a99bb95cfb62c",
+    "logs/starrocks-compose-images-44245277489/image-plan.zip": "ee986764c2674af56a24611348b0667ecdd8934eb7571c34fe32781867fa0856",
+    "logs/starrocks-compose-images-44245277489/image-plan.json": "987ffeb5f40f6f59a720f23656aa60ceaa392ef32a4dd1277a0607469c622736",
+    "logs/starrocks-compose-images-44245277489/run.json": "2e9adbcb7f9862efcad2ea62633358981a02c04106386589045f3190794b9aed",
+    "logs/starrocks-compose-images-44245277489/hub-readback.json": "af4bab3525f658f9e2bf4183cef0eb5391beaaefcc76b677a3f355dd3f6fa65a"
+  }
+}

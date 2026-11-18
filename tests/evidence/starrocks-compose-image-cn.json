@@ -1,0 +1,33 @@
+{
+  "image": {
+    "primary": "hub.talkedu.cn/kubeauto/starrocks-cn:3.5.7",
+    "fallback": "brinnatt/starrocks-cn:3.5.7",
+    "digest": "sha256:67ccd9deafeef89246f25d0632a72211860c3870441dc2cb6d4a8ed729f07dad",
+    "platforms": {
+      "linux/amd64": "sha256:f21c58142a2f0421fce71d0e34dd13c3d87fe01c3f528bca4d6fcbc75c7f9eae",
+      "linux/arm64": "sha256:2537d79296b0468246c60a65a76620aa4365dcf29eb39106712d670b08c832c9"
+    },
+    "evidence": "tests/evidence/starrocks-compose-image-cn.json"
+  },
+  "conclusion": "success",
+  "publication": {
+    "digest": "sha256:67ccd9deafeef89246f25d0632a72211860c3870441dc2cb6d4a8ed729f07dad",
+    "fingerprint": "e00753c05cafacb7f3ae5f3bc21a74243da281d4aa238a913413ea4184ae9bbf",
+    "head": "c61c6078e0f4b0437d49c9a2f5fd8f305b82b21f",
+    "key": "brinnatt/starrocks-cn:3.5.7",
+    "platforms": {
+      "linux/amd64": "sha256:f21c58142a2f0421fce71d0e34dd13c3d87fe01c3f528bca4d6fcbc75c7f9eae",
+      "linux/arm64": "sha256:2537d79296b0468246c60a65a76620aa4365dcf29eb39106712d670b08c832c9"
+    },
+    "run_id": "44234703732",
+    "schema": 1
+  },
+  "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/44234703732",
+  "files": {
+    "logs/starrocks-compose-images-44234703732/release-evidence-0-1.zip": "fc227c743aa574342c350363648c51282cd8db6bd5cffaa22d381d1f1362ac45",
+    "logs/starrocks-compose-images-44234703732/image-plan.zip": "278613d1b8151c41ece53312b2e389489020f73729290eed2cd206eab4624cfd",
+    "logs/starrocks-compose-images-44234703732/image-plan.json": "3dbdcf69b8e88fa33968b8e752b63b03b00d58843313e6577bb08198b3c3d9b9",
+    "logs/starrocks-compose-images-44234703732/run.json": "7fe016a86260a1f2afb64556aba324a91c5cc561a0bed544c0fd1eb7bd78a6f9",
+    "logs/starrocks-compose-images-44234703732/hub-readback.json": "2980339f8393717ce10a94b9d183227e44c09d352c8800ccc6940e1eed6ae5eb"
+  }
+}

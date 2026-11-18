@@ -1,0 +1,33 @@
+{
+  "image": {
+    "primary": "hub.talkedu.cn/kubeauto/rustfs:1.0.5",
+    "fallback": "brinnatt/rustfs:1.0.5",
+    "digest": "sha256:05ab211b158c5f5c92b41217fe62591202f850b2e3c1104b56636e5b0f78044c",
+    "platforms": {
+      "linux/amd64": "sha256:0a0eadc52d3f9f5298caffe195ae1bc9d2df5baf9b806713a8eb9c88e5649a2e",
+      "linux/arm64": "sha256:ab2407497ae79a247dbd7fae932789e215483c5ab5fd3b67f048ff36e465e4dc"
+    },
+    "evidence": "tests/evidence/starrocks-compose-image-rustfs.json"
+  },
+  "conclusion": "success",
+  "publication": {
+    "digest": "sha256:05ab211b158c5f5c92b41217fe62591202f850b2e3c1104b56636e5b0f78044c",
+    "fingerprint": "32bccf59008ddf1e8fb20009e118d1d2cd1935af03b29d36b7d557c6a62ab684",
+    "head": "c61c6078e0f4b0437d49c9a2f5fd8f305b82b21f",
+    "key": "brinnatt/rustfs:1.0.5",
+    "platforms": {
+      "linux/amd64": "sha256:0a0eadc52d3f9f5298caffe195ae1bc9d2df5baf9b806713a8eb9c88e5649a2e",
+      "linux/arm64": "sha256:ab2407497ae79a247dbd7fae932789e215483c5ab5fd3b67f048ff36e465e4dc"
+    },
+    "run_id": "44234134390",
+    "schema": 1
+  },
+  "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/44234134390",
+  "files": {
+    "logs/starrocks-compose-images-44234134390/release-evidence-0-1.zip": "1544d064dc57c2044b8753e4d48f4635dd09040a1113530b7531ef61835ac6e3",
+    "logs/starrocks-compose-images-44234134390/image-plan.zip": "8a80708ceaaf4c3fbac3e70a7e6bad2c22a2e64638f59bc6cff4e337d5af78a0",
+    "logs/starrocks-compose-images-44234134390/image-plan.json": "ec91dc4aeefdd5ff3e2064b8f464ab35186b700cc54534d931fb9f9943834311",
+    "logs/starrocks-compose-images-44234134390/run.json": "d62229a130516b3ce7c5fc263e09de7f1a0434251f0a100a4c802bf0a8498f80",
+    "logs/starrocks-compose-images-44234134390/hub-readback.json": "8e0b502bd75f2e4d804c70d14d2f41d9d9b94fc06e40f0fbed28744169c090be"
+  }
+}

@@ -922,6 +922,28 @@ matrix is approved, and `--full` still requires the explicit
 `TOOLS_MATRIX_APPROVED=yes` gate; Tier3 `--help` results in the enterprise
 matrix are not tools delivery evidence.
 
+### StarRocks 3.5.7 容器线路回归
+
+StarRocks `tools/starrocks/starrocks-3.5.7/` 的两条 Compose 容器线路使用独立入口：
+
+```bash
+bash tests/run_tools_regression.sh --star-compose-preflight
+bash tests/run_tools_regression.sh --star-compose-status
+bash tests/run_tools_regression.sh --star-compose-be
+bash tests/run_tools_regression.sh --star-compose-cn
+# 两条聚焦线路当前证据通过后，执行仅包含这两条线路的最终干净回归：
+bash tests/run_tools_regression.sh --star-compose-full
+```
+
+矩阵为 `tools-test-matrix.yaml` 的 `starrocks_compose` 分区；状态入口核验当前输入和原始证据。
+本入口仅消费本目录 Compose、配置、初始化脚本和已登记的五种双推镜像，
+不调用 StarCli、二进制部署、其它工具或 core/middleware 回归。
+固定测试节点为 `.122.216`，运行器持有共享池及节点租约，使用可回收的私有 Docker daemon；
+原服务、防火墙和数据不在清理范围。TalkEdu 凭据仅从本机受控文件读入，经过 stdin
+进入远端内存并用于 pull API 认证，不生成远端 Docker 登录文件。
+验收覆盖业务 SQL/Stream Load、CN 的实际 S3 对象、改密重建及停机冷备恢复，
+要求 durable 双 0、各线路业务标记和限定清理标记。静态检查不能替代现场结果。
+
 ### MySQL 备份工具增量回归
 
 两个备份 CLI 的变化使用原工具场景与固定镜像，独立于 core/middleware：
