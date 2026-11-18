@@ -100,12 +100,26 @@ PY
 
 ```bash
 .venv/bin/python -B upgrade/validate.py upgrade/v1.34.13/test-matrix.yaml --status
-.venv/bin/python -B -m unittest discover -s upgrade/tests -v
+.venv/bin/python -B - <<'PY'
+import os
+import subprocess
+import sys
+import tempfile
+
+with tempfile.TemporaryDirectory(prefix='kubeauto-upgrade-unit-logs-') as log_dir:
+    result = subprocess.run(
+        [sys.executable, '-B', '-m', 'unittest', 'discover', '-s', 'upgrade/tests', '-v'],
+        env={**os.environ, 'KUBEAUTO_LOG_DIR': log_dir},
+    )
+raise SystemExit(result.returncode)
+PY
 .venv/bin/python -B upgrade/validate.py upgrade/v1.34.13/test-matrix.yaml --combination-preflight
 ```
 
 第一条必须先通过证据校验才输出同一份状态快照；发现陈旧输入时拒绝输出正常
-PASS 总览，不改写矩阵。第二条不访问网络或实验室；制品合同需要相邻的
+PASS 总览，不改写矩阵。第二条把产品模块导入和测试夹具产生的运行日志隔离到临时目录，
+退出时清理，测试结果仍输出到终端；聚焦运行单个测试时沿用同一隔离方式。
+它不访问网络或实验室；制品合同需要相邻的
 `kubeauto-k8s-bin-dockerfile` checkout，缺失时会明确跳过，不能据此接受制品。
 第三条检查冻结声明、精确组件覆盖、显式 pin、已取得的官方快照摘要和迁移/恢复字段；
 当前组合尚未冻结，预期返回 1 并列出缺口，不修改矩阵。它只证明记录完备和身份，
