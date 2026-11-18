@@ -335,7 +335,7 @@ Final delivery requires the complete clean regression, expected terminal marker,
 durable rc=0, zero failure markers, current matrix evidence and final
 `LAB_CLEAN_VERIFY_PASS`; individual module passes do not imply delivery PASS.
 
-Do not commit runtime logs, PID files, Python caches, remote cluster directories, or registry data. Preserve reusable knowledge in tests, helpers, the matrix, or documentation.
+Do not commit runtime logs, PID files, Python caches, remote cluster directories, or registry data. Preserve reusable knowledge in tests, helpers, the matrix, or documentation. 本地单元/合同测试（含直接调用 unittest 的聚焦测试）须在导入产品模块前将 `KUBEAUTO_LOG_DIR` 指向本轮临时目录，并在退出时回收；沿用 `tests/run_unit_tests.sh` 或 `upgrade/README.md` 的既有隔离方式，不把测试日志留在工作区。上游源码核对所需的 Git clone 放在工作区外；需保留在证据目录中的固定源码使用不含 `.git` 的快照，不遗留嵌套仓库或相应 IDE VCS 映射。已有正式证据绑定的原始日志不得作为临时垃圾删除。
 
 ## 六仓协作与安全边界
 
@@ -364,7 +364,7 @@ Do not commit runtime logs, PID files, Python caches, remote cluster directories
 
 - 同一仓库、同一 Kubernetes 版本只维护一个正式版本分支。构建、只读核验和修复使用该分支的独立 job、模式或 tag 前缀，不为规避 workflow 触发而长期保留 `-readback`、`-verify` 等同版本分支。确需临时分支或 worktree 时先说明隔离原因和回收条件；收尾时核对独立提交、内容归属、活动任务及证据引用，将有效改动纳入正式分支，再删除本次临时的本地和远端引用、移除干净的临时 worktree。历史证据保留原 SHA/run 身份，不随分支整理重签。
 - `kubeauto` 与 `kubeauto-dockerfile` 是产品开发与打包的一对；每条在维护的 Kubernetes 版本分支必须同名配对，并核对打包源码与该基线的对应关系。Kubernetes 分支名不等于产品 release tag；正式打包必须使用属于该基线的已发布产品修订，不覆盖旧 tag，也不把旧 tag 打出的镜像声称为新基线。六仓均须维护与主仓一致的正式 Kubernetes 版本分支，即使制品未变也建立同名分支，指向该版本核验采用的兼容源码；后续版本从上一正式版本延续，不从可能含其它新特性的 dev 盲目取基线。分支对齐不等于组件升级或制品发布，未变制品继续复用。
-- 交付前复核本地及远端正式分支、工作区和临时资源，完成本次创建内容的收尾；保留用户原有改动和仍有明确用途的任务资源。推送、核验和删除分支均须检查真实 Actions 触发条件，分支对齐不扩大镜像发布或产品回归范围。
+- 交付前复核本地及远端正式分支、工作区和临时资源，完成本次创建内容的收尾；不能仅凭 `git status` 为空认定干净，还须检查被忽略目录中的嵌套 `.git`（含软链接）、IDE VCS 映射及已登记 worktree。按路径核实独立改动和证据归属，回收已结束的临时仓库、重复映射和过期 worktree；保留用户原有改动、正式证据和仍有明确用途的任务资源。未覆盖的仓库、分支或工作区不得声称已检查。推送、核验和删除分支均须检查真实 Actions 触发条件，分支对齐不扩大镜像发布或产品回归范围。
 - 六仓 Actions 统一由显式推送匹配的 Git tag 触发，生效 workflow 及备用模板均只声明 `push.tags`；不保留分支 push、定时或手动 dispatch 旁路。普通提交、合并及分支对齐不得启动 Actions。发布与独立只读 workflow 使用不相交的 tag 前缀；共用 workflow 必须显式选择只读 mode，核验失败不转为发布。tag 只选择明确版本或冻结名单，禁止回落为隐式整仓构建。tag 删除不执行发布，既有 tag 不移动、不覆盖。具体命名及参数归所属仓入口，打 tag 仍须满足既有发布集合与验收前置。
 
 
