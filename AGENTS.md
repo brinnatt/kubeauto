@@ -339,7 +339,7 @@ Final delivery requires the complete clean regression, expected terminal marker,
 durable rc=0, zero failure markers, current matrix evidence and final
 `LAB_CLEAN_VERIFY_PASS`; individual module passes do not imply delivery PASS.
 
-Do not commit runtime logs, PID files, Python caches, remote cluster directories, or registry data. Preserve reusable knowledge in tests, helpers, the matrix, or documentation.
+Do not commit runtime logs, PID files, Python caches, remote cluster directories, or registry data. Preserve reusable knowledge in tests, helpers, the matrix, or documentation. 本地单元/合同测试（含直接调用 unittest 的聚焦测试）须在导入产品模块前将 `KUBEAUTO_LOG_DIR` 指向本轮临时目录，并在退出时回收；沿用 `tests/run_unit_tests.sh` 或 `upgrade/README.md` 的既有隔离方式，不把测试日志留在工作区。已有正式证据绑定的原始日志不得作为临时垃圾删除。
 
 ## 六仓协作与安全边界
 
