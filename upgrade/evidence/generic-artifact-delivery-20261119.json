@@ -1,0 +1,326 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-19",
+  "scope": "dev artifact delivery workflow consolidation; no component version or published image changes",
+  "acceptance": "PASS for changed delivery contracts, real local BuildKit selection and current readback scopes",
+  "built_production_images": [],
+  "published_images": [],
+  "production_mutation": false,
+  "lab_mutation": false,
+  "entry_points": {
+    "kubeauto-ext-bin-dockerfile": ".github/workflows/build.yml",
+    "kubeauto-ext-bin-sp1-dockerfile": ".github/workflows/build.yml",
+    "kubeauto-k8s-bin-dockerfile": ".github/workflows/build.yml"
+  },
+  "unchanged_repositories": [
+    "kubeauto-dockerfile",
+    "kubeauto-ext-images-dockerfile"
+  ],
+  "consumer_contracts": {
+    "source_sha": "9860d57bad5abd6078c38426a5dd78b9729cab7c",
+    "tests": 47,
+    "pass": 47,
+    "rc": 0,
+    "log": "/home/brinnatt/.local/share/kubeauto-pack-generic/20261119/consumer-contracts.log",
+    "log_sha256": "286efeca133a0dbba4345b70a852a95597a89b3a98bd58c660612b5368294fae"
+  },
+  "owned_contracts": {
+    "kubeauto-ext-bin-dockerfile": {
+      "run": 14,
+      "pass": 13,
+      "skip": 1,
+      "skip_reason": "compile-only recipe tested in sp1"
+    },
+    "kubeauto-ext-bin-sp1-dockerfile": {
+      "run": 14,
+      "pass": 14,
+      "skip": 0
+    },
+    "kubeauto-k8s-bin-dockerfile": {
+      "run": 4,
+      "pass": 4,
+      "skip": 0
+    }
+  },
+  "coverage": {
+    "real_buildkit": [
+      "one selected compiled stage",
+      "two selected compiled stages",
+      "downloaded-binary overlay",
+      "amd64 and arm64 output",
+      "unselected stage with missing input remains unevaluated",
+      "unselected file retention",
+      "temporary-directory cleanup"
+    ],
+    "deterministic_contracts": [
+      "existing complete tag reuse without downloads/builds",
+      "one missing end copied by source digest",
+      "race refusal when missing end appears",
+      "authentication/network/unknown error does not authorize rebuild",
+      "inconsistent registries and incomplete readback refuse",
+      "scope and architecture validation before registry",
+      "existing output residue refuses",
+      "both confirmed missing selects recipe only",
+      "unrelated file mutation refuses acceptance",
+      "CLI exit code and stderr version capture",
+      "probe container cleanup on failure",
+      "annotated tag requests, mode/tag mismatch and lightweight-tag refusal",
+      "Kubernetes index and child digest/duplicate/missing architecture checks"
+    ],
+    "boundary": "copy and missing-tag production publication selection are deterministic contracts; live jobs are read-only and local fixture builds, not new production publication or a new cluster GA sign-off"
+  },
+  "runs": [
+    {
+      "repository": "kubeauto-ext-bin-dockerfile",
+      "branch": "dev",
+      "sha": "37ec54b8f5e78a0f36bd2ffa98743c3ff6262164",
+      "mode": "readback",
+      "run_id": 44483404355,
+      "run_url": "https://github.com/brinnatt/kubeauto-ext-bin-dockerfile/actions/runs/44483404355",
+      "conclusion": "success",
+      "durable_rc": 0,
+      "marker": "PACK_DUAL_READBACK_PASS",
+      "identities": [
+        {
+          "image": "hub.talkedu.cn/kubeauto/kubeauto-ext-bin:1.17.1",
+          "digest": "sha256:05a317feab539479968bbbb1e8b7aea9df660a1b195bb926d111139a694ba1be",
+          "platforms": {
+            "linux/amd64": "sha256:e3caa6c4a60b7fcb9b7b0f7f9b12c3bb79d7195b7004d0d5826c38f7c46225a2",
+            "linux/arm64": "sha256:d978b5526891d224f07acd9ff0461cf2d78a540f9008c7b6397d5136c9363031"
+          }
+        },
+        {
+          "image": "docker.io/brinnatt/kubeauto-ext-bin:1.17.1",
+          "digest": "sha256:05a317feab539479968bbbb1e8b7aea9df660a1b195bb926d111139a694ba1be",
+          "platforms": {
+            "linux/amd64": "sha256:e3caa6c4a60b7fcb9b7b0f7f9b12c3bb79d7195b7004d0d5826c38f7c46225a2",
+            "linux/arm64": "sha256:d978b5526891d224f07acd9ff0461cf2d78a540f9008c7b6397d5136c9363031"
+          }
+        }
+      ],
+      "artifact": {
+        "name": "pack-verify-pack-generic-20261119-2.zip",
+        "sha256": "d8357d0cf1aae951250f6df5f14e0230f9fe22e55de5eebaf08b7dd437aaf28a"
+      },
+      "raw_archive": "/home/brinnatt/.local/share/kubeauto-pack-generic/20261119/kubeauto-ext-bin-dockerfile/44483404355",
+      "real_buildkit_fixture_marker": "PACK_BUILDKIT_SELECTED_DUAL_ARCH_PASS",
+      "files_per_architecture": {
+        "linux/amd64": 53,
+        "linux/arm64": 53
+      },
+      "changed_files": [
+        "nerdctl"
+      ],
+      "version_probes": [
+        {
+          "binary": "nerdctl",
+          "platform": "linux/amd64",
+          "rc": 0
+        },
+        {
+          "binary": "nerdctl",
+          "platform": "linux/arm64",
+          "rc": 0
+        }
+      ]
+    },
+    {
+      "repository": "kubeauto-ext-bin-sp1-dockerfile",
+      "branch": "dev",
+      "sha": "5171ab3d036f4f47b6c6ffbbdac59f2ed8149d06",
+      "mode": "readback",
+      "run_id": 44483406814,
+      "run_url": "https://github.com/brinnatt/kubeauto-ext-bin-sp1-dockerfile/actions/runs/44483406814",
+      "conclusion": "success",
+      "durable_rc": 0,
+      "marker": "PACK_DUAL_READBACK_PASS",
+      "identities": [
+        {
+          "image": "hub.talkedu.cn/kubeauto/kubeauto-ext-bin-sp1:1.3.1",
+          "digest": "sha256:37051f0e1720dd0f9973085bf4d4c49df14e163db88bc4cb85b092357bb9cd5c",
+          "platforms": {
+            "linux/amd64": "sha256:43525ca1026514e3fe285731e1a27bdc4b4c3e47b25b79803e57edc2169c1c15",
+            "linux/arm64": "sha256:226b732b05cdf102d392b807ff031cc3c01ad22d914b6549b35894abf265224f"
+          }
+        },
+        {
+          "image": "docker.io/brinnatt/kubeauto-ext-bin-sp1:1.3.1",
+          "digest": "sha256:37051f0e1720dd0f9973085bf4d4c49df14e163db88bc4cb85b092357bb9cd5c",
+          "platforms": {
+            "linux/amd64": "sha256:43525ca1026514e3fe285731e1a27bdc4b4c3e47b25b79803e57edc2169c1c15",
+            "linux/arm64": "sha256:226b732b05cdf102d392b807ff031cc3c01ad22d914b6549b35894abf265224f"
+          }
+        }
+      ],
+      "artifact": {
+        "name": "pack-verify-pack-generic-20261119-2.zip",
+        "sha256": "c2a02cb735ddeeb276c73267cbe4a905935649629867b335f72cedbbda3f05a4"
+      },
+      "raw_archive": "/home/brinnatt/.local/share/kubeauto-pack-generic/20261119/kubeauto-ext-bin-sp1-dockerfile/44483406814",
+      "real_buildkit_fixture_marker": "PACK_BUILDKIT_SELECTED_DUAL_ARCH_PASS",
+      "files_per_architecture": {
+        "linux/amd64": 3,
+        "linux/arm64": 3
+      },
+      "changed_files": [
+        "chronyd",
+        "keepalived",
+        "nginx"
+      ],
+      "version_probes": [
+        {
+          "binary": "nginx",
+          "platform": "linux/amd64",
+          "rc": 0
+        },
+        {
+          "binary": "chronyd",
+          "platform": "linux/amd64",
+          "rc": 0
+        },
+        {
+          "binary": "keepalived",
+          "platform": "linux/amd64",
+          "rc": 0
+        },
+        {
+          "binary": "nginx",
+          "platform": "linux/arm64",
+          "rc": 0
+        },
+        {
+          "binary": "chronyd",
+          "platform": "linux/arm64",
+          "rc": 0
+        },
+        {
+          "binary": "keepalived",
+          "platform": "linux/arm64",
+          "rc": 0
+        }
+      ]
+    },
+    {
+      "repository": "kubeauto-k8s-bin-dockerfile",
+      "branch": "dev",
+      "sha": "3b40eea9fe4c4c03ed041fed0cc450779c462aea",
+      "mode": "readback",
+      "run_id": 44483408798,
+      "run_url": "https://github.com/brinnatt/kubeauto-k8s-bin-dockerfile/actions/runs/44483408798",
+      "conclusion": "success",
+      "durable_rc": 0,
+      "marker": "K8S_DUAL_REGISTRY_READBACK_PASS",
+      "identities": [
+        {
+          "image": "hub.talkedu.cn/kubeauto/kubeauto-k8s-bin:v1.34.13",
+          "digest": "sha256:102ab56b22ea78c726949ff18c6798f6d7a1a53dd7debc07384373985e153d35",
+          "platforms": {
+            "linux/amd64": "sha256:4e494547894ccd9009383a1acae091a4f4d9036bb57457450fe7d061d25b4813",
+            "linux/arm64": "sha256:56cf124d1c5e810eeb1b9d327cc1d59a7ac59b764fa06e3e728edf8aeccb0d1c"
+          }
+        },
+        {
+          "image": "docker.io/brinnatt/kubeauto-k8s-bin:v1.34.13",
+          "digest": "sha256:102ab56b22ea78c726949ff18c6798f6d7a1a53dd7debc07384373985e153d35",
+          "platforms": {
+            "linux/amd64": "sha256:4e494547894ccd9009383a1acae091a4f4d9036bb57457450fe7d061d25b4813",
+            "linux/arm64": "sha256:56cf124d1c5e810eeb1b9d327cc1d59a7ac59b764fa06e3e728edf8aeccb0d1c"
+          }
+        },
+        {
+          "image": "hub.talkedu.cn/kubeauto/kubeauto-k8s-bin:v1.35.10",
+          "digest": "sha256:dda1f153dd776d6c527521592f6fa6978df5ab929aad937a24f3e432af63287a",
+          "platforms": {
+            "linux/amd64": "sha256:e46c071a1744c079105a0b44e38398089ba2e2e49bed89f8e5d4131f11689d1f",
+            "linux/arm64": "sha256:f2a8c4e60fea2217ca273d8de50c2dfaed02eea797b6fd6c756189f1f63af98a"
+          }
+        },
+        {
+          "image": "docker.io/brinnatt/kubeauto-k8s-bin:v1.35.10",
+          "digest": "sha256:dda1f153dd776d6c527521592f6fa6978df5ab929aad937a24f3e432af63287a",
+          "platforms": {
+            "linux/amd64": "sha256:e46c071a1744c079105a0b44e38398089ba2e2e49bed89f8e5d4131f11689d1f",
+            "linux/arm64": "sha256:f2a8c4e60fea2217ca273d8de50c2dfaed02eea797b6fd6c756189f1f63af98a"
+          }
+        }
+      ],
+      "artifact": {
+        "name": "k8s-verify-k8s-generic-20261119-2.zip",
+        "sha256": "ce185199b94d88652f9b451c18929ce24d4f614ac905c31215955730eac8d4ef"
+      },
+      "raw_archive": "/home/brinnatt/.local/share/kubeauto-pack-generic/20261119/kubeauto-k8s-bin-dockerfile/44483408798"
+    }
+  ],
+  "preserved_first_failures": [
+    {
+      "repository": "kubeauto-ext-bin-dockerfile",
+      "run_id": 44482846240,
+      "result": "failure",
+      "classification": "test-gate",
+      "cause": "actions/checkout default event-ref fallback rewrote the local annotated tag ref to the peeled commit",
+      "repair": "checkout github.sha with fetch-depth=0; assert actual workflow configuration and exercise annotated-tag CLI requests",
+      "raw_archive": "/home/brinnatt/.local/share/kubeauto-pack-generic/20261119/kubeauto-ext-bin-dockerfile/44482846240",
+      "superseded_by": 44483404355
+    },
+    {
+      "repository": "kubeauto-ext-bin-sp1-dockerfile",
+      "run_id": 44482849081,
+      "result": "failure",
+      "classification": "test-gate",
+      "cause": "actions/checkout default event-ref fallback rewrote the local annotated tag ref to the peeled commit",
+      "repair": "checkout github.sha with fetch-depth=0; assert actual workflow configuration and exercise annotated-tag CLI requests",
+      "raw_archive": "/home/brinnatt/.local/share/kubeauto-pack-generic/20261119/kubeauto-ext-bin-sp1-dockerfile/44482849081",
+      "superseded_by": 44483406814
+    },
+    {
+      "repository": "kubeauto-k8s-bin-dockerfile",
+      "run_id": 44482851616,
+      "result": "failure",
+      "classification": "test-gate",
+      "cause": "actions/checkout default event-ref fallback rewrote the local annotated tag ref to the peeled commit",
+      "repair": "checkout github.sha with fetch-depth=0; assert actual workflow configuration and exercise annotated-tag CLI requests",
+      "raw_archive": "/home/brinnatt/.local/share/kubeauto-pack-generic/20261119/kubeauto-k8s-bin-dockerfile/44482851616",
+      "superseded_by": 44483408798
+    }
+  ],
+  "official_sources": [
+    {
+      "url": "https://docs.docker.com/build/building/multi-stage/#differences-between-legacy-builder-and-buildkit",
+      "use": "BuildKit evaluates only dependency stages"
+    },
+    {
+      "url": "https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#push",
+      "use": "tag-only workflow event selection"
+    },
+    {
+      "url": "https://github.com/actions/checkout/tree/v4",
+      "use": "checkout configuration matched to proven ext-images SHA checkout and actual CI fetch logs"
+    }
+  ],
+  "sp1_source_inputs": [
+    {
+      "component": "nginx",
+      "url": "https://nginx.org/download/nginx-1.28.0.tar.gz",
+      "sha256": "c6b5c6b086c0df9d3ca3ff5e084c1d0ef909e6038279c71c1c3e985f576ff76a",
+      "pin_basis": "archive downloaded from fixed official HTTPS release URL; hash computed before Dockerfile pin"
+    },
+    {
+      "component": "chrony",
+      "url": "https://chrony-project.org/releases/chrony-4.7.tar.gz",
+      "sha256": "c0de41a8c051e5d32b101b5f7014b98ca978b18e592f30ce6840b6d4602d947b",
+      "pin_basis": "archive downloaded from fixed official HTTPS release URL; hash computed before Dockerfile pin"
+    },
+    {
+      "component": "keepalived",
+      "url": "https://keepalived.org/software/keepalived-2.3.4.tar.gz",
+      "sha256": "6afd95ddb7d3e0d3b8b8e5b3a489144131b61a01b06d29e883d0c44acc8a36bf",
+      "pin_basis": "archive downloaded from fixed official HTTPS release URL; hash computed before Dockerfile pin"
+    }
+  ],
+  "cleanup": {
+    "temporary_worktrees_created": 0,
+    "runtime_files_committed": false,
+    "historical_evidence_resigned": false,
+    "stable_and_kubernetes_version_branches_modified": false
+  }
+}
