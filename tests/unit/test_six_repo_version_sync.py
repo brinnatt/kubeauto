@@ -86,8 +86,12 @@ class TestSixRepoVersionSync(unittest.TestCase):
         current_manifest = EXT_BIN / 'upgrade/release.json'
         if current_manifest.exists():
             current = json.loads(current_manifest.read_text())
-            if current['tag'] == self.kc.v_extra_bin.lstrip('v'):
-                ext += '\n' + '\n'.join('ENV ' + k + '=' + v for k,v in current['env'].items())
+            targets = [a for a in current['artifacts'] if a['tag'] == self.kc.v_extra_bin.lstrip('v')]
+            self.assertEqual(len(targets), 1)
+            values = dict(targets[0]['env'])
+            for recipe in targets[0]['components'].values():
+                values.update(recipe.get('env', {}))
+            ext += '\n' + '\n'.join('ENV ' + k + '=' + v for k, v in values.items())
 
         def env(text: str, name: str) -> str:
             values = re.findall(rf"\b{name}=([^\s]+)", text)
@@ -232,24 +236,18 @@ class TestSixRepoVersionSync(unittest.TestCase):
         import yaml
         workflow = yaml.safe_load(ci)
         events = workflow.get('on', workflow.get(True, {}))
-        self.assertEqual(events, {'push': {'tags': ['v[0-9]*.[0-9]*.[0-9]*', 'verify-k8s-*']}})
-        script = workflow['jobs']['plan']['steps'][0]['run']
-        source = script.split('\n', 1)[1].rsplit('\nPY', 1)[0]
-        ast.parse(source)
-        upgrade_gate = (ROOT / "kubeauto" / "tests" / "helpers" / "delivery-upgrade-smoke.sh").read_text()
-        upgrade_source = re.search(r"^OLD_VERSION=(v?[0-9]+\.[0-9]+\.[0-9]+)$", upgrade_gate, re.MULTILINE)
-        self.assertIsNotNone(upgrade_source, msg="upgrade gate must pin its source fixture")
-        required = {*self.kc.k8s_bin_pack_tags, upgrade_source.group(1)}
-        for version in required:
-            with tempfile.TemporaryDirectory() as directory:
-                output = Path(directory) / 'output'
-                result = subprocess.run([sys.executable, '-c', source], env={
-                    **os.environ, 'EVENT_NAME': 'push', 'REF_TYPE': 'tag',
-                    'REF_NAME': version, 'GITHUB_OUTPUT': str(output)},
-                    capture_output=True, text=True, timeout=10)
-                self.assertEqual(result.returncode, 0, result.stderr)
-                matrix = json.loads(output.read_text().removeprefix('matrix='))
-                self.assertEqual(matrix, {'include': [{'version': version}]})
+        self.assertEqual(events, {'push': {'tags': ['artifacts-*', 'verify-artifacts-*']}})
+        catalog = json.loads((k8s_bin/'upgrade/release.json').read_text())
+        tags = {a['tag'] for a in catalog['artifacts']}
+        gate = (KA/'tests/helpers/delivery-upgrade-smoke.sh').read_text()
+        fixture = re.search(r'^OLD_VERSION=(v?[0-9]+\.[0-9]+\.[0-9]+)$', gate, re.MULTILINE)
+        self.assertIsNotNone(fixture)
+        self.assertTrue({*self.kc.k8s_bin_pack_tags, fixture.group(1)} <= tags)
+        for artifact in catalog['artifacts']:
+            self.assertEqual(artifact['build_args'], {'K8S_VER': artifact['tag']})
+        steps = workflow['jobs']['release']['steps']
+        self.assertTrue(any('release.py select' in step.get('run', '') for step in steps))
+        self.assertTrue(any('release.py run' in step.get('run', '') for step in steps))
 
     def test_component_images_tags_exist_in_ext_images_ci(self):
         """Every brinnatt image pin in component_images must have matching CI tag (no local fork)."""

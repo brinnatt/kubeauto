@@ -110,38 +110,18 @@ else:
         self.assertEqual(list(self.destination.iterdir()), [sentinel])
 
     def test_real_workflow_selector_limits_selected_publication(self):
-        workflow = yaml.load((REPO / '.github/workflows/build.yml').read_text(),
-                             Loader=yaml.BaseLoader)
-        script = workflow['jobs']['plan']['steps'][0]['run']
-        output = self.root / 'github-output'
-        for version in ['v1.33.5', 'v1.34.13', 'v1.35.10']:
-            output.write_text('')
-            result = subprocess.run(['bash', '-euc', script], capture_output=True,
-                                    env=os.environ | {'EVENT_NAME': 'push', 'REF_TYPE': 'tag',
-                                        'REF_NAME': version, 'GITHUB_OUTPUT': str(output)}, text=True)
-            self.assertEqual(result.returncode, 0, result.stderr)
-            matrix = json.loads(output.read_text().removeprefix('matrix='))
-            self.assertEqual(matrix, {'include': [{'version': version}]})
-        for event, kind, version in [('push', 'branch', 'v1.34.13'),
-                                      ('push', 'branch', 'dev'),
-                                      ('workflow_dispatch', 'tag', 'v1.34.13'),
-                                      ('push', 'tag', 'v1.34.13-rc.1'),
-                                      ('push', 'tag', 'v1.34.13\nattack'),
-                                      ('push', 'tag', 'verify-k8s-v1.34.13-1')]:
-            output.write_text('')
-            result = subprocess.run(['bash', '-euc', script], capture_output=True,
-                                    env=os.environ | {'EVENT_NAME': event, 'REF_TYPE': kind,
-                                        'REF_NAME': version, 'GITHUB_OUTPUT': str(output)}, text=True)
-            self.assertNotEqual(result.returncode, 0)
-            self.assertEqual(output.read_text(), '')
-        docker = workflow['jobs']['docker']
-        self.assertEqual(docker['needs'], 'plan')
-        self.assertEqual(workflow['on'], {'push': {'tags': ['v[0-9]*.[0-9]*.[0-9]*', 'verify-k8s-*']}})
-        self.assertEqual(docker['strategy']['matrix'], '${{ fromJSON(needs.plan.outputs.matrix) }}')
-        build = next(s for s in docker['steps'] if s.get('name') == 'Build and push')
-        self.assertEqual(build['with']['build-args'], 'K8S_VER=${{ matrix.version }}')
-        self.assertEqual(build['with']['platforms'], 'linux/amd64,linux/arm64')
-        self.assertEqual(build['with']['push'], 'true')
+        catalog=json.loads((REPO/'upgrade/release.json').read_text())
+        for version in ['v1.33.5','v1.34.13','v1.35.10']:
+            result=subprocess.run(['python3','-B','upgrade/release.py','select','--request',
+                json.dumps({'mode':'selected','selected':['brinnatt/kubeauto-k8s-bin:'+version]})],
+                cwd=REPO,capture_output=True,text=True,timeout=10)
+            self.assertEqual(result.returncode,0,result.stderr)
+            self.assertEqual(json.loads(result.stdout)['images'],['brinnatt/kubeauto-k8s-bin:'+version])
+        for artifact in catalog['artifacts']:
+            self.assertEqual(artifact['build_args'],{'K8S_VER':artifact['tag']})
+        workflow=yaml.load((REPO/'.github/workflows/build.yml').read_text(),Loader=yaml.BaseLoader)
+        self.assertEqual(workflow['on'],{'push':{'tags':['artifacts-*','verify-artifacts-*']}})
+        self.assertTrue(any('release.py select' in s.get('run','') for s in workflow['jobs']['release']['steps']))
 
 
 if __name__ == '__main__':

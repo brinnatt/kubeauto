@@ -29,35 +29,34 @@ class TagOnlyDeliveryContracts(unittest.TestCase):
                                     capture_output=True, text=True)
                                 self.assertEqual(result.returncode, 0, result.stderr)
 
-    def test_packaging_source_and_published_version_derive_from_same_tag(self):
-        path = PROJECTS/'kubeauto-dockerfile/.github/workflows/build_and_push.yml'
-        job = yaml.load(path.read_text(), Loader=yaml.BaseLoader)['jobs']['build-and-push-image']
-        self.assertEqual(job['strategy']['matrix']['include'],
-                         [{'version': '${{ github.ref_name }}'}])
-        build = next(s for s in job['steps'] if s.get('uses') == 'docker/build-push-action@v6')
-        self.assertEqual(build['with']['build-args'], 'KUBEAUTO_VER=${{ matrix.version }}')
+    def test_packaging_source_and_published_version_are_catalog_bound(self):
+        import json
+        repo = PROJECTS/'kubeauto-dockerfile'
+        catalog = json.loads((repo/'upgrade/release.json').read_text())
+        self.assertTrue(catalog['ghcr'])
+        for artifact in catalog['artifacts']:
+            self.assertEqual(artifact['source_tag'], artifact['tag'])
+            self.assertEqual(artifact['build_args']['KUBEAUTO_VER'], artifact['tag'])
+            self.assertRegex(artifact['source_sha'], r'^[a-f0-9]{40}$')
+        self.assertIn('KUBEAUTO_ARCHIVE_SHA256', (repo/'Dockerfile').read_text())
 
-    def test_request_readers_checkout_commit_without_overwriting_annotated_tag(self):
-        for repository,job_name in [('kubeauto-ext-bin-dockerfile','docker'),
-                                    ('kubeauto-ext-bin-sp1-dockerfile','docker'),
-                                    ('kubeauto-k8s-bin-dockerfile','verify')]:
-            data = yaml.load((PROJECTS/repository/'.github/workflows/build.yml').read_text(), Loader=yaml.BaseLoader)
-            step = next(s for s in data['jobs'][job_name]['steps'] if s.get('uses') == 'actions/checkout@v4')
-            self.assertEqual(step['with'], {'ref':'${{ github.sha }}','fetch-depth':'0'})
-
-    def test_kubernetes_readback_cannot_enter_publication_plan(self):
-        root = PROJECTS/'kubeauto-k8s-bin-dockerfile'
-        data = yaml.load((root/'.github/workflows/build.yml').read_text(), Loader=yaml.BaseLoader)
-        self.assertIn("!startsWith(github.ref_name, 'verify-k8s-')", data['jobs']['plan']['if'])
-        self.assertIn("startsWith(github.ref_name, 'verify-k8s-')", data['jobs']['verify']['if'])
-        self.assertEqual(data['jobs']['docker']['needs'], 'plan')
-
-    def test_binary_release_uses_manifest_and_explicit_request_before_registry_login(self):
-        for repository in ['kubeauto-ext-bin-dockerfile', 'kubeauto-ext-bin-sp1-dockerfile']:
-            root = PROJECTS/repository
-            data = yaml.load((root/'.github/workflows/build.yml').read_text(), Loader=yaml.BaseLoader)
-            steps = data['jobs']['docker']['steps']
-            admit = next(s for s in steps if 'pack_release.py admit' in s.get('run',''))
-            login = next(s for s in steps if s.get('uses') == 'docker/login-action@v3')
-            self.assertLess(steps.index(admit), steps.index(login))
-            self.assertEqual([p.name for p in (root/'.github/workflows').glob('*.yml')], ['build.yml'])
+    def test_all_generic_requests_are_admitted_before_login(self):
+        sources=[]
+        for repository in REPOSITORIES[1:5]:
+            root=PROJECTS/repository
+            data=yaml.load((root/'.github/workflows/build.yml').read_text(),Loader=yaml.BaseLoader)
+            self.assertEqual(data['on'], {'push': {'tags': ['artifacts-*','verify-artifacts-*']}})
+            self.assertEqual(data['concurrency']['group'],'artifact-publication')
+            steps=data['jobs']['release']['steps']
+            checkout=next(s for s in steps if s.get('uses')=='actions/checkout@v4')
+            self.assertEqual(checkout['with'], {'ref':'${{ github.sha }}','fetch-depth':'0'})
+            admit=next(s for s in steps if 'release.py select' in s.get('run',''))
+            login=next(s for s in steps if s.get('uses')=='docker/login-action@v3')
+            self.assertLess(steps.index(admit),steps.index(login))
+            self.assertTrue(any('release.py plan' in s.get('run','') for s in steps))
+            self.assertTrue(any('release.py run' in s.get('run','') for s in steps))
+            self.assertEqual([p.name for p in (root/'.github/workflows').glob('*.yml')],['build.yml'])
+            sources.append((root/'upgrade/release.py').read_bytes())
+        self.assertTrue(all(s==sources[0] for s in sources))
+        self.assertEqual((PROJECTS/'kubeauto-ext-bin-dockerfile/upgrade/pack_release.py').read_bytes(),
+                         (PROJECTS/'kubeauto-ext-bin-sp1-dockerfile/upgrade/pack_release.py').read_bytes())

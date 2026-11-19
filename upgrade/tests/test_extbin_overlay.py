@@ -168,16 +168,14 @@ class OverlayContracts(unittest.TestCase):
 
     def test_current_workflow_uses_one_generic_selected_entry(self):
         import yaml
-        workflows = list((SIBLING/'.github/workflows').glob('*.yml'))
-        self.assertEqual([p.name for p in workflows], ['build.yml'])
-        data = yaml.load(workflows[0].read_text(), Loader=yaml.BaseLoader)
-        steps = data['jobs']['docker']['steps']
-        build = next(s for s in steps if s.get('uses') == 'docker/build-push-action@v6')
-        self.assertEqual(build['if'], "steps.plan.outputs.action == 'build'")
-        self.assertEqual(build['with']['file'], 'upgrade/output/Dockerfile')
-        self.assertEqual(build['with']['platforms'], 'linux/amd64,linux/arm64')
-        self.assertTrue(any('pack_release.py admit' in s.get('run','') for s in steps))
-
+        workflows=list((SIBLING/'.github/workflows').glob('*.yml'))
+        self.assertEqual([p.name for p in workflows],['build.yml'])
+        data=yaml.load(workflows[0].read_text(),Loader=yaml.BaseLoader)
+        self.assertEqual(data['on'],{'push':{'tags':['artifacts-*','verify-artifacts-*']}})
+        steps=data['jobs']['release']['steps']
+        self.assertTrue(any('release.py select' in s.get('run','') for s in steps))
+        self.assertTrue(any('release.py plan' in s.get('run','') for s in steps))
+        self.assertTrue(any('release.py run' in s.get('run','') for s in steps))
 
 
 if __name__=='__main__':

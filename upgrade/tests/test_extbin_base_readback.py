@@ -138,15 +138,15 @@ class RetainedBaseReadbackContracts(unittest.TestCase):
                 setattr(self,key,False)
 
     def test_current_readback_uses_generic_plan_without_publication(self):
-        data = yaml.load((SIBLING/'.github/workflows/build.yml').read_text(), Loader=yaml.BaseLoader)
-        self.assertIn('verify-pack-*', data['on']['push']['tags'])
-        steps = data['jobs']['docker']['steps']
-        build = next(s for s in steps if 'build-push' in s.get('uses',''))
-        repair = next(s for s in steps if 'pack_release.py copy' in s.get('run',''))
-        self.assertEqual(build['if'], "steps.plan.outputs.action == 'build'")
-        self.assertEqual(repair['if'], "steps.plan.outputs.action == 'copy'")
-        self.assertTrue(any('pack_release.py verify' in s.get('run','') for s in steps))
-
+        import yaml
+        workflows=list((SIBLING/'.github/workflows').glob('*.yml'))
+        self.assertEqual([p.name for p in workflows],['build.yml'])
+        data=yaml.load(workflows[0].read_text(),Loader=yaml.BaseLoader)
+        self.assertEqual(data['on'],{'push':{'tags':['artifacts-*','verify-artifacts-*']}})
+        steps=data['jobs']['release']['steps']
+        self.assertTrue(any('release.py select' in s.get('run','') for s in steps))
+        self.assertTrue(any('release.py plan' in s.get('run','') for s in steps))
+        self.assertTrue(any('release.py run' in s.get('run','') for s in steps))
 
 
 if __name__ == '__main__':

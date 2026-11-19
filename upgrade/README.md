@@ -28,6 +28,7 @@
 | 决定复用和最小补测 | [acceptance.md](acceptance.md) | 证据适用性、回归范围与 GA 出口 |
 | 查已复制的旧证据 | [v1.33.6/evidence-manifest.yaml](v1.33.6/evidence-manifest.yaml) | 正式副本、来源、摘要、原 ID 和未完成的适用性检查 |
 | 维护 YAML 或评审其含义 | [data-contract.md](data-contract.md) | 字段、路径、状态、空值与权威来源 |
+| 维护镜像制品的通用发布 | [制品入口验收记录](evidence/generic-artifact-modes-20261119.json)及所属兄弟仓 README | 五种模式、范围拒绝、复用与轻量构建的证据；不替代 Kubernetes/中间件矩阵 |
 | 查组件和依赖入口 | [catalog.yaml](catalog.yaml) | 全局组件域、版本位置、消费关系与验收归属 |
 | 查已核实官方约束 | [official-sources.yaml](official-sources.yaml) | 结论、版本、来源、获取日期和限制 |
 | 区分当前源码与客户基线 | [v1.33.6/release.yaml](v1.33.6/release.yaml)、[inventory.yaml](v1.33.6/inventory.yaml) | 六仓只读快照、常量/镜像/制品/工具版本及未核验边界 |
