@@ -37,6 +37,14 @@ class TagOnlyDeliveryContracts(unittest.TestCase):
         build = next(s for s in job['steps'] if s.get('uses') == 'docker/build-push-action@v6')
         self.assertEqual(build['with']['build-args'], 'KUBEAUTO_VER=${{ matrix.version }}')
 
+    def test_request_readers_checkout_commit_without_overwriting_annotated_tag(self):
+        for repository,job_name in [('kubeauto-ext-bin-dockerfile','docker'),
+                                    ('kubeauto-ext-bin-sp1-dockerfile','docker'),
+                                    ('kubeauto-k8s-bin-dockerfile','verify')]:
+            data = yaml.load((PROJECTS/repository/'.github/workflows/build.yml').read_text(), Loader=yaml.BaseLoader)
+            step = next(s for s in data['jobs'][job_name]['steps'] if s.get('uses') == 'actions/checkout@v4')
+            self.assertEqual(step['with'], {'ref':'${{ github.sha }}','fetch-depth':'0'})
+
     def test_kubernetes_readback_cannot_enter_publication_plan(self):
         root = PROJECTS/'kubeauto-k8s-bin-dockerfile'
         data = yaml.load((root/'.github/workflows/build.yml').read_text(), Loader=yaml.BaseLoader)
