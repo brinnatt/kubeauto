@@ -14,7 +14,7 @@ import tarfile
 import time
 import base64
 import json
-from typing import Dict, List, Optional, Tuple, Any, Set
+from typing import Dict, List, Optional, Tuple, Any, Set, Union
 from dataclasses import dataclass, field
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -569,11 +569,11 @@ def _tokenize_mapping_string(mapping_str: str) -> List[str]:
     return [p.strip() for p in parts if p.strip()]
 
 
-def parse_mapping(mapping_str: Optional[str], mapping_kind: str) -> Dict[str, str]:
+def parse_mapping(mapping_str: Optional[Union[str, List[str]]], mapping_kind: str) -> Dict[str, str]:
     """
     解析命名空间 / 镜像 / 环境变量映射字符串。
 
-    唯一支持的写法（各类映射通用）：
+    每段参数的写法（各类映射通用）：
         KEY1=value1 KEY2=value2, KEY3=value3
     多项之间可用逗号、空白或「逗号+空白」分隔。键与值之间只用第一个 = 分割，故值中可含 ':'、'=' 等。
 
@@ -593,7 +593,7 @@ def parse_mapping(mapping_str: Optional[str], mapping_kind: str) -> Dict[str, st
         env：API_URL=https://api.prod:443（删除某键用 KEY= 空值，见上文「环境变量」列表）
 
     Args:
-        mapping_str: 映射字符串；None 或空白视为无映射
+        mapping_str: 映射字符串或重复参数的字符串列表；None 或空白视为无映射
         mapping_kind: "namespace" | "image" | "env"
 
     Returns:
@@ -602,17 +602,21 @@ def parse_mapping(mapping_str: Optional[str], mapping_kind: str) -> Dict[str, st
     Raises:
         MappingParseError: 格式或校验不通过
     """
-    if not mapping_str or not str(mapping_str).strip():
+    values = [mapping_str] if isinstance(mapping_str, str) else (mapping_str or [])
+    tokens: List[str] = []
+    for value in values:
+        s = value.strip()
+        if not s:
+            continue
+        if "=" not in s:
+            raise MappingParseError("映射须使用 KEY=value 形式，且至少包含一个 '='")
+        tokens.extend(_tokenize_mapping_string(s))
+    if not tokens:
         return {}
-    s = str(mapping_str).strip()
-    if "=" not in s:
-        raise MappingParseError("映射须使用 KEY=value 形式，且至少包含一个 '='")
     if mapping_kind not in ("namespace", "image", "env"):
         raise MappingParseError(f"未知 mapping_kind: {mapping_kind!r}")
 
     result: Dict[str, str] = {}
-    tokens = _tokenize_mapping_string(s)
-
     for token in tokens:
         key, value = _parse_mapping_pair(token)
         if mapping_kind == "namespace":
@@ -3269,9 +3273,9 @@ Kubernetes 备份 / 恢复工具
   命名空间
     --create-namespaces      目标集群缺命名空间时自动创建（别名: --create-namespace）
   跨环境改写（均可单独或组合使用）
-    --namespace-mapping MAP  旧命名空间名 -> 新名（见下方「映射语法」）
-    --image-mapping MAP      改写 container.image（单字符串，含仓库/标签/digest）；最长前缀优先替换
-    --env-mapping MAP        按环境变量名 增 / 改 / 删；支持 @k8s:fieldPath（Downward API）（见下方）
+    --namespace-mapping MAP  旧命名空间名 -> 新名；可重复累积（见下方「映射语法」）
+    --image-mapping MAP      改写 container.image（单字符串，含仓库/标签/digest）；可重复累积，最长前缀优先替换
+    --env-mapping MAP        按环境变量名 增 / 改 / 删；可重复，映射累积；支持 @k8s:fieldPath（见下方）
     --env-namespace-substitute off|auto|all
                              仅在有 --namespace-mapping 时生效：是否改写 env.value 内联字符串中的源命名空间
                              （默认 auto；与 valueFrom 区分、顺序、示例见下方专节）
@@ -3286,11 +3290,14 @@ Kubernetes 备份 / 恢复工具
 【映射语法（namespace / image / env 通用书写规则）】
   · 每项必须为  KEY=value ；键与值之间只用第一个 = 分割，故值里可含 :、=、URL 等。
   · 整段参数须至少包含一个 '='；多项之间可用空格、逗号或逗号加空格分隔，例如: A=1 B=2, C=3
+  · --namespace-mapping、--image-mapping、--env-mapping 均可重复累积；重复键同值允许，不同值拒绝恢复，避免静默覆盖。
+    例如 --env-mapping 'A=1' --env-mapping 'B=2'，等价于 --env-mapping 'A=1 B=2'。
   · 快速对照（真实写法缩略）：
       命名空间：--namespace-mapping "dev-ns=prod-ns"
       镜像：--image-mapping "registry.old.com/proj/=registry.new.com/proj/"
       环境变量：--env-mapping "DB_HOST=db.prod.internal LOG_LEVEL="
   · 环境变量映射语义（--env-mapping）:
+      适用于普通容器、initContainers 及临时容器的 env。
       KEY=新值     已有则改值，没有则新增
       KEY=         删除该环境变量（ Deployment/Pod 模板中的 env 项）
       KEY=@k8s:metadata.namespace  恢复为 Downward API（valueFrom.fieldRef），运行时注入当前 Pod 命名空间
@@ -3741,16 +3748,19 @@ def _add_restore_arguments(parser):
     )
     parser.add_argument(
         '--namespace-mapping',
-        help='源命名空间=目标命名空间（等号左=备份中的旧名，右=恢复目标新名）；多项空格或逗号分隔；'
+        action='append',
+        help='源命名空间=目标命名空间（等号左=备份中的旧名，右=恢复目标新名）；可重复累积，重复键不同值报错；多项空格或逗号分隔；'
              ' 与 env-namespace-substitute 联动见 -h 全文「恢复阶段：环境变量」专节'
     )
     parser.add_argument(
         '--image-mapping',
-        help='container.image 前缀替换（单字符串含仓库/标签/digest）；最长前缀优先；多项逗号或空格分隔'
+        action='append',
+        help='container.image 前缀替换（单字符串含仓库/标签/digest）；可重复累积，重复键不同值报错；最长前缀优先；多项逗号或空格分隔'
     )
     parser.add_argument(
         '--env-mapping',
-        help='环境变量映射：KEY=值；多项用逗号或空格分隔；值可含 URL/冒号。'
+        action='append',
+        help='环境变量映射：KEY=值；可重复累积，多项也可用逗号或空格分隔；重复键不同值报错；值可含 URL/冒号。'
              ' KEY= 表示删除；原资源无该 KEY 时会新增；'
              ' 值可为 @k8s:metadata.namespace 等以使用 Downward API（fieldRef）'
     )
