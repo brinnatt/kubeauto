@@ -1,0 +1,385 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-19",
+  "scope": "dev artifact README and test-directory correction; no release implementation, component pin or workflow behavior changes",
+  "classification": "documentation plus byte-identical test-file relocation",
+  "acceptance": "affected directory and documentation checks passed by author; not a new product/cluster GA or customer sign-off",
+  "repositories": [
+    {
+      "repository": "kubeauto-dockerfile",
+      "branch": "dev",
+      "commit": "aff081b7976cafe6083746673feb671e8255e5ca",
+      "files_sha256": {
+        "README.md": "40d2172bca1a5a1cf8d9bcf1308ff864973926acf14a2e53e5b6acd4c0ba6f6a"
+      },
+      "release_inputs_unchanged": true
+    },
+    {
+      "repository": "kubeauto-k8s-bin-dockerfile",
+      "branch": "dev",
+      "commit": "b2ef19130a32e75abf0bfef74e03483aa8aeed9e",
+      "files_sha256": {
+        "README.md": "b412552aaff5ae55cf369f439a235e3d63ab5e73cf8015a9b11b20ff1bcbfc59"
+      },
+      "release_inputs_unchanged": true
+    },
+    {
+      "repository": "kubeauto-ext-bin-dockerfile",
+      "branch": "dev",
+      "commit": "312d41f7c4adba9a86647ad4bc586543ec5d1e9f",
+      "files_sha256": {
+        "AGENTS.md": "ded8e116b57133fd62d15398745c5d863336e9e52d8cc1ccc18e7926ee5fc974",
+        "README.md": "686fc59ae40c7a75c2eec94e0820a954655983bda845bf66c3913342595e10f8",
+        "tests/README.md": "b7c89d5b65ff95a5eea9fa1bd5edc18745b4c6275cbb649c562ded825771018a",
+        "tests/nerdctl_login_probe.py": "12e4492f191aac8ab39903c0a154731a4421a2a0ea3766572d55727231abe3c3"
+      },
+      "release_inputs_unchanged": true
+    },
+    {
+      "repository": "kubeauto-ext-bin-sp1-dockerfile",
+      "branch": "dev",
+      "commit": "cd439d9cb0f6f0b8701b802ac3c37fd4ac420b79",
+      "files_sha256": {
+        "README.md": "3033f1549361b13936a3c2d6e8500d450d5808ca5565d6b4c0792dbb87fcd4ce",
+        "tests/README.md": "c3f0420682b3b1e34b3a940eea9dbd0760847b2ef3864ac25bdca82cce8da79e"
+      },
+      "release_inputs_unchanged": true
+    }
+  ],
+  "probe_relocation": {
+    "repository": "kubeauto-ext-bin-dockerfile",
+    "old_path": "upgrade/nerdctl_login_probe.py",
+    "new_path": "tests/nerdctl_login_probe.py",
+    "byte_identical": true,
+    "sha256": "12e4492f191aac8ab39903c0a154731a4421a2a0ea3766572d55727231abe3c3",
+    "checks": [
+      "AST parse",
+      "real new-path --help rc=0"
+    ],
+    "real_https_fixture_rerun": false,
+    "reason": "location only; fixture source unchanged; no new live claim"
+  },
+  "document_checks": [
+    {
+      "repository": "kubeauto-dockerfile",
+      "document": "README.md",
+      "local_links": "pass",
+      "shell_syntax": "pass",
+      "request_examples": 3,
+      "sha256": "40d2172bca1a5a1cf8d9bcf1308ff864973926acf14a2e53e5b6acd4c0ba6f6a"
+    },
+    {
+      "repository": "kubeauto-k8s-bin-dockerfile",
+      "document": "README.md",
+      "local_links": "pass",
+      "shell_syntax": "pass",
+      "request_examples": 3,
+      "sha256": "b412552aaff5ae55cf369f439a235e3d63ab5e73cf8015a9b11b20ff1bcbfc59"
+    },
+    {
+      "repository": "kubeauto-ext-bin-dockerfile",
+      "document": "README.md",
+      "local_links": "pass",
+      "shell_syntax": "pass",
+      "request_examples": 3,
+      "sha256": "686fc59ae40c7a75c2eec94e0820a954655983bda845bf66c3913342595e10f8"
+    },
+    {
+      "repository": "kubeauto-ext-bin-dockerfile",
+      "document": "tests/README.md",
+      "local_links": "pass",
+      "shell_syntax": "pass",
+      "request_examples": 0,
+      "sha256": "b7c89d5b65ff95a5eea9fa1bd5edc18745b4c6275cbb649c562ded825771018a"
+    },
+    {
+      "repository": "kubeauto-ext-bin-sp1-dockerfile",
+      "document": "README.md",
+      "local_links": "pass",
+      "shell_syntax": "pass",
+      "request_examples": 3,
+      "sha256": "3033f1549361b13936a3c2d6e8500d450d5808ca5565d6b4c0792dbb87fcd4ce"
+    },
+    {
+      "repository": "kubeauto-ext-bin-sp1-dockerfile",
+      "document": "tests/README.md",
+      "local_links": "pass",
+      "shell_syntax": "pass",
+      "request_examples": 0,
+      "sha256": "c3f0420682b3b1e34b3a940eea9dbd0760847b2ef3864ac25bdca82cce8da79e"
+    }
+  ],
+  "contracts": [
+    {
+      "repository": "kubeauto-ext-bin-dockerfile",
+      "command": "python3 -B -m unittest discover -s tests -v",
+      "tests": 35,
+      "passed": 35,
+      "skipped": 0,
+      "rc": 0,
+      "observation": "current terminal execution; unittest reports OK"
+    },
+    {
+      "repository": "kubeauto-ext-bin-sp1-dockerfile",
+      "command": "python3 -B -m unittest discover -s tests -v",
+      "tests": 35,
+      "passed": 35,
+      "skipped": 0,
+      "rc": 0,
+      "observation": "current terminal execution; unittest reports OK"
+    },
+    {
+      "repository": "kubeauto-k8s-bin-dockerfile",
+      "command": "python3 -B -m unittest discover -s tests -v",
+      "tests": 22,
+      "passed": 22,
+      "skipped": 0,
+      "rc": 0,
+      "observation": "current terminal execution; unittest reports OK"
+    },
+    {
+      "repository": "kubeauto-dockerfile",
+      "command": "python3 -B -m unittest discover -s tests -v",
+      "tests": 22,
+      "passed": 22,
+      "skipped": 0,
+      "rc": 0,
+      "observation": "current terminal execution; unittest reports OK"
+    },
+    {
+      "repository": "kubeauto",
+      "command": ".venv/bin/python -B -m unittest upgrade.tests.test_tag_only_delivery upgrade.tests.test_artifact_readback_workflow upgrade.tests.test_k8s_artifact upgrade.tests.test_extbin_base_readback upgrade.tests.test_extbin_overlay tests.unit.test_six_repo_version_sync -v",
+      "environment": "KUBEAUTO_LOG_DIR=owned TemporaryDirectory, PYTHONDONTWRITEBYTECODE=1 before module import; directory reclaimed",
+      "tests": 38,
+      "passed": 38,
+      "skipped": 0,
+      "rc": 0,
+      "observation": "current terminal execution; unittest reports OK"
+    }
+  ],
+  "figures": {
+    "occurrences": 8,
+    "unique_rendered": 3,
+    "render_results": [
+      {
+        "figure": "figure-3.mmd",
+        "rc": 0,
+        "output": "Generating single mermaid chart\n"
+      },
+      {
+        "figure": "figure-2.mmd",
+        "rc": 0,
+        "output": "Generating single mermaid chart\n"
+      },
+      {
+        "figure": "figure-1.mmd",
+        "rc": 0,
+        "output": "Generating single mermaid chart\n"
+      }
+    ],
+    "visual_review": "author inspected all three final PNGs against prose and code",
+    "archive": "/home/brinnatt/.local/share/kubeauto-pack-generic/20261119-doc-followup",
+    "files_sha256": {
+      "figure-2.mmd": "8384732a2584e7ac2b0d41d4cd668757f126fd3a3605eda84d1634d25055c111",
+      "figure-3.png": "82952e5a4a3b7551a756db3652d5c16664244e36ebec6396768a252ff98694a1",
+      "figure-1.png": "a43516c6bb0521702eb14f9c781f9e0faa651c12fcbb9547b365ceae40f9c3d0",
+      "figure-1.mmd": "3a95b9afe51b7c6dfa1478f557f8dc025a54005ad5250cd7a09640741dfdbdf7",
+      "figure-3.mmd": "04d7022a1039b7004ff2327b20f4b6470656fcb3b62d7f8f3ac6b14d61e0b7f9",
+      "figure-2.png": "64f4471c1d8b3bf9b6de2002c6cf4c3239b0f357aa339979647badec9c979895"
+    }
+  },
+  "official_dependency_scope": "existing release interfaces only; no new upstream product or component version introduced; unchanged official conclusions reused under documentation standard section 10",
+  "official_topic_mapping": [
+    {
+      "topic": "Git annotated tag object/message and lightweight distinction",
+      "source": "https://git-scm.com/docs/git-tag",
+      "reading": "installed official git-tag(1) text checked; web fetch failed, not claimed as newly read",
+      "destination": "four README.md#职责与版本 and #通用按需发布"
+    },
+    {
+      "topic": "tag push event filter",
+      "source": "https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#push",
+      "reading": "accepted official mechanism reused; current build.yml and tag-only contracts checked",
+      "destination": "four README.md#通用按需发布"
+    },
+    {
+      "topic": "single immutable source manifest copy",
+      "source": "https://docs.docker.com/reference/cli/docker/buildx/imagetools/create/",
+      "reading": "accepted official mechanism and installed reference in prior record reused; new web attempt unavailable",
+      "destination": "four README.md#为什么不会因为提交变化而重复构建"
+    },
+    {
+      "topic": "stage dependency pruning and local export",
+      "source": "https://docs.docker.com/build/building/multi-stage/#differences-between-legacy-builder-and-buildkit",
+      "reading": "accepted official reading and real BuildKit evidence reused; no new build",
+      "destination": "ext-bin/sp1 README.md#维护下一版本 and tests/README.md"
+    },
+    {
+      "topic": "archive exact product tree and verify checksum",
+      "source": "https://git-scm.com/docs/git-archive",
+      "reading": "unchanged accepted official/source archive contract reused",
+      "destination": "kubeauto-dockerfile README.md#产品版本与-kubernetes-版本分支"
+    },
+    {
+      "topic": "Kubernetes official fixed binary download and checksum",
+      "source": "https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/",
+      "reading": "existing download guide conclusion reused; current downloader and five focused download contracts checked",
+      "destination": "kubeauto-k8s-bin-dockerfile README.md#包内六项文件与版本"
+    }
+  ],
+  "review": [
+    {
+      "requirement": "客户能从本仓职责选择阅读路径",
+      "location": "four README.md#阅读导航 / #职责与版本",
+      "basis": "actual catalog, Dockerfile, workflow and consumer contracts",
+      "defect": "copied pack instructions appeared in Kubernetes/product repositories; no clear customer path",
+      "fix_and_check": "separate usage, operations and maintenance paths; only ext-bin/sp1 explain component composition; author read-through of first-time and experienced maintainer paths completed"
+    },
+    {
+      "requirement": "输入和副作用明确，先只读再发布",
+      "location": "four README.md#先完成一次只读核验 / #通用按需发布",
+      "basis": "release.py validate_request/select/resolve/execute and build.yml",
+      "defect": "generic IMAGE_TAG examples required guessing; credentials and execution prerequisites unclear",
+      "fix_and_check": "real catalog tags, local select and annotated request examples; private registry prerequisites, mode/write boundaries and exact publication approval described; all 12 fixed shell JSON examples passed actual select, plus two component JSON examples"
+    },
+    {
+      "requirement": "机制解释与恢复闭合",
+      "location": "four README.md#为什么不会因为提交变化而重复构建 / #判断结果与处理失败",
+      "basis": "unchanged resolver, current tests and preserved successful Actions archive identities",
+      "defect": "customer tasks mixed with internal verification chronology",
+      "fix_and_check": "request tag vs image tag vs Git SHA distinguished; reuse/copy/build and unknown-error stopping explained with diagrams; first-error handling, new-request retry, partial publication and scoped archive/cleanup described"
+    },
+    {
+      "requirement": "真实文件清单",
+      "location": "kubeauto-k8s-bin-dockerfile/README.md#包内六项文件与版本",
+      "basis": "multi-platform-download.sh actual six-item loop; test_k8s_artifact current contracts",
+      "defect": "README incorrectly claimed kubeadm and omitted kube-proxy",
+      "fix_and_check": "list now matches API server/controller/scheduler/kubelet/kube-proxy/kubectl; no production changes"
+    },
+    {
+      "requirement": "源码和制品版本不冒签",
+      "location": "kubeauto-dockerfile/README.md#产品版本与-kubernetes-版本分支; ext-bin README.md#当前版本和历史配方",
+      "basis": "release.json source_tag/source_sha; historical Dockerfile and overlay pins",
+      "defect": "current maintenance and historical source roles insufficiently separated",
+      "fix_and_check": "historical v0.1.8 is not current dev or K8s 1.35 product delivery; historical ext-bin Dockerfile is not current 1.17.1 recipe; accepted source/digest and consumer handoff specified"
+    },
+    {
+      "requirement": "目录按职责，客户文档不混入测试步骤",
+      "location": "kubeauto-ext-bin-dockerfile/tests/nerdctl_login_probe.py; ext-bin/sp1 tests/README.md; kubeauto/AGENTS.md#版本分支与交付收尾",
+      "basis": "script binds owned HTTPS fixture and runs old/new client cases; historical verify scripts perform actual artifact delivery readback",
+      "defect": "nerdctl fixture placed in upgrade",
+      "fix_and_check": "100% byte-identical move to tests; current references updated; CI-only prerequisites, expected cases, cleanup and limitations documented; existing official evidence paths not rewritten"
+    },
+    {
+      "requirement": "图形可读且与实际机制一致",
+      "location": "four README.md relationship and state diagrams",
+      "basis": "local Mermaid CLI and Chromium render; eight occurrences, three unique graphs",
+      "defect": "insufficient separation of packaging and consumer responsibilities",
+      "fix_and_check": "actual rendering rc=0 and visual author inspection; no clipping/overlap observed; component selection omitted from whole-product/K8s graph"
+    },
+    {
+      "requirement": "技术 PASS、文档检查与客户签收分开",
+      "location": "four README.md#依据与验收边界; this record",
+      "basis": "preserved generic-artifact-modes-20261119.json exact claims and archive SHA256",
+      "defect": "prior workflow acceptance did not establish directory/document quality",
+      "fix_and_check": "this record accepts only directory/documentation correction; no new production release, cluster GA or customer sign-off claimed"
+    }
+  ],
+  "reused_evidence": {
+    "path": "upgrade/evidence/generic-artifact-modes-20261119.json",
+    "sha256": "e7317af5be88dbf2c4e4e69f37fb2b2604c409bf4b9d1cc275a0b5e2ba172811",
+    "original_record_unchanged": true,
+    "raw_action_artifact_and_log_sha256": "all four artifacts and all four logs verified against original record",
+    "release_runtime_and_test_inputs": "unchanged against each accepted run SHA; moved probe bytes checked separately",
+    "boundary": "existing run identities preserved; no resigning as current run"
+  },
+  "cleanup": {
+    "removed_symlinks": [
+      {
+        "path": ".cache/dev-production-current-freeze/kubeauto-k8s-bin-dockerfile",
+        "target": "/home/brinnatt/projects/kubeauto-k8s-bin-dockerfile"
+      },
+      {
+        "path": ".cache/dev-production-current-freeze/kubeauto-ext-images-dockerfile",
+        "target": "/home/brinnatt/projects/kubeauto-ext-images-dockerfile"
+      },
+      {
+        "path": ".cache/dev-production-current-freeze/kubeauto-ext-bin-dockerfile",
+        "target": "/home/brinnatt/projects/kubeauto-ext-bin-dockerfile"
+      },
+      {
+        "path": ".cache/dev-production-current-freeze/kubeauto-dockerfile",
+        "target": "/home/brinnatt/projects/kubeauto-dockerfile"
+      },
+      {
+        "path": ".cache/dev-production-current-freeze/kubeauto-ext-bin-sp1-dockerfile",
+        "target": "/home/brinnatt/projects/kubeauto-ext-bin-sp1-dockerfile"
+      },
+      {
+        "path": ".cache/dev-production-current-freeze/kubeauto/.cache",
+        "target": "/home/brinnatt/projects/kubeauto/.cache"
+      },
+      {
+        "path": ".cache/dev-production-current-freeze/kubeauto/.venv",
+        "target": "/home/brinnatt/projects/kubeauto/.venv"
+      },
+      {
+        "path": ".cache/dev-production-final-freeze/kubeauto-k8s-bin-dockerfile",
+        "target": "/home/brinnatt/projects/kubeauto-k8s-bin-dockerfile"
+      },
+      {
+        "path": ".cache/dev-production-final-freeze/kubeauto-ext-images-dockerfile",
+        "target": "/home/brinnatt/projects/kubeauto-ext-images-dockerfile"
+      },
+      {
+        "path": ".cache/dev-production-final-freeze/kubeauto-ext-bin-dockerfile",
+        "target": "/home/brinnatt/projects/kubeauto-ext-bin-dockerfile"
+      },
+      {
+        "path": ".cache/dev-production-final-freeze/kubeauto-dockerfile",
+        "target": "/home/brinnatt/projects/kubeauto-dockerfile"
+      },
+      {
+        "path": ".cache/dev-production-final-freeze/kubeauto-ext-bin-sp1-dockerfile",
+        "target": "/home/brinnatt/projects/kubeauto-ext-bin-sp1-dockerfile"
+      },
+      {
+        "path": ".cache/dev-production-final-freeze/kubeauto/.cache",
+        "target": "/home/brinnatt/projects/kubeauto/.cache"
+      },
+      {
+        "path": ".cache/dev-production-final-freeze/kubeauto/.venv",
+        "target": "/home/brinnatt/projects/kubeauto/.venv"
+      }
+    ],
+    "retained_snapshots": {
+      "dev-production-current-freeze": {
+        "regular_files": 1944,
+        "inventory_sha256": "c0a979b7bda19958dbc3fcc9bb93f3389abae66e79157c7d176b87b4e338fd78",
+        "before_equals_after": true
+      },
+      "dev-production-final-freeze": {
+        "regular_files": 1947,
+        "inventory_sha256": "31eee433bdf7559976384a7ef5598aff1ca77df205b0b246acd857a39b76eff7",
+        "before_equals_after": true
+      }
+    }
+  },
+  "six_repository_audit": {
+    "branches": "all dev",
+    "worktrees": "one per repository",
+    "ide_mappings": "one root mapping per repository",
+    "nested_git_after_cleanup": false,
+    "scope": "six current checkouts including ignored directories and symlink traversal, not every historical branch"
+  },
+  "production_images_built": [],
+  "production_images_published": [],
+  "lab_mutation": false,
+  "customer_production_mutation": false,
+  "new_actions_requested": false,
+  "limits": [
+    "Current contracts were observed from terminal output; this documentation check does not replace archived product acceptance.",
+    "No new HTTPS live fixture, source compilation, Registry copy/build or full cluster regression was run.",
+    "Author content/reader-path check is not customer sign-off."
+  ]
+}
