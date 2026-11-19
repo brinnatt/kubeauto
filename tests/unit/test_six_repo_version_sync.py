@@ -83,6 +83,12 @@ class TestSixRepoVersionSync(unittest.TestCase):
             # Last ENV declaration wins, just as it does in the image.
             ext += "\n" + overlay_text
 
+        current_manifest = EXT_BIN / 'upgrade/release.json'
+        if current_manifest.exists():
+            current = json.loads(current_manifest.read_text())
+            if current['tag'] == self.kc.v_extra_bin.lstrip('v'):
+                ext += '\n' + '\n'.join('ENV ' + k + '=' + v for k,v in current['env'].items())
+
         def env(text: str, name: str) -> str:
             values = re.findall(rf"\b{name}=([^\s]+)", text)
             self.assertTrue(values, f"{name} missing")
@@ -226,7 +232,7 @@ class TestSixRepoVersionSync(unittest.TestCase):
         import yaml
         workflow = yaml.safe_load(ci)
         events = workflow.get('on', workflow.get(True, {}))
-        self.assertEqual(events, {'push': {'tags': ['v[0-9]*.[0-9]*.[0-9]*']}})
+        self.assertEqual(events, {'push': {'tags': ['v[0-9]*.[0-9]*.[0-9]*', 'verify-k8s-*']}})
         script = workflow['jobs']['plan']['steps'][0]['run']
         source = script.split('\n', 1)[1].rsplit('\nPY', 1)[0]
         ast.parse(source)

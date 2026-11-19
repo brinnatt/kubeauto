@@ -137,19 +137,16 @@ class RetainedBaseReadbackContracts(unittest.TestCase):
                 self.assertEqual(self.commands[-1][:2],['docker','rm'])
                 setattr(self,key,False)
 
-    def test_actual_push_workflow_has_no_build_publication_or_container_execution(self):
-        data = yaml.safe_load((SIBLING/'.github/workflows/verify-v1.34.13.yml').read_text())
-        event = data.get('on',data.get(True))
-        self.assertEqual(event, {'push': {'tags': ['verify-ext-bin-v1.34.13-*']}})
-        overlay = yaml.load((SIBLING/'.github/workflows/upgrade-v1.34.13.yml').read_text(),
-                            Loader=yaml.BaseLoader)
-        self.assertEqual(overlay['on'], {'push': {'tags': ['1.17.0']}})
-        steps = data['jobs']['verify']['steps']
-        scripts = [s['run'] for s in steps if 'run' in s]
-        self.assertEqual(len(scripts),1)
-        self.assertIn('python3 -B upgrade/verify_base.py',scripts[0])
-        self.assertIn('PIPESTATUS',scripts[0])
-        self.assertFalse(any('build-push' in s.get('uses','') for s in steps))
+    def test_current_readback_uses_generic_plan_without_publication(self):
+        data = yaml.load((SIBLING/'.github/workflows/build.yml').read_text(), Loader=yaml.BaseLoader)
+        self.assertIn('verify-pack-*', data['on']['push']['tags'])
+        steps = data['jobs']['docker']['steps']
+        build = next(s for s in steps if 'build-push' in s.get('uses',''))
+        repair = next(s for s in steps if 'pack_release.py copy' in s.get('run',''))
+        self.assertEqual(build['if'], "steps.plan.outputs.action == 'build'")
+        self.assertEqual(repair['if'], "steps.plan.outputs.action == 'copy'")
+        self.assertTrue(any('pack_release.py verify' in s.get('run','') for s in steps))
+
 
 
 if __name__ == '__main__':

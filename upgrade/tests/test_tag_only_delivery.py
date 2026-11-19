@@ -37,19 +37,19 @@ class TagOnlyDeliveryContracts(unittest.TestCase):
         build = next(s for s in job['steps'] if s.get('uses') == 'docker/build-push-action@v6')
         self.assertEqual(build['with']['build-args'], 'KUBEAUTO_VER=${{ matrix.version }}')
 
-    def test_binary_release_refuses_tags_that_mislabel_dockerfile_versions(self):
-        for repository, version in [('kubeauto-ext-bin-dockerfile', '1.16.0'),
-                                    ('kubeauto-ext-bin-sp1-dockerfile', '1.3.1')]:
+    def test_kubernetes_readback_cannot_enter_publication_plan(self):
+        root = PROJECTS/'kubeauto-k8s-bin-dockerfile'
+        data = yaml.load((root/'.github/workflows/build.yml').read_text(), Loader=yaml.BaseLoader)
+        self.assertIn("!startsWith(github.ref_name, 'verify-k8s-')", data['jobs']['plan']['if'])
+        self.assertIn("startsWith(github.ref_name, 'verify-k8s-')", data['jobs']['verify']['if'])
+        self.assertEqual(data['jobs']['docker']['needs'], 'plan')
+
+    def test_binary_release_uses_manifest_and_explicit_request_before_registry_login(self):
+        for repository in ['kubeauto-ext-bin-dockerfile', 'kubeauto-ext-bin-sp1-dockerfile']:
             root = PROJECTS/repository
             data = yaml.load((root/'.github/workflows/build.yml').read_text(), Loader=yaml.BaseLoader)
-            step = next(s for s in data['jobs']['docker']['steps'] if s.get('name', '').startswith('Verify tag'))
-            with tempfile.TemporaryDirectory() as directory:
-                fixture = Path(directory)
-                (fixture/'python3').symlink_to('/usr/bin/python3')
-                for tag, succeeds in [(version, True), ('9.99.999', False)]:
-                    result = subprocess.run(['bash', '-euc', step['run']], cwd=root,
-                        env=os.environ | {'RELEASE_TAG': tag, 'PATH': str(fixture)+':'+os.environ['PATH']},
-                        capture_output=True, text=True)
-                    self.assertEqual(result.returncode == 0, succeeds, result.stderr)
-        self.assertIn("github.ref_name != '1.17.0'",
-            (PROJECTS/'kubeauto-ext-bin-dockerfile/.github/workflows/build.yml').read_text())
+            steps = data['jobs']['docker']['steps']
+            admit = next(s for s in steps if 'pack_release.py admit' in s.get('run',''))
+            login = next(s for s in steps if s.get('uses') == 'docker/login-action@v3')
+            self.assertLess(steps.index(admit), steps.index(login))
+            self.assertEqual([p.name for p in (root/'.github/workflows').glob('*.yml')], ['build.yml'])

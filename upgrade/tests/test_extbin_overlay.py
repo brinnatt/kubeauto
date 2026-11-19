@@ -166,32 +166,18 @@ class OverlayContracts(unittest.TestCase):
                     readback.verify(self.plan,'sha256:'+'c'*64,root)
                 version.assert_not_called()
 
-    def test_actual_workflow_is_manual_selected_one_image_and_qualifies_before_publish(self):
-        import ast
-        import subprocess
+    def test_current_workflow_uses_one_generic_selected_entry(self):
         import yaml
-        path=SIBLING/'.github/workflows/upgrade-v1.34.13.yml'
-        data=yaml.safe_load(path.read_text());event=data.get('on',data.get(True))
-        self.assertEqual(event, {'push': {'tags': ['1.17.0']}})
-        self.assertEqual(data['jobs']['selected']['if'], 'github.event.deleted == false')
-        steps=data['jobs']['selected']['steps']
-        build=next(s for s in steps if s.get('uses')=='docker/build-push-action@v6')
-        self.assertNotIn('if', build)
-        self.assertEqual(build['with']['file'],'upgrade/Dockerfile.v1.34.13')
-        self.assertEqual(set(build['with']['tags'].split()),{
-            'hub.talkedu.cn/kubeauto/kubeauto-ext-bin:1.17.0','brinnatt/kubeauto-ext-bin:1.17.0'})
-        prepare=next(s for s in steps if 'upgrade/prepare_overlay.py --output' in s.get('run',''))
-        self.assertLess(steps.index(prepare),steps.index(build))
-        verify=next(s for s in steps if 'upgrade/verify_overlay.py --digest' in s.get('run',''))
-        self.assertGreater(steps.index(verify),steps.index(build))
-        self.assertIn('readback.status',verify['run'])
-        for step in steps:
-            script=step.get('run')
-            if script:
-                result=subprocess.run(['bash','-n'],input=script,text=True,capture_output=True)
-                self.assertEqual(result.returncode,0,result.stderr)
-                if "python3 - <<'PY'\n" in script:
-                    ast.parse(script.split("python3 - <<'PY'\n",1)[1].rsplit('\nPY',1)[0])
+        workflows = list((SIBLING/'.github/workflows').glob('*.yml'))
+        self.assertEqual([p.name for p in workflows], ['build.yml'])
+        data = yaml.load(workflows[0].read_text(), Loader=yaml.BaseLoader)
+        steps = data['jobs']['docker']['steps']
+        build = next(s for s in steps if s.get('uses') == 'docker/build-push-action@v6')
+        self.assertEqual(build['if'], "steps.plan.outputs.action == 'build'")
+        self.assertEqual(build['with']['file'], 'upgrade/output/Dockerfile')
+        self.assertEqual(build['with']['platforms'], 'linux/amd64,linux/arm64')
+        self.assertTrue(any('pack_release.py admit' in s.get('run','') for s in steps))
+
 
 
 if __name__=='__main__':

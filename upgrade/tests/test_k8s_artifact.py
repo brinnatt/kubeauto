@@ -136,7 +136,7 @@ else:
             self.assertEqual(output.read_text(), '')
         docker = workflow['jobs']['docker']
         self.assertEqual(docker['needs'], 'plan')
-        self.assertEqual(workflow['on'], {'push': {'tags': ['v[0-9]*.[0-9]*.[0-9]*']}})
+        self.assertEqual(workflow['on'], {'push': {'tags': ['v[0-9]*.[0-9]*.[0-9]*', 'verify-k8s-*']}})
         self.assertEqual(docker['strategy']['matrix'], '${{ fromJSON(needs.plan.outputs.matrix) }}')
         build = next(s for s in docker['steps'] if s.get('name') == 'Build and push')
         self.assertEqual(build['with']['build-args'], 'K8S_VER=${{ matrix.version }}')

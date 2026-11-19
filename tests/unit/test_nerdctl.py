@@ -81,6 +81,12 @@ class TestNerdctlPin(unittest.TestCase):
                 df += '\n'+path.with_name(path.name.replace('overlay-','Dockerfile.').removesuffix('.json')).read_text()
 
 
+        current_manifest = EXT_BIN / 'upgrade/release.json'
+        if current_manifest.exists():
+            current = json.loads(current_manifest.read_text())
+            if current['tag'] == self.kc.v_extra_bin.lstrip('v'):
+                df += '\n' + '\n'.join('ENV ' + k + '=' + v for k,v in current['env'].items())
+
         versions = re.findall(r"NERDCTL_VER=([^\s]+)", df)
         self.assertTrue(versions, "NERDCTL_VER missing from ext-bin Dockerfile")
         self.assertEqual(versions[-1].lstrip("v"), self.kc.v_nerdctl.lstrip("v"))
