@@ -770,7 +770,6 @@ exec "$@"
         self.assertNotIn("urllib.request", source)
 
     def test_ext_bin_cephadm_is_atomic_checksum_gated(self) -> None:
-        self.assertEqual(self.constants.v_extra_bin, "1.17.0")
         downloader = (PROJECTS / "kubeauto-ext-bin-dockerfile/multi-platform-download.sh").read_text()
         block = downloader.split("# The official cephadm zip application is architecture-independent.\n", 1)[1]
         self.assertIn('https://download.ceph.com/rpm-${CEPHADM_VER}/el9/noarch/cephadm', block)
@@ -4343,10 +4342,11 @@ stage_cephadm_artifact
         ext_bin = (PROJECTS / "kubeauto-ext-bin-dockerfile/Dockerfile").read_text()
         overlay_path = PROJECTS/'kubeauto-ext-bin-dockerfile/upgrade/overlay-v1.34.13.json'
         overlay = json.loads(overlay_path.read_text())
-        self.assertEqual(overlay['tag'], self.constants.v_extra_bin)
+        # This historical overlay owns the unchanged Ceph/runtime base, not every later pack revision.
+        self.assertEqual(overlay['tag'], '1.17.0')
         overlay_text = overlay_path.with_name('Dockerfile.v1.34.13').read_text()
         self.assertIn('@'+overlay['base']['digest'], overlay_text)
-        self.assertIn(f"EXT_BIN_VER={self.constants.v_extra_bin}", overlay_text)
+        self.assertIn(f"EXT_BIN_VER={overlay['tag']}", overlay_text)
         self.assertIn(f"EXT_BIN_VER={overlay['base']['tag']}", ext_bin)
         self.assertEqual(self.constants.v_cephadm_sha256, "5b78c8d5772ef7c5c8619dac6ee0b36716b829338ea7a11c9f2b896626ab354f")
         self.assertIn(f"CEPHADM_VER={self.constants.v_ceph}", ext_bin)

@@ -1,0 +1,778 @@
+{
+  "schema_version": 1,
+  "observed_on": "2026-11-19",
+  "scope": "dev nerdctl login fix only; no Kubernetes/runtime upgrade or customer production operation",
+  "official_sources": {
+    "fix": "https://github.com/containerd/nerdctl/pull/5128",
+    "first_fixed_release": "https://github.com/containerd/nerdctl/releases/tag/v2.4.0",
+    "selected_release": "https://github.com/containerd/nerdctl/releases/tag/v2.4.2",
+    "compatibility": "Upstream declares containerd 1.7 or later; no project full-runtime requalification claim"
+  },
+  "source": {
+    "repository": "brinnatt/kubeauto-ext-bin-dockerfile",
+    "branch": "dev",
+    "sha": "b6608a28eec847e4204b113672908068db220763",
+    "tag": "1.17.1"
+  },
+  "changes": {
+    "nerdctl": {
+      "from": "2.3.4",
+      "to": "2.4.2"
+    },
+    "ext_bin": {
+      "from": "1.17.0",
+      "to": "1.17.1"
+    },
+    "base": {
+      "tag": "1.17.0",
+      "digest": "sha256:0029d1d4f4dba068c7a79461a6ec2378b84524e6de5110c52a0730e1dc5f37b8"
+    },
+    "other_pack_files_changed": false
+  },
+  "run": {
+    "id": 44477073806,
+    "html_url": "https://github.com/brinnatt/kubeauto-ext-bin-dockerfile/actions/runs/44477073806",
+    "head_sha": "b6608a28eec847e4204b113672908068db220763",
+    "run_attempt": 1,
+    "conclusion": "success"
+  },
+  "plan": {
+    "mode": "selected",
+    "image_count": 1,
+    "images": [
+      "hub.talkedu.cn/kubeauto/kubeauto-ext-bin:1.17.1",
+      "docker.io/brinnatt/kubeauto-ext-bin:1.17.1"
+    ],
+    "base": {
+      "tag": "1.17.0",
+      "digest": "sha256:0029d1d4f4dba068c7a79461a6ec2378b84524e6de5110c52a0730e1dc5f37b8"
+    },
+    "changed_files": [
+      "nerdctl"
+    ],
+    "input_sha256": {
+      "upgrade/.gitignore": "7e2f65c80bddb76631f05a448b09378247e7f14af4ade18127925c07a6538dbf",
+      "upgrade/Dockerfile.nerdctl-2.4.2": "0bfd7452a9ef52824b363542bf190a94aa002903afb7d897e2a0bc33f9388430",
+      "upgrade/Dockerfile.v1.34.13": "d714115f45001ea7327af53db103572569d4ab1bca303f24467a8a8a8f9e937d",
+      "upgrade/nerdctl_login_probe.py": "12e4492f191aac8ab39903c0a154731a4421a2a0ea3766572d55727231abe3c3",
+      "upgrade/nerdctl_release.py": "3bd9a309df2c012b96fda5b535db52fa4ffb0f325a8a3fe9349d8dc53f7ed648",
+      "upgrade/overlay-nerdctl-2.4.2.json": "f3eccfa8beea82c37ddab0b71316d0d4ccf18b947229b04104a8b917733df154",
+      "upgrade/overlay-v1.34.13.json": "b6469584b598efbc5f4e6775e91cbff3f5ebac0e06d761ad62f2a7cf8f45aa87",
+      "upgrade/prepare_overlay.py": "5015f6ad723c96258be50819a4b5a7d3bf1f13f332ffa7446063630f2c7fcc7b",
+      "upgrade/verify_base.py": "760a7f043b04ca77f566c4f5e51138f238451c40f62f89d6a79b40ba1fa04917",
+      "upgrade/verify_overlay.py": "6f7f4d0c0c2d58e0a2a1564855620a1124e6d48e2af2d5d06760b8d058f1a800"
+    }
+  },
+  "durable_prepare": "rc=0",
+  "durable_readback": "rc=0",
+  "authentication_regression": {
+    "entry": "real nerdctl login --password-stdin localhost with unchanged no-port HTTPS hosts.toml",
+    "fixture": "Owned localhost:443 TLS Basic-auth server, temporary trusted CA, random fixture credentials, isolated DOCKER_CONFIG",
+    "old_2_3_4": {
+      "rc": 1,
+      "expected_error": "expected acArg; localhost:443 differs from localhost"
+    },
+    "new_2_4_2": {
+      "rc": 0,
+      "marker": "Login Succeeded",
+      "credentials_saved_with_and_without_default_port": true
+    },
+    "wrong_password": {
+      "rc": 1,
+      "credentials_not_saved": true
+    },
+    "cleanup_marker": "NERDCTL_LOGIN_FIXTURE_CLEAN_PASS"
+  },
+  "readback": {
+    "tag": "1.17.1",
+    "index_digest": "sha256:05a317feab539479968bbbb1e8b7aea9df660a1b195bb926d111139a694ba1be",
+    "registries": [
+      "hub.talkedu.cn/kubeauto/kubeauto-ext-bin",
+      "docker.io/brinnatt/kubeauto-ext-bin"
+    ],
+    "platforms": {
+      "linux/amd64": {
+        "digest": "sha256:e3caa6c4a60b7fcb9b7b0f7f9b12c3bb79d7195b7004d0d5826c38f7c46225a2",
+        "files": {
+          "calicoctl": {
+            "sha256": "4dd81052745b0358d29505d3759bf5e83b0cb0e606de70760072e3edb6084d4e",
+            "bytes": 97444518,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "cephadm": {
+            "sha256": "5b78c8d5772ef7c5c8619dac6ee0b36716b829338ea7a11c9f2b896626ab354f",
+            "bytes": 1062378,
+            "mode": "0o755"
+          },
+          "cephadm.sha256": {
+            "sha256": "ba925957f1d29fb98a22a8943bf296a85623bd4f270549f4eaeaf3510d3927db",
+            "bytes": 74,
+            "mode": "0o644"
+          },
+          "cfssl": {
+            "sha256": "bf69eadcc5b1f53546a51c55ed75a9c2db4aeec3642b0516a789d1ac70d01857",
+            "bytes": 14082256,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "cfssl-certinfo": {
+            "sha256": "427b1ac250d924bdd5761b3244f30b9d81fded161ae3b3367fed33e15fc3b1cc",
+            "bytes": 10588496,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "cfssljson": {
+            "sha256": "00970c2dd54d851d348012ba6123272513cdbc2271de5717e0e48d362a752936",
+            "bytes": 6209688,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "chronyd": {
+            "sha256": "06ff62f582723d80b87c43416ca34248a47cd3c5371452fecdb73a914bd709e7",
+            "bytes": 1475304,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "cilium": {
+            "sha256": "1409138d78f4215fb342949233ea91dde4847a4923910255e78ac52a0bdf54aa",
+            "bytes": 161357984,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "cni-bin/LICENSE": {
+            "sha256": "b40930bbcf80744c86c46a12bc9da056641d722716c378f5659b9e555ef833e1",
+            "bytes": 11357,
+            "mode": "0o644"
+          },
+          "cni-bin/README.md": {
+            "sha256": "43c32d29316a4a9fe23af500917bd89e51d6a84fa0dcbfcc75b5fbd834c3145a",
+            "bytes": 2343,
+            "mode": "0o644"
+          },
+          "cni-bin/bandwidth": {
+            "sha256": "37c073f0f5682126cc0186cb89cb60bf0a81a32a24b4d0dc201e0bd2564cb955",
+            "bytes": 5042186,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "cni-bin/bridge": {
+            "sha256": "47a5703a68aedc3915778276d4bd851cec2902da912eed22ff202775baf9bc64",
+            "bytes": 5694189,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "cni-bin/dhcp": {
+            "sha256": "67e05f52ac6558b8d6574a05e1c041d65892fe11ebdccf500492796dfcd70b89",
+            "bytes": 13719696,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "cni-bin/dummy": {
+            "sha256": "b096e0d99066c1141c18356095532f93071d84ff37eb38e503fde76f79940ad4",
+            "bytes": 5251247,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "cni-bin/firewall": {
+            "sha256": "297bce96910102ef784140b3e20ae95398b2663d8a1bc3e2b6aab90166784745",
+            "bytes": 5701763,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "cni-bin/host-device": {
+            "sha256": "d1c99aa2a2f67b632d4cca8b7d5a86393297ef94ec2d2dd88519a247a573488c",
+            "bytes": 5159307,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "cni-bin/host-local": {
+            "sha256": "69c7edb0ec26007189662315a8265234d5a331db8cada565bd7ecea4264e53a3",
+            "bytes": 4350430,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "cni-bin/ipvlan": {
+            "sha256": "7ec1e6a1b2e4a748b4bdc912b78ddefc141678169612a0cc13273797e1f2ebb1",
+            "bytes": 5273398,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "cni-bin/loopback": {
+            "sha256": "9116ea4f0d550d170ca1f0cdf3fa719e471d46e1c4ed8bb94f029f85c1561136",
+            "bytes": 4301450,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "cni-bin/macvlan": {
+            "sha256": "09c229a1ffbf3540a4c1e0be6dc8fb8a57d5c9a4c60d2e7a33310ab1bb16f799",
+            "bytes": 5306499,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "cni-bin/portmap": {
+            "sha256": "c42eb9e0cead95cbdc682954cfe8a87c85e107ec869d97ec320dd83aa0312a0d",
+            "bytes": 5107586,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "cni-bin/ptp": {
+            "sha256": "e051ef26bf453fb75589fc6673268bf4ecdf14349a4a2182cbc5479e6827bb4c",
+            "bytes": 5474778,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "cni-bin/sbr": {
+            "sha256": "8d19a1aec47de93136c84c96b045666eafa41dcc29c9dbbba4a86b483988ce4f",
+            "bytes": 4521078,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "cni-bin/static": {
+            "sha256": "cb2442e80c8e88d5a4b8e6769ffc6bd49ed3e66c7d78680f4f9e3df29254db28",
+            "bytes": 3772408,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "cni-bin/tap": {
+            "sha256": "18a03991fd4b1b343afb2a5b3c2659eaf98ad9e595d87c4a3a47bf92a0894b87",
+            "bytes": 5330851,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "cni-bin/tuning": {
+            "sha256": "0c70cc4c6d2314cf43c24c3fc7d08b570acbe1138610c6dd1dce56d7defdc16e",
+            "bytes": 4384728,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "cni-bin/vlan": {
+            "sha256": "7803bd95093e015df6e25f58b4e35f5a99113bcbf51d34892eb6bf62c8844324",
+            "bytes": 5266939,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "cni-bin/vrf": {
+            "sha256": "4604cdc5d2f77a1ca998d6b0a11a4c628b1848d80cc519f230c5b8afd24b864b",
+            "bytes": 4684912,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "containerd-bin/containerd": {
+            "sha256": "2bef909678b2c232110a784a5c4b3733b661027cae4ea3e3cfea1d1d14cbe45b",
+            "bytes": 39869552,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "containerd-bin/containerd-shim-runc-v2": {
+            "sha256": "f5021bbf46a123d8dfdcf6cbed6c64de5ab83ee9a6709e6e987c78148121a7d8",
+            "bytes": 8458402,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "containerd-bin/containerd-stress": {
+            "sha256": "8f6d970560d565add3249543c7506a48da9d8a2ba8c9cc6d09e66109d61ca47e",
+            "bytes": 20312226,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "containerd-bin/ctr": {
+            "sha256": "125419a0b5788f6c020f4365c81ad97cc98af1979f19a432a73b4ea38da72b2a",
+            "bytes": 22790306,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "containerd-bin/runc": {
+            "sha256": "599f6f94ff8c5057241eff0d54c3c74f95c34935b6457b33fe545defc61e9488",
+            "bytes": 10866512,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "cri-dockerd": {
+            "sha256": "72115edfc4e17633950f06390969e871fa24a69f238891b861fc01fce388bacc",
+            "bytes": 51703968,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "crictl": {
+            "sha256": "9b49f0acab34e9f0eff218b493d92688f53200582ebc67d8cc01e9770da5c955",
+            "bytes": 40548006,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "docker-buildx": {
+            "sha256": "7d2d7d6d4680aa349614965aaa33ccec43f1a9a21e908a5ce4cb6adfa5ad5141",
+            "bytes": 68251832,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "docker-compose": {
+            "sha256": "dba9d98e1ba5bfe11d88c99b9bd32fc4a0624a30fafe68eea34d61a3e42fd372",
+            "bytes": 76593282,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "docker-runtime-artifacts.sha256": {
+            "sha256": "30fcc69c36918b20b9f02c035dbb7146144acd8e5b206c6fc58205708630c3fb",
+            "bytes": 239,
+            "mode": "0o644"
+          },
+          "etcd": {
+            "sha256": "769222687e03cb2ee0c420193a5012d4ff2a35a47e8f27ae9540dd2acfa3ac49",
+            "bytes": 27226274,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "etcdctl": {
+            "sha256": "431ef5ff91a41001a5b72710242a1d426a3e1e3932424c2656a7cf66aeb93cbb",
+            "bytes": 17838242,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "etcdutl": {
+            "sha256": "bb9588ce698b91d516ddefba0804b69ef9eee7578e61d8c60669da28e66865eb",
+            "bytes": 17883298,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "helm": {
+            "sha256": "e4722a77de9df824214aaf19d43687c49f7cbcf3b107905acea002173777d486",
+            "bytes": 60211384,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "hubble": {
+            "sha256": "cd048f437e5e92799ba388567d9629e0da78bc9c2f61e6a6dbd44c2da5d8b002",
+            "bytes": 73982114,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "keepalived": {
+            "sha256": "69f7bea0559fc180ecbacc9f936b8650aee734ceba7b8f548654e721dff273ce",
+            "bytes": 2355144,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "nerdctl": {
+            "sha256": "de1e17ab149d6fab992ffde8102a85622c43eb6d49a7bef1a53039aabcba1a2e",
+            "bytes": 32600226,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "nginx": {
+            "sha256": "4ab2e66058b549bd2c4cb5a0a62e0b5809f345c434cb796262f7475c453369ca",
+            "bytes": 2713072,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "upgrade/calicoctl-v3.31.7": {
+            "sha256": "1b91928adc39861ba5e04d8d15c4ce489731269b07a8e7444c0fdf677f041113",
+            "bytes": 82987386,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "upgrade/containerd-2.2.10/containerd": {
+            "sha256": "b704820e511ae18516eb126c14a9b37059007b744a76b0608c49866d77aeaa9f",
+            "bytes": 45182256,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "upgrade/containerd-2.2.10/containerd-shim-runc-v2": {
+            "sha256": "b23e18665bf9fddc5699b5c2c5e5a22949a8cf2a33881c17a7aa0af546b97937",
+            "bytes": 8462498,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "upgrade/containerd-2.2.10/containerd-stress": {
+            "sha256": "407fc68abacf5d66dc00dde73e0f5f7b19cbcf504c0ddad55e0fb63a4cba6e60",
+            "bytes": 19656866,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "upgrade/containerd-2.2.10/ctr": {
+            "sha256": "7a4309768139235f824f602825abb5c63026bbdbf070aa5f369ee009d78b5af1",
+            "bytes": 22696098,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "upgrade/containerd-2.2.10/runc": {
+            "sha256": "599f6f94ff8c5057241eff0d54c3c74f95c34935b6457b33fe545defc61e9488",
+            "bytes": 10866512,
+            "mode": "0o755",
+            "elf_machine": 62
+          },
+          "upgrade-artifacts.sha256": {
+            "sha256": "7aa800b93d94fdf5877d475d8b37e9953c7ecaaff4918ed348014a3238dfa5ae",
+            "bytes": 1454,
+            "mode": "0o644"
+          }
+        },
+        "unchanged_files": 52
+      },
+      "linux/arm64": {
+        "digest": "sha256:d978b5526891d224f07acd9ff0461cf2d78a540f9008c7b6397d5136c9363031",
+        "files": {
+          "calicoctl": {
+            "sha256": "d47a6cf375f59241ea8bc9691ebdc3d7b2e5b4288a391f1ef86021f9585ebec9",
+            "bytes": 92244096,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "cephadm": {
+            "sha256": "5b78c8d5772ef7c5c8619dac6ee0b36716b829338ea7a11c9f2b896626ab354f",
+            "bytes": 1062378,
+            "mode": "0o755"
+          },
+          "cephadm.sha256": {
+            "sha256": "ba925957f1d29fb98a22a8943bf296a85623bd4f270549f4eaeaf3510d3927db",
+            "bytes": 74,
+            "mode": "0o644"
+          },
+          "cfssl": {
+            "sha256": "c14e878b9e2f871666d99f519265bbb131978e20020f174b85e5e9fc9b8d83c9",
+            "bytes": 13365200,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "cfssl-certinfo": {
+            "sha256": "e1b50a9ce1066df74795d8aac30043c842a3d16f0227d8107a3fd91b6e467e52",
+            "bytes": 10043472,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "cfssljson": {
+            "sha256": "3125da739c729258124d3e75290962167b6e51f33f8068fa4575d59999210eda",
+            "bytes": 6095000,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "chronyd": {
+            "sha256": "8da38672453a623bfd02acefc282106e55aac0ed0025d5198ffd2d6c41fe8b0f",
+            "bytes": 1575312,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "cilium": {
+            "sha256": "822ca5d2a5f3d793f83d4c7b09ab39b5b687ab74c543985e521d0603b8f202c1",
+            "bytes": 153682080,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "cni-bin/LICENSE": {
+            "sha256": "b40930bbcf80744c86c46a12bc9da056641d722716c378f5659b9e555ef833e1",
+            "bytes": 11357,
+            "mode": "0o644"
+          },
+          "cni-bin/README.md": {
+            "sha256": "43c32d29316a4a9fe23af500917bd89e51d6a84fa0dcbfcc75b5fbd834c3145a",
+            "bytes": 2343,
+            "mode": "0o644"
+          },
+          "cni-bin/bandwidth": {
+            "sha256": "86bde60a6398a6fda0ccce2f58dfd924eaa994c66fcb75955c2ec424f08bb8c1",
+            "bytes": 4902336,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "cni-bin/bridge": {
+            "sha256": "7b9a12ec384a3120d456b3c6ec6a862b465d872495000263b46117613613569c",
+            "bytes": 5480027,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "cni-bin/dhcp": {
+            "sha256": "697a8301c4b01d39f7aa7b0f2ac5522f908b9bd1a27b4eab9e94701a7ca3b031",
+            "bytes": 12951585,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "cni-bin/dummy": {
+            "sha256": "f5e5165f6a6ab3c519b9300c3b1b36054d35be9712a05346d2089b66efe4ac12",
+            "bytes": 5101229,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "cni-bin/firewall": {
+            "sha256": "ccea6765c7b8e9b50cdb10d828b6704c07dba27a0082aaee6aa8b7cf3e047ba0",
+            "bytes": 5497599,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "cni-bin/host-device": {
+            "sha256": "9b7b710f839a2ce5ebe86a5b97523b9e9a887b5674bd616188e742f329bf55ae",
+            "bytes": 5018673,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "cni-bin/host-local": {
+            "sha256": "5299f9f85ebe142f4d0c7457668ae225ae88f9086e98e70ca8f69830a3431b48",
+            "bytes": 4264332,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "cni-bin/ipvlan": {
+            "sha256": "93b620b51bac1a996a5e06a7b4f746c3cfe98fa2b01fecc62da2582cd86ecb33",
+            "bytes": 5107684,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "cni-bin/loopback": {
+            "sha256": "176042dd3112cad457526180290acf696b49d50c5a86c146827ab31f052fb17b",
+            "bytes": 4252371,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "cni-bin/macvlan": {
+            "sha256": "ff6a244876e0a089e9ba51ccf865d0f05ccfcfbd07e580fe8747fed629855538",
+            "bytes": 5116177,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "cni-bin/portmap": {
+            "sha256": "7f2306ee8a1c1debffe51da11b13ce0049a9307bb702b431cb0d2ba7f896fd1b",
+            "bytes": 4991337,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "cni-bin/ptp": {
+            "sha256": "3a6eb658a66a4e1d5d5f2ac07211e05af077b5f891318b94a081c1a725f31f0d",
+            "bytes": 5292512,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "cni-bin/sbr": {
+            "sha256": "ba660f0216c9e87ba2d79b2f329443d715f9dc86bee581a3a1ff3e6075c41f5b",
+            "bytes": 4439887,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "cni-bin/static": {
+            "sha256": "b382fcb3351a4da87a2c768201f08f9bd0d71546b5c76092eda2e8cc9044adfe",
+            "bytes": 3625985,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "cni-bin/tap": {
+            "sha256": "e5c3dc5ccea6411737307047c564696ff4d3548d1992d9c5789b6f8fcb0d677d",
+            "bytes": 5125043,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "cni-bin/tuning": {
+            "sha256": "6393f18ce6142f4d32d1e2e5eb8197c7d65659032cdc5c691a94adb7a5189b77",
+            "bytes": 4273009,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "cni-bin/vlan": {
+            "sha256": "39c4356ed936f6190ee17dc348bb9cad70a23df8d6ebb31512fc19b12edf1d70",
+            "bytes": 5104841,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "cni-bin/vrf": {
+            "sha256": "ba224bff6874911e00768f987a397e59c3eaee54da4c34f5cbb1bcd92d0189a2",
+            "bytes": 4547537,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "containerd-bin/containerd": {
+            "sha256": "2e96fcb3c6ccff3d4ef900bfa177f843331c42fab10bce63f84c929726598400",
+            "bytes": 36753704,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "containerd-bin/containerd-shim-runc-v2": {
+            "sha256": "216b968cc9bc75fc120ebe6769aa11fe9cc7f7907fa43303ee4fe319058b4653",
+            "bytes": 8061090,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "containerd-bin/containerd-stress": {
+            "sha256": "bc1516ea38feff949be0422180e026154cac9dc2f52f96ce2f6e21d740b10ec5",
+            "bytes": 19005602,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "containerd-bin/ctr": {
+            "sha256": "e7c8bf0a466f125e3807dcdef5684a4aa98d4315b6356cf1736bb9699e13d755",
+            "bytes": 21299362,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "containerd-bin/runc": {
+            "sha256": "d10ecae898361832a059be2089bab92d158aec54661b18ed7346ed79628b46b0",
+            "bytes": 10091904,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "cri-dockerd": {
+            "sha256": "95e6daa7691413a45a8af621e81f6ceb035de7d12443252a9f7cc3719eef506d",
+            "bytes": 48627872,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "crictl": {
+            "sha256": "adcd45619f1f57eb38f8596bf65def237c53fb00b9f42b963f8a1556bb0918bb",
+            "bytes": 38828983,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "docker-buildx": {
+            "sha256": "50e85c4e290b698908421161c1aee069bcc5d4a65b7b7201bfac3a176b223a7e",
+            "bytes": 65339576,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "docker-compose": {
+            "sha256": "d26373b19e89160546d15407516cc59f453030d9bc5b43ba7faf16f7b4980137",
+            "bytes": 73740771,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "docker-runtime-artifacts.sha256": {
+            "sha256": "3bb0b489af0e6d3a35607f2fc98e64503a8b0c65665f1aaa107968dadabc0d69",
+            "bytes": 239,
+            "mode": "0o644"
+          },
+          "etcd": {
+            "sha256": "bd58946a8b3ba539106a7418b06219d2935eae5fbd705319ce2a6e81db7678cb",
+            "bytes": 25428130,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "etcdctl": {
+            "sha256": "f5d3b165f488b0d3d22e5116764e80ffebe6fa3314d9d85c26b39be80764f087",
+            "bytes": 16777378,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "etcdutl": {
+            "sha256": "790d897c7418826358663d35c3da0f515a354c5c6fadafbd37c4d08f751c8bbe",
+            "bytes": 16908450,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "helm": {
+            "sha256": "7d3a203aae4309843050f8984dd0b90c9c36e328510e0f3fb7bd18e7fe2f5183",
+            "bytes": 57802936,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "hubble": {
+            "sha256": "8262be9f49f2eb3b2101264bb12671d3c2fe671792a1647a7e76b1561969babb",
+            "bytes": 69468322,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "keepalived": {
+            "sha256": "1127675c94065d78a472b6f83d33c7cec8dc89b07699ff67c4a8e3bab3d62c72",
+            "bytes": 2450752,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "nerdctl": {
+            "sha256": "1748965fbc6f6888e03088917d027b74d511ad46910bfaa925e0dddbd7200c8e",
+            "bytes": 29950114,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "nginx": {
+            "sha256": "56c8eaa7a78a887db8fe0e7063132ea78c45a0cd8f82b7dd2ebdcabc094d6cf2",
+            "bytes": 2833080,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "upgrade/calicoctl-v3.31.7": {
+            "sha256": "d7adff41398cb77b97451bf238022376382725ff231228f78b3ebc35d9fb9fda",
+            "bytes": 78852072,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "upgrade/containerd-2.2.10/containerd": {
+            "sha256": "838aa5f95d500758469b9d5cae753510d1e0919a27b8d3bc5b4c3ab764c26c90",
+            "bytes": 41816520,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "upgrade/containerd-2.2.10/containerd-shim-runc-v2": {
+            "sha256": "59ada3af1b646787d89c6eae410aa714b2c3f938ea3d8f3c77985cb3c3d39455",
+            "bytes": 8126626,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "upgrade/containerd-2.2.10/containerd-stress": {
+            "sha256": "8303b595f4fb45469deb731bb7dd5364870f22e052145aef29e7b88565bfe564",
+            "bytes": 18415778,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "upgrade/containerd-2.2.10/ctr": {
+            "sha256": "657fcd9e8037a26489f26bb86a0e7993cee27aa5b223874e8574e99df7ecc93f",
+            "bytes": 21168290,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "upgrade/containerd-2.2.10/runc": {
+            "sha256": "d10ecae898361832a059be2089bab92d158aec54661b18ed7346ed79628b46b0",
+            "bytes": 10091904,
+            "mode": "0o755",
+            "elf_machine": 183
+          },
+          "upgrade-artifacts.sha256": {
+            "sha256": "638a971f80b810a3abec981a92beb94f1734088605cc5163d2802ba85e99f1ef",
+            "bytes": 1454,
+            "mode": "0o644"
+          }
+        },
+        "unchanged_files": 52
+      }
+    },
+    "version_probes": [
+      {
+        "binary": "nerdctl",
+        "arguments": [
+          "--version"
+        ],
+        "platform": "linux/amd64",
+        "output": "nerdctl version 2.4.2\n",
+        "rc": 0
+      },
+      {
+        "binary": "nerdctl",
+        "arguments": [
+          "--version"
+        ],
+        "platform": "linux/arm64",
+        "output": "nerdctl version 2.4.2\n",
+        "rc": 0
+      }
+    ],
+    "marker": "NERDCTL_ONLY_DUAL_READBACK_PASS"
+  },
+  "local_verification": [
+    {
+      "scope": "nerdctl, six-repo pins, affected Ceph contracts and revision refusal/retention contracts",
+      "tests": 25,
+      "rc": 0
+    },
+    {
+      "scope": "existing overlay/base/tag-only contracts and revision contracts",
+      "tests": 22,
+      "rc": 0,
+      "overlap_with_first_suite": 3
+    }
+  ],
+  "raw_archive": {
+    "location": "/home/brinnatt/.local/share/kubeauto-nerdctl-242/20261119/44477073806",
+    "artifact": "ext-bin-nerdctl-2.4.2.zip",
+    "artifact_sha256": "1bfcc458f0ff74dd76d1a20596929a4b50fd93f8ae087928c0c319817e365e43",
+    "logs_sha256": "8746c9e5a004dc65601956a1c3969db3bc192b32c9dc78b81c17efc9276f11f9"
+  },
+  "boundaries": [
+    "Authentication fixture qualifies the exact client-side defect; no original production registry access or original business image pull was performed.",
+    "Dual architecture official assets, version execution and pack content verified; authentication behavior executed natively on amd64.",
+    "Existing downloaded extra-bin directories and installed customer binaries are not automatically replaced by changing dev pins.",
+    "No full project GA rerun or customer sign-off is claimed; existing version branches and historical evidence remain unchanged."
+  ]
+}

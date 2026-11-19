@@ -81,9 +81,9 @@ class TestNerdctlPin(unittest.TestCase):
                 df += '\n'+path.with_name(path.name.replace('overlay-','Dockerfile.').removesuffix('.json')).read_text()
 
 
-        m_ver = re.search(r"NERDCTL_VER=([^\s]+)", df)
-        self.assertIsNotNone(m_ver, "NERDCTL_VER missing from ext-bin Dockerfile")
-        self.assertEqual(m_ver.group(1).lstrip("v"), self.kc.v_nerdctl.lstrip("v"))
+        versions = re.findall(r"NERDCTL_VER=([^\s]+)", df)
+        self.assertTrue(versions, "NERDCTL_VER missing from ext-bin Dockerfile")
+        self.assertEqual(versions[-1].lstrip("v"), self.kc.v_nerdctl.lstrip("v"))
 
         m_pack = re.findall(r"EXT_BIN_VER=([^\s]+)", df)
         self.assertIsNotNone(m_pack)

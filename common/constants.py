@@ -55,7 +55,7 @@ class KubeConstant:
         "refer_bin": "https://www.downloadkubernetes.com/",
         "refer_old": "https://github.com/kubernetes/kubernetes/tree/master/CHANGELOG",
     })
-    v_extra_bin: str = field(default="1.17.0", metadata={
+    v_extra_bin: str = field(default="1.17.1", metadata={
         "refer_github": "https://github.com/brinnatt/dockerfile-kubeauto-ext-bin",
         "description": (
             "ext-bin pack tag; includes containerd/crictl/nerdctl/helm and the "
@@ -75,10 +75,10 @@ class KubeConstant:
     v_helm: str = field(default="v3.19.0")
     v_crictl: str = field(default="v1.34.0")
     # Docker-compatible CLI for containerd; shipped via ext-bin (minimal), installed by roles/containerd.
-    # Upstream v2.3.4 supports containerd v1.7 / v2.0 / v2.1 / v2.2 / v2.3 (matches CONTAINERD_VER=2.3.7).
-    v_nerdctl: str = field(default="2.3.4", metadata={
+    # v2.4.2 supports containerd >=1.7; includes the default HTTPS port login fix (#5128).
+    v_nerdctl: str = field(default="2.4.2", metadata={
         "refer_github": "https://github.com/containerd/nerdctl/releases",
-        "description": "Latest stable nerdctl compatible with containerd 2.3.x; minimal tarball only",
+        "description": "nerdctl with equivalent registry host authentication fix; minimal tarball only",
     })
     v_harbor: str = field(default="v2.13.0", metadata={
         "refer_image": "https://github.com/wise2c-devops/build-harbor-aarch64",
