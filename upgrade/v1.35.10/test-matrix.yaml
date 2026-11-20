@@ -125,7 +125,7 @@ cases:
   group: U1
   desc: 最小制品集合与双端双架构准入
   status: pass
-  evidence: upgrade/v1.35.10/evidence/UPG-03.json
+  evidence: upgrade/v1.35.10/evidence/maintenance/UPG-03.json
   depends_on:
   - UPG-02
   - UPG-04
@@ -157,7 +157,7 @@ cases:
   group: U1
   desc: 升级门禁、产品与六仓静态合同
   status: pass
-  evidence: upgrade/v1.35.10/evidence/UPG-04.json
+  evidence: upgrade/v1.35.10/evidence/maintenance/UPG-04.json
   depends_on:
   - UPG-02
   component_ids:
@@ -522,7 +522,7 @@ cases:
   group: U6
   desc: 客户升级步骤、来源覆盖与交付身份
   status: pass
-  evidence: upgrade/v1.35.10/evidence/UPG-14.json
+  evidence: upgrade/v1.35.10/evidence/maintenance/UPG-14.json
   depends_on:
   - UPG-02
   - UPG-06

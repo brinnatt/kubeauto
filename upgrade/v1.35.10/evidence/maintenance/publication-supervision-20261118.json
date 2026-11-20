@@ -1,0 +1,410 @@
+{
+  "schema_version": 1,
+  "kind": "shared-image-publication-qualification",
+  "recorded_on": "2026-11-18",
+  "accepted": true,
+  "scope": "Shared publisher output, deadlines, cancellation and stage recovery; two lightweight dual-registry dual-architecture artifacts; no full-catalog compilation or customer runtime requalification",
+  "implementation_commit": "1f5b7eb32aec285a57e361eb3098ebb426159651",
+  "final_test_fixture_commit": "ae3b3f155861f822dcc82b9fc9d923bace1ae3dc",
+  "incident": {
+    "cancelled_runs": [
+      44228374126,
+      44234915133
+    ],
+    "upstream_network_root_cause": "not established; logs prove prolonged layer upload without a completed staging index, followed by cancellation",
+    "earlier_gap": "Immediate-return registry fixtures and small successful uploads did not cover quiet or interrupted long processes"
+  },
+  "identities": {
+    "delivery": "image:tag",
+    "fingerprint": "same-run input integrity; never a reason to rebuild an existing complete formal tag",
+    "staging": "run ID + image identity + input fingerprint; attempt changes reuse completed stages; new runs do not search older stages"
+  },
+  "defaults_seconds": {
+    "query": 120,
+    "copy": 3600,
+    "build": 86400,
+    "heartbeat": 30,
+    "container_cleanup": 10
+  },
+  "local_checks": [
+    {
+      "scope": "dev",
+      "command": "python3 -B -m unittest discover -s tests -v",
+      "tests_run": 110,
+      "seconds": 38.096,
+      "rc": 0,
+      "log": "/home/brinnatt/.local/share/kubeauto-image-release-supervision/20261118/dev-final-tests.log",
+      "sha256": "cf5ff05f054eef1c4689800fe66a631ff8cd8b0c5397fabab9ec086406d689ab",
+      "head": "ae3b3f155861f822dcc82b9fc9d923bace1ae3dc"
+    },
+    {
+      "scope": "main",
+      "command": "python3 -B -m unittest discover -s tests -v",
+      "tests_run": 97,
+      "seconds": 35.514,
+      "rc": 0,
+      "log": "/home/brinnatt/.local/share/kubeauto-image-release-supervision/20261118/main-tests.log",
+      "sha256": "8c5aa754d2b3f61725cb8c9e1aa33ff9d09a75ac39aefebae9554696645b755a",
+      "head": "5ae64429d1b03aa839ad19f6cdfaff3a447912b1"
+    },
+    {
+      "scope": "v1.34.13",
+      "command": "python3 -B -m unittest discover -s tests -v",
+      "tests_run": 108,
+      "seconds": 36.121,
+      "rc": 0,
+      "log": "/home/brinnatt/.local/share/kubeauto-image-release-supervision/20261118/v1.34.13-tests.log",
+      "sha256": "b12b1b21816b3487dc6a912bb5f2fcc6156bc1e0ea5473d8ce19cddc8bf2b724",
+      "head": "5220d80e1f866f4a058642199599e063ac9312bf"
+    },
+    {
+      "scope": "v1.35.10",
+      "command": "python3 -B -m unittest discover -s tests -v",
+      "tests_run": 110,
+      "seconds": 36.068,
+      "rc": 0,
+      "log": "/home/brinnatt/.local/share/kubeauto-image-release-supervision/20261118/v1.35.10-tests.log",
+      "sha256": "c770dc5e98b559f92192a38e4f81d22ee03b5e427ec1639b642ff04402ea4df9",
+      "head": "79334e54e26af89cfb6203abb0535b18f38289dc"
+    },
+    {
+      "scope": "main cancellation-fixture final guard",
+      "command": "python3 -B -m unittest discover -s tests -p test_incremental_release.py -k wrapper_only -v",
+      "tests_run": 2,
+      "rc": 0,
+      "log": "/home/brinnatt/.local/share/kubeauto-image-release-supervision/20261118/main-cancellation-final-tests.log",
+      "sha256": "552790f28bca543d0605b05b3bd9d1350056cc30457cb7f36acd984ee829e85f",
+      "head": "074c8010810302d7fa3346cff996cbfe7bc3f7a1"
+    },
+    {
+      "scope": "v1.34.13 cancellation-fixture final guard",
+      "command": "python3 -B -m unittest discover -s tests -p test_incremental_release.py -k wrapper_only -v",
+      "tests_run": 2,
+      "rc": 0,
+      "log": "/home/brinnatt/.local/share/kubeauto-image-release-supervision/20261118/v1.34.13-cancellation-final-tests.log",
+      "sha256": "d2e7d31834ed7e30bdde41aa0037b048f336108eb521774c336c68de909fbae9",
+      "head": "0699643de5706182ac63263165706b5298b19c1b"
+    },
+    {
+      "scope": "v1.35.10 cancellation-fixture final guard",
+      "command": "python3 -B -m unittest discover -s tests -p test_incremental_release.py -k wrapper_only -v",
+      "tests_run": 2,
+      "rc": 0,
+      "log": "/home/brinnatt/.local/share/kubeauto-image-release-supervision/20261118/v1.35.10-cancellation-final-tests.log",
+      "sha256": "7426b33f711152307eed5e3aab1c0fc8c08494d9b274d1e1dae81182e1a5fe40",
+      "head": "849126acbdf72c7931c78f49dc81e99c9c595bb8"
+    }
+  ],
+  "coverage": [
+    {
+      "capability": "byte streaming before newline; quiet healthy work; real process deadlines with continuous output and closed pipes; raw query bytes; bounded error tail",
+      "evidence": "tests/test_process_supervision.py; dev-final-tests.log"
+    },
+    {
+      "capability": "TERM/INT; ignoring descendants; pipe-holding descendants; no process residue",
+      "evidence": "tests/test_process_supervision.py; dev-final-tests.log"
+    },
+    {
+      "capability": "query timeout refuses build; build/copy deadline stops shard; exact owned-container cleanup; cleanup failure refuses promotion; stage recovery without rebuilding",
+      "evidence": "tests/test_incremental_release.py; real CLI with Docker protocol fixtures and actual subprocesses"
+    },
+    {
+      "capability": "wrapper-only INT/TERM forwarding; non-success running state; durable 130/143; failed tee cannot sign success; failure stops later images",
+      "evidence": "tests/test_image_release.py and tests/test_incremental_release.py; all four maintained branches"
+    },
+    {
+      "capability": "changed/selected/bounded-full/verify/readback; tag-only scope; manifest conflict and auth/network refusal; idempotent repair",
+      "evidence": "Existing CLI/workflow contracts retained and passed in final suite"
+    },
+    {
+      "capability": "real dual-architecture build, digest-preserving cross-registry transfer, promotion, final readback, six named-container clean exits",
+      "evidence": "Actions 44263003246"
+    },
+    {
+      "capability": "new commit/new run/no historical records; formal-tag reuse with zero builds",
+      "evidence": "Actions 44263805467"
+    }
+  ],
+  "real_runs": [
+    {
+      "run_id": 44263003246,
+      "url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/44263003246",
+      "head": "0f42108accd295e1358a8f45f29026858577b701",
+      "mode": "full",
+      "allowed_images": [
+        "brinnatt/busybox:1.37-release-smoke.2",
+        "brinnatt/pause:3.10-release-smoke.2"
+      ],
+      "actual_builds": 2,
+      "reused": 0,
+      "copy_clean_markers": 6,
+      "conclusion": "success",
+      "durable_rc": 0
+    },
+    {
+      "run_id": 44263805467,
+      "url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/44263805467",
+      "head": "74ab4f67ba653f86210e1c5070f45f12cd9e7af3",
+      "mode": "selected",
+      "allowed_images": [
+        "brinnatt/busybox:1.37-release-smoke.2",
+        "brinnatt/pause:3.10-release-smoke.2"
+      ],
+      "actual_builds": 0,
+      "reused": 2,
+      "copy_clean_markers": 0,
+      "conclusion": "success",
+      "durable_rc": 0
+    }
+  ],
+  "published_manifests": [
+    {
+      "digest": "sha256:b908733a25ff46c8070e8a7d42dcdb9c7f76613aa4d572f2885b2e4492488dc1",
+      "fingerprint": "a895ab9ea772ad158269a957335d0d2807d039c72d92ae96cc52fd0038d081d0",
+      "head": "0f42108accd295e1358a8f45f29026858577b701",
+      "key": "brinnatt/busybox:1.37-release-smoke.2",
+      "platforms": {
+        "linux/amd64": "sha256:c109c7a2fbe5a1594374195fa5b547b78ffb2063e403476b2b77f2047a3c5c52",
+        "linux/arm64": "sha256:125d3ea1ac121683e508d2c2f09b709cd6c598a119e1e94e6ecc8532c8f1c5a6"
+      },
+      "run_id": "44263003246",
+      "schema": 1
+    },
+    {
+      "digest": "sha256:1c1a640b5612dcb53976613fafc38e1a10f7cc9b3dfa534d599f5ae6472e59d0",
+      "fingerprint": "95724935b54e268940860ca73fef718f5ffcb18f7fa14e16e05806a3615d6f72",
+      "head": "0f42108accd295e1358a8f45f29026858577b701",
+      "key": "brinnatt/pause:3.10-release-smoke.2",
+      "platforms": {
+        "linux/amd64": "sha256:458e924c8e3c6d8576387ae02164a84f15218ab7c8264a667e5cbe90c830fe88",
+        "linux/arm64": "sha256:86bc5c5ca819dd7ec7863e6c8a05bba1de447c2dab40d8f3b05a5e57e333f9b7"
+      },
+      "run_id": "44263003246",
+      "schema": 1
+    }
+  ],
+  "maintenance_lines": {
+    "main": {
+      "before": "c804762584f4d271536f61fa9d040f15ea4c4962",
+      "after": "074c8010810302d7fa3346cff996cbfe7bc3f7a1",
+      "catalog_sha256_unchanged": "b4a9921185879a313b02ae7aaf842b8dc567d9e569a79fbaf30b41ea82eb0e87",
+      "build_policy_sha256_unchanged": "654896bfda98020ad357d0a15917e898f7bf6eb23306569bc0b8ec4945345baf",
+      "shared_files_sha256": {
+        "scripts/image_release.py": "22211513a42d8186b0f94aac08094168085a06ccb3664e61c99578eac0ef3f2d",
+        "scripts/run_logged.sh": "65c5bef185206c2b07c3231b7db2258c358a6b5e9a5a8e53cf22d2f8e083cbae",
+        "tests/test_image_release.py": "ca97fff0df9a63f4674a8b09ed6e973ec5112e81d1f633ab20d052282067003c",
+        "tests/test_incremental_release.py": "0dd265dee1a38fc4099cd4ef7b20119fd591135f72cbfabc71d86e26ebbcef23",
+        "tests/test_process_supervision.py": "aee900a4742df87cce68e5b336d26ca0971165da09bec3b4282680d9a3af9b65"
+      },
+      "changed_paths": [
+        "AGENTS.md",
+        "README.md",
+        "scripts/image_release.py",
+        "scripts/run_logged.sh",
+        "tests/test_image_release.py",
+        "tests/test_incremental_release.py",
+        "tests/test_process_supervision.py"
+      ]
+    },
+    "v1.34.13": {
+      "before": "28800008bfda654df285a81e14e1bacb2f435b7a",
+      "after": "0699643de5706182ac63263165706b5298b19c1b",
+      "catalog_sha256_unchanged": "006ac37733220bf9779dc25cee1fc5e30f157319fdbff6c3359101693ec45a9a",
+      "build_policy_sha256_unchanged": "654896bfda98020ad357d0a15917e898f7bf6eb23306569bc0b8ec4945345baf",
+      "shared_files_sha256": {
+        "scripts/image_release.py": "22211513a42d8186b0f94aac08094168085a06ccb3664e61c99578eac0ef3f2d",
+        "scripts/run_logged.sh": "65c5bef185206c2b07c3231b7db2258c358a6b5e9a5a8e53cf22d2f8e083cbae",
+        "tests/test_image_release.py": "ca97fff0df9a63f4674a8b09ed6e973ec5112e81d1f633ab20d052282067003c",
+        "tests/test_incremental_release.py": "0dd265dee1a38fc4099cd4ef7b20119fd591135f72cbfabc71d86e26ebbcef23",
+        "tests/test_process_supervision.py": "aee900a4742df87cce68e5b336d26ca0971165da09bec3b4282680d9a3af9b65"
+      },
+      "changed_paths": [
+        "AGENTS.md",
+        "README.md",
+        "scripts/image_release.py",
+        "scripts/run_logged.sh",
+        "tests/test_image_release.py",
+        "tests/test_incremental_release.py",
+        "tests/test_process_supervision.py"
+      ]
+    },
+    "v1.35.10": {
+      "before": "5abaf3559fc8ba2a96508543316dd55c9ec436a7",
+      "after": "849126acbdf72c7931c78f49dc81e99c9c595bb8",
+      "catalog_sha256_unchanged": "1cb89665b50ab0b205e19aa7144bc8cf51a40665d19bf0bcb5967e9f47aa5755",
+      "build_policy_sha256_unchanged": "654896bfda98020ad357d0a15917e898f7bf6eb23306569bc0b8ec4945345baf",
+      "shared_files_sha256": {
+        "scripts/image_release.py": "22211513a42d8186b0f94aac08094168085a06ccb3664e61c99578eac0ef3f2d",
+        "scripts/run_logged.sh": "65c5bef185206c2b07c3231b7db2258c358a6b5e9a5a8e53cf22d2f8e083cbae",
+        "tests/test_image_release.py": "ca97fff0df9a63f4674a8b09ed6e973ec5112e81d1f633ab20d052282067003c",
+        "tests/test_incremental_release.py": "0dd265dee1a38fc4099cd4ef7b20119fd591135f72cbfabc71d86e26ebbcef23",
+        "tests/test_process_supervision.py": "aee900a4742df87cce68e5b336d26ca0971165da09bec3b4282680d9a3af9b65"
+      },
+      "changed_paths": [
+        "AGENTS.md",
+        "README.md",
+        "scripts/image_release.py",
+        "scripts/run_logged.sh",
+        "tests/test_image_release.py",
+        "tests/test_incremental_release.py",
+        "tests/test_process_supervision.py"
+      ]
+    }
+  },
+  "scope_protection": {
+    "previous_dev_catalog_entries_preserved": 224,
+    "new_test_entries": 2,
+    "main_catalog_entries_unchanged": 180,
+    "v1.34.13_catalog_entries_unchanged": 216,
+    "v1.35.10_catalog_entries_unchanged": 219,
+    "original_component_contexts_and_build_policy_unchanged": true,
+    "starrocks_images_rebuilt": 0,
+    "lab_mutations": 0
+  },
+  "official_interfaces": [
+    {
+      "url": "https://docs.python.org/3.12/library/subprocess.html",
+      "scope": "pipe bytes, Popen sessions, timeout cleanup; dependency interface only"
+    },
+    {
+      "url": "https://github.com/containers/skopeo/blob/v1.22.3/docs/skopeo-copy.1.md",
+      "scope": "all/index-only and digest preservation; dependency interface only"
+    },
+    {
+      "url": "https://github.com/containers/skopeo/blob/v1.22.3/docs/skopeo.1.md",
+      "scope": "native command-timeout independent of Docker client lifetime"
+    },
+    {
+      "url": "https://docs.docker.com/engine/containers/run/",
+      "scope": "named containers, signal and removal boundaries; dependency interface only"
+    }
+  ],
+  "documentation": {
+    "entry": "README.md sections 3.1 and 4",
+    "content_review": "explains phase progress versus throughput; independent limits; exact retry boundary; ownership and fail-closed cleanup; native timeout; hard-kill recovery; no cross-run or byte-offset resume promise",
+    "source_boundary": "No new dependency product or component version; existing sources reused, only called process/container interfaces updated",
+    "customer_signoff": false
+  },
+  "inputs_sha256": {
+    "scripts/image_release.py": "22211513a42d8186b0f94aac08094168085a06ccb3664e61c99578eac0ef3f2d",
+    "scripts/run_logged.sh": "65c5bef185206c2b07c3231b7db2258c358a6b5e9a5a8e53cf22d2f8e083cbae",
+    "scripts/release_tag.py": "150d8e4fbd915171aba2084372fa0c03c79b89298b2de23a7f7918fa757690c3",
+    "tests/test_image_release.py": "ca97fff0df9a63f4674a8b09ed6e973ec5112e81d1f633ab20d052282067003c",
+    "tests/test_incremental_release.py": "0dd265dee1a38fc4099cd4ef7b20119fd591135f72cbfabc71d86e26ebbcef23",
+    "tests/test_process_supervision.py": "aee900a4742df87cce68e5b336d26ca0971165da09bec3b4282680d9a3af9b65",
+    "AGENTS.md": "d54460baaaa33c24e9328b6a8bf47b1e60d8c97116d531a7efc3c3fe24d5a764",
+    "README.md": "fb7a2e0c45863fdca331d052bd7d83fd515069e24d3045ca1013417c9810d523"
+  },
+  "raw_artifacts": {
+    "44263003246/artifacts.json": {
+      "sha256": "687d4447558027c8a7bb6de219b8fa4ea63502627ca79d734d79f3dc5c65ed8f",
+      "bytes": 2765
+    },
+    "44263003246/image-plan.zip": {
+      "sha256": "f42769b6d79be71f623bb4ae249c777381d9749a9a960f1bc42b035b85a72238",
+      "bytes": 570
+    },
+    "44263003246/jobs.json": {
+      "sha256": "c5b7151b7a49751257e7aa6326674e273e31e3615961b14341db4730c6d7c963",
+      "bytes": 13054
+    },
+    "44263003246/logs.zip": {
+      "sha256": "13edff775abf5448210ad977a28ad6a39f59e01b0e417d9ddea6c17eaf4493a1",
+      "bytes": 77109
+    },
+    "44263003246/plan-evidence-1.zip": {
+      "sha256": "b9719b316fc4ec12e13aaea53d3c65787ebcab5c907be0957645c2992c25fe70",
+      "bytes": 594
+    },
+    "44263003246/release-evidence-0-1.zip": {
+      "sha256": "e75dd338f6310e124352c59bc5f2e460af500730fe0ba6f19e9bed4d3b465dad",
+      "bytes": 4031
+    },
+    "44263003246/run.json": {
+      "sha256": "c9620345005861aa5b524d0883e9fa72e0130cad5a02972a015e532787d09581",
+      "bytes": 15171
+    },
+    "44263805467/artifacts.json": {
+      "sha256": "293b8b97ee5b447f6f27dc1141264121a9833f7033d4ad41ecb8a6107b256294",
+      "bytes": 1852
+    },
+    "44263805467/image-plan.zip": {
+      "sha256": "5744a911a027f31fe41aa9a2ad66374dd22b6db9fff1190b902d7cabd39784ec",
+      "bytes": 861
+    },
+    "44263805467/jobs.json": {
+      "sha256": "5b451bb9951f274e7403915515455b0e4e03d75d7e64b5bdb2e168c4a28395d8",
+      "bytes": 8388
+    },
+    "44263805467/logs.zip": {
+      "sha256": "28f240e116d424be371b19d7a3536f6bc90fa3a92fa5a27a9a2e83e25cfed0ac",
+      "bytes": 33636
+    },
+    "44263805467/plan-evidence-1.zip": {
+      "sha256": "54832c164dd053e3b50163551e34d9d6509d8135ce52d79263d66850ce6295f9",
+      "bytes": 668
+    },
+    "44263805467/run.json": {
+      "sha256": "15d7823cf8410827e6236c11c57d64813172201756c17ab8310bd75c8984c3bc",
+      "bytes": 15143
+    },
+    "cancellation-final-tests.log": {
+      "sha256": "3185886aa27666b1076642e6e5cc737161c49645f200c0ad200b9f75c10ab92a",
+      "bytes": 488
+    },
+    "dev-final-tests.log": {
+      "sha256": "cf5ff05f054eef1c4689800fe66a631ff8cd8b0c5397fabab9ec086406d689ab",
+      "bytes": 20968
+    },
+    "kubeauto-image-supervision-all-tests.log": {
+      "sha256": "e6fec72fed73177fdbf1f9bbb6129f4a2f116d8ee2d0b33b11d029323e29b7fb",
+      "bytes": 20968
+    },
+    "kubeauto-image-supervision-cli-tests.log": {
+      "sha256": "0a4c48e47ec725ebb47d3ff4aaaa3cb2bdcb0b7f5ba2ed2eb058ff458c7dc0e7",
+      "bytes": 3714
+    },
+    "kubeauto-image-supervision-process-tests.log": {
+      "sha256": "fa96f4922b4d07bc5569a90cfa6708659b483a0282bba29c8726718775c543fb",
+      "bytes": 1640
+    },
+    "main-cancellation-final-tests.log": {
+      "sha256": "552790f28bca543d0605b05b3bd9d1350056cc30457cb7f36acd984ee829e85f",
+      "bytes": 488
+    },
+    "main-tests.log": {
+      "sha256": "8c5aa754d2b3f61725cb8c9e1aa33ff9d09a75ac39aefebae9554696645b755a",
+      "bytes": 18576
+    },
+    "maintenance-after.json": {
+      "sha256": "d263dadac74e14d51305830b6c139fb9f3b32d26e6107424c6a360e6e0bd015a",
+      "bytes": 3473
+    },
+    "maintenance-before.json": {
+      "sha256": "386e486fcd8f7c3463a0db6661c97f0fa377b8aea44d8a88f827835c7eac2441",
+      "bytes": 782
+    },
+    "v1.34.13-cancellation-final-tests.log": {
+      "sha256": "d2e7d31834ed7e30bdde41aa0037b048f336108eb521774c336c68de909fbae9",
+      "bytes": 488
+    },
+    "v1.34.13-tests.log": {
+      "sha256": "b12b1b21816b3487dc6a912bb5f2fcc6156bc1e0ea5473d8ce19cddc8bf2b724",
+      "bytes": 20606
+    },
+    "v1.35.10-cancellation-final-tests.log": {
+      "sha256": "7426b33f711152307eed5e3aab1c0fc8c08494d9b274d1e1dae81182e1a5fe40",
+      "bytes": 488
+    },
+    "v1.35.10-tests.log": {
+      "sha256": "c770dc5e98b559f92192a38e4f81d22ee03b5e427ec1639b642ff04402ea4df9",
+      "bytes": 20968
+    }
+  },
+  "limits": [
+    "Registry/network cause of the original upload delay remains unproven; no fabricated upstream defect claim",
+    "Fault injection is deterministic CLI/process qualification; live publication uses real registries with two small artifacts",
+    "No new full-sized StarRocks transfer or source compilation claimed",
+    "Host/job hard kills cannot guarantee exit handlers; non-success status blocks acceptance; Skopeo has its own command deadline"
+  ]
+}

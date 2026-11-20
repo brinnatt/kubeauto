@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "accepted": true,
+  "source": "v1.34.13",
+  "target": "v1.35.10",
+  "case_ids": [
+    "UPG-03"
+  ],
+  "covered_subcases": [
+    "complete-consumer-inventory-and-scope",
+    "changed-artifacts-publication-and-readback",
+    "unchanged-artifacts-reuse-boundary",
+    "kubernetes-and-binary-pack-identity"
+  ],
+  "recorded_on": "2026-11-20",
+  "method": "reuse",
+  "claim": "原制品范围与升级包证据保留；维护源码默认ext-bin1.17.1/nerdctl2.4.2的既有发布、双端双架构身份和认证验证已核验，当前消费者合同通过。未重建制品，不签新现场。",
+  "inputs": {
+    "upgrade/v1.35.10/artifact-pins.json": "6ceaf94c0fb6657a66017ff1563b9743c754ff1c7282b36242ade029b9a25047",
+    "upgrade/v1.35.10/evidence/consumer-image-scope.json": "ee30de2c8037ca827bb5b47547c9c4e9d123dcb75686b77ee60f520ec828eda3"
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.35.10/evidence/UPG-03.json",
+      "sha256": "21e48fffcf72f10f194826e1170d985ad02822cb521cb6d9f87f3d38712fe853"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/maintenance/qualification.json",
+      "sha256": "c2c30ee51d7ac34b1f3d56a920d39eb12e6f18574f05c352ea983183e89321ae"
+    },
+    {
+      "path": "upgrade/v1.35.10/maintenance-baseline.yaml",
+      "sha256": "af301c489a6a9f6ee7e9242bf18f115d74342b4b28720db5a4267ce58a3f92fc"
+    }
+  ],
+  "applicability": {
+    "conditions": "原证据及其原始引用保持不变；原运行输入逐项核验，当前变化按维护基线明确分层。",
+    "differences": "默认消费包从1.17.0到已验收1.17.1；迁移固定包保持1.17.0，新增工具镜像只属独立tools路径。",
+    "reason": "变化有独立的既有实测和当前聚焦证据；未变路径保留原身份，不因分支/目录/SHA变化重跑全部现场。"
+  },
+  "customer_signoff": null
+}

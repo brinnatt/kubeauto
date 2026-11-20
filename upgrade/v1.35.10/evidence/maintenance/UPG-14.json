@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "accepted": true,
+  "source": "v1.34.13",
+  "target": "v1.35.10",
+  "case_ids": [
+    "UPG-14"
+  ],
+  "covered_subcases": [
+    "customer-operator-entry-and-preflight",
+    "frozen-component-combination-and-evidence-boundary",
+    "stop-resume-recovery-and-rollback-limits",
+    "official-source-directory-and-reader-path"
+  ],
+  "recorded_on": "2026-11-20",
+  "method": "reuse",
+  "claim": "原升级手册机制、操作、停止和恢复继续适用；维护入口说明新建与迁移包区别、六仓精确源码及未发布新产品镜像的边界。历史来源和现场结果保留，授权文字与文档差异已走查，不签客户验收。",
+  "inputs": {
+    "upgrade/v1.35.10/operations-manual.md": "605da02fe2d6247ab0293da69c0b9b9962ad67aae0e0b0586159000f22645277",
+    "upgrade/v1.35.10/research.yaml": "bf7b9249d4dec563a402af1a1b6c68780abcbc27fa63ee2b23f585f1de82a4ce",
+    "upgrade/v1.35.10/release.yaml": "f69e9e88afa6a7cdc333240d62873ed120c7db981e20a6bf3cd68bbc0bf77625",
+    "upgrade/v1.35.10/artifact-pins.json": "6ceaf94c0fb6657a66017ff1563b9743c754ff1c7282b36242ade029b9a25047",
+    "upgrade/v1.35.10/evidence/official-directory-scope.json": "b9753fb597fb7c9ebfc08247dd02851925a7b3036fa7b5f8cb9aef8b0da253a3",
+    "upgrade/v1.35.10/evidence/release-fixture-repair.json": "e25a625235720bae2fb457a789c86f787d1ad593e8cc473343a63d66b0a06611",
+    "upgrade/workflow.md": "1e4ec321b4ef2125da4ca2c1a23c29583b4f6ba5405180147d5c00d48c9e9972",
+    "upgrade/acceptance.md": "d1a84c6a098067c48aa939ab1196c7f954ee8d75d277173111648d0f34bd5b6e",
+    "upgrade/official-sources.yaml": "44bdfd174a39a6e6752f13720b1bf2318ab8876cf3bb51cfd41cdd7109ffc978",
+    "upgrade/v1.35.10/evidence/UPG-02.json": "2822ef10928d0602ed0e263ef559d19e3bf62f3f536dad8df411afe7f3a3d771",
+    "upgrade/v1.35.10/evidence/UPG-06.json": "27e9215936f47d1e3ad0d33ceb4d1c0b2ca5ac2963541390d1f5996a9c486352",
+    "upgrade/v1.35.10/evidence/UPG-07.json": "1ebf1df4fa74408c03544174b811b7a213f209780256f2637d57ddf8fe632a3a",
+    "upgrade/v1.35.10/evidence/UPG-08.json": "3f5bc1e04000733c2de91c8b8c367f0cdbfbac91db1a854c6fb8251ecb7148af",
+    "upgrade/v1.35.10/evidence/UPG-09.json": "be616966a1aa7b86ec7d867162df5674d13ee70d718325efd75020bde8bb0fbe",
+    "upgrade/v1.35.10/evidence/UPG-10.json": "b0258b75fbd5a6ba1a99f427f714ad97f2d30e09fcab4d98e26d71f809b7840d",
+    "upgrade/v1.35.10/evidence/UPG-11.json": "73346a89268575ab7677ad2692c9abefc6c29e9b124145a355a503cdd8e1df91",
+    "upgrade/v1.35.10/evidence/UPG-12.json": "4522b1e7bdc0ba5edfdd2290184ac42fb291e4c7a92f41c19a06c077a60c5d81",
+    "upgrade/v1.35.10/evidence/UPG-13.json": "7a2e0de9ae4a2e349cc3addb4af5031cb1902a56e487cd135391c26ab37a7079",
+    "AGENTS.md": "f9afc0280ff546e901df440fd98cdc37749790e8cf076c1fd154d1415e426da2",
+    "upgrade/AGENTS.md": "d82d17527148e28c674d3a54269a3e7c6c492459f03a87833dd9b60469ae0a95",
+    "upgrade/README.md": "8e5b0d86d83f94861437bef9383ac6f5232c784ccbc805ab98e501c4b6afccdf",
+    "upgrade/policy.md": "ea1689be589d7065e6bed8d4d7d3cc8e3f2ac14f8a4923d9738237b472ba3b69",
+    "upgrade/data-contract.md": "e66f013fa457b30b3c5be2f0afede0f0ddcb2cf9fd582192607384bffb18e1b6"
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.35.10/evidence/UPG-14.json",
+      "sha256": "9afbb914809834efc4fe89110bb2a7059190ee40290e6e884f9328585bc3ec7c"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/maintenance/qualification.json",
+      "sha256": "c2c30ee51d7ac34b1f3d56a920d39eb12e6f18574f05c352ea983183e89321ae"
+    },
+    {
+      "path": "upgrade/v1.35.10/maintenance-baseline.yaml",
+      "sha256": "af301c489a6a9f6ee7e9242bf18f115d74342b4b28720db5a4267ce58a3f92fc"
+    }
+  ],
+  "applicability": {
+    "conditions": "原证据及其原始引用保持不变；原运行输入逐项核验，当前变化按维护基线明确分层。",
+    "differences": "workflow授权文字和维护入口/操作说明变化；迁移命令、顺序、停止与恢复语义不变。",
+    "reason": "变化有独立的既有实测和当前聚焦证据；未变路径保留原身份，不因分支/目录/SHA变化重跑全部现场。"
+  },
+  "customer_signoff": null
+}

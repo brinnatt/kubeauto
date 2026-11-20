@@ -1,0 +1,28 @@
+{
+  "scope": "be",
+  "inputs": {
+    "tests/evidence/starrocks-compose-image-allin1.json": "ea0fa716f828f6d512632adf467bad7ea85cbf8f8a2542068e1a1afc506f4549",
+    "tests/helpers/starrocks-compose-live.py": "2b47b114fe23afc9cdc65956637a19690dea822e4f5de560970f896f4c5f8dcf",
+    "tests/run_tools_regression.sh": "fc7ac418d103011e32a6758a9aca1a16758eb4be82e81fd3746c41725a2db307",
+    "tools/starrocks/starrocks-3.5.7/fe-be/.env.be.example": "d994f65fea4e8b5dbbed503af76fa657476a1af68797a4fffdaa8cfa4ebc0172",
+    "tools/starrocks/starrocks-3.5.7/fe-be/.gitattributes": "29ae1fe52fc0eabe94eada7bdb0e4e6a2ab488714b70e0329ea949b96283e244",
+    "tools/starrocks/starrocks-3.5.7/fe-be/.gitignore": "413899f0738e99e074c02d940506bc59e71a41306a8cd11b9ae91aa34da5ee75",
+    "tools/starrocks/starrocks-3.5.7/fe-be/conf/fe-be.conf": "b644baca30fae06b9cfa5f07995237f9eeca1b14d8cc4944d17c1e8bbe797fb1",
+    "tools/starrocks/starrocks-3.5.7/fe-be/conf/node-be.conf": "84b387e330136b76439cd7d1a4d55a7cc79cd917b3cf190587c793444517c066",
+    "tools/starrocks/starrocks-3.5.7/fe-be/docker-compose-be.yml": "d62b9f31c479931d9f91a0b7c9dc9990e880c19c887e415da1ea8723680f8cd1"
+  },
+  "rc": 0,
+  "files": {
+    "logs/starrocks-compose-be-ae4b1d1d617848faa413efbef4ff9e70/console.log": "7bbd15bd26eb5dc5675a81b69538eed3181a9086a614430d964b0bac3007348c",
+    "logs/starrocks-compose-be-ae4b1d1d617848faa413efbef4ff9e70/state.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/starrocks-compose-be-ae4b1d1d617848faa413efbef4ff9e70/state.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/starrocks-compose-be-ae4b1d1d617848faa413efbef4ff9e70/result.json": "a65e3ffd0190342790f2b7d491c003542829b801d8df2f23e62f8bd3767895db",
+    "logs/starrocks-compose-be-ae4b1d1d617848faa413efbef4ff9e70/plan.json": "f44e2d8ec448bad9d5cf08cd44029ed1e76f0dc6941aaefec8e621dd0728fb96",
+    "logs/starrocks-compose-be-ae4b1d1d617848faa413efbef4ff9e70/firewall-before.rules": "029ade1e7408562998b6de5ed0f2691942e41f1bd4d9b17c8cf6324c770e22b9",
+    "logs/starrocks-compose-be-ae4b1d1d617848faa413efbef4ff9e70/firewall-after.rules": "029ade1e7408562998b6de5ed0f2691942e41f1bd4d9b17c8cf6324c770e22b9"
+  },
+  "durable": [
+    "logs/starrocks-compose-be-ae4b1d1d617848faa413efbef4ff9e70/state.exit",
+    "logs/starrocks-compose-be-ae4b1d1d617848faa413efbef4ff9e70/state.finalized"
+  ]
+}

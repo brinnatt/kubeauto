@@ -1,0 +1,1350 @@
+{
+  "schema_version": 1,
+  "kind": "maintenance-delta-qualification",
+  "recorded_on": "2026-11-20",
+  "accepted_scope": "六仓维护源码收敛和已接受增量的适用性；不重新签署历史现场、不签新运行镜像或客户验收。",
+  "classification": "branch maintenance, documentation and one test-gate schema correction; no new product implementation",
+  "build_images": [],
+  "publish_images": [],
+  "lab_mutation": false,
+  "next_minor_started": false,
+  "source_identities": [
+    {
+      "repository": "kubeauto",
+      "branch": "v1.35.10",
+      "source_commit": "048f5e9f6b20e98c3d7cf326c4ea4615365e9e96",
+      "source_tree": "c5b6f886ce9fa3657a7bb8ffd43a6d2b3c6fff2d",
+      "previous_version_tip": "02acc14cdf82361f68b5cae601b2d66893ae8f18",
+      "accepted_dev_tip": "199af1f0a86f677c3d008938266c2414058a9357",
+      "retention": "both original tips must be ancestors of final dev and v1.35.10",
+      "changed_paths_since_previous_version": [
+        "AGENTS.md",
+        "common/constants.py",
+        "tests/README.md",
+        "tests/evidence/starrocks-compose-3.5.7-be.json",
+        "tests/evidence/starrocks-compose-3.5.7-cn.json",
+        "tests/evidence/starrocks-compose-3.5.7-full.json",
+        "tests/evidence/starrocks-compose-3.5.7-preflight.json",
+        "tests/evidence/starrocks-compose-image-allin1.json",
+        "tests/evidence/starrocks-compose-image-aws-cli.json",
+        "tests/evidence/starrocks-compose-image-cn.json",
+        "tests/evidence/starrocks-compose-image-fe.json",
+        "tests/evidence/starrocks-compose-image-rustfs.json",
+        "tests/helpers/starrocks-compose-live.py",
+        "tests/run_tools_regression.sh",
+        "tests/tools-test-matrix.yaml",
+        "tests/unit/test_ceph_delivery.py",
+        "tests/unit/test_kube_backup_cli.py",
+        "tests/unit/test_nerdctl.py",
+        "tests/unit/test_six_repo_version_sync.py",
+        "tests/unit/test_starrocks_compose_contract.py",
+        "tools/k8stools/KubeBackupCli.py",
+        "tools/starrocks/starrocks-3.5.7/README.md",
+        "tools/starrocks/starrocks-3.5.7/fe-be/.env.be.example",
+        "tools/starrocks/starrocks-3.5.7/fe-be/.gitattributes",
+        "tools/starrocks/starrocks-3.5.7/fe-be/.gitignore",
+        "tools/starrocks/starrocks-3.5.7/fe-be/conf/fe-be.conf",
+        "tools/starrocks/starrocks-3.5.7/fe-be/conf/node-be.conf",
+        "tools/starrocks/starrocks-3.5.7/fe-be/docker-compose-be.yml",
+        "tools/starrocks/starrocks-3.5.7/fe-cn/.env.cn.example",
+        "tools/starrocks/starrocks-3.5.7/fe-cn/.gitattributes",
+        "tools/starrocks/starrocks-3.5.7/fe-cn/.gitignore",
+        "tools/starrocks/starrocks-3.5.7/fe-cn/conf/fe-cn.conf",
+        "tools/starrocks/starrocks-3.5.7/fe-cn/conf/node-cn.conf",
+        "tools/starrocks/starrocks-3.5.7/fe-cn/docker-compose-cn.yml",
+        "tools/starrocks/starrocks-3.5.7/fe-cn/scripts/healthcheck-cn.sh",
+        "tools/starrocks/starrocks-3.5.7/fe-cn/scripts/init-rustfs-cn.sh",
+        "tools/starrocks/starrocks-3.5.7/fe-cn/scripts/init-storage-volume-cn.sh",
+        "upgrade/README.md",
+        "upgrade/data-contract.md",
+        "upgrade/evidence/artifact-documentation-20261119.json",
+        "upgrade/evidence/generic-artifact-delivery-20261119.json",
+        "upgrade/evidence/generic-artifact-modes-20261119.json",
+        "upgrade/evidence/nerdctl-2.4.2.json",
+        "upgrade/policy.md",
+        "upgrade/tests/test_artifact_readback_workflow.py",
+        "upgrade/tests/test_entrypoint.py",
+        "upgrade/tests/test_extbin_base_readback.py",
+        "upgrade/tests/test_extbin_overlay.py",
+        "upgrade/tests/test_k8s_artifact.py",
+        "upgrade/tests/test_tag_only_delivery.py",
+        "upgrade/v1.35.10/evidence/stable-baseline-integration.json",
+        "upgrade/v1.35.10/operations-manual.md"
+      ]
+    },
+    {
+      "repository": "kubeauto-dockerfile",
+      "branch": "v1.35.10",
+      "source_commit": "3fc520628a8b94e9926133b32b5d19d592359078",
+      "source_tree": "e276f8812f21bf3571d8c5905070c20f65abf6ee",
+      "previous_version_tip": "abf638b0612229c9092156427f409ee5e4c8faf0",
+      "accepted_dev_tip": "aff081b7976cafe6083746673feb671e8255e5ca",
+      "retention": "both original tips must be ancestors of final dev and v1.35.10",
+      "changed_paths_since_previous_version": [
+        ".github/workflows/build.yml",
+        ".github/workflows/build_and_push.yml",
+        ".gitignore",
+        "AGENTS.md",
+        "Dockerfile",
+        "README.md",
+        "tests/test_release.py",
+        "upgrade/release.json",
+        "upgrade/release.py"
+      ]
+    },
+    {
+      "repository": "kubeauto-k8s-bin-dockerfile",
+      "branch": "v1.35.10",
+      "source_commit": "b2ef19130a32e75abf0bfef74e03483aa8aeed9e",
+      "source_tree": "e657b77df5dc340ce552b8e345cf087593dc4c13",
+      "previous_version_tip": "b0c77b7aaa3756dfdaac38dce9352320f27c6294",
+      "accepted_dev_tip": "b2ef19130a32e75abf0bfef74e03483aa8aeed9e",
+      "retention": "both original tips must be ancestors of final dev and v1.35.10",
+      "changed_paths_since_previous_version": [
+        ".github/workflows/build.yml",
+        ".github/workflows/probe-v1.35.10.yml",
+        ".github/workflows/verify-v1.34.13.yml",
+        ".gitignore",
+        "AGENTS.md",
+        "README.md",
+        "tests/test_release.py",
+        "upgrade/release.json",
+        "upgrade/release.py"
+      ]
+    },
+    {
+      "repository": "kubeauto-ext-bin-dockerfile",
+      "branch": "v1.35.10",
+      "source_commit": "312d41f7c4adba9a86647ad4bc586543ec5d1e9f",
+      "source_tree": "2d6e7cb5e91377642b8a6e450fef860d84d43d85",
+      "previous_version_tip": "958c034e29c35c5dd44241bdc70160e1ae4eed81",
+      "accepted_dev_tip": "312d41f7c4adba9a86647ad4bc586543ec5d1e9f",
+      "retention": "both original tips must be ancestors of final dev and v1.35.10",
+      "changed_paths_since_previous_version": [
+        ".github/workflows/build.yml",
+        ".github/workflows/upgrade-v1.34.13.yml",
+        ".github/workflows/verify-v1.34.13.yml",
+        ".gitignore",
+        "AGENTS.md",
+        "README.md",
+        "tests/README.md",
+        "tests/build_smoke.py",
+        "tests/nerdctl_login_probe.py",
+        "tests/test_pack_release.py",
+        "tests/test_release.py",
+        "upgrade/pack_release.py",
+        "upgrade/release.json",
+        "upgrade/release.py"
+      ]
+    },
+    {
+      "repository": "kubeauto-ext-bin-sp1-dockerfile",
+      "branch": "v1.35.10",
+      "source_commit": "cd439d9cb0f6f0b8701b802ac3c37fd4ac420b79",
+      "source_tree": "7f2788fd9df4daae56dfb46eb9a287b90bd11cfe",
+      "previous_version_tip": "abdda8cbcd23a2bae24acc6e226f83b56a348aad",
+      "accepted_dev_tip": "cd439d9cb0f6f0b8701b802ac3c37fd4ac420b79",
+      "retention": "both original tips must be ancestors of final dev and v1.35.10",
+      "changed_paths_since_previous_version": [
+        ".github/workflows/build.yml",
+        ".gitignore",
+        "AGENTS.md",
+        "Dockerfile",
+        "README.md",
+        "tests/README.md",
+        "tests/build_smoke.py",
+        "tests/test_pack_release.py",
+        "tests/test_release.py",
+        "upgrade/pack_release.py",
+        "upgrade/release.json",
+        "upgrade/release.py"
+      ]
+    },
+    {
+      "repository": "kubeauto-ext-images-dockerfile",
+      "branch": "v1.35.10",
+      "source_commit": "b3b35856cbe6cdc8b9cf4ee4c766cbe75477e149",
+      "source_tree": "6e8ee47d9dd4a0e58b3510ae4cbeb97bc0b34aeb",
+      "previous_version_tip": "849126acbdf72c7931c78f49dc81e99c9c595bb8",
+      "accepted_dev_tip": "4baedc2aaa931b403dde1ce6f30395ec16017756",
+      "retention": "both original tips must be ancestors of final dev and v1.35.10",
+      "changed_paths_since_previous_version": [
+        "AGENTS.md",
+        "catalog.json",
+        "tests/evidence/publication-supervision-20261118.json",
+        "tooling/starrocks-3.5.7/allin1/Dockerfile",
+        "tooling/starrocks-3.5.7/aws-cli/Dockerfile",
+        "tooling/starrocks-3.5.7/cn/Dockerfile",
+        "tooling/starrocks-3.5.7/fe/Dockerfile",
+        "tooling/starrocks-3.5.7/rustfs/Dockerfile",
+        "tooling/test-support/image-release/busybox-supervision/Dockerfile",
+        "tooling/test-support/image-release/pause-supervision/Dockerfile"
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "repository": "kubeauto-dockerfile",
+      "command": "python3 -B -m unittest discover -s tests -v",
+      "tests": 22,
+      "seconds": 10.736,
+      "rc": 0,
+      "log": "/home/brinnatt/.local/share/kubeauto-baseline/20261120-refreeze/kubeauto-dockerfile-contracts.log",
+      "sha256": "7786e92f67c4b4fcd883928974f1ab57af84baac584158503856406ae8dddb0d"
+    },
+    {
+      "repository": "kubeauto-k8s-bin-dockerfile",
+      "command": "python3 -B -m unittest discover -s tests -v",
+      "tests": 22,
+      "seconds": 10.772,
+      "rc": 0,
+      "log": "/home/brinnatt/.local/share/kubeauto-baseline/20261120-refreeze/kubeauto-k8s-bin-dockerfile-contracts.log",
+      "sha256": "f6e723219d9150cf704d428ce17c351312479ef26edbff9e86dbc1b89f8e460d"
+    },
+    {
+      "repository": "kubeauto-ext-bin-dockerfile",
+      "command": "python3 -B -m unittest discover -s tests -v",
+      "tests": 35,
+      "seconds": 10.741,
+      "rc": 0,
+      "log": "/home/brinnatt/.local/share/kubeauto-baseline/20261120-refreeze/kubeauto-ext-bin-dockerfile-contracts.log",
+      "sha256": "8f94e3ef1a2dadf929b936cc60a3937771ec290b32d47b1cc8739b7c9baa012d"
+    },
+    {
+      "repository": "kubeauto-ext-bin-sp1-dockerfile",
+      "command": "python3 -B -m unittest discover -s tests -v",
+      "tests": 35,
+      "seconds": 10.69,
+      "rc": 0,
+      "log": "/home/brinnatt/.local/share/kubeauto-baseline/20261120-refreeze/kubeauto-ext-bin-sp1-dockerfile-contracts.log",
+      "sha256": "ab14f76c9b997a36d9123fb08aa10ab17779160dff38d0a73c38b0768f054381"
+    },
+    {
+      "repository": "kubeauto-ext-images-dockerfile",
+      "command": "python3.12 -B -m unittest discover -s tests -v",
+      "tests": 110,
+      "seconds": 35.73,
+      "rc": 0,
+      "log": "/home/brinnatt/.local/share/kubeauto-baseline/20261120-refreeze/ext-images-contracts.log",
+      "sha256": "2ee2e7c5f0b158da1dd61ed1a664d59f3fc167621cde2a503521929bcd9fcf70"
+    },
+    {
+      "repository": "kubeauto",
+      "command": ".venv/bin/python -B -m unittest upgrade.tests.test_tag_only_delivery upgrade.tests.test_artifact_readback_workflow upgrade.tests.test_k8s_artifact upgrade.tests.test_extbin_base_readback upgrade.tests.test_extbin_overlay tests.unit.test_six_repo_version_sync tests.unit.test_nerdctl tests.unit.test_kube_backup_cli tests.unit.test_starrocks_compose_contract upgrade.tests.test_next_config upgrade.tests.test_release_policy upgrade.tests.test_launcher -v",
+      "tests": 88,
+      "rc": 0,
+      "log": "/home/brinnatt/.local/share/kubeauto-baseline/20261120-refreeze/consumer-contracts.log",
+      "sha256": "fda9d5cae57f5c0143cd8790b1230e1320ad7c990cb439205dd3b85051d05155",
+      "environment": "KUBEAUTO_LOG_DIR=TemporaryDirectory, PYTHONDONTWRITEBYTECODE=1; removed on exit"
+    }
+  ],
+  "first_failure": {
+    "classification": "test-gate",
+    "scenario": "tests.unit.test_nerdctl.TestNerdctlPin.test_ext_bin_dockerfile_pins_match_constants",
+    "cause": "旧测试按单制品 schema 读取 release.json[tag]；当前 schema2 为 artifacts 列表，触发 KeyError: tag。",
+    "repair": "按消费者精确 tag 唯一选取目录项，叠加组件 env；复用既有版本/最小包断言，不改产品代码。",
+    "log": "/home/brinnatt/.local/share/kubeauto-baseline/20261120-refreeze/nerdctl-first-failure.log",
+    "sha256": "0eea262e31f7d0cdc7a1de07fa64f540a56234b8b0abb6a161e46c7ac00ceb79",
+    "rc": 1,
+    "repaired_by_check": "88-test consumer suite includes all 7 nerdctl tests"
+  },
+  "evidence_audit": {
+    "checks": [
+      {
+        "scope": "kubeauto-ext-bin-dockerfile",
+        "diff_since_accepted_run": [
+          "AGENTS.md",
+          "README.md",
+          "tests/README.md",
+          "tests/nerdctl_login_probe.py"
+        ],
+        "runtime_inputs_unchanged": true
+      },
+      {
+        "path": "/home/brinnatt/.local/share/kubeauto-pack-generic/20261119-modes/kubeauto-ext-bin-dockerfile/44536401277/artifacts-verify-artifacts-modes-20261119-2.zip",
+        "scope": "44536401277 artifact",
+        "sha256": "b8a5bd9446b2e34a6495f67a9ab31a5fc0c9fb4010822904e64661054a44fe4e",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/.local/share/kubeauto-pack-generic/20261119-modes/kubeauto-ext-bin-dockerfile/44536401277/logs.zip",
+        "scope": "44536401277 logs",
+        "sha256": "b232ad64be6c797ee4f128545e93aa639c0879f9adcadefd5c36838b752e34ff",
+        "verified": true
+      },
+      {
+        "scope": "kubeauto-ext-bin-sp1-dockerfile",
+        "diff_since_accepted_run": [
+          "README.md",
+          "tests/README.md"
+        ],
+        "runtime_inputs_unchanged": true
+      },
+      {
+        "path": "/home/brinnatt/.local/share/kubeauto-pack-generic/20261119-modes/kubeauto-ext-bin-sp1-dockerfile/44536398703/artifacts-verify-artifacts-modes-20261119-2.zip",
+        "scope": "44536398703 artifact",
+        "sha256": "af4e3e210becf52b16846d9e796c32484268be3fecd1c387a5e2264c9a158e1d",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/.local/share/kubeauto-pack-generic/20261119-modes/kubeauto-ext-bin-sp1-dockerfile/44536398703/logs.zip",
+        "scope": "44536398703 logs",
+        "sha256": "db7efb5c23d59cc4b574518481da94cb426ee70d3f56c73f6c0af90cd82d178d",
+        "verified": true
+      },
+      {
+        "scope": "kubeauto-k8s-bin-dockerfile",
+        "diff_since_accepted_run": [
+          "README.md"
+        ],
+        "runtime_inputs_unchanged": true
+      },
+      {
+        "path": "/home/brinnatt/.local/share/kubeauto-pack-generic/20261119-modes/kubeauto-k8s-bin-dockerfile/44534224177/artifacts-verify-artifacts-modes-20261119-1.zip",
+        "scope": "44534224177 artifact",
+        "sha256": "6b083caade87932a9e6d751bf5041f62164abb4e197af108e2cbf6588c0ed636",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/.local/share/kubeauto-pack-generic/20261119-modes/kubeauto-k8s-bin-dockerfile/44534224177/logs.zip",
+        "scope": "44534224177 logs",
+        "sha256": "649fd7acb84b6e1402678182fb37fe9a74b61deebdddfa54383699caa8477923",
+        "verified": true
+      },
+      {
+        "scope": "kubeauto-dockerfile",
+        "diff_since_accepted_run": [
+          "README.md"
+        ],
+        "runtime_inputs_unchanged": true
+      },
+      {
+        "path": "/home/brinnatt/.local/share/kubeauto-pack-generic/20261119-modes/kubeauto-dockerfile/44534221682/artifacts-verify-artifacts-modes-20261119-1.zip",
+        "scope": "44534221682 artifact",
+        "sha256": "aa3ba7e62b7575ea09ae03eca27de286c39f7617e562b4f51a43579a948c4716",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/.local/share/kubeauto-pack-generic/20261119-modes/kubeauto-dockerfile/44534221682/logs.zip",
+        "scope": "44534221682 logs",
+        "sha256": "575bc9dea4feb1e1212b55a4abfc9f67903bc336ece0fea59f2c313e72c4e698",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tests/helpers/starrocks-compose-live.py",
+        "scope": "starrocks preflight inputs",
+        "sha256": "2b47b114fe23afc9cdc65956637a19690dea822e4f5de560970f896f4c5f8dcf",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tests/run_tools_regression.sh",
+        "scope": "starrocks preflight inputs",
+        "sha256": "fc7ac418d103011e32a6758a9aca1a16758eb4be82e81fd3746c41725a2db307",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tests/unit/test_starrocks_compose_contract.py",
+        "scope": "starrocks preflight inputs",
+        "sha256": "1fa2e10c783579e08f31371761e7f989170696271bc0400dbd1e7e846243dec7",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-be/.env.be.example",
+        "scope": "starrocks preflight inputs",
+        "sha256": "d994f65fea4e8b5dbbed503af76fa657476a1af68797a4fffdaa8cfa4ebc0172",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-be/.gitattributes",
+        "scope": "starrocks preflight inputs",
+        "sha256": "29ae1fe52fc0eabe94eada7bdb0e4e6a2ab488714b70e0329ea949b96283e244",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-be/.gitignore",
+        "scope": "starrocks preflight inputs",
+        "sha256": "413899f0738e99e074c02d940506bc59e71a41306a8cd11b9ae91aa34da5ee75",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-be/conf/fe-be.conf",
+        "scope": "starrocks preflight inputs",
+        "sha256": "b644baca30fae06b9cfa5f07995237f9eeca1b14d8cc4944d17c1e8bbe797fb1",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-be/conf/node-be.conf",
+        "scope": "starrocks preflight inputs",
+        "sha256": "84b387e330136b76439cd7d1a4d55a7cc79cd917b3cf190587c793444517c066",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-be/docker-compose-be.yml",
+        "scope": "starrocks preflight inputs",
+        "sha256": "d62b9f31c479931d9f91a0b7c9dc9990e880c19c887e415da1ea8723680f8cd1",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-cn/.env.cn.example",
+        "scope": "starrocks preflight inputs",
+        "sha256": "797c878ce81ef5fbc6c6730dc8949e49e7edb53bb6845c0c2d081f0dfc5ad5a8",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-cn/.gitattributes",
+        "scope": "starrocks preflight inputs",
+        "sha256": "29ae1fe52fc0eabe94eada7bdb0e4e6a2ab488714b70e0329ea949b96283e244",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-cn/.gitignore",
+        "scope": "starrocks preflight inputs",
+        "sha256": "e638e6e8707cf1f23608ee7361ce1b9e0cb2fd66fb0223f5cb112d72b790ff9c",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-cn/conf/fe-cn.conf",
+        "scope": "starrocks preflight inputs",
+        "sha256": "bf9ab3e1493be217ea53a6a9e08e9f89070d2dc3f42ff9f2d7e3686b090d3c6b",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-cn/conf/node-cn.conf",
+        "scope": "starrocks preflight inputs",
+        "sha256": "e6a2490252e22f4396227377fa7fbd6c551cb67651c4e06ceffc2caa9b0500cc",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-cn/docker-compose-cn.yml",
+        "scope": "starrocks preflight inputs",
+        "sha256": "3464327a379a2d11a8addcb68e99ae23985d8ce7f008333c89cd9bebb174a771",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-cn/scripts/healthcheck-cn.sh",
+        "scope": "starrocks preflight inputs",
+        "sha256": "bca0f1955c320d9a296f78d5d6ea04946e636e45a19058b67286798bc6182808",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-cn/scripts/init-rustfs-cn.sh",
+        "scope": "starrocks preflight inputs",
+        "sha256": "92ec1d25a6a9fd54c4b1db707530ca55b4bd0559d535543b43c4a090a0357453",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-cn/scripts/init-storage-volume-cn.sh",
+        "scope": "starrocks preflight inputs",
+        "sha256": "1d1aa652ce24f9284a64bc706d04852da198ae0fd6cbfffc9972733b626d4d0d",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/logs/starrocks-compose-preflight-23592447f0154e8588a67e9e15f0a98b/contracts.log",
+        "scope": "starrocks preflight files",
+        "sha256": "4f6a74002f9151cb82850707c8823c82c294b7421f3aa5f20502e5d305c0b306",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tests/evidence/starrocks-compose-image-allin1.json",
+        "scope": "starrocks be inputs",
+        "sha256": "ea0fa716f828f6d512632adf467bad7ea85cbf8f8a2542068e1a1afc506f4549",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tests/helpers/starrocks-compose-live.py",
+        "scope": "starrocks be inputs",
+        "sha256": "2b47b114fe23afc9cdc65956637a19690dea822e4f5de560970f896f4c5f8dcf",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tests/run_tools_regression.sh",
+        "scope": "starrocks be inputs",
+        "sha256": "fc7ac418d103011e32a6758a9aca1a16758eb4be82e81fd3746c41725a2db307",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-be/.env.be.example",
+        "scope": "starrocks be inputs",
+        "sha256": "d994f65fea4e8b5dbbed503af76fa657476a1af68797a4fffdaa8cfa4ebc0172",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-be/.gitattributes",
+        "scope": "starrocks be inputs",
+        "sha256": "29ae1fe52fc0eabe94eada7bdb0e4e6a2ab488714b70e0329ea949b96283e244",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-be/.gitignore",
+        "scope": "starrocks be inputs",
+        "sha256": "413899f0738e99e074c02d940506bc59e71a41306a8cd11b9ae91aa34da5ee75",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-be/conf/fe-be.conf",
+        "scope": "starrocks be inputs",
+        "sha256": "b644baca30fae06b9cfa5f07995237f9eeca1b14d8cc4944d17c1e8bbe797fb1",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-be/conf/node-be.conf",
+        "scope": "starrocks be inputs",
+        "sha256": "84b387e330136b76439cd7d1a4d55a7cc79cd917b3cf190587c793444517c066",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-be/docker-compose-be.yml",
+        "scope": "starrocks be inputs",
+        "sha256": "d62b9f31c479931d9f91a0b7c9dc9990e880c19c887e415da1ea8723680f8cd1",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/logs/starrocks-compose-be-ae4b1d1d617848faa413efbef4ff9e70/console.log",
+        "scope": "starrocks be files",
+        "sha256": "7bbd15bd26eb5dc5675a81b69538eed3181a9086a614430d964b0bac3007348c",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/logs/starrocks-compose-be-ae4b1d1d617848faa413efbef4ff9e70/state.exit",
+        "scope": "starrocks be files",
+        "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/logs/starrocks-compose-be-ae4b1d1d617848faa413efbef4ff9e70/state.finalized",
+        "scope": "starrocks be files",
+        "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/logs/starrocks-compose-be-ae4b1d1d617848faa413efbef4ff9e70/result.json",
+        "scope": "starrocks be files",
+        "sha256": "a65e3ffd0190342790f2b7d491c003542829b801d8df2f23e62f8bd3767895db",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/logs/starrocks-compose-be-ae4b1d1d617848faa413efbef4ff9e70/plan.json",
+        "scope": "starrocks be files",
+        "sha256": "f44e2d8ec448bad9d5cf08cd44029ed1e76f0dc6941aaefec8e621dd0728fb96",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/logs/starrocks-compose-be-ae4b1d1d617848faa413efbef4ff9e70/firewall-before.rules",
+        "scope": "starrocks be files",
+        "sha256": "029ade1e7408562998b6de5ed0f2691942e41f1bd4d9b17c8cf6324c770e22b9",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/logs/starrocks-compose-be-ae4b1d1d617848faa413efbef4ff9e70/firewall-after.rules",
+        "scope": "starrocks be files",
+        "sha256": "029ade1e7408562998b6de5ed0f2691942e41f1bd4d9b17c8cf6324c770e22b9",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tests/evidence/starrocks-compose-image-aws-cli.json",
+        "scope": "starrocks cn inputs",
+        "sha256": "f610218d98f86b93a436ecda184de609e6bc0e081b95a91ad06849751d282e31",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tests/evidence/starrocks-compose-image-cn.json",
+        "scope": "starrocks cn inputs",
+        "sha256": "4f0dd4e68d00b7df818b5fa18c412aca131f9b3c3161906592a0e01801fe5f42",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tests/evidence/starrocks-compose-image-fe.json",
+        "scope": "starrocks cn inputs",
+        "sha256": "cbb7412a5cbd42d74dfc420c293a893f60fe1d34777608d4df254ae53f2b01f9",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tests/evidence/starrocks-compose-image-rustfs.json",
+        "scope": "starrocks cn inputs",
+        "sha256": "defb6974133b061cb7b5081b247ac93627aa45fe3e5ae4d7d3e1b815b819011a",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tests/helpers/starrocks-compose-live.py",
+        "scope": "starrocks cn inputs",
+        "sha256": "2b47b114fe23afc9cdc65956637a19690dea822e4f5de560970f896f4c5f8dcf",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tests/run_tools_regression.sh",
+        "scope": "starrocks cn inputs",
+        "sha256": "fc7ac418d103011e32a6758a9aca1a16758eb4be82e81fd3746c41725a2db307",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-cn/.env.cn.example",
+        "scope": "starrocks cn inputs",
+        "sha256": "797c878ce81ef5fbc6c6730dc8949e49e7edb53bb6845c0c2d081f0dfc5ad5a8",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-cn/.gitattributes",
+        "scope": "starrocks cn inputs",
+        "sha256": "29ae1fe52fc0eabe94eada7bdb0e4e6a2ab488714b70e0329ea949b96283e244",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-cn/.gitignore",
+        "scope": "starrocks cn inputs",
+        "sha256": "e638e6e8707cf1f23608ee7361ce1b9e0cb2fd66fb0223f5cb112d72b790ff9c",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-cn/conf/fe-cn.conf",
+        "scope": "starrocks cn inputs",
+        "sha256": "bf9ab3e1493be217ea53a6a9e08e9f89070d2dc3f42ff9f2d7e3686b090d3c6b",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-cn/conf/node-cn.conf",
+        "scope": "starrocks cn inputs",
+        "sha256": "e6a2490252e22f4396227377fa7fbd6c551cb67651c4e06ceffc2caa9b0500cc",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-cn/docker-compose-cn.yml",
+        "scope": "starrocks cn inputs",
+        "sha256": "3464327a379a2d11a8addcb68e99ae23985d8ce7f008333c89cd9bebb174a771",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-cn/scripts/healthcheck-cn.sh",
+        "scope": "starrocks cn inputs",
+        "sha256": "bca0f1955c320d9a296f78d5d6ea04946e636e45a19058b67286798bc6182808",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-cn/scripts/init-rustfs-cn.sh",
+        "scope": "starrocks cn inputs",
+        "sha256": "92ec1d25a6a9fd54c4b1db707530ca55b4bd0559d535543b43c4a090a0357453",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-cn/scripts/init-storage-volume-cn.sh",
+        "scope": "starrocks cn inputs",
+        "sha256": "1d1aa652ce24f9284a64bc706d04852da198ae0fd6cbfffc9972733b626d4d0d",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/logs/starrocks-compose-cn-c89e483512bb4ffaabc44b724896c132/console.log",
+        "scope": "starrocks cn files",
+        "sha256": "87728f7ac996e39df8b0bb15284b94c821440c5d3f1d4abb73a5ede4459be5f7",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/logs/starrocks-compose-cn-c89e483512bb4ffaabc44b724896c132/state.exit",
+        "scope": "starrocks cn files",
+        "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/logs/starrocks-compose-cn-c89e483512bb4ffaabc44b724896c132/state.finalized",
+        "scope": "starrocks cn files",
+        "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/logs/starrocks-compose-cn-c89e483512bb4ffaabc44b724896c132/result.json",
+        "scope": "starrocks cn files",
+        "sha256": "c8581840716dfdbf6b303a9a251de07c1657d04b989512020a81f1ded97c6cf1",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/logs/starrocks-compose-cn-c89e483512bb4ffaabc44b724896c132/plan.json",
+        "scope": "starrocks cn files",
+        "sha256": "ed01a05eefd3a8ef3b9728af20b7896a59f8c85689f8d9399bcad3b5d9fdfd86",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/logs/starrocks-compose-cn-c89e483512bb4ffaabc44b724896c132/firewall-before.rules",
+        "scope": "starrocks cn files",
+        "sha256": "029ade1e7408562998b6de5ed0f2691942e41f1bd4d9b17c8cf6324c770e22b9",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/logs/starrocks-compose-cn-c89e483512bb4ffaabc44b724896c132/firewall-after.rules",
+        "scope": "starrocks cn files",
+        "sha256": "029ade1e7408562998b6de5ed0f2691942e41f1bd4d9b17c8cf6324c770e22b9",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tests/evidence/starrocks-compose-image-allin1.json",
+        "scope": "starrocks full inputs",
+        "sha256": "ea0fa716f828f6d512632adf467bad7ea85cbf8f8a2542068e1a1afc506f4549",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tests/evidence/starrocks-compose-image-aws-cli.json",
+        "scope": "starrocks full inputs",
+        "sha256": "f610218d98f86b93a436ecda184de609e6bc0e081b95a91ad06849751d282e31",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tests/evidence/starrocks-compose-image-cn.json",
+        "scope": "starrocks full inputs",
+        "sha256": "4f0dd4e68d00b7df818b5fa18c412aca131f9b3c3161906592a0e01801fe5f42",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tests/evidence/starrocks-compose-image-fe.json",
+        "scope": "starrocks full inputs",
+        "sha256": "cbb7412a5cbd42d74dfc420c293a893f60fe1d34777608d4df254ae53f2b01f9",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tests/evidence/starrocks-compose-image-rustfs.json",
+        "scope": "starrocks full inputs",
+        "sha256": "defb6974133b061cb7b5081b247ac93627aa45fe3e5ae4d7d3e1b815b819011a",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tests/helpers/starrocks-compose-live.py",
+        "scope": "starrocks full inputs",
+        "sha256": "2b47b114fe23afc9cdc65956637a19690dea822e4f5de560970f896f4c5f8dcf",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tests/run_tools_regression.sh",
+        "scope": "starrocks full inputs",
+        "sha256": "fc7ac418d103011e32a6758a9aca1a16758eb4be82e81fd3746c41725a2db307",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-be/.env.be.example",
+        "scope": "starrocks full inputs",
+        "sha256": "d994f65fea4e8b5dbbed503af76fa657476a1af68797a4fffdaa8cfa4ebc0172",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-be/.gitattributes",
+        "scope": "starrocks full inputs",
+        "sha256": "29ae1fe52fc0eabe94eada7bdb0e4e6a2ab488714b70e0329ea949b96283e244",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-be/.gitignore",
+        "scope": "starrocks full inputs",
+        "sha256": "413899f0738e99e074c02d940506bc59e71a41306a8cd11b9ae91aa34da5ee75",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-be/conf/fe-be.conf",
+        "scope": "starrocks full inputs",
+        "sha256": "b644baca30fae06b9cfa5f07995237f9eeca1b14d8cc4944d17c1e8bbe797fb1",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-be/conf/node-be.conf",
+        "scope": "starrocks full inputs",
+        "sha256": "84b387e330136b76439cd7d1a4d55a7cc79cd917b3cf190587c793444517c066",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-be/docker-compose-be.yml",
+        "scope": "starrocks full inputs",
+        "sha256": "d62b9f31c479931d9f91a0b7c9dc9990e880c19c887e415da1ea8723680f8cd1",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-cn/.env.cn.example",
+        "scope": "starrocks full inputs",
+        "sha256": "797c878ce81ef5fbc6c6730dc8949e49e7edb53bb6845c0c2d081f0dfc5ad5a8",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-cn/.gitattributes",
+        "scope": "starrocks full inputs",
+        "sha256": "29ae1fe52fc0eabe94eada7bdb0e4e6a2ab488714b70e0329ea949b96283e244",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-cn/.gitignore",
+        "scope": "starrocks full inputs",
+        "sha256": "e638e6e8707cf1f23608ee7361ce1b9e0cb2fd66fb0223f5cb112d72b790ff9c",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-cn/conf/fe-cn.conf",
+        "scope": "starrocks full inputs",
+        "sha256": "bf9ab3e1493be217ea53a6a9e08e9f89070d2dc3f42ff9f2d7e3686b090d3c6b",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-cn/conf/node-cn.conf",
+        "scope": "starrocks full inputs",
+        "sha256": "e6a2490252e22f4396227377fa7fbd6c551cb67651c4e06ceffc2caa9b0500cc",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-cn/docker-compose-cn.yml",
+        "scope": "starrocks full inputs",
+        "sha256": "3464327a379a2d11a8addcb68e99ae23985d8ce7f008333c89cd9bebb174a771",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-cn/scripts/healthcheck-cn.sh",
+        "scope": "starrocks full inputs",
+        "sha256": "bca0f1955c320d9a296f78d5d6ea04946e636e45a19058b67286798bc6182808",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-cn/scripts/init-rustfs-cn.sh",
+        "scope": "starrocks full inputs",
+        "sha256": "92ec1d25a6a9fd54c4b1db707530ca55b4bd0559d535543b43c4a090a0357453",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/tools/starrocks/starrocks-3.5.7/fe-cn/scripts/init-storage-volume-cn.sh",
+        "scope": "starrocks full inputs",
+        "sha256": "1d1aa652ce24f9284a64bc706d04852da198ae0fd6cbfffc9972733b626d4d0d",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/logs/starrocks-compose-full-c41d3f0da3c34b2d813931db07e51b07/console.log",
+        "scope": "starrocks full files",
+        "sha256": "f1eb61c508ed71bbd5f5578144803d767c05a602cd70aeff8f16edf480f4d80c",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/logs/starrocks-compose-full-c41d3f0da3c34b2d813931db07e51b07/state.exit",
+        "scope": "starrocks full files",
+        "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/logs/starrocks-compose-full-c41d3f0da3c34b2d813931db07e51b07/state.finalized",
+        "scope": "starrocks full files",
+        "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/logs/starrocks-compose-full-c41d3f0da3c34b2d813931db07e51b07/result.json",
+        "scope": "starrocks full files",
+        "sha256": "58a02f460ba5815a6f75c34b2efe6819064f9a7b6309b260ef51470d89aad0e4",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/logs/starrocks-compose-full-c41d3f0da3c34b2d813931db07e51b07/plan.json",
+        "scope": "starrocks full files",
+        "sha256": "8d2eb9d950a66d215ef83bc7fd21061aadcfdb545a375abd7b2e71d44fe41988",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/logs/starrocks-compose-full-c41d3f0da3c34b2d813931db07e51b07/firewall-before.rules",
+        "scope": "starrocks full files",
+        "sha256": "029ade1e7408562998b6de5ed0f2691942e41f1bd4d9b17c8cf6324c770e22b9",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/logs/starrocks-compose-full-c41d3f0da3c34b2d813931db07e51b07/firewall-after.rules",
+        "scope": "starrocks full files",
+        "sha256": "029ade1e7408562998b6de5ed0f2691942e41f1bd4d9b17c8cf6324c770e22b9",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/upgrade/v1.35.10/evidence/raw/local-qualification/acceptance-transport.log",
+        "scope": "UPG-04 original reference",
+        "sha256": "186469038a81127ba36ba978f89613036cc9c04245742f748ae66f57cd19ec1a",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/upgrade/v1.35.10/evidence/raw/local-qualification/control-isolation.log",
+        "scope": "UPG-04 original reference",
+        "sha256": "1be9cf9480bd5755c0da45e67062e8d38e7c903eac5e2e9384978a3ea04ee2a0",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/upgrade/v1.35.10/evidence/raw/local-qualification/next-runner-contracts.log",
+        "scope": "UPG-04 original reference",
+        "sha256": "211d09548e560d11c0f8bf5a760627ea5b704b043ad4a9698c5582175f9768f2",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/upgrade/v1.35.10/evidence/raw/local-qualification/static-preflight.log",
+        "scope": "UPG-04 original reference",
+        "sha256": "96554e7ea2beb521dbc74c893257f64ef80b55a86a90c6c677483b26ad81b363",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/upgrade/v1.35.10/evidence/raw/local-qualification/unit.log",
+        "scope": "UPG-04 original reference",
+        "sha256": "745a87c1f1a163f511dd41c0e456b0f4f5e590d2006ef887454af5bdb69acd39",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/upgrade/v1.35.10/evidence/raw/local-qualification/upgrade-contracts.log",
+        "scope": "UPG-04 original reference",
+        "sha256": "76bee310208300bc5b5efb80326c1810cac39ec4c5d8a70c4448c2cd3850206f",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/upgrade/v1.35.10/evidence/native-service-qualification.json",
+        "scope": "UPG-04 original reference",
+        "sha256": "da555e913815a5a4058bb3021535a08849f2a490cd3fdb1694efdaf66681a9f0",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/upgrade/v1.35.10/evidence/raw/local-qualification/supply-admission.log",
+        "scope": "UPG-04 original reference",
+        "sha256": "09db732bf163f1e838591e6d7d66e9277a077c4be54c4ba27f6879924a077bdf",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/upgrade/v1.35.10/evidence/raw/local-qualification/podcert-affected.log",
+        "scope": "UPG-04 original reference",
+        "sha256": "ec255d351fd5891000d33ae657bd7756b1399ddeec3835ba2bf021c8c65747bd",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/upgrade/v1.35.10/evidence/raw/local-qualification/admission-repair-transport.log",
+        "scope": "UPG-04 original reference",
+        "sha256": "c30697878edc0f4e8b82b82b16c715530266179ca24910088776cd65193bcd49",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/upgrade/v1.35.10/evidence/raw/official-directory/storage13413-certificates.go",
+        "scope": "UPG-04 original reference",
+        "sha256": "dc12fbee2775f1a37201560be614e0c0907b96e1a7bab0c152be97a79c105f9d",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/upgrade/v1.35.10/evidence/raw/official-directory/storage_certificates.go",
+        "scope": "UPG-04 original reference",
+        "sha256": "0a39791c304a375f574966fbf071dd35096cd4bbb3575f2ffb02dc46990a75cf",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/upgrade/v1.35.10/evidence/raw/official-directory/storage13510-types.go",
+        "scope": "UPG-04 original reference",
+        "sha256": "146d3a53dfd360fd2b3501b7f75349bfaf5bb64e339ba33885b5ab14a7a671aa",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/upgrade/v1.35.10/evidence/raw/local-qualification/podcert-affected-v2.log",
+        "scope": "UPG-04 original reference",
+        "sha256": "c9f6c3843bdb6e73835ed62d2768100082de01c7915a210c334a7e0f812101a3",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/upgrade/v1.35.10/evidence/raw/local-qualification/affected-runner-final.log",
+        "scope": "UPG-04 original reference",
+        "sha256": "aec3d406036f35b24f4ee381c2f3db63816cce773c1d8477286ad10e30309b92",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/upgrade/v1.35.10/evidence/raw/local-qualification/repair-scope-final.log",
+        "scope": "UPG-04 original reference",
+        "sha256": "1f1d525a35f45c0df1da81c5c1a75c307629cf9ac253c46f7ba5cc4da137f5cb",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/upgrade/v1.35.10/evidence/raw/local-qualification/hardlink-pack-contract.log",
+        "scope": "UPG-04 original reference",
+        "sha256": "e66c3cdb875216d8337fa78bca92430843778ed9f166d0e2365f9c0f9417de31",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/upgrade/v1.35.10/evidence/raw/local-qualification/hardlink-repair-transport.log",
+        "scope": "UPG-04 original reference",
+        "sha256": "ac68c9bb3d48fe5a5e9d9ba52c234c000ab7bab0083de2e6e510e60eceb1b4c1",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/upgrade/v1.35.10/evidence/raw/local-qualification/calico-default-contracts.log",
+        "scope": "UPG-04 original reference",
+        "sha256": "0a2a64bff2e96aa91fd42acdaa88931b9a1e4ebf75f2729d2d8fa796bb7c1f4c",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/upgrade/v1.35.10/evidence/raw/local-qualification/calico-false-default-first-disproof.log",
+        "scope": "UPG-04 original reference",
+        "sha256": "bc65f4289b0e55d06385b128e7beda3303d44bb52a6abf1ef81a1691b0ce5805",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/upgrade/v1.35.10/evidence/raw/calico-pod-securitycontext-repair/kubeauto-v13510-pod-securitycontext-contracts.log",
+        "scope": "UPG-04 original reference",
+        "sha256": "cd8dce7720d886cb8f42d4c9707d318837d916a4e99e13f88a6f10a37328e07f",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/upgrade/v1.35.10/evidence/raw/calico-pod-securitycontext-repair/kubeauto-v13510-pod-securitycontext-first-disproof.log",
+        "scope": "UPG-04 original reference",
+        "sha256": "478c775f419427dfa2bcc225bdc610d9d4d671e551021f4ded6da79db6b31099",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/upgrade/v1.35.10/evidence/raw/calico-hostpath-repair/kubeauto-v13510-hostpath-first-disproof.log",
+        "scope": "UPG-04 original reference",
+        "sha256": "303389ee4002311c80d33a3f306c6db28963f7ff928308bffbbeb10c3eb5bfcc",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/upgrade/v1.35.10/evidence/raw/calico-hostpath-repair/kubeauto-v13510-hostpath-contracts.log",
+        "scope": "UPG-04 original reference",
+        "sha256": "a617cc1212d892917367c40cab6e1cdbff4c13707b536ffb8a4b7659296ccc29",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/upgrade/v1.35.10/evidence/raw/calico-hostpath-repair/kubeauto-v13510-hostpath-transport-contracts.log",
+        "scope": "UPG-04 original reference",
+        "sha256": "a81587a43362f8d407b5d8958d507cd352b1f43224400323e029cebe97a74daa",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/upgrade/v1.35.10/evidence/calico-controller-revision-repair.json",
+        "scope": "UPG-04 original reference",
+        "sha256": "fb56c447f629e32ea479a6faefef93f7d3279bc7adbe9b5d700b6a8c72a35592",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/upgrade/v1.35.10/evidence/raw/calico-revision-repair/kubeauto-v13510-revision-contracts.log",
+        "scope": "UPG-04 original reference",
+        "sha256": "6ead0a9f468eae6b6d67347c4b1b74e927adf8f3c88c3b4e8bee276640270daa",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/upgrade/v1.35.10/evidence/raw/calico-revision-repair/kubeauto-v13510-revision-metrics-contracts.log",
+        "scope": "UPG-04 original reference",
+        "sha256": "e6ec390158a72db15697cd94dfd8df89bdf457b026e1ff0af6288be392ee3c43",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/upgrade/v1.35.10/evidence/calico-bgp-default-repair.json",
+        "scope": "UPG-04 original reference",
+        "sha256": "2ab2545644cecd03c646142771074bcc85ec62a669d4d8e9f55921a16fa387df",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/upgrade/v1.35.10/evidence/calico-datastore-repair.json",
+        "scope": "UPG-04 original reference",
+        "sha256": "77b422f821d918d8f38966144243a370b545377db62f85b970b8999a300ab8bf",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/upgrade/v1.35.10/evidence/raw/calico-bgp-repair/kubeauto-v13510-bgp-real-handoff-contracts.log",
+        "scope": "UPG-04 original reference",
+        "sha256": "ef5bac9d312a1c5a742ce431b2f2968aaddcc898402cd80c9da0f6de244e18ad",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/upgrade/v1.35.10/evidence/metrics-eviction-repair.json",
+        "scope": "UPG-04 original reference",
+        "sha256": "43e45a245482c182c920a431dd777b53ba70def9b8ea0084a05d1e1eeaa950f9",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/upgrade/v1.35.10/evidence/raw/metrics-eviction-repair/kubeauto-v13510-metrics-eviction-contracts.log",
+        "scope": "UPG-04 original reference",
+        "sha256": "7636547a0a39b350519066efe45376edb996e6e3235690418723ca27ad902b9c",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/upgrade/v1.35.10/evidence/raw/metrics-eviction-repair/kubeauto-v13510-metrics-eviction-affected-contracts.log",
+        "scope": "UPG-04 original reference",
+        "sha256": "4080c877535a732966cfc44a105b2f14d75284b473a58fffd5534d40950dfe44",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/upgrade/v1.35.10/evidence/lab-cleanup-repair.json",
+        "scope": "UPG-04 original reference",
+        "sha256": "1ec49f20365780c15cb50058137065db4ad58f8904caf4ea0a03a577e7e2eee8",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/upgrade/v1.35.10/evidence/raw/cleanup-repair/kubeauto-v13510-cleanup-contracts.log",
+        "scope": "UPG-04 original reference",
+        "sha256": "052d25674cbcd1f448597b02512da31e211b3b2e14931848d4fba52d55ca1067",
+        "verified": true
+      },
+      {
+        "scope": "UPG-04",
+        "changed_inputs": [
+          "common/constants.py"
+        ]
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/upgrade/v1.35.10/evidence/raw/document-review/kubeauto-v13510-document-static.log",
+        "scope": "UPG-14 original reference",
+        "sha256": "a6573daa4d4001ccd33ab17b169a47d6f17434b8f21b3ffce908c3834c2bcafa",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/upgrade/v1.35.10/evidence/official-directory-scope.json",
+        "scope": "UPG-14 original reference",
+        "sha256": "b9753fb597fb7c9ebfc08247dd02851925a7b3036fa7b5f8cb9aef8b0da253a3",
+        "verified": true
+      },
+      {
+        "path": "/home/brinnatt/projects/kubeauto/upgrade/v1.35.10/evidence/release-fixture-repair.json",
+        "scope": "UPG-14 original reference",
+        "sha256": "e25a625235720bae2fb457a789c86f787d1ad593e8cc473343a63d66b0a06611",
+        "verified": true
+      },
+      {
+        "scope": "UPG-14",
+        "changed_inputs": [
+          "upgrade/workflow.md",
+          "upgrade/acceptance.md"
+        ]
+      },
+      {
+        "path": "/home/brinnatt/.local/share/kubeauto-nerdctl-242/20261119/44477073806/ext-bin-nerdctl-2.4.2.zip",
+        "sha256": "1bfcc458f0ff74dd76d1a20596929a4b50fd93f8ae087928c0c319817e365e43",
+        "verified": true,
+        "scope": "nerdctl real login regression"
+      },
+      {
+        "path": "/home/brinnatt/.local/share/kubeauto-nerdctl-242/20261119/44477073806/logs.zip",
+        "sha256": "8746c9e5a004dc65601956a1c3969db3bc192b32c9dc78b81c17efc9276f11f9",
+        "verified": true,
+        "scope": "nerdctl real login regression"
+      },
+      {
+        "scope": "UPG-04",
+        "path": "common/constants.py",
+        "historical_sha256": "fd0f60004c61d86e2cadf12f8892b8ecce7420257ab5b36093863f8f280c6c07",
+        "historical_commit": "e112f687cb3625beb4a91bc5658cb603adbaaca7",
+        "verified": true
+      },
+      {
+        "scope": "UPG-14",
+        "path": "upgrade/v1.35.10/operations-manual.md",
+        "historical_sha256": "eb089e02afaeaf2a81ecbd326282988c78841b5cfce4d239d4e8378d53ade5ed",
+        "historical_commit": "e112f687cb3625beb4a91bc5658cb603adbaaca7",
+        "verified": true
+      },
+      {
+        "scope": "UPG-14",
+        "path": "upgrade/workflow.md",
+        "historical_sha256": "86d1a0cb571d3c6d9a0478f8ad8066544568a93c13be5c536c9d0c7fffc8446c",
+        "historical_commit": "e112f687cb3625beb4a91bc5658cb603adbaaca7",
+        "verified": true
+      },
+      {
+        "scope": "UPG-14",
+        "path": "upgrade/acceptance.md",
+        "historical_sha256": "1fd150a97eb055a62ffd1153d9fc30003da4eacce458fe652b53d42e4e49ead5",
+        "historical_commit": "e112f687cb3625beb4a91bc5658cb603adbaaca7",
+        "verified": true
+      }
+    ],
+    "errors": []
+  },
+  "workflow_audit": [
+    {
+      "repo": "kubeauto",
+      "workflow": ".github/workflows/release.yml",
+      "events": {
+        "push": {
+          "tags": [
+            "v[0-9]*.[0-9]*.[0-9]*"
+          ]
+        }
+      },
+      "shell_steps_checked": 3
+    },
+    {
+      "repo": "kubeauto-dockerfile",
+      "workflow": ".github/workflows/build.yml",
+      "events": {
+        "push": {
+          "tags": [
+            "artifacts-*",
+            "verify-artifacts-*"
+          ]
+        }
+      },
+      "shell_steps_checked": 5
+    },
+    {
+      "repo": "kubeauto-k8s-bin-dockerfile",
+      "workflow": ".github/workflows/build.yml",
+      "events": {
+        "push": {
+          "tags": [
+            "artifacts-*",
+            "verify-artifacts-*"
+          ]
+        }
+      },
+      "shell_steps_checked": 5
+    },
+    {
+      "repo": "kubeauto-ext-bin-dockerfile",
+      "workflow": ".github/workflows/build.yml",
+      "events": {
+        "push": {
+          "tags": [
+            "artifacts-*",
+            "verify-artifacts-*"
+          ]
+        }
+      },
+      "shell_steps_checked": 6
+    },
+    {
+      "repo": "kubeauto-ext-bin-sp1-dockerfile",
+      "workflow": ".github/workflows/build.yml",
+      "events": {
+        "push": {
+          "tags": [
+            "artifacts-*",
+            "verify-artifacts-*"
+          ]
+        }
+      },
+      "shell_steps_checked": 6
+    },
+    {
+      "repo": "kubeauto-ext-images-dockerfile",
+      "workflow": ".github/workflows/build.yml",
+      "events": {
+        "push": {
+          "tags": [
+            "images-*"
+          ]
+        }
+      },
+      "shell_steps_checked": 11
+    }
+  ],
+  "cleanliness": [
+    {
+      "repo": "kubeauto",
+      "nested_git": [],
+      "worktrees": 1,
+      "ide_vcs_mappings": [
+        ""
+      ],
+      "symlinks_inspected": 1289
+    },
+    {
+      "repo": "kubeauto-dockerfile",
+      "nested_git": [],
+      "worktrees": 1,
+      "ide_vcs_mappings": [
+        ""
+      ],
+      "symlinks_inspected": 0
+    },
+    {
+      "repo": "kubeauto-k8s-bin-dockerfile",
+      "nested_git": [],
+      "worktrees": 1,
+      "ide_vcs_mappings": [
+        ""
+      ],
+      "symlinks_inspected": 0
+    },
+    {
+      "repo": "kubeauto-ext-bin-dockerfile",
+      "nested_git": [],
+      "worktrees": 1,
+      "ide_vcs_mappings": [
+        ""
+      ],
+      "symlinks_inspected": 0
+    },
+    {
+      "repo": "kubeauto-ext-bin-sp1-dockerfile",
+      "nested_git": [],
+      "worktrees": 1,
+      "ide_vcs_mappings": [
+        ""
+      ],
+      "symlinks_inspected": 0
+    },
+    {
+      "repo": "kubeauto-ext-images-dockerfile",
+      "nested_git": [],
+      "worktrees": 1,
+      "ide_vcs_mappings": [
+        ""
+      ],
+      "symlinks_inspected": 0
+    }
+  ],
+  "copied_formal_evidence": [
+    {
+      "source_path": "tests/evidence/starrocks-compose-3.5.7-preflight.json",
+      "copy_path": "upgrade/v1.35.10/evidence/maintenance/starrocks-compose-3.5.7-preflight.json",
+      "sha256": "da30b2c4299103afe1c7cb20018787233e0c78870d559e5d186eab70bdbb30cf",
+      "bytes": 2563,
+      "copy_verified": true,
+      "original_scope_preserved": true
+    },
+    {
+      "source_path": "tests/evidence/starrocks-compose-3.5.7-be.json",
+      "copy_path": "upgrade/v1.35.10/evidence/maintenance/starrocks-compose-3.5.7-be.json",
+      "sha256": "597c3b3b4f3db4223dc1651fe794877794cc1d862d1692a650684c4ff1a57559",
+      "bytes": 2408,
+      "copy_verified": true,
+      "original_scope_preserved": true
+    },
+    {
+      "source_path": "tests/evidence/starrocks-compose-3.5.7-cn.json",
+      "copy_path": "upgrade/v1.35.10/evidence/maintenance/starrocks-compose-3.5.7-cn.json",
+      "sha256": "c1747dc5e8b5f51c3c0c2374b6c721f4973c7c07b2ebf64a0932448a82b11f37",
+      "bytes": 3204,
+      "copy_verified": true,
+      "original_scope_preserved": true
+    },
+    {
+      "source_path": "tests/evidence/starrocks-compose-3.5.7-full.json",
+      "copy_path": "upgrade/v1.35.10/evidence/maintenance/starrocks-compose-3.5.7-full.json",
+      "sha256": "b103b0e73739313cd84cff0f49064ebc290dd7a6b643a308285ab31a6c8b5df2",
+      "bytes": 4126,
+      "copy_verified": true,
+      "original_scope_preserved": true
+    },
+    {
+      "source_path": "../kubeauto-ext-images-dockerfile/tests/evidence/publication-supervision-20261118.json",
+      "copy_path": "upgrade/v1.35.10/evidence/maintenance/publication-supervision-20261118.json",
+      "sha256": "8428c4e7594b0d0ed78b5f71dfe50cb018eaf50280f1dade14cdb6e426865ebb",
+      "bytes": 18621,
+      "copy_verified": true,
+      "original_scope_preserved": true
+    }
+  ],
+  "tools_boundary": {
+    "starrocks": "四份正式证据副本的所有当前输入、原始文件摘要及 durable 0 已核验；独立工具场景复用，不并入 K8s 现场主张。",
+    "KubeBackupCli": "已提交 mapping 修复的9项确定性合同通过；不声称本次完成新的 tools 全量/现场 GA。"
+  },
+  "official_basis": [
+    {
+      "source": "git help merge (installed Git manual)",
+      "scope": "保留双方历史合并；已有版本引用只能向包含原历史的提交快进。"
+    },
+    {
+      "path": "upgrade/evidence/generic-artifact-modes-20261119.json",
+      "scope": "官方 tag 事件、BuildKit、制品复用及精确范围依据沿用；执行器输入与已成功 Actions 一致。"
+    },
+    {
+      "path": "upgrade/evidence/nerdctl-2.4.2.json",
+      "scope": "沿用固定版本官方修复#5128、>=containerd1.7和真实认证验证；本次校验原始归档与制品输入适用性。"
+    }
+  ],
+  "documentation_check": {
+    "rc": 0,
+    "local_links": 56,
+    "json_records": 10,
+    "yaml_parse": true,
+    "baseline_reference_hashes": true,
+    "six_repo_both_tip_ancestry": true,
+    "reader_review": "维护者可从README进入维护组合，再定位原迁移手册/矩阵；新建默认包、历史迁移包、未发布产品镜像和下一跳未授权明确分开；未改迁移操作顺序和恢复出口。",
+    "customer_signoff": null
+  },
+  "catalog_check": {
+    "command": "python3.12 -B scripts/validate_catalog.py",
+    "repository": "kubeauto-ext-images-dockerfile",
+    "rc": 0,
+    "log": "/home/brinnatt/.local/share/kubeauto-baseline/20261120-refreeze/ext-images-catalog.log",
+    "sha256": "a21c07b626da4ce049c584766390a45b08899c7066ad4da4d5043ea17bd16d63"
+  }
+}

@@ -1,0 +1,316 @@
+{
+  "versions": {
+    "v_docker": "28.5.2",
+    "v_docker_compose": "2.40.3",
+    "v_docker_buildx": "0.29.1",
+    "v_docker_registry": "2",
+    "v_cri_dockerd": "0.4.10",
+    "v_kubeauto": "v0.1.8",
+    "v_talkedu_registry": "hub.talkedu.cn/kubeauto",
+    "v_ansible_core": "2.18.6",
+    "v_ansible_core_py314": "2.20.9",
+    "v_k8s_bin": "v1.35.10",
+    "v_extra_bin": "1.17.1",
+    "v_extra_bin_sp1": "1.3.1",
+    "v_etcd": "v3.6.16",
+    "v_containerd": "2.3.7",
+    "v_runc": "v1.5.2",
+    "v_cni_plugins": "v1.8.0",
+    "v_helm": "v3.19.0",
+    "v_crictl": "v1.34.0",
+    "v_nerdctl": "2.4.2",
+    "v_harbor": "v2.13.0",
+    "v_kube_state_metrics": "v2.18.0",
+    "v_webhook_certgen": "v1.6.9",
+    "v_prometheus_operator": "v0.93.0",
+    "v_prometheus_config_reloader": "v0.93.0",
+    "v_prometheus": "v3.13.1-distroless",
+    "v_alertmanager": "v0.33.1",
+    "v_node_exporter": "v1.12.1",
+    "v_grafana": "13.1.1",
+    "v_busybox": "1.37",
+    "v_k8s_sidecar": "1.30.5",
+    "v_prometheus_admission_webhook": "v0.93.0",
+    "v_prometheus_webhook_certgen": "1.8.5",
+    "v_thanos": "v0.41.0",
+    "v_prometheus_adapter": "v0.12.0",
+    "v_blackbox_exporter": "v0.27.0",
+    "v_eck_operator": "3.5.0",
+    "v_elasticsearch": "9.5.1",
+    "v_kibana": "9.5.1",
+    "v_business_elasticsearch": "9.5.6",
+    "v_elasticsearch_upgrade_source": "9.5.5",
+    "v_elasticsearch_exporter": "v1.11.0",
+    "v_elasticsearch_client": "9.5.1-kubeauto.1",
+    "v_elasticsearch_rally": "2.13.0-kubeauto.1",
+    "v_fluent_bit": "5.1.1",
+    "v_logstash": "9.5.1",
+    "v_loki_chart": "18.9.0",
+    "v_loki": "3.7.6",
+    "v_alloy_chart": "1.11.1",
+    "v_alloy": "1.18.1",
+    "v_ingress_nginx_controller": "v1.15.1",
+    "v_json_mock": "v1.3.1",
+    "v_alpine_curl": "v7.85.0",
+    "v_snapshot_controller": "v8.3.0",
+    "v_csi_node_driver_registrar": "v2.13.0",
+    "v_csi_provisioner": "v5.2.0",
+    "v_csi_resizer": "v1.11.2",
+    "v_csi_snapshotter": "v7.0.0",
+    "v_ceph": "20.2.4",
+    "v_ceph_upgrade_source": "20.2.3",
+    "v_cephadm_sha256": "5b78c8d5772ef7c5c8619dac6ee0b36716b829338ea7a11c9f2b896626ab354f",
+    "v_ceph_csi": "v3.17.2",
+    "v_ceph_csi_registrar": "v2.16.0",
+    "v_ceph_csi_provisioner": "v6.2.0",
+    "v_ceph_csi_attacher": "v4.11.0",
+    "v_ceph_csi_resizer": "v2.1.0",
+    "v_ceph_csi_snapshotter": "v8.5.0",
+    "v_longhorn": "1.12.2",
+    "v_longhorn_upgrade_source": "1.12.1",
+    "v_longhorn_snapshot_controller": "v8.6.0",
+    "v_calico": "v3.32.4",
+    "v_coredns": "1.15.0",
+    "v_dnsnodecache": "1.26.8",
+    "v_dashboard": "7.14.0",
+    "v_dashboardmetricsscraper": "1.2.2",
+    "v_metricsserver": "v0.9.1",
+    "v_pause": "3.10",
+    "v_flannel": "v0.28.10",
+    "v_flannel_cni": "v1.9.1-flannel3",
+    "v_cilium": "v1.20.4",
+    "v_cilium_hubble_ui": "v0.13.6",
+    "v_kuberouter": "v2.12.0",
+    "v_kubeovn": "v1.17.1",
+    "v_localpathprovisioner": "v0.0.37",
+    "v_nfsprovisioner": "v4.0.2",
+    "v_promchart": "88.0.0",
+    "v_miniooperator": "7.1.1",
+    "v_openebs": "4.3.2",
+    "v_ingressnginx": "4.15.1",
+    "v_pxc_operator": "1.20.0",
+    "v_pxc": "8.4.8-8.1",
+    "v_pxc_xtrabackup": "8.4.0-5.1",
+    "v_pxc_haproxy": "2.8.18-1",
+    "v_pxc_fluentbit": "5.0.6-1",
+    "v_pxc_operator_chart_sha256": "b8bff81d0f9691b1e495f958fba1bb268e48838cf548adf6ae6570ea0e0059cf",
+    "v_strimzi_operator": "1.2.0",
+    "v_kafka": "4.3.1",
+    "v_kafka_metadata": "4.3-IV0",
+    "v_strimzi_drain_cleaner": "1.6.1",
+    "v_strimzi_operator_chart_sha256": "0f8a50b2f19bd99482f9fd6e17cf42902f72f9e594a136813ac3f0b7af422efd",
+    "v_strimzi_drain_cleaner_chart_sha256": "ce84b8ddcd105f1b10d085fe69ed0d9185f798d009de3fba967386af2b8f6fdd",
+    "v_mongodb_operator": "1.23.1",
+    "v_mongodb_operator_chart": "1.23.2",
+    "v_mongodb_operator_chart_sha256": "80e629dc31f8cfe2615a5efb8b0d1d2ed418f25e8c0b168f981412c8594a07e9",
+    "v_mongodb": "8.0.32-14",
+    "v_mongodb_backup": "2.15.0",
+    "v_mongodb_fluentbit": "5.1.2-1",
+    "v_mongodb_exporter": "0.53.0",
+    "v_redis_operator": "0.27.0",
+    "v_redis_operator_image": "0.27.0-kubeauto.2",
+    "v_redis": "8.10.2",
+    "v_redis_cluster_image": "8.10.2-kubeauto.1",
+    "v_redis_exporter": "v1.93.0",
+    "v_redis_operator_chart_sha256": "4eabe2cde88657f8b7b21c2ec5ddafa3a305d35c9877021f9be89ac3beeb0f7f"
+  },
+  "component_images": {
+    "cilium": [
+      "brinnatt/cilium:v1.20.4",
+      "brinnatt/cilium-operator-generic:v1.20.4"
+    ],
+    "cilium-hubble": [
+      "brinnatt/hubble-relay:v1.20.4",
+      "brinnatt/hubble-ui-backend:v0.13.6",
+      "brinnatt/hubble-ui:v0.13.6"
+    ],
+    "flannel": [
+      "brinnatt/flannel:v0.28.10",
+      "brinnatt/flannel-cni-plugin:v1.9.1-flannel3"
+    ],
+    "dashboard": [
+      "brinnatt/dashboard-api:1.14.0",
+      "brinnatt/dashboard-auth:1.4.0",
+      "brinnatt/dashboard-metrics-scraper:1.2.2",
+      "brinnatt/dashboard-web:1.7.0",
+      "brinnatt/kong:3.9"
+    ],
+    "minio": [
+      "brinnatt/minio-operator:v7.1.1",
+      "brinnatt/minio-operator-sidecar:v7.0.1",
+      "brinnatt/minio:RELEASE.2025-04-08T15-41-24Z"
+    ],
+    "nacos": [
+      "brinnatt/nacos-server:v2.4.3",
+      "brinnatt/nacos-peer-finder-plugin:1.1"
+    ],
+    "openebs": [
+      "brinnatt/openebs-kubectl:1.35.10",
+      "brinnatt/provisioner-localpv:4.3.0",
+      "brinnatt/linux-utils:4.2.0",
+      "brinnatt/lvm-driver:1.7.0",
+      "brinnatt/csi-node-driver-registrar:v2.13.0",
+      "brinnatt/csi-resizer:v1.11.2",
+      "brinnatt/csi-snapshotter:v7.0.0",
+      "brinnatt/csi-provisioner:v5.2.0",
+      "brinnatt/snapshot-controller:v8.3.0"
+    ],
+    "longhorn": [
+      "brinnatt/longhorn-backing-image-manager:v1.12.1",
+      "brinnatt/longhorn-backing-image-manager:v1.12.2",
+      "brinnatt/longhorn-csi-attacher:v4.12.0",
+      "brinnatt/longhorn-csi-attacher:v4.13.0-20261028",
+      "brinnatt/longhorn-csi-node-driver-registrar:v2.17.0",
+      "brinnatt/longhorn-csi-node-driver-registrar:v2.18.0-20261028",
+      "brinnatt/longhorn-csi-provisioner:v5.3.0",
+      "brinnatt/longhorn-csi-provisioner:v5.3.0-20261028",
+      "brinnatt/longhorn-csi-resizer:v2.2.1",
+      "brinnatt/longhorn-csi-resizer:v2.3.0-20261028",
+      "brinnatt/longhorn-csi-snapshotter:v8.6.0",
+      "brinnatt/longhorn-csi-snapshotter:v8.7.0-20261028",
+      "brinnatt/longhorn-engine:v1.12.1",
+      "brinnatt/longhorn-engine:v1.12.2",
+      "brinnatt/longhorn-instance-manager:v1.12.1-kubeauto.3",
+      "brinnatt/longhorn-instance-manager:v1.12.2-kubeauto.1",
+      "brinnatt/longhorn-livenessprobe:v2.19.0",
+      "brinnatt/longhorn-livenessprobe:v2.20.0-20261028",
+      "brinnatt/longhorn-manager:v1.12.1-kubeauto.2",
+      "brinnatt/longhorn-manager:v1.12.2-kubeauto.1",
+      "brinnatt/longhorn-share-manager:v1.12.1",
+      "brinnatt/longhorn-share-manager:v1.12.2",
+      "brinnatt/longhorn-support-bundle-kit:v0.0.92",
+      "brinnatt/longhorn-support-bundle-kit:v1.0.5",
+      "brinnatt/longhorn-ui:v1.12.1",
+      "brinnatt/longhorn-ui:v1.12.2",
+      "brinnatt/snapshot-controller:v8.6.0"
+    ],
+    "ceph": [
+      "brinnatt/ansible:2.20.9",
+      "brinnatt/ceph:v20.2.4",
+      "brinnatt/ceph:v20.2.3",
+      "brinnatt/cephcsi:v3.17.2",
+      "brinnatt/csi-node-driver-registrar:v2.16.0",
+      "brinnatt/csi-provisioner:v6.2.0",
+      "brinnatt/csi-attacher:v4.11.0",
+      "brinnatt/csi-resizer:v2.1.0",
+      "brinnatt/csi-snapshotter:v8.5.0",
+      "brinnatt/ceph-prometheus:v3.6.0",
+      "brinnatt/ceph-alertmanager:v0.28.1",
+      "brinnatt/ceph-node-exporter:v1.9.1",
+      "brinnatt/ceph-grafana:12.3.1",
+      "brinnatt/minio-mc:RELEASE.2025-04-08T15-39-49Z",
+      "brinnatt/busybox:1.37",
+      "brinnatt/json-mock:v1.3.1"
+    ],
+    "rocketmq": [
+      "brinnatt/rocketmq-operator:latest",
+      "brinnatt/rocketmq-broker:4.5.0-alpine-operator-0.3.0",
+      "brinnatt/rocketmq-nameserver:4.5.0-alpine-operator-0.3.0",
+      "brinnatt/rocketmq-console:2.0.0"
+    ],
+    "ingress-nginx": [
+      "brinnatt/ingress-nginx-controller:v1.15.1",
+      "brinnatt/kube-webhook-certgen:v1.6.9"
+    ],
+    "kube-ovn": [
+      "brinnatt/kube-ovn:v1.17.1"
+    ],
+    "kube-router": [
+      "brinnatt/kube-router:v2.12.0"
+    ],
+    "local-path-provisioner": [
+      "brinnatt/local-path-provisioner:v0.0.37",
+      "brinnatt/busybox:1.37"
+    ],
+    "network-check": [
+      "brinnatt/json-mock:v1.3.1",
+      "brinnatt/alpine-curl:v7.85.0"
+    ],
+    "nfs-provisioner": [
+      "brinnatt/nfs-subdir-external-provisioner:v4.0.2"
+    ],
+    "prometheus": [
+      "brinnatt/kube-state-metrics:v2.18.0",
+      "brinnatt/kube-webhook-certgen:v1.6.9",
+      "brinnatt/prometheus-webhook-certgen:1.8.5",
+      "brinnatt/prometheus-admission-webhook:v0.93.0",
+      "brinnatt/grafana:13.1.1",
+      "brinnatt/busybox:1.37",
+      "brinnatt/k8s-sidecar:1.30.5",
+      "brinnatt/prometheus-config-reloader:v0.93.0",
+      "brinnatt/prometheus-operator:v0.93.0",
+      "brinnatt/alertmanager:v0.33.1",
+      "brinnatt/node-exporter:v1.12.1",
+      "brinnatt/prometheus:v3.13.1-distroless"
+    ],
+    "prometheus-dingtalk": [
+      "brinnatt/prometheus-webhook-dingtalk:v2.1.0"
+    ],
+    "prometheus-optional": [
+      "brinnatt/thanos:v0.41.0",
+      "brinnatt/prometheus-adapter:v0.12.0",
+      "brinnatt/blackbox-exporter:v0.27.0"
+    ],
+    "elasticsearch": [
+      "brinnatt/eck-operator:3.5.0",
+      "brinnatt/elasticsearch:9.5.6",
+      "brinnatt/kibana:9.5.6",
+      "brinnatt/elasticsearch-exporter:v1.11.0",
+      "brinnatt/elasticsearch-client:9.5.1-kubeauto.1"
+    ],
+    "elasticsearch-smartcn": [
+      "brinnatt/elasticsearch-smartcn:9.5.6-kubeauto.1"
+    ],
+    "elasticsearch-qualification": [
+      "brinnatt/eck-operator:3.4.1",
+      "brinnatt/elasticsearch:9.5.5",
+      "brinnatt/kibana:9.5.5",
+      "brinnatt/elasticsearch-rally:2.13.0-kubeauto.1"
+    ],
+    "logging-efk": [
+      "brinnatt/eck-operator:3.5.0",
+      "brinnatt/elasticsearch:9.5.1",
+      "brinnatt/kibana:9.5.1",
+      "brinnatt/fluent-bit:5.1.1",
+      "brinnatt/logstash:9.5.1"
+    ],
+    "logging-loki": [
+      "brinnatt/loki:3.7.6",
+      "brinnatt/alloy:1.18.1",
+      "brinnatt/loki-gateway:1.31-alpine",
+      "brinnatt/access-log-exporter:0.4.11",
+      "brinnatt/loki-canary:3.7.6",
+      "brinnatt/memcached:1.6.45-alpine",
+      "brinnatt/memcached-exporter:v0.17.0",
+      "brinnatt/k8s-sidecar:2.10.1",
+      "brinnatt/prometheus-config-reloader:v0.91.0",
+      "brinnatt/minio-mc:RELEASE.2025-04-08T15-39-49Z"
+    ],
+    "mysql": [
+      "brinnatt/percona-xtradb-cluster-operator:1.20.0",
+      "brinnatt/percona-xtradb-cluster:8.4.8-8.1",
+      "brinnatt/percona-xtrabackup:8.4.0-5.1",
+      "brinnatt/percona-haproxy:2.8.18-1",
+      "brinnatt/percona-fluentbit:5.0.6-1"
+    ],
+    "kafka": [
+      "brinnatt/strimzi-operator:1.2.0",
+      "brinnatt/strimzi-kafka:1.2.0-kafka-4.3.1",
+      "brinnatt/strimzi-drain-cleaner:1.6.1"
+    ],
+    "mongodb": [
+      "brinnatt/percona-server-mongodb-operator:1.23.1",
+      "brinnatt/percona-server-mongodb:8.0.32-14",
+      "brinnatt/percona-backup-mongodb:2.15.0",
+      "brinnatt/percona-fluentbit:5.1.2-1",
+      "brinnatt/mongodb-exporter:0.53.0"
+    ],
+    "redis": [
+      "brinnatt/redis-operator:0.27.0-kubeauto.2",
+      "brinnatt/redis:8.10.2",
+      "brinnatt/redis:8.10.2-kubeauto.1",
+      "brinnatt/redis-exporter:v1.93.0"
+    ]
+  },
+  "boundary": "源码默认值快照，不是客户实装或本次新增现场测试。"
+}

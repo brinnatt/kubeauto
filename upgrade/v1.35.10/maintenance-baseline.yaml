@@ -1,0 +1,183 @@
+schema_version: 1
+kind: accepted-maintenance-source-baseline
+recorded_on: '2026-11-20'
+kubernetes: v1.35.10
+status: accepted-scoped-maintenance
+authority: 用户接受保留旧分支、收敛已接受 dev 增量、差异验收并重新冻结；本轮不启动下一 minor。
+purpose: 后续逐 minor 升级的源；使用下列六仓精确 source_commit，不从可移动 dev 盲目取基线。
+historical_delivery:
+  functional_source_commit: e112f687cb3625beb4a91bc5658cb603adbaaca7
+  release:
+    path: upgrade/v1.35.10/release.yaml
+    sha256: f69e9e88afa6a7cdc333240d62873ed120c7db981e20a6bf3cd68bbc0bf77625
+  original_source_baseline:
+    path: upgrade/v1.35.10/source-baseline.yaml
+    sha256: 91612ce24d24bf02b381e7ca783a3312270022b3a9ac64174a6acecbf59e9c12
+  original_artifact_pins:
+    path: upgrade/v1.35.10/artifact-pins.json
+    sha256: 6ceaf94c0fb6657a66017ff1563b9743c754ff1c7282b36242ade029b9a25047
+  matrix: upgrade/v1.35.10/test-matrix.yaml
+  unchanged_live_evidence: UPG-05..13、UPG-15 保留原 run/输入/清理身份；复用不等于新默认包的全链现场重跑。
+repositories:
+- repository: kubeauto
+  branch: v1.35.10
+  source_commit: 048f5e9f6b20e98c3d7cf326c4ea4615365e9e96
+  source_tree: c5b6f886ce9fa3657a7bb8ffd43a6d2b3c6fff2d
+  previous_version_tip: 02acc14cdf82361f68b5cae601b2d66893ae8f18
+  accepted_dev_tip: 199af1f0a86f677c3d008938266c2414058a9357
+  retention: both original tips must be ancestors of final dev and v1.35.10
+- repository: kubeauto-dockerfile
+  branch: v1.35.10
+  source_commit: 3fc520628a8b94e9926133b32b5d19d592359078
+  source_tree: e276f8812f21bf3571d8c5905070c20f65abf6ee
+  previous_version_tip: abf638b0612229c9092156427f409ee5e4c8faf0
+  accepted_dev_tip: aff081b7976cafe6083746673feb671e8255e5ca
+  retention: both original tips must be ancestors of final dev and v1.35.10
+- repository: kubeauto-k8s-bin-dockerfile
+  branch: v1.35.10
+  source_commit: b2ef19130a32e75abf0bfef74e03483aa8aeed9e
+  source_tree: e657b77df5dc340ce552b8e345cf087593dc4c13
+  previous_version_tip: b0c77b7aaa3756dfdaac38dce9352320f27c6294
+  accepted_dev_tip: b2ef19130a32e75abf0bfef74e03483aa8aeed9e
+  retention: both original tips must be ancestors of final dev and v1.35.10
+- repository: kubeauto-ext-bin-dockerfile
+  branch: v1.35.10
+  source_commit: 312d41f7c4adba9a86647ad4bc586543ec5d1e9f
+  source_tree: 2d6e7cb5e91377642b8a6e450fef860d84d43d85
+  previous_version_tip: 958c034e29c35c5dd44241bdc70160e1ae4eed81
+  accepted_dev_tip: 312d41f7c4adba9a86647ad4bc586543ec5d1e9f
+  retention: both original tips must be ancestors of final dev and v1.35.10
+- repository: kubeauto-ext-bin-sp1-dockerfile
+  branch: v1.35.10
+  source_commit: cd439d9cb0f6f0b8701b802ac3c37fd4ac420b79
+  source_tree: 7f2788fd9df4daae56dfb46eb9a287b90bd11cfe
+  previous_version_tip: abdda8cbcd23a2bae24acc6e226f83b56a348aad
+  accepted_dev_tip: cd439d9cb0f6f0b8701b802ac3c37fd4ac420b79
+  retention: both original tips must be ancestors of final dev and v1.35.10
+- repository: kubeauto-ext-images-dockerfile
+  branch: v1.35.10
+  source_commit: b3b35856cbe6cdc8b9cf4ee4c766cbe75477e149
+  source_tree: 6e8ee47d9dd4a0e58b3510ae4cbeb97bc0b34aeb
+  previous_version_tip: 849126acbdf72c7931c78f49dc81e99c9c595bb8
+  accepted_dev_tip: 4baedc2aaa931b403dde1ce6f30395ec16017756
+  retention: both original tips must be ancestors of final dev and v1.35.10
+source_identity_boundary:
+  kubeauto: source_commit 固定产品、工具、runner、测试与规则；后续记录提交仅允许本维护基线、evidence/maintenance/ 下证据及矩阵 evidence 指针，不能修改运行输入。该记录提交仍继承上述
+    source_commit。
+  other_repositories: source_commit 即对齐的版本与 dev 提交。
+  branch_alignment: 六仓 dev/v1.35.10 对齐并验证远端；v1.34.13 和 master/main 原引用及既有 tag 保留，不删除重建。
+accepted_deltas:
+- area: artifact-delivery
+  change: 四制品仓唯一 build.yml；selected/changed/full/verify/readback、精确组件增量、制品复用和受控失败恢复。
+  evidence:
+    path: upgrade/evidence/generic-artifact-modes-20261119.json
+    sha256: e7317af5be88dbf2c4e4e69f37fb2b2604c409bf4b9d1cc275a0b5e2ba172811
+  required_supplement: 当前合同及已成功 Actions 归档/执行器输入比对，已完成；无新镜像构建。
+- area: default-nerdctl
+  change: ext-bin 1.17.0→1.17.1，nerdctl 2.3.4→2.4.2；其它二进制字节和运行时 pin 不变。
+  evidence:
+    path: upgrade/evidence/nerdctl-2.4.2.json
+    sha256: e44bf72b38632eaa969004286c6e7f882af7574b1fa4882c9836fe16f2cc5b66
+  compatibility: 官方支持 containerd>=1.7，覆盖原1.35组合的2.3.7；登录缺省HTTPS端口问题已通过真实CLI验证。
+  required_supplement: 当前唯一消费者tag/env、安装角色和最小下载包合同，已完成。
+- area: standalone-tools
+  change: StarRocks Compose3.5.7及KubeBackupCli mapping修复保留在独立tools边界。
+  evidence: upgrade/v1.35.10/evidence/maintenance/qualification.json#tools_boundary
+  required_supplement: 既有StarRocks输入/原日志/durable验证和当前聚焦合同；不把独立工具新增功能变为K8s升级的全量门槛。
+- area: maintenance-rules
+  change: 正式版本吸收dev增量、最小差异验收再冻结的单一规则；测试清单schema适配。
+  evidence:
+    path: upgrade/v1.35.10/evidence/maintenance/qualification.json
+    sha256: c2c30ee51d7ac34b1f3d56a920d39eb12e6f18574f05c352ea983183e89321ae
+profiles:
+  default_new_install:
+    kubernetes: v1.35.10
+    ext_bin: 1.17.1
+    nerdctl: 2.4.2
+    containerd: 2.3.7
+    runc: v1.5.2
+    etcd: v3.6.16
+    assertion: 默认pin变化已由原认证证据和当前消费合同覆盖；不冒称本次新建完整集群。
+  accepted_minor_migration:
+    artifact_pins:
+      path: upgrade/v1.35.10/artifact-pins.json
+      sha256: 6ceaf94c0fb6657a66017ff1563b9743c754ff1c7282b36242ade029b9a25047
+    ext_bin: 1.17.0
+    nerdctl: 2.3.4
+    assertion: 迁移路径、制品固定记录和原现场组合不变；不将新建默认包替换进历史迁移输入。
+consumer_inventory:
+  path: upgrade/v1.35.10/evidence/maintenance/consumer-snapshot.json
+  sha256: 615e1c3e7266ae51bff4c59e5fb861b47b0a5109ff8631f82711fd7355cf718d
+reused_artifacts:
+- repository: kubeauto-ext-bin-dockerfile
+  image: brinnatt/kubeauto-ext-bin:1.17.1
+  identity:
+    digest: sha256:05a317feab539479968bbbb1e8b7aea9df660a1b195bb926d111139a694ba1be
+    platforms:
+      linux/amd64: sha256:e3caa6c4a60b7fcb9b7b0f7f9b12c3bb79d7195b7004d0d5826c38f7c46225a2
+      linux/arm64: sha256:d978b5526891d224f07acd9ff0461cf2d78a540f9008c7b6397d5136c9363031
+  registries:
+  - hub.talkedu.cn/kubeauto/kubeauto-ext-bin
+  - docker.io/brinnatt/kubeauto-ext-bin
+  observed_on: '2026-11-19'
+  readback_run_id: 44536401277
+  decision: reuse
+  scope: accepted artifact retained without rebuild
+- repository: kubeauto-ext-bin-sp1-dockerfile
+  image: brinnatt/kubeauto-ext-bin-sp1:1.3.1
+  identity:
+    digest: sha256:37051f0e1720dd0f9973085bf4d4c49df14e163db88bc4cb85b092357bb9cd5c
+    platforms:
+      linux/amd64: sha256:43525ca1026514e3fe285731e1a27bdc4b4c3e47b25b79803e57edc2169c1c15
+      linux/arm64: sha256:226b732b05cdf102d392b807ff031cc3c01ad22d914b6549b35894abf265224f
+  registries:
+  - hub.talkedu.cn/kubeauto/kubeauto-ext-bin-sp1
+  - docker.io/brinnatt/kubeauto-ext-bin-sp1
+  observed_on: '2026-11-19'
+  readback_run_id: 44536398703
+  decision: reuse
+  scope: accepted artifact retained without rebuild
+- repository: kubeauto-k8s-bin-dockerfile
+  image: brinnatt/kubeauto-k8s-bin:v1.35.10
+  identity:
+    digest: sha256:dda1f153dd776d6c527521592f6fa6978df5ab929aad937a24f3e432af63287a
+    platforms:
+      linux/amd64: sha256:e46c071a1744c079105a0b44e38398089ba2e2e49bed89f8e5d4131f11689d1f
+      linux/arm64: sha256:f2a8c4e60fea2217ca273d8de50c2dfaed02eea797b6fd6c756189f1f63af98a
+  registries:
+  - hub.talkedu.cn/kubeauto/kubeauto-k8s-bin
+  - docker.io/brinnatt/kubeauto-k8s-bin
+  observed_on: '2026-11-19'
+  readback_run_id: 44534224177
+  decision: reuse
+  scope: accepted artifact retained without rebuild
+- repository: kubeauto-dockerfile
+  image: brinnatt/kubeauto:v0.1.8
+  identity:
+    digest: sha256:999e1e5ab8f23ab7486f7faafabf2c2407b7e7664ad4030b03f97c0bd0d458db
+    platforms:
+      linux/amd64: sha256:1f452f9201f6dc23ea07f80225f28f025a19972c445e66356c2e24eb9823a3fe
+      linux/arm64: sha256:6c9fc47a65a3f5aab476ba34249935495280b80aa82b20c081c10fedffa11721
+  registries:
+  - hub.talkedu.cn/kubeauto/kubeauto
+  - docker.io/brinnatt/kubeauto
+  - ghcr.io/brinnatt/kubeauto
+  observed_on: '2026-11-19'
+  readback_run_id: 44534221682
+  decision: reuse
+  scope: historical product image only; does not contain the maintained source
+remaining_ecosystem: 除nerdctl默认修订外，原release/research固定组合、官方依据力度和EOL边界保留；外部镜像目录增加的是独立tools及轻量控制流夹具，不自动成为K8s新增部署。
+qualification:
+  path: upgrade/v1.35.10/evidence/maintenance/qualification.json
+  sha256: c2c30ee51d7ac34b1f3d56a920d39eb12e6f18574f05c352ea983183e89321ae
+packaging_boundary:
+  new_product_image_published: false
+  historical_product_tag: v0.1.8
+  historical_product_source: 940c9020144a88b370cba36793a4d7fad6a347ab
+  required_for_new_image: 新的产品修订tag必须绑定选定源码，再进入打包目录与显式范围tag请求；不得覆盖历史tag。
+next_hop:
+  authorized: false
+  source_branch: v1.35.10
+  source_repositories: 本记录的六仓source_commit及其仅含交付记录的后继提交
+  target: 由下一次明确授权与官方锁版确定，不在本次查询或自动追新。
+customer_signoff: null
