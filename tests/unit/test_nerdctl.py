@@ -76,16 +76,16 @@ class TestNerdctlPin(unittest.TestCase):
     def test_ext_bin_dockerfile_pins_match_constants(self):
         df = (EXT_BIN / "Dockerfile").read_text()
         sh = (EXT_BIN / "multi-platform-download.sh").read_text()
-        for path in (EXT_BIN/'upgrade').glob('overlay-*.json'):
-            if json.loads(path.read_text()).get('tag') == self.kc.v_extra_bin:
-                df += '\n'+path.with_name(path.name.replace('overlay-','Dockerfile.').removesuffix('.json')).read_text()
-
-
         current_manifest = EXT_BIN / 'upgrade/release.json'
         if current_manifest.exists():
             current = json.loads(current_manifest.read_text())
-            if current['tag'] == self.kc.v_extra_bin.lstrip('v'):
-                df += '\n' + '\n'.join('ENV ' + k + '=' + v for k,v in current['env'].items())
+            targets = [a for a in current['artifacts']
+                       if a['tag'] == self.kc.v_extra_bin.lstrip('v')]
+            self.assertEqual(len(targets), 1, 'consumed ext-bin tag must be unique in catalog')
+            values = dict(targets[0]['env'])
+            for recipe in targets[0]['components'].values():
+                values.update(recipe.get('env', {}))
+            df += '\n' + '\n'.join('ENV ' + k + '=' + v for k, v in values.items())
 
         versions = re.findall(r"NERDCTL_VER=([^\s]+)", df)
         self.assertTrue(versions, "NERDCTL_VER missing from ext-bin Dockerfile")

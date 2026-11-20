@@ -15,6 +15,11 @@
 .venv/bin/python -B upgrade/validate.py upgrade/v1.35.10/test-matrix.yaml --status
 ```
 
+后续维护组合以 [1.35.10 维护基线](v1.35.10/maintenance-baseline.yaml) 为准：
+它关联原升级验收与已接受的 dev 增量，固定下一跳使用的六仓源码和实际制品。
+原 `release.yaml`、`source-baseline.yaml` 与现场记录继续描述当时的交付；维护记录
+不把旧产品镜像改称新功能镜像。下一跳仍须取得明确目标及范围授权。
+
 下文首跳的计划状态、候选和子入口说明保留其编写时边界；不得将其当作当前下一跳
 的执行授权或能力状态。各版本独立使用所属矩阵、正式证据和操作手册。
 
