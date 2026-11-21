@@ -1,0 +1,4194 @@
+{
+  "schema_version": 1,
+  "observed_on": "2026-11-21",
+  "source": "v1.35.10",
+  "target": "v1.36.6",
+  "claim": "精确版本组合、官方依据力度与迁移边界；项目现场结果仍待所属矩阵证明",
+  "components": [
+    {
+      "component_id": "product",
+      "decision": "update",
+      "target_pins": {
+        "kubeauto": "v0.1.9",
+        "ansible_core": "2.18.6",
+        "ansible_core_py314": "2.20.9",
+        "kubecli_scope": "kubecli-only"
+      },
+      "rationale": "本跳Kubernetes/Harbor入口和打包闭包已变化，必须发布新产品修订v0.1.9；该tag目前尚未创建或发布，原v0.1.8不作为当前新功能制品。保留Python/Ansible配套与独立tools边界。",
+      "transition_edges": [
+        {
+          "edge_id": "product-k8s13510-to1366",
+          "source": "已接受v1.35.10维护基线及实际现场身份",
+          "target": "Kubernetes v1.36.6及本记录target_pins",
+          "bridge": null,
+          "depends_on": [
+            "UPG-01",
+            "UPG-02",
+            "UPG-03",
+            "UPG-04",
+            "UPG-05"
+          ],
+          "official_source_ids": [
+            "ACTIONS-PRODUCT-RELEASE-SCOPE",
+            "PYINSTALLER-616-UPGRADE-DATA",
+            "ANSIBLE-UPGRADE-INVENTORY-CONTRACT"
+          ],
+          "product_entry": "config.yml + kubecli upgrade；目标新建为kubecli setup；未变工具仍属独立tools入口",
+          "preconditions": [
+            "精确源/目标组合、制品及现有数据身份已核验，未知组合先停止对应路径",
+            "最小合同通过；现场持有自有租约、恢复点及业务账本"
+          ],
+          "steps": [
+            "保留Python/Ansible配套和独立tools字节；通过当前升级矩阵后导出发行准入策略。",
+            "以已验收源码发布新的kubecli-only产品v0.1.9，再由配对打包仓固定源码tag/SHA构建运行镜像；不覆盖旧v0.1.8。"
+          ],
+          "success_conditions": [
+            "源对象/数据及自有补丁保持，目标相关API与业务断言通过",
+            "上游测试、支持下限、稳定接口、历史GA与本跳实测分别标注，不互相代签"
+          ],
+          "irreversible_point": "Kubernetes持久化或组件数据写入后不盲目降级；未改引擎不产生新的引擎迁移承诺",
+          "recovery": "保留首失败和journal，验证边界后限定续跑；必要时恢复完整原恢复点",
+          "cleanup": "只回收本run自有对象/故障/进程/租约，不接管其它集群或删除原数据"
+        }
+      ],
+      "official_applicability": [
+        {
+          "id": "ACTIONS-PRODUCT-RELEASE-SCOPE",
+          "evidence_type": "api-contract",
+          "observed_on": "2026-11-15",
+          "version": "GitHub Actions rolling docs observed2026-11-15",
+          "url": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax",
+          "obtained_content": {
+            "representation": "official documentation HTML",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/actions-workflow-syntax-upgrade.txt",
+              "bytes": 2106278,
+              "sha256": "a90db6cfc3a8683137f7c3efe12b3d341d5d323087d4de3c812cea8c47fdcfe7"
+            }
+          },
+          "facts": [
+            "官方steps.run通过runner shell执行原始命令；显式CLI参数决定脚本的真实构建范围，workflow的step名称不能约束build.py默认行为。",
+            "官方job timeout-minutes默认360分钟；当前Longhorn任务未配置覆盖，超时前仍需基于可见进度诊断，不能从API仅显示Publish shard推测具体编译子步骤。"
+          ],
+          "limitations": "只证明workflow shell/超时契约，不签署实际发布成功。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        },
+        {
+          "id": "PYINSTALLER-616-UPGRADE-DATA",
+          "evidence_type": "api-contract",
+          "observed_on": "2026-11-15",
+          "version": "v6.16.0",
+          "url": "https://api.github.com/repos/pyinstaller/pyinstaller/contents/doc/spec-files.rst?ref=v6.16.0",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/pyinstaller616-specfiles-source.txt",
+              "sha256": "d840474d554a866817c0b072614d5175e7a7bb6e27d15244092cf74c0bf4ebe0",
+              "bytes": 32138
+            }
+          },
+          "facts": [
+            "Fixed6.16 spec files manual defines datas source/destination tuple and glob expansion; YAML data needs explicit entries while imported Python modules are collected by Analysis.",
+            "kubecli-onefile.spec adds only upgrade/product/*.yml; local contract follows actual import_tasks/include_tasks closure and excludes upgrade evidence/snapshots and independent tools. No executable build/release was performed."
+          ],
+          "limitations": "Official fixed data/API contract; local scope only, not a build, live acceptance or GA",
+          "use": "upgrade/v1.34.13/release.yaml"
+        },
+        {
+          "id": "ANSIBLE-UPGRADE-INVENTORY-CONTRACT",
+          "evidence_type": "source-contract",
+          "observed_on": "2026-11-15",
+          "version": "ansible-core2.16.14 and2.20.9; special variable docs at recorded git blob",
+          "facts": [
+            "INI inventory uses groups/children and merged host variables; inline values, group vars and config extra-vars must be resolved by Ansible, not another ad hoc INI parser.",
+            "Magic groups lists full inventory group membership, while play host sets can be limited. Compare observed host events with full group union before accepting a source.",
+            "Both pinned debug action implementations set _requires_connection=False. The observation playbook uses only assert/debug with gather_facts:false.",
+            "ansible_host is the transport address, distinct from inventory_hostname. Existing product units use inventory_hostname as service address; aliases require explicit review."
+          ],
+          "limitations": "Controller inventory/template observation only; no Kubernetes compatibility certification, host health, lease, recovery point or mutation admission. Rolling documentation is bound by the exact recorded blob.",
+          "obtained_contents": [
+            {
+              "url": "https://api.github.com/repos/ansible/ansible/contents/lib/ansible/plugins/inventory/ini.py?ref=v2.16.14",
+              "representation": "GitHub contents API base64 decoded original file",
+              "git_blob_sha": "1ff4bf167d5d269f382aa97cd9bbf0443aab428b",
+              "local_copy": {
+                "path": "upgrade/official-snapshots/2026-11-14-first-hop/ansible216-ini.txt",
+                "sha256": "06c5ab4b493a1cddf0d268bcd923550142796935fd418972f6c1f28122f4ca31",
+                "bytes": 17606
+              }
+            },
+            {
+              "url": "https://api.github.com/repos/ansible/ansible/contents/lib/ansible/plugins/action/debug.py?ref=v2.16.14",
+              "representation": "GitHub contents API base64 decoded original file",
+              "git_blob_sha": "9e23c5fa56056b9af48fc2eebd037359fc7366f2",
+              "local_copy": {
+                "path": "upgrade/official-snapshots/2026-11-14-first-hop/ansible216-debug.txt",
+                "sha256": "c0f929c7ba051845035cfc52468a496c4477c5d02b7ece487e3bebe4a38abc82",
+                "bytes": 3525
+              }
+            },
+            {
+              "url": "https://api.github.com/repos/ansible/ansible/contents/lib/ansible/plugins/action/debug.py?ref=v2.20.9",
+              "representation": "GitHub contents API base64 decoded original file",
+              "git_blob_sha": "55016e5b0b5952b27c50b14737ac4d3220d5da1a",
+              "local_copy": {
+                "path": "upgrade/official-snapshots/2026-11-14-first-hop/ansible220-debug.txt",
+                "sha256": "28f5ad1843db735d7dfded6b350ced081fb0cde94939b02fd7aa893473d435be",
+                "bytes": 3604
+              }
+            },
+            {
+              "url": "https://api.github.com/repos/ansible/ansible-documentation/contents/docs/docsite/rst/reference_appendices/special_variables.rst?ref=devel",
+              "representation": "GitHub contents API base64 decoded original file",
+              "git_blob_sha": "55f24949fad1d826515ce30fe14c781149fc72b9",
+              "local_copy": {
+                "path": "upgrade/official-snapshots/2026-11-14-first-hop/ansible-special-variables.txt",
+                "sha256": "eae2222cc554f34e6dc6b9ec9c253b82a58bd131ad8006e09af07f067e54a21a",
+                "bytes": 8518
+              }
+            }
+          ],
+          "use": "upgrade/product/inventory.py + upgrade/product/inventory.yml"
+        }
+      ],
+      "evidence_strength_rule": "保留每条官方来源的实际类型与limitations；最低版本、稳定API、源码契约、逐版tested和官方过程不能互相冒签。",
+      "live_claim": "本记录不证明本跳现场成功；旧GA、当前源码和正式制品分别保留身份。"
+    },
+    {
+      "component_id": "kubernetes",
+      "decision": "update",
+      "target_pins": {
+        "kubernetes": "v1.36.6"
+      },
+      "rationale": "官方稳定指针锁定1.36.6；只接受实际1.35.10源，HA逐API再控制器、逐节点drain，保留已有聚合身份和cgroup保护。gitRepo、非空DRA及移除/锁定gate由预检拒绝，不改客户工作负载。",
+      "transition_edges": [
+        {
+          "edge_id": "kubernetes-k8s13510-to1366",
+          "source": "已接受v1.35.10维护基线及实际现场身份",
+          "target": "Kubernetes v1.36.6及本记录target_pins",
+          "bridge": null,
+          "depends_on": [
+            "UPG-01",
+            "UPG-02",
+            "UPG-03",
+            "UPG-04",
+            "UPG-05"
+          ],
+          "official_source_ids": [
+            "K8S-SKEW",
+            "K8S-1366-STABLE",
+            "K8S-1366-RELEASE",
+            "K8S-1366-PATCH-DELTA",
+            "K8S-1366-FEATURES"
+          ],
+          "product_entry": "config.yml + kubecli upgrade；目标新建为kubecli setup；未变工具仍属独立tools入口",
+          "preconditions": [
+            "精确源/目标组合、制品及现有数据身份已核验，未知组合先停止对应路径",
+            "最小合同通过；现场持有自有租约、恢复点及业务账本"
+          ],
+          "steps": [
+            "只接受实际1.35.10源及独占租约/恢复点；拒绝gitRepo和非空DRA、未评审gate及未知配置。",
+            "逐API实例推进1.36.6，全部Ready后推进控制器/scheduler；逐节点按PDB drain，不强删本地数据。",
+            "核对原Service/PVC账本、DNS/metrics及各实际可达API；只原子推进本跳配置。"
+          ],
+          "success_conditions": [
+            "源对象/数据及自有补丁保持，目标相关API与业务断言通过",
+            "上游测试、支持下限、稳定接口、历史GA与本跳实测分别标注，不互相代签"
+          ],
+          "irreversible_point": "Kubernetes持久化或组件数据写入后不盲目降级；未改引擎不产生新的引擎迁移承诺",
+          "recovery": "保留首失败和journal，验证边界后限定续跑；必要时恢复完整原恢复点",
+          "cleanup": "只回收本run自有对象/故障/进程/租约，不接管其它集群或删除原数据"
+        }
+      ],
+      "official_applicability": [
+        {
+          "id": "K8S-SKEW",
+          "evidence_type": "supported",
+          "observed_on": "2026-11-13",
+          "url": "https://kubernetes.io/releases/version-skew-policy/",
+          "applicability": "Kubernetes 组件版本偏差与升级顺序；具体目标版本政策变化仍须核验",
+          "obtained_content": {
+            "representation": "HTML 提取后的页面文本",
+            "sha256": "8ee564a5901b657136782286db03bdf39a918e2fc8c09a3cbec751135a2d3da0",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-13/skew-html.txt",
+              "sha256": "8ee564a5901b657136782286db03bdf39a918e2fc8c09a3cbec751135a2d3da0",
+              "bytes": 10364
+            }
+          },
+          "facts": [
+            "API Server 升级不得跳 minor，包括单实例。",
+            "HA API Server 最大相差一个 minor；kubelet/kube-proxy 不得新于它们可访问的 API Server。",
+            "scheduler/controller-manager 不得新于其通信的 API Server；通过 LB 通信时核对全部可达实例。",
+            "官方顺序先 API Server，再控制组件，之后 kubelet/kube-proxy；minor kubelet 更新前 drain。",
+            "源/目标采用各自最新 patch 是官方推荐；不能一概表述为强制源 patch 桥接。"
+          ],
+          "limitations": "支持偏差不证明项目编排、数据安全或业务连续性已验证；当前旧补丁门禁不覆盖跨 minor。",
+          "use": "upgrade/workflow.md"
+        },
+        {
+          "id": "K8S-1366-STABLE",
+          "evidence_type": "release-pointer",
+          "observed_on": "2026-11-20",
+          "url": "https://dl.k8s.io/release/stable-1.36.txt",
+          "facts": [
+            "stable-1.36.txt返回v1.36.6；从已接受v1.35.10只推进一个minor。"
+          ],
+          "limitations": "指针不代表生态兼容或项目验收。",
+          "obtained_content": {
+            "representation": "official raw response",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-20-next-hop/k8s-stable-136",
+              "sha256": "d0ec8cffc62437dc087b77a3e55fcf8b9784255944f2fe4f677ad5f62da935b9",
+              "bytes": 7
+            }
+          }
+        },
+        {
+          "id": "K8S-1366-RELEASE",
+          "evidence_type": "release",
+          "observed_on": "2026-11-20",
+          "url": "https://api.github.com/repos/kubernetes/kubernetes/releases/tags/v1.36.6",
+          "facts": [
+            "官方v1.36.6发行metadata存在；两架构六项.sha256均已取得。"
+          ],
+          "limitations": "当前v1.36.6标签的CHANGELOG-1.36.md未提供同名patch章节，不能冒称完整patch说明已读。",
+          "obtained_content": {
+            "representation": "official raw response",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-20-next-hop/k8s-release-1366",
+              "sha256": "4cc750d0756226deb020d4259aa3f4e06ce00b44429a579fa3d8444a10d4da2d",
+              "bytes": 2426
+            }
+          }
+        },
+        {
+          "id": "K8S-1366-PATCH-DELTA",
+          "evidence_type": "source-contract",
+          "observed_on": "2026-11-20",
+          "version": "v1.36.5...v1.36.6",
+          "url": "https://api.github.com/repos/kubernetes/kubernetes/compare/v1.36.5...v1.36.6",
+          "obtained_content": {
+            "representation": "Official GitHub compare REST response",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-20-next-hop/k8s1366-patch-compare.json",
+              "sha256": "21bacf5f77aa017bfef0fec525c2e03a23c45e044da39795d82d3c59a940e2fb",
+              "bytes": 194277
+            }
+          },
+          "facts": [
+            "精确compare为ahead，24 commits/25 files；该版本CHANGELOG仅新增1.36.5章节，故补读compare而不虚构1.36.6发布章节。",
+            "变化包括调度器负向namespace selector、ResourceClaim status抖动、Job重建expectations、conntrack最大值/哈希设置、Go版本及构建镜像。",
+            "没有用Job/调度器上游单元测试结果替代本项目跨minor集成；DRA驱动不在已交付范围，非空DRA资源由预检拒绝。"
+          ],
+          "limitations": "完整patch差异来源；项目PASS另由当前矩阵证明。",
+          "use": "upgrade/v1.36.6/research.yaml"
+        },
+        {
+          "id": "K8S-1366-FEATURES",
+          "evidence_type": "source-contract",
+          "observed_on": "2026-11-20",
+          "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/v1.36.6/pkg/features/kube_features.go",
+          "facts": [
+            "GitRepoVolumeDriver在1.36锁定false；ImageVolume在1.36 GA并锁定true。"
+          ],
+          "limitations": "完整移除/默认变更与项目配置影响仍需逐项比对。",
+          "obtained_content": {
+            "representation": "official raw response",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-20-next-hop/k8s136-features",
+              "sha256": "c170e0e53e485674820e0a6e54feba77e5bc74b66365ec20a2a245157084e639",
+              "bytes": 113528
+            }
+          }
+        }
+      ],
+      "evidence_strength_rule": "保留每条官方来源的实际类型与limitations；最低版本、稳定API、源码契约、逐版tested和官方过程不能互相冒签。",
+      "live_claim": "本记录不证明本跳现场成功；旧GA、当前源码和正式制品分别保留身份。"
+    },
+    {
+      "component_id": "binary-packs",
+      "decision": "keep",
+      "target_pins": {
+        "v_extra_bin": "1.17.1",
+        "v_extra_bin_sp1": "1.3.1",
+        "etcd": "3.6.16"
+      },
+      "rationale": "复用维护基线ext-bin1.17.1和sp1 1.3.1。etcd3.6.16不换二进制、不重启、不重演旧桥接；仅新增官方Kubernetes1.36.6六项包。53文件内容及双架构制品按当前身份核对。",
+      "transition_edges": [
+        {
+          "edge_id": "binary-packs-k8s13510-to1366",
+          "source": "已接受v1.35.10维护基线及实际现场身份",
+          "target": "Kubernetes v1.36.6及本记录target_pins",
+          "bridge": null,
+          "depends_on": [
+            "UPG-01",
+            "UPG-02",
+            "UPG-03",
+            "UPG-04",
+            "UPG-05"
+          ],
+          "official_source_ids": [
+            "EXTBIN-OFFICIAL-ASSETS-ETCD-3616",
+            "ETCD-3616-SNAPSHOT-COMMAND",
+            "ETCD-3616-SNAPSHOT-INTEGRITY",
+            "ETCD-3616-SNAPSHOT-OUTPUT"
+          ],
+          "product_entry": "config.yml + kubecli upgrade；目标新建为kubecli setup；未变工具仍属独立tools入口",
+          "preconditions": [
+            "精确源/目标组合、制品及现有数据身份已核验，未知组合先停止对应路径",
+            "最小合同通过；现场持有自有租约、恢复点及业务账本"
+          ],
+          "steps": [
+            "源与目标均使用维护ext-bin1.17.1、etcd3.6.16及sp1 1.3.1；逐文件校验，源不使用旧1.17.0包。",
+            "目标仅引入官方1.36.6六项二进制；源为官方1.35.10六项；etcd仅版本/健康核验，不复制或重启。"
+          ],
+          "success_conditions": [
+            "源对象/数据及自有补丁保持，目标相关API与业务断言通过",
+            "上游测试、支持下限、稳定接口、历史GA与本跳实测分别标注，不互相代签"
+          ],
+          "irreversible_point": "Kubernetes持久化或组件数据写入后不盲目降级；未改引擎不产生新的引擎迁移承诺",
+          "recovery": "保留首失败和journal，验证边界后限定续跑；必要时恢复完整原恢复点",
+          "cleanup": "只回收本run自有对象/故障/进程/租约，不接管其它集群或删除原数据"
+        }
+      ],
+      "official_applicability": [
+        {
+          "id": "EXTBIN-OFFICIAL-ASSETS-ETCD-3616",
+          "evidence_type": "source-pin",
+          "observed_on": "2026-11-15",
+          "version": "etcd-3616",
+          "url": "https://api.github.com/repos/etcd-io/etcd/releases/tags/v3.6.16",
+          "obtained_content": {
+            "representation": "GitHub API raw JSON",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/ext-overlay-etcd-3616-release.txt",
+              "sha256": "13d5a9ff8475a36da8ab64a0f45e74bf5325f6ef10fdce644cbb636ca7aaacd4",
+              "bytes": 17150
+            }
+          },
+          "facts": [
+            "固定官方release metadata明确非prerelease/draft；本次读取并核验两个架构的精确asset名称、大小、URL及SHA256 digest。",
+            "两份资产已实际下载，逐字节核验上游发布SHA256后才从允许成员提取；不启动下载内容，不重编译。",
+            "只作为供应链资产身份依据；迁移允许路径和配套关系仍由该组件的原官方研究记录负责。"
+          ],
+          "selected_assets": [
+            {
+              "url": "https://github.com/etcd-io/etcd/releases/download/v3.6.16/etcd-v3.6.16-linux-amd64.tar.gz",
+              "sha256": "c8c0d96d8292ef085deabbf735e9561d3d396768e4d606df005aa25964f21911",
+              "bytes": 25263894,
+              "architecture": "amd64"
+            },
+            {
+              "url": "https://github.com/etcd-io/etcd/releases/download/v3.6.16/etcd-v3.6.16-linux-arm64.tar.gz",
+              "sha256": "ad756ff27ba21e3488cfb84d00f3f4ad8d9b60a93e20f5be5b230a4aab1dc053",
+              "bytes": 23045869,
+              "architecture": "arm64"
+            }
+          ],
+          "limitations": "仅核验官方发布资产元数据和校验和；不冒称全release notes新研究、上游组合认证或项目现场PASS。",
+          "use": "upgrade/v1.34.13/evidence/extbin-overlay-inputs.json"
+        },
+        {
+          "id": "ETCD-3616-SNAPSHOT-COMMAND",
+          "url": "https://api.github.com/repos/etcd-io/etcd/contents/etcdutl/etcdutl/snapshot_command.go?ref=v3.6.16",
+          "observed_on": "2026-11-16",
+          "version": "v3.6.16",
+          "facts": [
+            "snapshot status --write-out=json为固定版本命令；restore默认skip-hash-check=false，不允许跳过完整性校验。",
+            "离线restore写入新目录；它不验证业务恢复流程，也不应指向任何现役成员数据目录。"
+          ],
+          "obtained_content": {
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-16-next-hop/etcd3616-snapshot-command.go.txt",
+              "sha256": "b72bcac4839110543047172ec4d2da9306dafe22d4c9db1309fcbbaccf27fa57",
+              "bytes": 6070
+            }
+          }
+        },
+        {
+          "id": "ETCD-3616-SNAPSHOT-INTEGRITY",
+          "url": "https://api.github.com/repos/etcd-io/etcd/contents/etcdutl/snapshot/v3_snapshot.go?ref=v3.6.16",
+          "observed_on": "2026-11-16",
+          "version": "v3.6.16",
+          "facts": [
+            "Status以只读bbolt事务检查结构完整性，JSON字段为hash/revision/totalKey/totalSize/version。",
+            "Restore在复制到新数据目录时要求snapshot附带SHA256并验证哈希；仅Status不能代替此项。"
+          ],
+          "obtained_content": {
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-16-next-hop/etcd3616-snapshot-v3.go.txt",
+              "sha256": "3155cd82119ea71ecd8922e30d2d373a8a2764d4f9894e1fb8a33283dcbb965c",
+              "bytes": 16251
+            }
+          }
+        },
+        {
+          "id": "ETCD-3616-SNAPSHOT-OUTPUT",
+          "url": "https://api.github.com/repos/etcd-io/etcd/contents/etcdutl/etcdutl/printer.go?ref=v3.6.16",
+          "observed_on": "2026-11-16",
+          "version": "v3.6.16",
+          "facts": [
+            "固定版本支持JSON输出Status结构；字段来自snapshot.Status，不按表格文本解析。"
+          ],
+          "obtained_content": {
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-16-next-hop/etcd3616-printer.go.txt",
+              "sha256": "a3e8f6e643168f238fcdab1812194a1501d2effc81a7ca9408806985405ec168",
+              "bytes": 2628
+            }
+          }
+        }
+      ],
+      "evidence_strength_rule": "保留每条官方来源的实际类型与limitations；最低版本、稳定API、源码契约、逐版tested和官方过程不能互相冒签。",
+      "live_claim": "本记录不证明本跳现场成功；旧GA、当前源码和正式制品分别保留身份。"
+    },
+    {
+      "component_id": "runtime",
+      "decision": "keep",
+      "target_pins": {
+        "containerd": "2.3.7",
+        "runc": "1.5.2",
+        "v_nerdctl": "2.4.2",
+        "v_docker": "28.5.2",
+        "v_cri_dockerd": "0.4.10"
+      },
+      "rationale": "containerd2.3.7满足官方1.36推荐2.3.0+；保留runc1.5.2、Docker28.5.2和cri-dockerd0.4.10。源已为目标，禁止降级或重复2.2桥接，补CRI健康与sandbox身份保持。nerdctl2.4.2来自已接受维护基线。",
+      "transition_edges": [
+        {
+          "edge_id": "runtime-k8s13510-to1366",
+          "source": "已接受v1.35.10维护基线及实际现场身份",
+          "target": "Kubernetes v1.36.6及本记录target_pins",
+          "bridge": null,
+          "depends_on": [
+            "UPG-01",
+            "UPG-02",
+            "UPG-03",
+            "UPG-04",
+            "UPG-05"
+          ],
+          "official_source_ids": [
+            "CONTAINERD-K8S136-COMPAT",
+            "CONTAINERD-237-RUNC-PIN",
+            "CRI-DOCKERD-0410-CRI-V1",
+            "DOCKER-2852-API-CONTRACT"
+          ],
+          "product_entry": "config.yml + kubecli upgrade；目标新建为kubecli setup；未变工具仍属独立tools入口",
+          "preconditions": [
+            "精确源/目标组合、制品及现有数据身份已核验，未知组合先停止对应路径",
+            "最小合同通过；现场持有自有租约、恢复点及业务账本"
+          ],
+          "steps": [
+            "核对实际源固定版本、配置、对象和制品身份；复用对应维护基线及原GA证据，不重演旧组件迁移。",
+            "保持本组件版本、配置和数据格式；核对1.36官方依据的实际力度与稳定API，按所属矩阵补目标平台接口缺口。"
+          ],
+          "success_conditions": [
+            "源对象/数据及自有补丁保持，目标相关API与业务断言通过",
+            "上游测试、支持下限、稳定接口、历史GA与本跳实测分别标注，不互相代签"
+          ],
+          "irreversible_point": "Kubernetes持久化或组件数据写入后不盲目降级；未改引擎不产生新的引擎迁移承诺",
+          "recovery": "保留首失败和journal，验证边界后限定续跑；必要时恢复完整原恢复点",
+          "cleanup": "只回收本run自有对象/故障/进程/租约，不接管其它集群或删除原数据"
+        }
+      ],
+      "official_applicability": [
+        {
+          "id": "CONTAINERD-K8S136-COMPAT",
+          "evidence_type": "supported",
+          "observed_on": "2026-11-20",
+          "url": "https://raw.githubusercontent.com/containerd/containerd/v2.3.7/RELEASES.md",
+          "facts": [
+            "固定v2.3.7官方RELEASES.md列K8s1.36推荐containerd2.3.0+或2.2.0+；现有2.3.7覆盖，无需跨系列桥接。"
+          ],
+          "limitations": "推荐组合不替代项目CRI及sandbox保持验证。",
+          "obtained_content": {
+            "representation": "official raw response",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-20-next-hop/containerd-support",
+              "sha256": "5f4b8e1c2328c07da56e6181688d578a392970a0a5ed428356240d2de916c3b2",
+              "bytes": 39044
+            }
+          }
+        },
+        {
+          "id": "CONTAINERD-237-RUNC-PIN",
+          "evidence_type": "source-pin",
+          "observed_on": "2026-11-15",
+          "version": "exact versions in URL and facts; observed release listing 2026-11-15",
+          "url": "https://api.github.com/repos/containerd/containerd/contents/script/setup/runc-version?ref=v2.3.7",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/containerd-237-version.txt",
+              "sha256": "e12ce503171b3086e1ac148f8abc002fa33aa4a1b58e3cbb0d1273d42e84314a",
+              "bytes": 7
+            }
+          },
+          "facts": [
+            "官方2.3.7 setup精确runc v1.5.2；以此作为目标配套，不沿用先前仅核对的1.3.7候选。"
+          ],
+          "limitations": "官方约束及本地配置资格；不代表现场CRI、Docker分支、双端制品或升级GA。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        },
+        {
+          "id": "CRI-DOCKERD-0410-CRI-V1",
+          "evidence_type": "api-contract",
+          "observed_on": "2026-11-15",
+          "version": "v0.4.10",
+          "url": "https://api.github.com/repos/Mirantis/cri-dockerd/contents/config/constants.go?ref=v0.4.10",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/cri-dockerd-0410-constants.txt",
+              "sha256": "e861b117662dd8a3f9b5afbd4d21569ea48fc2d8f6b81c8a5a6bd41c4aa36572",
+              "bytes": 8465
+            }
+          },
+          "facts": [
+            "Fixed0.4.10 config.CRIVersion is v1; its core Version response uses Docker Engine version28.5.2 separately from the adapter executable version0.4.10. Runtime stage verifies both through the live CRI socket and actual /proc executable; recording tests do not claim real CRI execution."
+          ],
+          "limitations": "Official fixed data/API contract; local scope only, not a build, live acceptance or GA",
+          "use": "upgrade/v1.34.13/release.yaml"
+        },
+        {
+          "id": "DOCKER-2852-API-CONTRACT",
+          "evidence_type": "api-contract",
+          "observed_on": "2026-11-15",
+          "version": "fixed versions named in facts and official URL",
+          "url": "https://docs.docker.com/reference/api/engine/",
+          "obtained_content": {
+            "representation": "official documentation HTML",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/docker-engine-api-main-retry.txt",
+              "sha256": "d6d0f196434d1ef1aa92ddd88f6033ba06f7d736dba96b2395fd2b18f74494d3",
+              "bytes": 476583
+            }
+          },
+          "facts": [
+            "官方API矩阵Docker28.5支持1.24–1.51；Docker25 SDK最高1.44。固定cri-dockerd0.4.10的SDK25.0.8与NegotiateAPIVersion调用可协商1.44，满足0.4初版声明>=1.42。",
+            "这是Engine/SDK官方API交集和固定源码契约，不虚构K8s1.34×Docker28×cri-dockerd0.4.10完整官方测试矩阵；现场仍需产品入口CRI与exec/log集成。"
+          ],
+          "limitations": "官方约束和离线CLI身份；不是现场Docker/CRI、升级GA或完整官方测试矩阵。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        }
+      ],
+      "evidence_strength_rule": "保留每条官方来源的实际类型与limitations；最低版本、稳定API、源码契约、逐版tested和官方过程不能互相冒签。",
+      "live_claim": "本记录不证明本跳现场成功；旧GA、当前源码和正式制品分别保留身份。"
+    },
+    {
+      "component_id": "calico",
+      "decision": "keep",
+      "target_pins": {
+        "v_calico": "v3.32.4",
+        "calicoctl": "v3.32.4",
+        "cniVersion": "1.0.0",
+        "datastore": "etcdv3",
+        "dataplane": "iptables"
+      },
+      "rationale": "固定3.32.4，3.32官方测试覆盖1.34/1.35/1.36且内核至少5.10；保留直接etcd/iptables、UID/Secret/Pool/BGP/策略，不重演3.28→3.31→3.32旧边，不切换数据面。",
+      "transition_edges": [
+        {
+          "edge_id": "calico-k8s13510-to1366",
+          "source": "已接受v1.35.10维护基线及实际现场身份",
+          "target": "Kubernetes v1.36.6及本记录target_pins",
+          "bridge": null,
+          "depends_on": [
+            "UPG-01",
+            "UPG-02",
+            "UPG-03",
+            "UPG-04",
+            "UPG-05"
+          ],
+          "official_source_ids": [
+            "CALICO-332-K8S136-COMPAT",
+            "CALICO-332-HOST-PLATFORM"
+          ],
+          "product_entry": "config.yml + kubecli upgrade；目标新建为kubecli setup；未变工具仍属独立tools入口",
+          "preconditions": [
+            "精确源/目标组合、制品及现有数据身份已核验，未知组合先停止对应路径",
+            "最小合同通过；现场持有自有租约、恢复点及业务账本"
+          ],
+          "steps": [
+            "核对实际源固定版本、配置、对象和制品身份；复用对应维护基线及原GA证据，不重演旧组件迁移。",
+            "保持本组件版本、配置和数据格式；核对1.36官方依据的实际力度与稳定API，按所属矩阵补目标平台接口缺口。"
+          ],
+          "success_conditions": [
+            "源对象/数据及自有补丁保持，目标相关API与业务断言通过",
+            "上游测试、支持下限、稳定接口、历史GA与本跳实测分别标注，不互相代签"
+          ],
+          "irreversible_point": "Kubernetes持久化或组件数据写入后不盲目降级；未改引擎不产生新的引擎迁移承诺",
+          "recovery": "保留首失败和journal，验证边界后限定续跑；必要时恢复完整原恢复点",
+          "cleanup": "只回收本run自有对象/故障/进程/租约，不接管其它集群或删除原数据"
+        }
+      ],
+      "official_applicability": [
+        {
+          "id": "CALICO-332-K8S136-COMPAT",
+          "evidence_type": "supported",
+          "observed_on": "2026-11-20",
+          "url": "https://docs.tigera.io/calico/3.32/getting-started/kubernetes/requirements",
+          "facts": [
+            "Calico3.32官方测试表列K8s1.34、1.35、1.36；当前3.32.4属于该系列。"
+          ],
+          "limitations": "不能将3.33 latest页面用作3.32的依据；不切换datastore/数据面。",
+          "obtained_content": {
+            "representation": "official raw response",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-20-next-hop/calico-332-requirements",
+              "sha256": "8d3857417b6a6175d52725fc1317653503c490e351f59ee67e33b6f3d23f313f",
+              "bytes": 68328
+            }
+          }
+        },
+        {
+          "id": "CALICO-332-HOST-PLATFORM",
+          "url": "https://docs.tigera.io/calico/3.32/getting-started/kubernetes/requirements",
+          "observed_on": "2026-11-16",
+          "version": "Calico 3.32",
+          "facts": [
+            "官方测试Kubernetes1.34/1.35/1.36，并要求Linux kernel5.10及以上；发行版名称不能代替实际内核条件。",
+            "本次实验室使用Rocky9的5.14内核；不升级旧Rocky8主机，不以源码兼容分支代替上游平台要求。"
+          ],
+          "obtained_content": {
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-16-next-hop/calico-332-requirements.txt",
+              "sha256": "db111252895bc56ca2b2ab9b62238f8f5444406d856355656315d8be8620d6c5",
+              "bytes": 68328
+            }
+          }
+        }
+      ],
+      "evidence_strength_rule": "保留每条官方来源的实际类型与limitations；最低版本、稳定API、源码契约、逐版tested和官方过程不能互相冒签。",
+      "live_claim": "本记录不证明本跳现场成功；旧GA、当前源码和正式制品分别保留身份。"
+    },
+    {
+      "component_id": "flannel",
+      "decision": "keep",
+      "target_pins": {
+        "v_flannel": "v0.28.10",
+        "v_flannel_cni": "v1.9.1-flannel3",
+        "cniVersion": "1.0.0",
+        "healthz_address": "127.0.0.1:8081"
+      },
+      "rationale": "固定0.28.10及CNI1.9.1-flannel3，官方仅声明Kubernetes1.17+，非1.36逐版认证。已交付网络配置不变，按稳定API/CRI契约及最小目标接口验证覆盖平台差异，不重复原网络深测。",
+      "transition_edges": [
+        {
+          "edge_id": "flannel-k8s13510-to1366",
+          "source": "已接受v1.35.10维护基线及实际现场身份",
+          "target": "Kubernetes v1.36.6及本记录target_pins",
+          "bridge": null,
+          "depends_on": [
+            "UPG-01",
+            "UPG-02",
+            "UPG-03",
+            "UPG-04",
+            "UPG-05"
+          ],
+          "official_source_ids": [
+            "FLANNEL-02810-FIRST-HOP",
+            "FLANNEL-02810-MANIFEST",
+            "FLANNEL-CNI-191-MECHANISM"
+          ],
+          "product_entry": "config.yml + kubecli upgrade；目标新建为kubecli setup；未变工具仍属独立tools入口",
+          "preconditions": [
+            "精确源/目标组合、制品及现有数据身份已核验，未知组合先停止对应路径",
+            "最小合同通过；现场持有自有租约、恢复点及业务账本"
+          ],
+          "steps": [
+            "核对实际源固定版本、配置、对象和制品身份；复用对应维护基线及原GA证据，不重演旧组件迁移。",
+            "保持本组件版本、配置和数据格式；核对1.36官方依据的实际力度与稳定API，按所属矩阵补目标平台接口缺口。"
+          ],
+          "success_conditions": [
+            "源对象/数据及自有补丁保持，目标相关API与业务断言通过",
+            "上游测试、支持下限、稳定接口、历史GA与本跳实测分别标注，不互相代签"
+          ],
+          "irreversible_point": "Kubernetes持久化或组件数据写入后不盲目降级；未改引擎不产生新的引擎迁移承诺",
+          "recovery": "保留首失败和journal，验证边界后限定续跑；必要时恢复完整原恢复点",
+          "cleanup": "只回收本run自有对象/故障/进程/租约，不接管其它集群或删除原数据"
+        }
+      ],
+      "official_applicability": [
+        {
+          "id": "FLANNEL-02810-FIRST-HOP",
+          "evidence_type": "minimum",
+          "version": "v0.28.10",
+          "observed_on": "2026-11-14",
+          "url": "https://api.github.com/repos/flannel-io/flannel/contents/README.md?ref=v0.28.10",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "git_blob_sha": "9ec2d51bd81ee2b7a5c521c123389d62f932985b",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/flannel-02810-readme.txt",
+              "sha256": "ae4f746d060f7e37a23f1d7357fde98627edfc196c0d411fde79cecc0eb53c43",
+              "bytes": 7395
+            }
+          },
+          "facts": [
+            "官方README写For Kubernetes v1.17+，建议使用固定release附带manifest；默认分支manifest可领先或落后镜像tag。"
+          ],
+          "limitations": "1.17+属于下限声明，不是逐K8s测试矩阵；配置和最新patch迁移还需核对。",
+          "use": "upgrade/v1.34.13/research.yaml"
+        },
+        {
+          "id": "FLANNEL-02810-MANIFEST",
+          "evidence_type": "source-pin",
+          "observed_on": "2026-11-14",
+          "version": "v0.28.10",
+          "url": "https://api.github.com/repos/flannel-io/flannel/contents/Documentation/kube-flannel.yml?ref=v0.28.10",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "sha256": "944a3c1f925f117727a1b7272a323c80965da642498397ec7e6ea9bef0f9e6c5",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/flannel-02810-manifest.txt",
+              "sha256": "944a3c1f925f117727a1b7272a323c80965da642498397ec7e6ea9bef0f9e6c5",
+              "bytes": 4859
+            },
+            "git_blob_sha": "06e41078cc59731a2f34027b8a90853ecf10b65e"
+          },
+          "facts": [
+            "官方固定manifest配套flannel-cni-plugin:v1.9.1-flannel3，cniVersion1.0.0；init安装配置改为/opt/bin/install-conf；新增8081 healthz/readyz。",
+            "项目源CNI插件1.8.0-flannel1与官方源0.28.4配套1.9.1-flannel1也不同；不从单tag假定配套。",
+            "CNI插件官方仓库API返回404，不能把GHCR镜像引用说成已核发布来源/支持矩阵；需核Dockerfile/实际镜像源码标签及CRI兼容。"
+          ],
+          "limitations": "本专题结论不代表四类目录全部已读、项目目标实测或GA。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        },
+        {
+          "id": "FLANNEL-CNI-191-MECHANISM",
+          "evidence_type": "source-contract",
+          "observed_on": "2026-11-15",
+          "version": "Flannel v0.28.10 / CNI v1.9.1-flannel3",
+          "url": "https://raw.githubusercontent.com/flannel-io/cni-plugin/v1.9.1-flannel3/README.md",
+          "obtained_content": {
+            "representation": "official pinned source or release/compare JSON",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/flannel-cni-191-readme.txt",
+              "sha256": "a7acb0b463352938ede516b85ad92a729ca9c6234a300cb053af0aa491fd1244",
+              "bytes": 6141
+            }
+          },
+          "facts": [
+            "插件读取/run/flannel/subnet.env后向bridge等委派，继续保留hairpinMode/isDefaultGateway及portMappings；不改变原IPAM或backend。"
+          ],
+          "limitations": "仅本专题来源；上游README为K8s最低支持条件，不虚构1.34官方独立e2e，也不代表项目现场PASS。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        }
+      ],
+      "evidence_strength_rule": "保留每条官方来源的实际类型与limitations；最低版本、稳定API、源码契约、逐版tested和官方过程不能互相冒签。",
+      "live_claim": "本记录不证明本跳现场成功；旧GA、当前源码和正式制品分别保留身份。"
+    },
+    {
+      "component_id": "cilium",
+      "decision": "keep",
+      "target_pins": {
+        "v_cilium": "v1.20.4",
+        "v_cilium_hubble_ui": "v0.13.6",
+        "upgradeCompatibility": "1.19",
+        "vendored_charts_sha256": {
+          "roles/cilium/files/cilium-1.19.10.tgz": "b7252afca3413a33e2b987c954e52441e96979e411e1495ecc6aefe8cd258863",
+          "roles/cilium/files/cilium-1.20.4.tgz": "505abff8385811df1a949776fc42e9f10697989a332acc86d6e8933efcb855ed"
+        }
+      },
+      "rationale": "精确1.20.4官方e2e列1.33–1.36，保留已交付Chart、CRD和内核/数据面前置，不为平台升级增加1.20.5或重复旧1.19桥接。",
+      "transition_edges": [
+        {
+          "edge_id": "cilium-k8s13510-to1366",
+          "source": "已接受v1.35.10维护基线及实际现场身份",
+          "target": "Kubernetes v1.36.6及本记录target_pins",
+          "bridge": null,
+          "depends_on": [
+            "UPG-01",
+            "UPG-02",
+            "UPG-03",
+            "UPG-04",
+            "UPG-05"
+          ],
+          "official_source_ids": [
+            "CILIUM-1204-K8S136-COMPAT",
+            "CILIUM-1204-REQUIRED",
+            "CILIUM-1204-VALUES"
+          ],
+          "product_entry": "config.yml + kubecli upgrade；目标新建为kubecli setup；未变工具仍属独立tools入口",
+          "preconditions": [
+            "精确源/目标组合、制品及现有数据身份已核验，未知组合先停止对应路径",
+            "最小合同通过；现场持有自有租约、恢复点及业务账本"
+          ],
+          "steps": [
+            "核对实际源固定版本、配置、对象和制品身份；复用对应维护基线及原GA证据，不重演旧组件迁移。",
+            "保持本组件版本、配置和数据格式；核对1.36官方依据的实际力度与稳定API，按所属矩阵补目标平台接口缺口。"
+          ],
+          "success_conditions": [
+            "源对象/数据及自有补丁保持，目标相关API与业务断言通过",
+            "上游测试、支持下限、稳定接口、历史GA与本跳实测分别标注，不互相代签"
+          ],
+          "irreversible_point": "Kubernetes持久化或组件数据写入后不盲目降级；未改引擎不产生新的引擎迁移承诺",
+          "recovery": "保留首失败和journal，验证边界后限定续跑；必要时恢复完整原恢复点",
+          "cleanup": "只回收本run自有对象/故障/进程/租约，不接管其它集群或删除原数据"
+        }
+      ],
+      "official_applicability": [
+        {
+          "id": "CILIUM-1204-K8S136-COMPAT",
+          "evidence_type": "tested",
+          "observed_on": "2026-11-20",
+          "version_or_commit": "v1.20.4",
+          "url": "https://api.github.com/repos/cilium/cilium/contents/Documentation/network/kubernetes/compatibility.rst?ref=v1.20.4",
+          "facts": [
+            "固定v1.20.4源码兼容表明确列1.33、1.34、1.35、1.36；当前制品与源版本保持，无需为了平台升级改为1.20.5。"
+          ],
+          "limitations": "官方e2e范围；本项目保留原内核/数据面配置并核对目标接口，不代表本轮全CNI实测。",
+          "obtained_content": {
+            "representation": "GitHub contents API original bytes with Git blob verification",
+            "git_blob": "07cb46fbbed2918db40d7fe1deec15840dbe18db",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-20-next-hop/cilium1204-support",
+              "sha256": "4119df582c01582bc082c529b6faf29167d07f129c1cec2583117fc37e2e4b13",
+              "bytes": 2797
+            }
+          }
+        },
+        {
+          "id": "CILIUM-1204-REQUIRED",
+          "evidence_type": "official-procedure",
+          "observed_on": "2026-11-14",
+          "url": "https://api.github.com/repos/cilium/cilium/contents/Documentation/operations/upgrade-current.inc?ref=v1.20.4",
+          "version": "v1.20.4",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "sha256": "9e0d85ab6be0cbb61729ff244ad6a712f9b27f81494c785416696b600c013e26",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/cilium-1204-current.txt",
+              "sha256": "9e0d85ab6be0cbb61729ff244ad6a712f9b27f81494c785416696b600c013e26",
+              "bytes": 15391
+            },
+            "git_blob_sha": "b874fdc240800f7cbfe517a192fb7a5f87c11eb0"
+          },
+          "facts": [
+            "移除proxylib/Kafka自定义L7规则及CiliumNodeConfig v2alpha1；实际存在相应对象时须迁移或拒绝，不能盲删用户策略。",
+            "Gateway API最低1.6.1；已有TLSRoute须保留Experimental中旧v1alpha2存储可读版本，错误替换Standard会使旧对象不可读。",
+            "CNI默认1.0.0；proxy replacement关闭SocketLB等模式下NodePort策略匹配行为变化；Hubble/ClusterMesh证书有效期和certgen校验有独立条件。",
+            "未启用能力不自动开启；本项目values未启用Gateway/ClusterMesh不等于所有客户都不存在额外对象，迁移前需只读探测。"
+          ],
+          "limitations": "单专题已读，不代表完整目录/版本差异已闭合或项目GA",
+          "use": "upgrade/v1.34.13/release.yaml"
+        },
+        {
+          "id": "CILIUM-1204-VALUES",
+          "evidence_type": "source-contract",
+          "observed_on": "2026-11-15",
+          "version": "v1.19.10 / v1.20.4",
+          "url": "https://raw.githubusercontent.com/cilium/cilium/v1.20.4/install/kubernetes/cilium/values.yaml",
+          "obtained_content": {
+            "representation": "official pinned source or release/index JSON",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/cilium-1204-chart-values.txt",
+              "sha256": "6ef6bcb8e016e91cb53533feaf43c9028a8e0d6860010b66cd1feccfca832e8e",
+              "bytes": 187562
+            }
+          },
+          "facts": [
+            "目标Chart配套agent/operator/relay1.20.4、UI前后端0.13.6；主image与preflight.image独立配置；embedded envoy、kube-proxy、CRD身份及cluster-pool保持。",
+            "默认cleanState/cleanBpfState=false；独立升级值拒绝启用清理。Hubble默认helm生成证书，未消费cronJob certgen。"
+          ],
+          "limitations": "组合、源码和本地合同依据；非项目现场PASS，也非全部官方文档已读。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        }
+      ],
+      "evidence_strength_rule": "保留每条官方来源的实际类型与limitations；最低版本、稳定API、源码契约、逐版tested和官方过程不能互相冒签。",
+      "live_claim": "本记录不证明本跳现场成功；旧GA、当前源码和正式制品分别保留身份。"
+    },
+    {
+      "component_id": "kube-router",
+      "decision": "keep",
+      "target_pins": {
+        "v_kuberouter": "v2.12.0",
+        "cni_config": "v1",
+        "iptables_mode": "explicit-project-default"
+      },
+      "rationale": "保留2.12.0和项目固定安全/iptables配置；没有1.36逐版上游表，依据官方稳定Core/Networking API和最低要求，明确非上游认证；只补目标接口缺口，不重演旧组件升级。",
+      "transition_edges": [
+        {
+          "edge_id": "kube-router-k8s13510-to1366",
+          "source": "已接受v1.35.10维护基线及实际现场身份",
+          "target": "Kubernetes v1.36.6及本记录target_pins",
+          "bridge": null,
+          "depends_on": [
+            "UPG-01",
+            "UPG-02",
+            "UPG-03",
+            "UPG-04",
+            "UPG-05"
+          ],
+          "official_source_ids": [
+            "KUBEROUTER-212-GUIDE",
+            "KUBEROUTER-212-MANIFEST",
+            "KUBEROUTER-212-INFORMERS",
+            "KUBEROUTER-212-CNI-CONFIG"
+          ],
+          "product_entry": "config.yml + kubecli upgrade；目标新建为kubecli setup；未变工具仍属独立tools入口",
+          "preconditions": [
+            "精确源/目标组合、制品及现有数据身份已核验，未知组合先停止对应路径",
+            "最小合同通过；现场持有自有租约、恢复点及业务账本"
+          ],
+          "steps": [
+            "核对实际源固定版本、配置、对象和制品身份；复用对应维护基线及原GA证据，不重演旧组件迁移。",
+            "保持本组件版本、配置和数据格式；核对1.36官方依据的实际力度与稳定API，按所属矩阵补目标平台接口缺口。"
+          ],
+          "success_conditions": [
+            "源对象/数据及自有补丁保持，目标相关API与业务断言通过",
+            "上游测试、支持下限、稳定接口、历史GA与本跳实测分别标注，不互相代签"
+          ],
+          "irreversible_point": "Kubernetes持久化或组件数据写入后不盲目降级；未改引擎不产生新的引擎迁移承诺",
+          "recovery": "保留首失败和journal，验证边界后限定续跑；必要时恢复完整原恢复点",
+          "cleanup": "只回收本run自有对象/故障/进程/租约，不接管其它集群或删除原数据"
+        }
+      ],
+      "official_applicability": [
+        {
+          "id": "KUBEROUTER-212-GUIDE",
+          "evidence_type": "official-procedure",
+          "observed_on": "2026-11-14",
+          "url": "https://api.github.com/repos/cloudnativelabs/kube-router/contents/docs/user-guide.md?ref=v2.12.0",
+          "version": "v2.12.0",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "sha256": "a4c16497a35cba30171b6f6c40043bd9458def4289bdce3da90e4942acdec7e8",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/kuberouter-212-guide.txt",
+              "sha256": "a4c16497a35cba30171b6f6c40043bd9458def4289bdce3da90e4942acdec7e8",
+              "bytes": 41445
+            },
+            "git_blob_sha": "b24791c3143e79c296ab9c88d7a2c59525bccdea"
+          },
+          "facts": [
+            "用户指南说明2.8起service proxy默认strict-external-ip-validation=true；不配置CIDR时externalIPs/loadBalancerIPs默认拒绝。",
+            "该变化须结合项目是否启用kube-router service proxy判断；不自动关闭安全校验，也不使未消费该接口的网络深测失效。"
+          ],
+          "limitations": "本条只承担已读专题；未声明组件完整目录/升级依赖闭合或项目GA。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        },
+        {
+          "id": "KUBEROUTER-212-MANIFEST",
+          "evidence_type": "source-contract",
+          "observed_on": "2026-11-15",
+          "version": "kube-router v2.12.0; intervening release notes explicitly bounded",
+          "url": "https://api.github.com/repos/cloudnativelabs/kube-router/contents/daemonset/generic-kuberouter.yaml?ref=v2.12.0",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/kuberouter-212-manifest.txt",
+              "sha256": "17286f3fc04e81b394c8ae9f93613a32cf6a476534d5480fc337672025a42ca8",
+              "bytes": 5443
+            }
+          },
+          "facts": [
+            "官方清单使用CNI1.0、startupProbe、dnsPolicy Default、hostPID、NODE_NAME/POD_NAME和host-opt；升级须保留实际节点名，不能把某台render主机RT-IP写入全部节点。",
+            "原安装init包含删除其它*.conf且只在不存在时写conflist，不能在升级时复用整个安装role；应评审并保留源CNI路径/bridge/IPAM/MTU/PodCIDR，按需原子更新。"
+          ],
+          "limitations": "未找到1.34明确tested/supported矩阵；未冻结目标，不代表项目迁移/现场PASS。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        },
+        {
+          "id": "KUBEROUTER-212-INFORMERS",
+          "evidence_type": "source-contract",
+          "observed_on": "2026-11-15",
+          "version": "kube-router v2.12.0; intervening release notes explicitly bounded",
+          "url": "https://api.github.com/repos/cloudnativelabs/kube-router/contents/pkg/cmd/kube-router.go?ref=v2.12.0",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/kuberouter-212-main.txt",
+              "sha256": "e016580249965a7f5d3482059c56bb22704d3e5847a86c781ccb701009710c3b",
+              "bytes": 11461
+            }
+          },
+          "facts": [
+            "所有6个shared informer在controller条件判断前初始化并启动：CoreV1 services/pods/nodes/namespaces、DiscoveryV1 EndpointSlices、NetworkingV1 NetworkPolicies。即使run-service-proxy=false仍必须具有EndpointSlice get/list/watch权限，否则CacheSyncOrTimeout拒绝启动。",
+            "当前项目RBAC缺discovery.k8s.io/endpointslices；extensions networkpolicies为旧多余授权。此为固定源码证明的目标适配差异，尚无现场失败，不能描述为源GA故障。",
+            "使用稳定API是接口证据；目标client-go pin/CI1.37不构成官方1.34完整测试矩阵。"
+          ],
+          "limitations": "未找到1.34明确tested/supported矩阵；未冻结目标，不代表项目迁移/现场PASS。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        },
+        {
+          "id": "KUBEROUTER-212-CNI-CONFIG",
+          "evidence_type": "source-contract",
+          "observed_on": "2026-11-15",
+          "version": "kube-router v2.12.0; intervening release notes explicitly bounded",
+          "url": "https://api.github.com/repos/cloudnativelabs/kube-router/contents/pkg/utils/cni.go?ref=v2.12.0",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/kuberouter-212-cni.txt",
+              "sha256": "a84d7d7e9dc6e8a09cebe65dde81890906255cbafc2783ba73995cda79a8d9e5",
+              "bytes": 12762
+            }
+          },
+          "facts": [
+            "固定CNI工具读取bridge/host-local配置并调整实际MTU/IPAM，目标含模板新能力；本次不采用模板机制转换，不静默改变原IP分配或CNI目录。"
+          ],
+          "limitations": "未找到1.34明确tested/supported矩阵；未冻结目标，不代表项目迁移/现场PASS。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        }
+      ],
+      "evidence_strength_rule": "保留每条官方来源的实际类型与limitations；最低版本、稳定API、源码契约、逐版tested和官方过程不能互相冒签。",
+      "live_claim": "本记录不证明本跳现场成功；旧GA、当前源码和正式制品分别保留身份。"
+    },
+    {
+      "component_id": "kube-ovn",
+      "decision": "keep",
+      "target_pins": {
+        "v_kubeovn": "v1.17.1",
+        "chart_app_version": "1.17.1",
+        "kube_minimum": "v1.29.0"
+      },
+      "rationale": "保留1.17.1；官方最低Kubernetes1.29，未提供1.36逐版表。保留原OVN数据、CRD与配置，按稳定API/实际网络契约最小验证，不能套用文档中的旧kubelet network-plugin flags。",
+      "transition_edges": [
+        {
+          "edge_id": "kube-ovn-k8s13510-to1366",
+          "source": "已接受v1.35.10维护基线及实际现场身份",
+          "target": "Kubernetes v1.36.6及本记录target_pins",
+          "bridge": null,
+          "depends_on": [
+            "UPG-01",
+            "UPG-02",
+            "UPG-03",
+            "UPG-04",
+            "UPG-05"
+          ],
+          "official_source_ids": [
+            "KUBEOVN-117-REQUIREMENTS",
+            "KUBEOVN-1171-CHART",
+            "KUBEOVN-117-MAINTENANCE"
+          ],
+          "product_entry": "config.yml + kubecli upgrade；目标新建为kubecli setup；未变工具仍属独立tools入口",
+          "preconditions": [
+            "精确源/目标组合、制品及现有数据身份已核验，未知组合先停止对应路径",
+            "最小合同通过；现场持有自有租约、恢复点及业务账本"
+          ],
+          "steps": [
+            "核对实际源固定版本、配置、对象和制品身份；复用对应维护基线及原GA证据，不重演旧组件迁移。",
+            "保持本组件版本、配置和数据格式；核对1.36官方依据的实际力度与稳定API，按所属矩阵补目标平台接口缺口。"
+          ],
+          "success_conditions": [
+            "源对象/数据及自有补丁保持，目标相关API与业务断言通过",
+            "上游测试、支持下限、稳定接口、历史GA与本跳实测分别标注，不互相代签"
+          ],
+          "irreversible_point": "Kubernetes持久化或组件数据写入后不盲目降级；未改引擎不产生新的引擎迁移承诺",
+          "recovery": "保留首失败和journal，验证边界后限定续跑；必要时恢复完整原恢复点",
+          "cleanup": "只回收本run自有对象/故障/进程/租约，不接管其它集群或删除原数据"
+        }
+      ],
+      "official_applicability": [
+        {
+          "id": "KUBEOVN-117-REQUIREMENTS",
+          "evidence_type": "minimum",
+          "observed_on": "2026-11-14",
+          "version": "v1.17 docs commit aefdceb1b6f1ffcaef69caa35f978e1a8690b219",
+          "url": "https://api.github.com/repos/kubeovn/docs/contents/docs/start/prepare.en.md?ref=aefdceb1b6f1ffcaef69caa35f978e1a8690b219",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "sha256": "b85280663d495c05d66d0b427c18432625276adb148a26d18693d4125d4c6acd",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/kubeovn-117-prepare.txt",
+              "sha256": "b85280663d495c05d66d0b427c18432625276adb148a26d18693d4125d4c6acd",
+              "bytes": 3965
+            },
+            "git_blob_sha": "59dd6af65b387bb39c8d661a5bdc892e775eb812"
+          },
+          "facts": [
+            "文档写Kubernetes>=1.29、Docker>=1.12.6/containerd>=1.3.4与内核模块要求；属于下限/列举环境，不是1.34逐版认证。",
+            "同时保留已移除的kubelet --network-plugin/--cni-bin-dir旧参数指引；与1.34实际CRI接口不符，不能照抄或新增旧flags。",
+            "Rocky8特定旧4.18.0-372.9.1内核问题、Geneve IPv6前置按实际宿主条件判断，不沿用古老OS列表冒签新资格。"
+          ],
+          "limitations": "本专题结论不代表四类目录全部已读、项目目标实测或GA。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        },
+        {
+          "id": "KUBEOVN-1171-CHART",
+          "evidence_type": "minimum",
+          "observed_on": "2026-11-14",
+          "url": "https://api.github.com/repos/kubeovn/kube-ovn/contents/charts/kube-ovn/Chart.yaml?ref=v1.17.1",
+          "version": "v1.17.1",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "sha256": "1fd6655fb55ad260f4a669182b001597a5fd6ffad5e53c19d9fde0462dd09487",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/kubeovn-1171-helm.txt",
+              "sha256": "1fd6655fb55ad260f4a669182b001597a5fd6ffad5e53c19d9fde0462dd09487",
+              "bytes": 1170
+            },
+            "git_blob_sha": "675dd63ee01295b0de7c1dc2b22f7f8744d4eae7"
+          },
+          "facts": [
+            "Chart version=v1.17.1，appVersion=1.17.1，kubeVersion>=1.29.0-0。",
+            "这是Helm准入下限，不是K8s1.34逐版官方测试或1.11.5直升的官方路径证明。"
+          ],
+          "limitations": "本条只承担已读专题；未声明组件完整目录/升级依赖闭合或项目GA。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        },
+        {
+          "id": "KUBEOVN-117-MAINTENANCE",
+          "evidence_type": "lifecycle",
+          "observed_on": "2026-11-14",
+          "version": "v1.17 docs commit aefdceb1b6f1ffcaef69caa35f978e1a8690b219",
+          "url": "https://api.github.com/repos/kubeovn/docs/contents/docs/reference/releasing.en.md?ref=aefdceb1b6f1ffcaef69caa35f978e1a8690b219",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "sha256": "de78adddfa310b49a1c378e701d2816ca1f936934b1f9ef6901a18f7d3b3ad38",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/kubeovn-117-releasing.txt",
+              "sha256": "de78adddfa310b49a1c378e701d2816ca1f936934b1f9ef6901a18f7d3b3ad38",
+              "bytes": 3387
+            },
+            "git_blob_sha": "af79ebf83357689616c657a8226a0a6f9cb21772"
+          },
+          "facts": [
+            "上游说明维护main及最近两release分支；patch目标是修复、安全/依赖和API向后兼容；minor可能含OVN/OVS大更新、架构与API变化。",
+            "文中release1.12/1.11是示例不是2026当前受维护版本；不能当源1.11.5当前维护承诺。",
+            "该指南是发布管理，不是1.11.5到1.17.1的数据迁移运行手册，迁移缺口仍保留。"
+          ],
+          "limitations": "本专题结论不代表四类目录全部已读、项目目标实测或GA。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        }
+      ],
+      "evidence_strength_rule": "保留每条官方来源的实际类型与limitations；最低版本、稳定API、源码契约、逐版tested和官方过程不能互相冒签。",
+      "live_claim": "本记录不证明本跳现场成功；旧GA、当前源码和正式制品分别保留身份。"
+    },
+    {
+      "component_id": "dns",
+      "decision": "keep",
+      "target_pins": {
+        "v_coredns": "1.15.0",
+        "v_dnsnodecache": "1.26.8",
+        "nodecache_embedded_coredns": "1.13.2"
+      },
+      "rationale": "CoreDNS1.15.0、nodecache1.26.8及嵌入CoreDNS1.13.2均不变；核对现有稳定Core/Discovery接口、Service和EndpointSlice、实际跨节点DNS及缓存，不因K8s minor重演DNS引擎升级。",
+      "transition_edges": [
+        {
+          "edge_id": "dns-k8s13510-to1366",
+          "source": "已接受v1.35.10维护基线及实际现场身份",
+          "target": "Kubernetes v1.36.6及本记录target_pins",
+          "bridge": null,
+          "depends_on": [
+            "UPG-01",
+            "UPG-02",
+            "UPG-03",
+            "UPG-04",
+            "UPG-05"
+          ],
+          "official_source_ids": [
+            "COREDNS-115-KUBERNETES",
+            "COREDNS-115-CONTROLLER",
+            "DNS-1268-VERSION-POLICY",
+            "DNS-1268-DEPS"
+          ],
+          "product_entry": "config.yml + kubecli upgrade；目标新建为kubecli setup；未变工具仍属独立tools入口",
+          "preconditions": [
+            "精确源/目标组合、制品及现有数据身份已核验，未知组合先停止对应路径",
+            "最小合同通过；现场持有自有租约、恢复点及业务账本"
+          ],
+          "steps": [
+            "核对实际源固定版本、配置、对象和制品身份；复用对应维护基线及原GA证据，不重演旧组件迁移。",
+            "保持本组件版本、配置和数据格式；核对1.36官方依据的实际力度与稳定API，按所属矩阵补目标平台接口缺口。"
+          ],
+          "success_conditions": [
+            "源对象/数据及自有补丁保持，目标相关API与业务断言通过",
+            "上游测试、支持下限、稳定接口、历史GA与本跳实测分别标注，不互相代签"
+          ],
+          "irreversible_point": "Kubernetes持久化或组件数据写入后不盲目降级；未改引擎不产生新的引擎迁移承诺",
+          "recovery": "保留首失败和journal，验证边界后限定续跑；必要时恢复完整原恢复点",
+          "cleanup": "只回收本run自有对象/故障/进程/租约，不接管其它集群或删除原数据"
+        }
+      ],
+      "official_applicability": [
+        {
+          "id": "COREDNS-115-KUBERNETES",
+          "evidence_type": "api-contract",
+          "observed_on": "2026-11-15",
+          "version": "CoreDNS1.15.0; node-cache1.26.8; exact source versions in URL",
+          "url": "https://api.github.com/repos/coredns/coredns/contents/plugin/kubernetes/README.md?ref=v1.15.0",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/coredns-115-kubernetes.txt",
+              "bytes": 17944,
+              "sha256": "e5ac3ba9af4f2e34a720899e38a54ad6b4d6b6b38e43887a7f4e5b3bce4a7769"
+            }
+          },
+          "facts": [
+            "官方kubernetes插件实现Kubernetes DNS Service Discovery，端点使用discovery.EndpointSlices；保留原zone、pods insecure、fallthrough和ttl30。不把该API说明虚构成1.34全矩阵测试。"
+          ],
+          "limitations": "上游API/版本契约或固定源码，不冒称1.34官方完整e2e/双端发布/项目现场。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        },
+        {
+          "id": "COREDNS-115-CONTROLLER",
+          "evidence_type": "api-contract",
+          "observed_on": "2026-11-15",
+          "version": "CoreDNS1.15.0; node-cache1.26.8; exact source versions in URL",
+          "url": "https://api.github.com/repos/coredns/coredns/contents/plugin/kubernetes/controller.go?ref=v1.15.0",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/coredns-115-controller.txt",
+              "bytes": 27506,
+              "sha256": "3c8295697997925fff2323eaafff56d7cdd76020bb72f2e1d6589ce73243728a"
+            }
+          },
+          "facts": [
+            "固定目标源码Services/Pods/Namespaces调用CoreV1、EndpointSlices调用DiscoveryV1；multicluster/zonal额外路径由显式配置启用，项目未开启。现有RBAC已经list/watch对应资源；1.34仍提供这些稳定API。"
+          ],
+          "limitations": "上游API/版本契约或固定源码，不冒称1.34官方完整e2e/双端发布/项目现场。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        },
+        {
+          "id": "DNS-1268-VERSION-POLICY",
+          "evidence_type": "compatibility",
+          "observed_on": "2026-11-15",
+          "version": "CoreDNS1.15.0; node-cache1.26.8; exact source versions in URL",
+          "url": "https://api.github.com/repos/kubernetes/dns/contents/README.md?ref=1.26.8",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/dns-1268-readme.txt",
+              "bytes": 5265,
+              "sha256": "c920f33e9863e3ab28d8b051545e483b28844ffa4f2ef6aacd5912cf2b444530"
+            }
+          },
+          "facts": [
+            "官方Version compatibility明确没有与Kubernetes release的版本兼容要求，dns仓版本号不对应K8s版本。node-cache始终发布推广；release页面非完整patch清单，须结合正式tags和官方promotion清单。"
+          ],
+          "limitations": "上游API/版本契约或固定源码，不冒称1.34官方完整e2e/双端发布/项目现场。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        },
+        {
+          "id": "DNS-1268-DEPS",
+          "evidence_type": "source-pin",
+          "observed_on": "2026-11-15",
+          "version": "CoreDNS1.15.0; node-cache1.26.8; exact source versions in URL",
+          "url": "https://api.github.com/repos/kubernetes/dns/contents/go.mod?ref=1.26.8",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/dns-1268-go-mod.txt",
+              "bytes": 8175,
+              "sha256": "b64a5632d3c05d22b6533d9c4eb93d1f474bd9512fb7803051192ff1249aa247"
+            }
+          },
+          "facts": [
+            "固定node-cache实际内嵌CoreDNS1.13.2及K8s1.34.2依赖，1.26版本与K8sminor无对应。Go依赖不等于官方目标K8s全e2e签署。"
+          ],
+          "limitations": "上游API/版本契约或固定源码，不冒称1.34官方完整e2e/双端发布/项目现场。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        }
+      ],
+      "evidence_strength_rule": "保留每条官方来源的实际类型与limitations；最低版本、稳定API、源码契约、逐版tested和官方过程不能互相冒签。",
+      "live_claim": "本记录不证明本跳现场成功；旧GA、当前源码和正式制品分别保留身份。"
+    },
+    {
+      "component_id": "metrics",
+      "decision": "keep",
+      "target_pins": {
+        "v_metricsserver": "v0.9.1"
+      },
+      "rationale": "0.9.1官方支持Kubernetes1.34+；保留metrics.k8s.io/v1beta1与现有聚合CA限制，目标补真实节点/Pod指标、TLS/RBAC拒绝，不将最低要求标成逐minor上游测试。",
+      "transition_edges": [
+        {
+          "edge_id": "metrics-k8s13510-to1366",
+          "source": "已接受v1.35.10维护基线及实际现场身份",
+          "target": "Kubernetes v1.36.6及本记录target_pins",
+          "bridge": null,
+          "depends_on": [
+            "UPG-01",
+            "UPG-02",
+            "UPG-03",
+            "UPG-04",
+            "UPG-05"
+          ],
+          "official_source_ids": [
+            "METRICS-091-FIRST-HOP",
+            "METRICS-091-FAQ",
+            "METRICS-V1BETA1-WIRE-CONTRACT"
+          ],
+          "product_entry": "config.yml + kubecli upgrade；目标新建为kubecli setup；未变工具仍属独立tools入口",
+          "preconditions": [
+            "精确源/目标组合、制品及现有数据身份已核验，未知组合先停止对应路径",
+            "最小合同通过；现场持有自有租约、恢复点及业务账本"
+          ],
+          "steps": [
+            "核对实际源固定版本、配置、对象和制品身份；复用对应维护基线及原GA证据，不重演旧组件迁移。",
+            "保持本组件版本、配置和数据格式；核对1.36官方依据的实际力度与稳定API，按所属矩阵补目标平台接口缺口。"
+          ],
+          "success_conditions": [
+            "源对象/数据及自有补丁保持，目标相关API与业务断言通过",
+            "上游测试、支持下限、稳定接口、历史GA与本跳实测分别标注，不互相代签"
+          ],
+          "irreversible_point": "Kubernetes持久化或组件数据写入后不盲目降级；未改引擎不产生新的引擎迁移承诺",
+          "recovery": "保留首失败和journal，验证边界后限定续跑；必要时恢复完整原恢复点",
+          "cleanup": "只回收本run自有对象/故障/进程/租约，不接管其它集群或删除原数据"
+        }
+      ],
+      "official_applicability": [
+        {
+          "id": "METRICS-091-FIRST-HOP",
+          "evidence_type": "supported",
+          "version": "v0.9.1",
+          "observed_on": "2026-11-14",
+          "url": "https://api.github.com/repos/kubernetes-sigs/metrics-server/contents/README.md?ref=v0.9.1",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "git_blob_sha": "dc50451753f89c65f3768d60919573915744288b",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/metrics-091-readme.txt",
+              "sha256": "ec7ee8fe2f5969e05890a16924557ce68e68b40c9125af3d4a3d21dc22a06c26",
+              "bytes": 11943
+            }
+          },
+          "facts": [
+            "官方表0.9.x支持K8s1.34+、0.8.x支持1.31+；因此0.9.1只能在所有相关API到达1.34后作为目标候选。"
+          ],
+          "limitations": "没有给每个minor逐版e2e结果；需核对部署配置/参数、APIService、TLS及HA差异。",
+          "use": "upgrade/v1.34.13/research.yaml"
+        },
+        {
+          "id": "METRICS-091-FAQ",
+          "evidence_type": "official-procedure",
+          "observed_on": "2026-11-14",
+          "version": "v0.9.1",
+          "url": "https://api.github.com/repos/kubernetes-sigs/metrics-server/contents/FAQ.md?ref=v0.9.1",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "sha256": "15affb343ffeda9e52263bdddd88c89f20c55784277128f9f2b661220cbb892a",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/metrics-091-faq.txt",
+              "sha256": "15affb343ffeda9e52263bdddd88c89f20c55784277128f9f2b661220cbb892a",
+              "bytes": 6150
+            },
+            "git_blob_sha": "95184b82ea0ec958510d592e01f9eaaf10bfb148"
+          },
+          "facts": [
+            "CPU取累计CPU计数的时间窗口速率，内存取工作集；Metrics Server聚合kubelet值而不计算源指标。",
+            "HA实例各抓全部节点；官方建议apiserver开启aggregator routing分发请求。支持amd64/arm64等多架构。",
+            "FAQ称测试最近三个Kubernetes版本但未明确本目标；兼容表1.34+只按supported使用。",
+            "FAQ写默认60秒而本版本README写15秒；项目显式--metric-resolution=15s，保持显式值，不从滚动说明猜默认。"
+          ],
+          "limitations": "本专题结论不代表四类目录全部已读、项目目标实测或GA。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        },
+        {
+          "id": "METRICS-V1BETA1-WIRE-CONTRACT",
+          "evidence_type": "api-contract",
+          "version": "v0.34.1 API module; stable v1beta1 schema, not a claim of target1.34.13 bundled module identity",
+          "observed_on": "2026-11-15",
+          "url": "https://api.github.com/repos/kubernetes/metrics/contents/pkg/apis/metrics/v1beta1/types.go?ref=v0.34.1",
+          "facts": [
+            "NodeMetrics and PodMetrics use metrics.k8s.io/v1beta1. Timestamp/Window denote [Timestamp-Window, Timestamp]. CPU/memory are Kubernetes resource quantities; Pod sample includes container names, not a guaranteed Pod UID.",
+            "Check current actual Pod UID, placement and container names before and after reading Metrics API. Source collection and destination samples must cover every admitted node and selected live business Pod."
+          ],
+          "limitations": "Wire-format contract only; neither upstream exact minor e2e nor project runtime acceptance.",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "git_blob_sha": "cdf01aa3d839e11e109be19c4261b627a33be09c",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/k8s134-metrics-v1beta1-types.txt",
+              "sha256": "05e8ece22c564c180926e78005e204250e06cfda7fd744b9263f826aea2135cc",
+              "bytes": 4189
+            }
+          },
+          "use": "upgrade/product/metrics_stage.py"
+        }
+      ],
+      "evidence_strength_rule": "保留每条官方来源的实际类型与limitations；最低版本、稳定API、源码契约、逐版tested和官方过程不能互相冒签。",
+      "live_claim": "本记录不证明本跳现场成功；旧GA、当前源码和正式制品分别保留身份。"
+    },
+    {
+      "component_id": "ingress",
+      "decision": "keep",
+      "target_pins": {
+        "v_ingressnginx": "4.15.1",
+        "v_ingress_nginx_controller": "v1.15.1",
+        "v_webhook_certgen": "v1.6.9",
+        "chart_sha256": "3eff0bd18151d6e6b1c441463410571443dda1ac78292cb189346628de784f0c"
+      },
+      "rationale": "固定Chart4.15.1/controller1.15.1。官方测试表止于1.35且仓库已归档；本跳1.36仅按已接受稳定API/最小集成与生命周期限制过渡，必须补真实路由和准入验证，不能声称官方认证1.36。",
+      "transition_edges": [
+        {
+          "edge_id": "ingress-k8s13510-to1366",
+          "source": "已接受v1.35.10维护基线及实际现场身份",
+          "target": "Kubernetes v1.36.6及本记录target_pins",
+          "bridge": null,
+          "depends_on": [
+            "UPG-01",
+            "UPG-02",
+            "UPG-03",
+            "UPG-04",
+            "UPG-05"
+          ],
+          "official_source_ids": [
+            "INGRESS-1151-K8S136-BOUNDARY",
+            "INGRESS-ARCHIVED",
+            "INGRESS-4151-CHART",
+            "INGRESS-4151-VALUES"
+          ],
+          "product_entry": "config.yml + kubecli upgrade；目标新建为kubecli setup；未变工具仍属独立tools入口",
+          "preconditions": [
+            "精确源/目标组合、制品及现有数据身份已核验，未知组合先停止对应路径",
+            "最小合同通过；现场持有自有租约、恢复点及业务账本"
+          ],
+          "steps": [
+            "核对实际源固定版本、配置、对象和制品身份；复用对应维护基线及原GA证据，不重演旧组件迁移。",
+            "保持本组件版本、配置和数据格式；核对1.36官方依据的实际力度与稳定API，按所属矩阵补目标平台接口缺口。"
+          ],
+          "success_conditions": [
+            "源对象/数据及自有补丁保持，目标相关API与业务断言通过",
+            "上游测试、支持下限、稳定接口、历史GA与本跳实测分别标注，不互相代签"
+          ],
+          "irreversible_point": "Kubernetes持久化或组件数据写入后不盲目降级；未改引擎不产生新的引擎迁移承诺",
+          "recovery": "保留首失败和journal，验证边界后限定续跑；必要时恢复完整原恢复点",
+          "cleanup": "只回收本run自有对象/故障/进程/租约，不接管其它集群或删除原数据"
+        }
+      ],
+      "official_applicability": [
+        {
+          "id": "INGRESS-1151-K8S136-BOUNDARY",
+          "evidence_type": "tested-boundary",
+          "observed_on": "2026-11-20",
+          "version_or_commit": "controller-v1.15.1",
+          "url": "https://api.github.com/repos/kubernetes/ingress-nginx/contents/README.md?ref=controller-v1.15.1",
+          "facts": [
+            "v1.15.1固定README明确测试1.31–1.35，不包含1.36。",
+            "项目已归档；继续保留必须按用户已接受的稳定API加最小集成、生命周期限制分别声明，不能标为1.36官方认证。"
+          ],
+          "limitations": "新平台超出上游测试表；本项目目标路由和准入验证不能扩大上游支持承诺。",
+          "obtained_content": {
+            "representation": "GitHub contents API original bytes with Git blob verification",
+            "git_blob": "c78f41f4f1bcf0642f8d1caa1ee5a1c77004da61",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-20-next-hop/ingress1151-readme",
+              "sha256": "a4f3f0bd1e79edf908752261d92dc8430d931d002f0833f293c14a9ab6f147e5",
+              "bytes": 11576
+            }
+          }
+        },
+        {
+          "id": "INGRESS-ARCHIVED",
+          "evidence_type": "lifecycle",
+          "observed_on": "2026-11-14",
+          "url": "https://api.github.com/repos/kubernetes/ingress-nginx",
+          "version": "state observed 2026-11-14",
+          "obtained_content": {
+            "representation": "官方响应原文，未改写",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/ingress-repo-state.txt",
+              "sha256": "fef20f5341a15aa6b190211d49bd861e4f85dac90c20d8d395d0c17e39f691bf",
+              "bytes": 6645
+            }
+          },
+          "facts": [
+            "官方kubernetes/ingress-nginx仓库元数据archived=true；有tag或兼容表不等于继续安全维护。"
+          ],
+          "limitations": "本次未引入替代控制器；生命周期处置独立决策，不扩大到所有中间件。",
+          "use": "upgrade/v1.34.13/research.yaml"
+        },
+        {
+          "id": "INGRESS-4151-CHART",
+          "evidence_type": "source-contract",
+          "observed_on": "2026-11-15",
+          "version": "controller-v1.15.1 / Chart4.15.1",
+          "url": "https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.15.1/charts/ingress-nginx/Chart.yaml",
+          "obtained_content": {
+            "representation": "official version-pinned source or release metadata",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/ingress-4151-chart.txt",
+              "sha256": "3d514d4f70886e936288f51afbd7aaa7baf3b4d6a1c67ee23d46f89e4e287843",
+              "bytes": 646
+            }
+          },
+          "facts": [
+            "Chart4.15.1的appVersion1.15.1，kubeVersion>=1.21.0-0只作准入下限，目标支持依据仍是官方controller支持表。"
+          ],
+          "limitations": "来源与本地渲染不证明现场流量/升级或父项PASS。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        },
+        {
+          "id": "INGRESS-4151-VALUES",
+          "evidence_type": "source-contract",
+          "observed_on": "2026-11-15",
+          "version": "controller-v1.15.1 / Chart4.15.1",
+          "url": "https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.15.1/charts/ingress-nginx/values.yaml",
+          "obtained_content": {
+            "representation": "official version-pinned source or release metadata",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/ingress-4151-values.txt",
+              "sha256": "0d8eac2d4e5cc2ffa225debea7b1feb1fb372520c5b046e21f6177919d54e622",
+              "bytes": 53637
+            }
+          },
+          "facts": [
+            "Chart固定controller1.15.1、kube-webhook-certgen1.6.9，后者digest01038e7de14b78d702d2849c3aad72fd25903c4765af63cf16aa3398f5d5f2dd；两个独立消费者不顺带升级Prometheus certgen。",
+            "保持NodePort/Local、IngressClass、selector、admission create/patch job及Fail策略；原4.13.0配套也原样支持。"
+          ],
+          "limitations": "来源与本地渲染不证明现场流量/升级或父项PASS。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        }
+      ],
+      "evidence_strength_rule": "保留每条官方来源的实际类型与limitations；最低版本、稳定API、源码契约、逐版tested和官方过程不能互相冒签。",
+      "live_claim": "本记录不证明本跳现场成功；旧GA、当前源码和正式制品分别保留身份。"
+    },
+    {
+      "component_id": "dashboard",
+      "decision": "keep",
+      "target_pins": {
+        "chart": "7.14.0",
+        "api": "1.14.0",
+        "auth": "1.4.0",
+        "web": "1.7.0",
+        "metrics_scraper": "1.2.2",
+        "kong": "3.9"
+      },
+      "rationale": "保持原GA7.14.0组合及认证路由；已归档且没有1.36官方认证，沿用户接受的过渡边界保留，不据当前可运行冒称维护仍在继续，替换不混入本跳。",
+      "transition_edges": [
+        {
+          "edge_id": "dashboard-k8s13510-to1366",
+          "source": "已接受v1.35.10维护基线及实际现场身份",
+          "target": "Kubernetes v1.36.6及本记录target_pins",
+          "bridge": null,
+          "depends_on": [
+            "UPG-01",
+            "UPG-02",
+            "UPG-03",
+            "UPG-04",
+            "UPG-05"
+          ],
+          "official_source_ids": [
+            "DASHBOARD-714-PINS",
+            "DASHBOARD-714-INSTALL-CONTRACT",
+            "DASHBOARD-ARCHIVED"
+          ],
+          "product_entry": "config.yml + kubecli upgrade；目标新建为kubecli setup；未变工具仍属独立tools入口",
+          "preconditions": [
+            "精确源/目标组合、制品及现有数据身份已核验，未知组合先停止对应路径",
+            "最小合同通过；现场持有自有租约、恢复点及业务账本"
+          ],
+          "steps": [
+            "核对实际源固定版本、配置、对象和制品身份；复用对应维护基线及原GA证据，不重演旧组件迁移。",
+            "保持本组件版本、配置和数据格式；核对1.36官方依据的实际力度与稳定API，按所属矩阵补目标平台接口缺口。"
+          ],
+          "success_conditions": [
+            "源对象/数据及自有补丁保持，目标相关API与业务断言通过",
+            "上游测试、支持下限、稳定接口、历史GA与本跳实测分别标注，不互相代签"
+          ],
+          "irreversible_point": "Kubernetes持久化或组件数据写入后不盲目降级；未改引擎不产生新的引擎迁移承诺",
+          "recovery": "保留首失败和journal，验证边界后限定续跑；必要时恢复完整原恢复点",
+          "cleanup": "只回收本run自有对象/故障/进程/租约，不接管其它集群或删除原数据"
+        }
+      ],
+      "official_applicability": [
+        {
+          "id": "DASHBOARD-714-PINS",
+          "evidence_type": "source-pin",
+          "observed_on": "2026-11-14",
+          "version": "kubernetes-dashboard-7.14.0",
+          "url": "https://api.github.com/repos/kubernetes/dashboard/contents/charts/kubernetes-dashboard/Chart.yaml?ref=kubernetes-dashboard-7.14.0",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "sha256": "37fa51b9b3a3650da3238a55362c8e3f29523f0c58bf44e3cadf972fdb601526",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/dashboard-714-chart.txt",
+              "sha256": "37fa51b9b3a3650da3238a55362c8e3f29523f0c58bf44e3cadf972fdb601526",
+              "bytes": 1618
+            },
+            "git_blob_sha": "076ff80c6e9bac4f4e253ec7005746b1427c31bf"
+          },
+          "facts": [
+            "当前Chart7.14.0要求>=1.21.0-0，这是最低准入而非1.34实测矩阵。",
+            "ingress-nginx、cert-manager、metrics-server是条件依赖；项目仅启用Kong并复用系统metrics-server，不能为Chart清单全部发布或安装这些组件。",
+            "registry.talkschool.cn:5000/brinnatt是common/constants.py明确规定的产品受管内置Registry消费地址，不是过时外部仓库的证据；保留生产路径，核对其上游双端镜像映射，不连接非授权主机。"
+          ],
+          "limitations": "本专题结论不代表四类目录全部已读、项目目标实测或GA。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        },
+        {
+          "id": "DASHBOARD-714-INSTALL-CONTRACT",
+          "evidence_type": "official-procedure",
+          "observed_on": "2026-11-14",
+          "version": "kubernetes-dashboard-7.14.0",
+          "url": "https://api.github.com/repos/kubernetes/dashboard/contents/README.md?ref=kubernetes-dashboard-7.14.0",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "sha256": "44884beb06ca80069f76345edf62cfb9fc513281099dcc1e1a074515654a7fe2",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/dashboard-714-readme.txt",
+              "sha256": "44884beb06ca80069f76345edf62cfb9fc513281099dcc1e1a074515654a7fe2",
+              "bytes": 4124
+            },
+            "git_blob_sha": "093a1c77107e1225b8836a6a8d4d13bd5823fbf9"
+          },
+          "facts": [
+            "7.0起只支持Helm；硬依赖DBless Kong，各模块独立版本，Chart无appVersion，不能统一将全部dashboard镜像标7.14.0。",
+            "当前固定Chart配套auth1.4.0、api1.14.0、web1.7.0、scraper1.2.2；具体版本由本地同名归档values核对，正式制品仍需双端digest。",
+            "继续保留Chart/Kong/RBAC入口；同tagREADME没有目标逐版矩阵，不能当目标集成PASS。"
+          ],
+          "limitations": "本专题结论不代表四类目录全部已读、项目目标实测或GA。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        },
+        {
+          "id": "DASHBOARD-ARCHIVED",
+          "evidence_type": "lifecycle-policy",
+          "observed_on": "2026-11-15",
+          "version": "repository observed 2026-11-15",
+          "url": "https://api.github.com/repos/kubernetes/dashboard",
+          "obtained_content": {
+            "representation": "GitHub API raw JSON",
+            "sha256": "18adb0dc09ae2975d5f0f4140981567d9de3c4672ab53a623e56f87ab2d4103d",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/dashboard-repo-state.txt",
+              "sha256": "18adb0dc09ae2975d5f0f4140981567d9de3c4672ab53a623e56f87ab2d4103d",
+              "bytes": 6990
+            }
+          },
+          "facts": [
+            "官方仓archived=true，最后push2026-01-21；7.14.0最新Chart不等于仍活跃维护。",
+            "保持原Dashboard/Kong组合的候选须明确退役边界；不自动替换客户已交付功能，不把minimum Kubernetes范围冒称目标e2e。"
+          ],
+          "limitations": "仅本专题官方来源和适用性；不是完整资料目录、目标实测或GA。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        }
+      ],
+      "evidence_strength_rule": "保留每条官方来源的实际类型与limitations；最低版本、稳定API、源码契约、逐版tested和官方过程不能互相冒签。",
+      "live_claim": "本记录不证明本跳现场成功；旧GA、当前源码和正式制品分别保留身份。"
+    },
+    {
+      "component_id": "local-storage",
+      "decision": "keep",
+      "target_pins": {
+        "local_path_provisioner": "v0.0.37",
+        "local_path_helper": "busybox:1.37",
+        "nfs_provisioner": "v4.0.2",
+        "openebs_chart": "4.3.2",
+        "openebs_hostpath": "4.3.0",
+        "openebs_lvm": "1.7.0"
+      },
+      "rationale": "保持LocalPath0.0.37/NFS4.0.2/OpenEBS4.3.2原配套和本地卷节点身份；最低要求/稳定API不等于1.36逐版认证。唯一新平台kubectl helper为1.36.6，不改存储引擎、VG/LV或PV归属；最小补数据重挂载/消费者接口。",
+      "transition_edges": [
+        {
+          "edge_id": "local-storage-k8s13510-to1366",
+          "source": "已接受v1.35.10维护基线及实际现场身份",
+          "target": "Kubernetes v1.36.6及本记录target_pins",
+          "bridge": null,
+          "depends_on": [
+            "UPG-01",
+            "UPG-02",
+            "UPG-03",
+            "UPG-04",
+            "UPG-05"
+          ],
+          "official_source_ids": [
+            "LOCALPATH-037-BEHAVIOR",
+            "NFS-402-BEHAVIOR",
+            "OPENEBS-LVM-170-SYSTEM",
+            "OPENEBS-HOSTPATH-430-MATRIX",
+            "OPENEBS-432-ENGINE-BOUNDARY"
+          ],
+          "product_entry": "config.yml + kubecli upgrade；目标新建为kubecli setup；未变工具仍属独立tools入口",
+          "preconditions": [
+            "精确源/目标组合、制品及现有数据身份已核验，未知组合先停止对应路径",
+            "最小合同通过；现场持有自有租约、恢复点及业务账本"
+          ],
+          "steps": [
+            "核对实际源固定版本、配置、对象和制品身份；复用对应维护基线及原GA证据，不重演旧组件迁移。",
+            "保持本组件版本、配置和数据格式；核对1.36官方依据的实际力度与稳定API，按所属矩阵补目标平台接口缺口。"
+          ],
+          "success_conditions": [
+            "源对象/数据及自有补丁保持，目标相关API与业务断言通过",
+            "上游测试、支持下限、稳定接口、历史GA与本跳实测分别标注，不互相代签"
+          ],
+          "irreversible_point": "Kubernetes持久化或组件数据写入后不盲目降级；未改引擎不产生新的引擎迁移承诺",
+          "recovery": "保留首失败和journal，验证边界后限定续跑；必要时恢复完整原恢复点",
+          "cleanup": "只回收本run自有对象/故障/进程/租约，不接管其它集群或删除原数据"
+        }
+      ],
+      "official_applicability": [
+        {
+          "id": "LOCALPATH-037-BEHAVIOR",
+          "evidence_type": "minimum",
+          "observed_on": "2026-11-14",
+          "version": "v0.0.37",
+          "url": "https://api.github.com/repos/rancher/local-path-provisioner/contents/README.md?ref=v0.0.37",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "sha256": "774368b3d9a4f2e38e155b2b982ce20a18157ec73b69d14dd91db3560cd25cd8",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/localpath-037-readme.txt",
+              "sha256": "774368b3d9a4f2e38e155b2b982ce20a18157ec73b69d14dd91db3560cd25cd8",
+              "bytes": 18277
+            },
+            "git_blob_sha": "97fa294a0d3c05dd60ae8e5d5b3833e725354ff3"
+          },
+          "facts": [
+            "README要求K8s1.12+，不表示1.34逐版实测；hostPath/local卷不具备跨节点数据副本。",
+            "0.0.37文档对pathPattern有前缀安全校验，既有不符合路径需显式allowUnsafePathPattern才能跳过；不能为升级默认关闭安全校验或改旧目录。",
+            "nodeAffinityKey只影响新增PV，旧PV仍保持原hostname亲和；升级不能把原卷改为新节点标签以求drain成功。",
+            "候选相对源0.0.31的完整增量、实际helper模板与既有路径仍待查，未冻结目标或发布。"
+          ],
+          "limitations": "本专题结论不代表四类目录全部已读、项目目标实测或GA。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        },
+        {
+          "id": "NFS-402-BEHAVIOR",
+          "evidence_type": "official-procedure",
+          "observed_on": "2026-11-14",
+          "version": "v4.0.2",
+          "url": "https://api.github.com/repos/kubernetes-sigs/nfs-subdir-external-provisioner/contents/README.md?ref=v4.0.2",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "sha256": "8205c3466cbf698f883d070b275568ac5579660b2c730b1d3f8ddabfe735c134",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/nfs-402-readme.txt",
+              "sha256": "8205c3466cbf698f883d070b275568ac5579660b2c730b1d3f8ddabfe735c134",
+              "bytes": 11170
+            },
+            "git_blob_sha": "ba6d6ccc1a46a55ee03f82b46e9f9dc6f94ccf1b"
+          },
+          "facts": [
+            "该版本依赖已有NFS服务，只创建子目录PV，不升级或重建NFS服务器。",
+            "README明确自动e2e是待开发事项，不得虚构官方目标K8s认证；Chart4.0.18与应用v4.0.2不是同一版本轴。",
+            "目录命名、归档/删除与保留策略需要保持；平台集成聚焦原PV/PVC身份、跨节点挂载和原数据账本。"
+          ],
+          "limitations": "本专题结论不代表四类目录全部已读、项目目标实测或GA。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        },
+        {
+          "id": "OPENEBS-LVM-170-SYSTEM",
+          "evidence_type": "minimum",
+          "observed_on": "2026-11-15",
+          "version": "openebs-lvm-170-readme",
+          "url": "https://api.github.com/repos/openebs/lvm-localpv/contents/README.md?ref=v1.7.0",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/openebs-lvm-170-readme.txt",
+              "sha256": "0946c60109f1cad4e31cd3117ac99c5f7a44f1c68e9669da274948ed004ef8fa",
+              "bytes": 6955
+            }
+          },
+          "facts": [
+            "固定1.7.0 README声明K8s1.23+、LVM2 2.03.21；CSI是内核LVM的控制面，数据仅在原节点，不能因drain迁移PV亲和或VG。",
+            "该下限声明不是目标1.34逐版e2e；保留原LVM驱动、SC参数、VG、LV身份与已有数据，目标仅补CSI接口与原数据读取。"
+          ],
+          "limitations": "精确版本官方声明或源码/API边界；不是整栈逐版认证或本项目现场PASS。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        },
+        {
+          "id": "OPENEBS-HOSTPATH-430-MATRIX",
+          "evidence_type": "minimum",
+          "observed_on": "2026-11-15",
+          "version": "openebs-hostpath-430-readme",
+          "url": "https://api.github.com/repos/openebs/dynamic-localpv-provisioner/contents/README.md?ref=v4.3.0",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/openebs-hostpath-430-readme.txt",
+              "sha256": "a35b1a71de02e287cd2e96454aac6f5f1b1cff1f7edd284176be463ac38aa307",
+              "bytes": 6371
+            }
+          },
+          "facts": [
+            "固定4.3.0 README表仅有4.0.x/4.1.x/4.2.x/HEAD与K8s>=1.19行，没有4.3.0精确行；不能把HEAD或下限写成1.34认证。",
+            "Hostpath通过helper操作节点目录，PV nodeAffinity约束原节点；无跨节点副本。实际项目使用4.3.0 provisioner与4.2.0 helper，保持官方Chart4.3.2原配套。"
+          ],
+          "limitations": "精确版本官方声明或源码/API边界；不是整栈逐版认证或本项目现场PASS。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        },
+        {
+          "id": "OPENEBS-432-ENGINE-BOUNDARY",
+          "evidence_type": "architecture",
+          "observed_on": "2026-11-14",
+          "version": "v4.3.2",
+          "url": "https://api.github.com/repos/openebs/openebs/contents/README.md?ref=v4.3.2",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "sha256": "cdfb436857062143c571be633916dc90bf4e49659f8368e409987c7f8489be21",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/openebs-432-readme.txt",
+              "sha256": "cdfb436857062143c571be633916dc90bf4e49659f8368e409987c7f8489be21",
+              "bytes": 9552
+            },
+            "git_blob_sha": "59458cdbed4135249be6c8e3fb99edf02d8746a9"
+          },
+          "facts": [
+            "OpenEBS包含独立Hostpath/ZFS/LVM/Mayastor实现，不能用umbrella版本或单一存储结论替代各实际启用引擎。",
+            "LocalPV数据仅在原节点可用，与Mayastor同步副本边界不同；源GA不因平台升级新增引擎/磁盘迁移。",
+            "README没有目标K8s矩阵；须从当前Chart实际启用子组件及其官方要求继续核对，不把所有上游引擎都展开为现场步骤。"
+          ],
+          "limitations": "本专题结论不代表四类目录全部已读、项目目标实测或GA。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        }
+      ],
+      "evidence_strength_rule": "保留每条官方来源的实际类型与limitations；最低版本、稳定API、源码契约、逐版tested和官方过程不能互相冒签。",
+      "live_claim": "本记录不证明本跳现场成功；旧GA、当前源码和正式制品分别保留身份。"
+    },
+    {
+      "component_id": "ceph",
+      "decision": "keep",
+      "target_pins": {
+        "v_ceph": "20.2.4",
+        "v_ceph_upgrade_source": "20.2.3",
+        "v_cephadm_sha256": "5b78c8d5772ef7c5c8619dac6ee0b36716b829338ea7a11c9f2b896626ab354f",
+        "v_ceph_csi": "v3.17.2",
+        "v_ceph_csi_registrar": "v2.16.0",
+        "v_ceph_csi_provisioner": "v6.2.0",
+        "v_ceph_csi_attacher": "v4.11.0",
+        "v_ceph_csi_resizer": "v2.1.0",
+        "v_ceph_csi_snapshotter": "v8.5.0",
+        "vendored_charts_sha256": {
+          "roles/ceph/files/ceph-csi-cephfs-3.17.1.tgz": "100c00932b1969df63400e5bb477b5ef2701371fb350e5b8cb8c4fb2873aa117",
+          "roles/ceph/files/ceph-csi-rbd-3.17.1.tgz": "75527adefcdf248e9acd2e9759205ddf4fd444824157e3e1914cf9659544bffc"
+        }
+      },
+      "rationale": "保留Ceph20.2.4、CSI3.17.2及原项目Chart补丁；上游3.17.2表含1.34/1.35/1.36，官方Chart五sidecar与项目精确一致。不改Ceph数据格式、存储深测或自有补丁；只补目标CSI接口/卷身份缺口。",
+      "transition_edges": [
+        {
+          "edge_id": "ceph-k8s13510-to1366",
+          "source": "已接受v1.35.10维护基线及实际现场身份",
+          "target": "Kubernetes v1.36.6及本记录target_pins",
+          "bridge": null,
+          "depends_on": [
+            "UPG-01",
+            "UPG-02",
+            "UPG-03",
+            "UPG-04",
+            "UPG-05"
+          ],
+          "official_source_ids": [
+            "CEPH-CSI-3172-K8S136-COMPAT",
+            "CEPHCSI-3172-RBD-EXACT-SIDECARS",
+            "CEPHCSI-3172-CEPHFS-EXACT-SIDECARS"
+          ],
+          "product_entry": "config.yml + kubecli upgrade；目标新建为kubecli setup；未变工具仍属独立tools入口",
+          "preconditions": [
+            "精确源/目标组合、制品及现有数据身份已核验，未知组合先停止对应路径",
+            "最小合同通过；现场持有自有租约、恢复点及业务账本"
+          ],
+          "steps": [
+            "核对实际源固定版本、配置、对象和制品身份；复用对应维护基线及原GA证据，不重演旧组件迁移。",
+            "保持本组件版本、配置和数据格式；核对1.36官方依据的实际力度与稳定API，按所属矩阵补目标平台接口缺口。"
+          ],
+          "success_conditions": [
+            "源对象/数据及自有补丁保持，目标相关API与业务断言通过",
+            "上游测试、支持下限、稳定接口、历史GA与本跳实测分别标注，不互相代签"
+          ],
+          "irreversible_point": "Kubernetes持久化或组件数据写入后不盲目降级；未改引擎不产生新的引擎迁移承诺",
+          "recovery": "保留首失败和journal，验证边界后限定续跑；必要时恢复完整原恢复点",
+          "cleanup": "只回收本run自有对象/故障/进程/租约，不接管其它集群或删除原数据"
+        }
+      ],
+      "official_applicability": [
+        {
+          "id": "CEPH-CSI-3172-K8S136-COMPAT",
+          "evidence_type": "supported",
+          "observed_on": "2026-11-20",
+          "url": "https://raw.githubusercontent.com/ceph/ceph-csi/v3.17.2/README.md",
+          "facts": [
+            "v3.17.2固定README逐版测试表列K8s1.34、1.35、1.36。"
+          ],
+          "limitations": "Ceph引擎未变化；sidecar具体pin仍需核对，不因此重跑整套Ceph。",
+          "obtained_content": {
+            "representation": "official raw response",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-20-next-hop/ceph-csi-support",
+              "sha256": "7f4c9b5b14d1300568b323e65e580d65a42479e52ee77f146788cf2bd49c58f5",
+              "bytes": 19009
+            }
+          }
+        },
+        {
+          "id": "CEPHCSI-3172-RBD-EXACT-SIDECARS",
+          "evidence_type": "source-composition",
+          "observed_on": "2026-11-20",
+          "version_or_commit": "v3.17.2",
+          "url": "https://api.github.com/repos/ceph/ceph-csi/contents/charts/ceph-csi-rbd/values.yaml?ref=v3.17.2",
+          "facts": [
+            "v3.17.2官方Chart保持node-driver-registrar2.16.0、provisioner6.2.0、attacher4.11.0、resizer2.1.0、snapshotter8.5.0；与本项目固定配套一致。"
+          ],
+          "limitations": "Chart配套关系不是各sidecar独立认证；平台依据另取CSI3.17.2的1.34–1.36测试表。",
+          "obtained_content": {
+            "representation": "GitHub contents API original bytes with Git blob verification",
+            "git_blob": "565a872f2d471a8f5e9a742a4ed9291415e7f90e",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-20-next-hop/ceph3172-values-rbd",
+              "sha256": "de41051d115dabe3c7730a8b28070de41dc6bca137ea551292d11a00c9b24e04",
+              "bytes": 22873
+            }
+          }
+        },
+        {
+          "id": "CEPHCSI-3172-CEPHFS-EXACT-SIDECARS",
+          "evidence_type": "source-composition",
+          "observed_on": "2026-11-20",
+          "version_or_commit": "v3.17.2",
+          "url": "https://api.github.com/repos/ceph/ceph-csi/contents/charts/ceph-csi-cephfs/values.yaml?ref=v3.17.2",
+          "facts": [
+            "v3.17.2官方CephFS Chart的五项sidecar与RBD相同，项目保持原配套，不改Ceph数据格式。"
+          ],
+          "limitations": "新平台集成与原存储深测分开，本项不是本轮挂载实测。",
+          "obtained_content": {
+            "representation": "GitHub contents API original bytes with Git blob verification",
+            "git_blob": "cf7d887523d3d40f195caa0ad16c7c528cbbaa91",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-20-next-hop/ceph3172-values-cephfs",
+              "sha256": "79f1407a6bd4a8db4fcc7261a38e1f82b510631fac4da66a16dd6e4e1b8b1931",
+              "bytes": 17392
+            }
+          }
+        }
+      ],
+      "evidence_strength_rule": "保留每条官方来源的实际类型与limitations；最低版本、稳定API、源码契约、逐版tested和官方过程不能互相冒签。",
+      "live_claim": "本记录不证明本跳现场成功；旧GA、当前源码和正式制品分别保留身份。"
+    },
+    {
+      "component_id": "longhorn",
+      "decision": "keep",
+      "target_pins": {
+        "v_longhorn": "1.12.2",
+        "v_longhorn_upgrade_source": "1.12.1",
+        "v_longhorn_snapshot_controller": "v8.6.0",
+        "chart_sha256": "3514c3a802ec910b3e97698f0b816c038d66547e1bf3d1a4ebad44a9f5b8ac8a",
+        "images": {
+          "longhorn-engine": "v1.12.2",
+          "longhorn-manager": "v1.12.2-kubeauto.1",
+          "longhorn-ui": "v1.12.2",
+          "longhorn-instance-manager": "v1.12.2-kubeauto.1",
+          "longhorn-share-manager": "v1.12.2",
+          "longhorn-backing-image-manager": "v1.12.2",
+          "longhorn-support-bundle-kit": "v1.0.5",
+          "longhorn-csi-attacher": "v4.13.0-20261028",
+          "longhorn-csi-provisioner": "v5.3.0-20261028",
+          "longhorn-csi-node-driver-registrar": "v2.18.0-20261028",
+          "longhorn-csi-resizer": "v2.3.0-20261028",
+          "longhorn-csi-snapshotter": "v8.7.0-20261028",
+          "longhorn-livenessprobe": "v2.20.0-20261028"
+        }
+      },
+      "rationale": "1.12.2官方推荐测试覆盖1.34–1.37，保留manager/instance-manager自有修订和全部CSI配套，不重编十小时源码、不改CRD/快照控制器所有权，最小核对目标CSI与drain语义。",
+      "transition_edges": [
+        {
+          "edge_id": "longhorn-k8s13510-to1366",
+          "source": "已接受v1.35.10维护基线及实际现场身份",
+          "target": "Kubernetes v1.36.6及本记录target_pins",
+          "bridge": null,
+          "depends_on": [
+            "UPG-01",
+            "UPG-02",
+            "UPG-03",
+            "UPG-04",
+            "UPG-05"
+          ],
+          "official_source_ids": [
+            "LONGHORN-1122-PLATFORM",
+            "LONGHORN-1122-CHART-COMPOSITION",
+            "LONGHORN-1122-MANAGER-IDENTITY",
+            "LONGHORN-1122-IM-IDENTITY"
+          ],
+          "product_entry": "config.yml + kubecli upgrade；目标新建为kubecli setup；未变工具仍属独立tools入口",
+          "preconditions": [
+            "精确源/目标组合、制品及现有数据身份已核验，未知组合先停止对应路径",
+            "最小合同通过；现场持有自有租约、恢复点及业务账本"
+          ],
+          "steps": [
+            "核对实际源固定版本、配置、对象和制品身份；复用对应维护基线及原GA证据，不重演旧组件迁移。",
+            "保持本组件版本、配置和数据格式；核对1.36官方依据的实际力度与稳定API，按所属矩阵补目标平台接口缺口。"
+          ],
+          "success_conditions": [
+            "源对象/数据及自有补丁保持，目标相关API与业务断言通过",
+            "上游测试、支持下限、稳定接口、历史GA与本跳实测分别标注，不互相代签"
+          ],
+          "irreversible_point": "Kubernetes持久化或组件数据写入后不盲目降级；未改引擎不产生新的引擎迁移承诺",
+          "recovery": "保留首失败和journal，验证边界后限定续跑；必要时恢复完整原恢复点",
+          "cleanup": "只回收本run自有对象/故障/进程/租约，不接管其它集群或删除原数据"
+        }
+      ],
+      "official_applicability": [
+        {
+          "id": "LONGHORN-1122-PLATFORM",
+          "evidence_type": "official-procedure",
+          "observed_on": "2026-11-15",
+          "version": "v1.12.2",
+          "url": "https://longhorn.io/docs/1.12.2/best-practices/",
+          "obtained_content": {
+            "representation": "official documentation HTML",
+            "sha256": "361aa57caa87e5ee1927a73818139aab14b9f7460980e07d9b6943e5357ca8b5",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/longhorn-1122-best-practices.txt",
+              "sha256": "361aa57caa87e5ee1927a73818139aab14b9f7460980e07d9b6943e5357ca8b5",
+              "bytes": 83488
+            }
+          },
+          "facts": [
+            "官方推荐并测试K8s1.34/1.35/1.36/1.37；源1.33不是该目标patch列出的实测行，所以目标patch在全部API1.34后、节点drain前实施。",
+            "页面最低1.21与release/Chart最低1.25冲突，本项目采用严格的1.25；不把minimum当tested。",
+            "restrictInternalTraffic的测试矩阵限定K3s/RKE2搭配Flannel/Calico/Cilium，不能冒称本项目全部CNI均有官方同组合认证；本项目仍按实际网络策略/CSI/metrics接口最窄补证。"
+          ],
+          "limitations": "本条为升级/维护/版本配套主题；未宣称整份站点研究或目标GA完成。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        },
+        {
+          "id": "LONGHORN-1122-CHART-COMPOSITION",
+          "evidence_type": "source-contract",
+          "observed_on": "2026-11-15",
+          "version": "v1.12.2",
+          "url": "https://api.github.com/repos/longhorn/longhorn/contents/chart/values.yaml?ref=v1.12.2",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "sha256": "ddd077de18b334ef0c5b4f894a504855c7b76e8c206dcc3dad93fc0135ac0cba",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/longhorn-1122-chart-values.txt",
+              "sha256": "ddd077de18b334ef0c5b4f894a504855c7b76e8c206dcc3dad93fc0135ac0cba",
+              "bytes": 53445
+            },
+            "git_blob_sha": "de546c0a083f4235175456481927830567f5d5cd"
+          },
+          "facts": [
+            "官方完整配套13镜像均与源版本变化：6项核心1.12.2、support-bundle-kit1.0.5及6项CSI sidecar20261028后缀；不能因同patch而擅自留旧sidecar。",
+            "defaultSettings/csi/persistence默认未变；networkPolicies增加metricsScrapeSources、recoveryBackendAdditionalIngressPorts、v1DataEngineInitiatorSourceCIDRs，需保持当前源安全策略及合法CSI/metrics流量。"
+          ],
+          "limitations": "仅本专题官方来源和适用性；不是完整资料目录、目标实测或GA。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        },
+        {
+          "id": "LONGHORN-1122-MANAGER-IDENTITY",
+          "evidence_type": "source-contract",
+          "observed_on": "2026-11-15",
+          "version": "v1.12.2",
+          "url": "https://api.github.com/repos/longhorn/longhorn-manager/git/ref/tags/v1.12.2",
+          "obtained_content": {
+            "representation": "GitHub API raw JSON",
+            "sha256": "05a11f661f7f454abfcca70c7a1d3d670afcf3e7b644b44bd2e36ef1e9909355",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/longhorn-1122-manager-ref.txt",
+              "sha256": "05a11f661f7f454abfcca70c7a1d3d670afcf3e7b644b44bd2e36ef1e9909355",
+              "bytes": 361
+            }
+          },
+          "facts": [
+            "固定官方tag实际commit：f6144ba7547c81fd1297618de521ecfef9584ae1"
+          ],
+          "limitations": "仅本专题官方来源和适用性；不是完整资料目录、目标实测或GA。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        },
+        {
+          "id": "LONGHORN-1122-IM-IDENTITY",
+          "evidence_type": "source-contract",
+          "observed_on": "2026-11-15",
+          "version": "v1.12.2",
+          "url": "https://api.github.com/repos/longhorn/longhorn-instance-manager/git/ref/tags/v1.12.2",
+          "obtained_content": {
+            "representation": "GitHub API raw JSON",
+            "sha256": "ad6b17b0a28f2e235069362d6f161d03179fc55c4ed9915c132169b0fe1a2843",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/longhorn-1122-im-ref.txt",
+              "sha256": "ad6b17b0a28f2e235069362d6f161d03179fc55c4ed9915c132169b0fe1a2843",
+              "bytes": 379
+            }
+          },
+          "facts": [
+            "固定官方tag实际commit：e696c433e97a909008335ba0558ef8da9099046c"
+          ],
+          "limitations": "仅本专题官方来源和适用性；不是完整资料目录、目标实测或GA。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        }
+      ],
+      "evidence_strength_rule": "保留每条官方来源的实际类型与limitations；最低版本、稳定API、源码契约、逐版tested和官方过程不能互相冒签。",
+      "live_claim": "本记录不证明本跳现场成功；旧GA、当前源码和正式制品分别保留身份。"
+    },
+    {
+      "component_id": "monitoring",
+      "decision": "keep",
+      "target_pins": {
+        "v_promchart": "88.0.0",
+        "v_prometheus_operator": "v0.93.0",
+        "v_prometheus_config_reloader": "v0.93.0",
+        "v_prometheus_admission_webhook": "v0.93.0",
+        "v_prometheus": "v3.13.1-distroless",
+        "v_alertmanager": "v0.33.1",
+        "v_node_exporter": "v1.12.1",
+        "v_kube_state_metrics": "v2.18.0",
+        "v_grafana": "13.1.1",
+        "v_k8s_sidecar": "1.30.5",
+        "v_prometheus_webhook_certgen": "1.8.5",
+        "v_thanos": "v0.41.0",
+        "v_prometheus_adapter": "v0.12.0",
+        "v_blackbox_exporter": "v0.27.0",
+        "vendored_charts_sha256": {
+          "roles/cluster-addon/files/kube-prometheus-stack-88.0.0.tgz": "f96cb0a0999f7375b2899e4b60e6ec0e8f7133e5847f39ac87d53baea765eb32"
+        }
+      },
+      "rationale": "保留Chart88/Operator0.93及现有引擎pin；Operator精确兼容手册要求K8s>=1.25并采用client-go0.36.3。KSM2.18表仅列1.34，按共享稳定API补目标采集，非上游1.36逐版认证；不升级整套Prometheus/Grafana。",
+      "transition_edges": [
+        {
+          "edge_id": "monitoring-k8s13510-to1366",
+          "source": "已接受v1.35.10维护基线及实际现场身份",
+          "target": "Kubernetes v1.36.6及本记录target_pins",
+          "bridge": null,
+          "depends_on": [
+            "UPG-01",
+            "UPG-02",
+            "UPG-03",
+            "UPG-04",
+            "UPG-05"
+          ],
+          "official_source_ids": [
+            "PROM-093-COMPATIBILITY",
+            "PROM-STACK-880-PINS",
+            "KSM-218-K8S134-MATRIX",
+            "PROM-ADAPTER-012-API"
+          ],
+          "product_entry": "config.yml + kubecli upgrade；目标新建为kubecli setup；未变工具仍属独立tools入口",
+          "preconditions": [
+            "精确源/目标组合、制品及现有数据身份已核验，未知组合先停止对应路径",
+            "最小合同通过；现场持有自有租约、恢复点及业务账本"
+          ],
+          "steps": [
+            "核对实际源固定版本、配置、对象和制品身份；复用对应维护基线及原GA证据，不重演旧组件迁移。",
+            "保持本组件版本、配置和数据格式；核对1.36官方依据的实际力度与稳定API，按所属矩阵补目标平台接口缺口。"
+          ],
+          "success_conditions": [
+            "源对象/数据及自有补丁保持，目标相关API与业务断言通过",
+            "上游测试、支持下限、稳定接口、历史GA与本跳实测分别标注，不互相代签"
+          ],
+          "irreversible_point": "Kubernetes持久化或组件数据写入后不盲目降级；未改引擎不产生新的引擎迁移承诺",
+          "recovery": "保留首失败和journal，验证边界后限定续跑；必要时恢复完整原恢复点",
+          "cleanup": "只回收本run自有对象/故障/进程/租约，不接管其它集群或删除原数据"
+        }
+      ],
+      "official_applicability": [
+        {
+          "id": "PROM-093-COMPATIBILITY",
+          "evidence_type": "supported",
+          "observed_on": "2026-11-14",
+          "version": "v0.93.0",
+          "url": "https://api.github.com/repos/prometheus-operator/prometheus-operator/contents/Documentation/getting-started/compatibility.md?ref=v0.93.0",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "sha256": "69939ff8f896a997fe231e85f85213ada08904d727ea34ff1e1e5253dd11fbc7",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/prom-093-compatibility.txt",
+              "sha256": "69939ff8f896a997fe231e85f85213ada08904d727ea34ff1e1e5253dd11fbc7",
+              "bytes": 2766
+            },
+            "git_blob_sha": "d2ed602bbb34120c909f74803828ed319ad29c37"
+          },
+          "facts": [
+            "固定兼容手册明确0.84+因CRD的CEL要求K8s>=1.25，或1.23开启对应gate；覆盖1.34最低要求，优先于同tag README仍写的1.16。",
+            "采用client-go0.36.3，通过官方client-go共享API兼容规则解释；不伪称目标1.34是同API集合或该版本e2e已跑。",
+            "官方支持Prometheus2+，e2e明确列入并默认3.13.1；Alertmanager默认0.33.1，与项目固定值一致。",
+            "Thanos支持0.10+，上游e2e默认0.42.2与项目0.41.0不同；保持支持和实测边界，不能把默认测试版当强制配套。"
+          ],
+          "limitations": "本专题结论不代表四类目录全部已读、项目目标实测或GA。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        },
+        {
+          "id": "PROM-STACK-880-PINS",
+          "evidence_type": "source-pin",
+          "observed_on": "2026-11-14",
+          "version": "kube-prometheus-stack-88.0.0",
+          "url": "https://api.github.com/repos/prometheus-community/helm-charts/contents/charts/kube-prometheus-stack/Chart.yaml?ref=kube-prometheus-stack-88.0.0",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "sha256": "06b7f4c84674d6be7ad5ef342bbcea711b4fefd3da8c5ea0b1044ec0db4a495c",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/prom-stack-88-chart.txt",
+              "sha256": "06b7f4c84674d6be7ad5ef342bbcea711b4fefd3da8c5ea0b1044ec0db4a495c",
+              "bytes": 2644
+            },
+            "git_blob_sha": "e7eaf3095fefddd537d8c289248495d7e93faee9"
+          },
+          "facts": [
+            "固定Chart88.0.0的appVersion为v0.93.0，kubeVersion>=1.25.0-0只作Helm准入，不当逐版测试。",
+            "固定依赖包含kube-state-metrics Chart8.0.0、node-exporter4.56.1、Grafana12.10.0；项目显式镜像覆盖需要分别核对，不能从Chart依赖号猜应用版本。",
+            "生产values显式kubeTargetVersionOverride=K8S_VER；仅升级二进制不重新渲染Chart可能保留旧版本条件，后置handoff须按实际模板差异决定。"
+          ],
+          "limitations": "本专题结论不代表四类目录全部已读、项目目标实测或GA。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        },
+        {
+          "id": "KSM-218-K8S134-MATRIX",
+          "evidence_type": "source-contract",
+          "observed_on": "2026-11-15",
+          "version": "ksm-218-readme",
+          "url": "https://api.github.com/repos/kubernetes/kube-state-metrics/contents/README.md?ref=v2.18.0",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/ksm-218-readme.txt",
+              "sha256": "ea556a732f885a1cfd99a81d042f4ad9e401158df92df962d5a4de3699bf25b2",
+              "bytes": 26465
+            }
+          },
+          "facts": [
+            "固定v2.18.0 README兼容表列v2.18.0对应Kubernetes client-go1.34；官方将集群兼容性委托给client-go共享API规则，不把该表夸为全部K8s端到端认证。",
+            "官方要求使用最旧仍可用API，alpha指标不保证稳定。本项目显式覆盖KSM2.18.0，不能误用Chart子包默认2.19.1；目标1.34保留该已GA覆盖。",
+            "上游说明只维护最新release；本版是短期1.34迁移桥梁，不能描述为仍获上游常规维护。"
+          ],
+          "limitations": "精确官方声明/API契约，非整栈官方逐版tested，非项目现场PASS。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        },
+        {
+          "id": "PROM-ADAPTER-012-API",
+          "evidence_type": "source-contract",
+          "observed_on": "2026-11-15",
+          "version": "prom-adapter-012-readme",
+          "url": "https://api.github.com/repos/kubernetes-sigs/prometheus-adapter/contents/README.md?ref=v0.12.0",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/prom-adapter-012-readme.txt",
+              "sha256": "8f615281ce10c25e664c05209a943d242a0f3b3f53425359611bd4811b28cb84",
+              "bytes": 11708
+            }
+          },
+          "facts": [
+            "官方v0.12.0实现Custom/Resource/External Metrics聚合API，配置区分Prometheus查询与Kubernetes资源发现；既有规则/证书/APIService与autoscaling/v2 HPA保持。",
+            "README的K8s1.6+文字不能当精确1.34逐版矩阵；目标只补真实指标查询/HPA协调，原故障与性能深测保留。"
+          ],
+          "limitations": "精确官方声明/API契约，非整栈官方逐版tested，非项目现场PASS。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        }
+      ],
+      "evidence_strength_rule": "保留每条官方来源的实际类型与limitations；最低版本、稳定API、源码契约、逐版tested和官方过程不能互相冒签。",
+      "live_claim": "本记录不证明本跳现场成功；旧GA、当前源码和正式制品分别保留身份。"
+    },
+    {
+      "component_id": "logging",
+      "decision": "keep",
+      "target_pins": {
+        "eck_operator": "3.5.0",
+        "elasticsearch": "9.5.1",
+        "kibana": "9.5.1",
+        "fluent_bit": "5.1.1",
+        "loki": "3.7.6",
+        "loki_chart": "18.9.0",
+        "alloy": "1.18.1",
+        "alloy_chart": "1.11.1"
+      },
+      "rationale": "ECK3.5.0明确支持Kubernetes1.32–1.36；保留日志ES/Kibana9.5.1及FluentBit/Loki/Alloy组合，核稳定发现/日志接口和共享CRD身份，不顺带统一业务ES引擎。",
+      "transition_edges": [
+        {
+          "edge_id": "logging-k8s13510-to1366",
+          "source": "已接受v1.35.10维护基线及实际现场身份",
+          "target": "Kubernetes v1.36.6及本记录target_pins",
+          "bridge": null,
+          "depends_on": [
+            "UPG-01",
+            "UPG-02",
+            "UPG-03",
+            "UPG-04",
+            "UPG-05"
+          ],
+          "official_source_ids": [
+            "ECK-350-SUPPORTED",
+            "ALLOY1181-KUBERNETES-DISCOVERY",
+            "ALLOY1181-KUBERNETES-LOGS",
+            "LOKI1890-CHART",
+            "ALLOY1111-CHART"
+          ],
+          "product_entry": "config.yml + kubecli upgrade；目标新建为kubecli setup；未变工具仍属独立tools入口",
+          "preconditions": [
+            "精确源/目标组合、制品及现有数据身份已核验，未知组合先停止对应路径",
+            "最小合同通过；现场持有自有租约、恢复点及业务账本"
+          ],
+          "steps": [
+            "核对实际源固定版本、配置、对象和制品身份；复用对应维护基线及原GA证据，不重演旧组件迁移。",
+            "保持本组件版本、配置和数据格式；核对1.36官方依据的实际力度与稳定API，按所属矩阵补目标平台接口缺口。"
+          ],
+          "success_conditions": [
+            "源对象/数据及自有补丁保持，目标相关API与业务断言通过",
+            "上游测试、支持下限、稳定接口、历史GA与本跳实测分别标注，不互相代签"
+          ],
+          "irreversible_point": "Kubernetes持久化或组件数据写入后不盲目降级；未改引擎不产生新的引擎迁移承诺",
+          "recovery": "保留首失败和journal，验证边界后限定续跑；必要时恢复完整原恢复点",
+          "cleanup": "只回收本run自有对象/故障/进程/租约，不接管其它集群或删除原数据"
+        }
+      ],
+      "official_applicability": [
+        {
+          "id": "ECK-350-SUPPORTED",
+          "evidence_type": "supported",
+          "observed_on": "2026-11-14",
+          "version": "v3.5.0",
+          "url": "https://api.github.com/repos/elastic/cloud-on-k8s/contents/README.md?ref=v3.5.0",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "sha256": "c5b7ad85f7f63bb90d69e5062c27764031fb16a2d8632b2a11675a8e863fe5df",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/eck-350-readme.txt",
+              "sha256": "c5b7ad85f7f63bb90d69e5062c27764031fb16a2d8632b2a11675a8e863fe5df",
+              "bytes": 1677
+            },
+            "git_blob_sha": "2b73a12a4438fe690f351752c148528b39b4a495"
+          },
+          "facts": [
+            "固定v3.5.0 README明确支持Kubernetes1.32–1.36；Elasticsearch/Kibana/APM支持8+、9+，Logstash支持8.12+、9+。",
+            "当前唯一共享ECK3.5.0已是latest；业务ES9.5.6和日志ES/Kibana9.5.1分别属于9+，不能混用常量或顺带统一引擎版本。",
+            "支持声明不是本项目跨minor协调、共享所有权或数据保持的实测。"
+          ],
+          "limitations": "本专题结论不代表四类目录全部已读、项目目标实测或GA。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        },
+        {
+          "id": "ALLOY1181-KUBERNETES-DISCOVERY",
+          "evidence_type": "source-contract",
+          "observed_on": "2026-11-15",
+          "url": "https://api.github.com/repos/grafana/alloy/contents/docs/sources/reference/components/discovery/discovery.kubernetes.md?ref=v1.18.1",
+          "version_or_commit": "d5b329594afe4513e2731c9279eb5d8c230ec6f7",
+          "facts": [
+            "固定Alloy1.18.1 discovery.kubernetes的pod角色发现Pod/container；项目明确用spec.nodeName字段选择本节点，保留当前标签/权限/参数。",
+            "官方提示Endpoints在K8s1.33+弃用，应使用EndpointSlice；项目此路径实际role=pod，不为该提示扩大改动。该资料未提供K8s1.34逐版tested声明。"
+          ],
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/alloy1181-kubernetes-discovery.txt",
+              "sha256": "63020aa71f9eea75fdfe494f78283f2437d5d7c18becff13823845c38c629f32",
+              "bytes": 25763
+            }
+          }
+        },
+        {
+          "id": "ALLOY1181-KUBERNETES-LOGS",
+          "evidence_type": "source-contract",
+          "observed_on": "2026-11-15",
+          "url": "https://api.github.com/repos/grafana/alloy/contents/docs/sources/reference/components/loki/loki.source.kubernetes.md?ref=v1.18.1",
+          "version_or_commit": "75f4e2dac0d51bf18084218b2f2a612e09e13348",
+          "facts": [
+            "固定loki.source.kubernetes经Kubernetes API采集Pod/container日志，不是直接tail宿主文件，也不能采集Node日志；中断后按指数退避重连。",
+            "本项目Alloy DaemonSet用pod discovery+日志API，目标须核最小日志账本/重连/同一标签与查询，不因旧备份/故障已GA就省略这一变化接口。"
+          ],
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/alloy1181-kubernetes-logs.txt",
+              "sha256": "149f7e3b4c761809869bc4af9e91eb4263361bcce9f29a5d35e8bbb30b68592f",
+              "bytes": 10711
+            }
+          }
+        },
+        {
+          "id": "LOKI1890-CHART",
+          "evidence_type": "source-contract",
+          "observed_on": "2026-11-15",
+          "url": "https://api.github.com/repos/grafana-community/helm-charts/contents/charts/loki/Chart.yaml?ref=loki-18.9.0",
+          "version_or_commit": "d8488f91e4c5aa58db1fc34df8264d10f2d94258",
+          "facts": [
+            "固定Chart18.9.0官方元数据appVersion3.7.6、kubeVersion>=1.25.0-0；这只是Helm准入下限，不是K8s1.34逐版tested矩阵。",
+            "本项目Monolithic/S3/TSDBv13/三副本及配套依赖保持；两端同一产品values真实渲染对象一致，未证明现场日志写入查询。"
+          ],
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/loki1890-chart.txt",
+              "sha256": "8276ec5f589af6a794a1f314246d04e7bc11ba70ba16469aa645430dc86dfc83",
+              "bytes": 1098
+            }
+          }
+        },
+        {
+          "id": "ALLOY1111-CHART",
+          "evidence_type": "source-contract",
+          "observed_on": "2026-11-15",
+          "url": "https://api.github.com/repos/grafana/alloy/contents/operations/helm/charts/alloy/Chart.yaml?ref=helm-chart/1.11.1",
+          "version_or_commit": "32c822aeab2c75d8254adb88cf3ddbea0dfcbc53",
+          "facts": [
+            "固定官方Chart1.11.1配套Alloy1.18.1，CRD依赖0.0.0有crds.create条件；不能任意取latest agent来重组旧Chart。",
+            "包内metadata与固定源码唯一差异是空repository字段，由Helm Dependency非omitempty字段解释；规范化后逐字段相等。"
+          ],
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/alloy1111-chart.txt",
+              "sha256": "fd1508d15c390bfb529c23e73c2f9ab69fb493db45d6480bc4b699a12cd43def",
+              "bytes": 291
+            }
+          }
+        }
+      ],
+      "evidence_strength_rule": "保留每条官方来源的实际类型与limitations；最低版本、稳定API、源码契约、逐版tested和官方过程不能互相冒签。",
+      "live_claim": "本记录不证明本跳现场成功；旧GA、当前源码和正式制品分别保留身份。"
+    },
+    {
+      "component_id": "elasticsearch",
+      "decision": "keep",
+      "target_pins": {
+        "v_eck_operator": "3.5.0",
+        "v_elasticsearch": "9.5.1",
+        "v_business_elasticsearch": "9.5.6",
+        "v_elasticsearch_upgrade_source": "9.5.5",
+        "v_elasticsearch_exporter": "v1.11.0",
+        "v_elasticsearch_client": "9.5.1-kubeauto.1",
+        "v_elasticsearch_rally": "2.13.0-kubeauto.1"
+      },
+      "rationale": "ECK3.5.0明确支持1.32–1.36；业务ES9.5.6与日志ES9.5.1分别保持实际GA组合和补丁，不变更schema/索引格式。只补受目标平台影响的协调/共享所有权接口。",
+      "transition_edges": [
+        {
+          "edge_id": "elasticsearch-k8s13510-to1366",
+          "source": "已接受v1.35.10维护基线及实际现场身份",
+          "target": "Kubernetes v1.36.6及本记录target_pins",
+          "bridge": null,
+          "depends_on": [
+            "UPG-01",
+            "UPG-02",
+            "UPG-03",
+            "UPG-04",
+            "UPG-05"
+          ],
+          "official_source_ids": [
+            "ECK-350-SUPPORTED"
+          ],
+          "product_entry": "config.yml + kubecli upgrade；目标新建为kubecli setup；未变工具仍属独立tools入口",
+          "preconditions": [
+            "精确源/目标组合、制品及现有数据身份已核验，未知组合先停止对应路径",
+            "最小合同通过；现场持有自有租约、恢复点及业务账本"
+          ],
+          "steps": [
+            "核对实际源固定版本、配置、对象和制品身份；复用对应维护基线及原GA证据，不重演旧组件迁移。",
+            "保持本组件版本、配置和数据格式；核对1.36官方依据的实际力度与稳定API，按所属矩阵补目标平台接口缺口。"
+          ],
+          "success_conditions": [
+            "源对象/数据及自有补丁保持，目标相关API与业务断言通过",
+            "上游测试、支持下限、稳定接口、历史GA与本跳实测分别标注，不互相代签"
+          ],
+          "irreversible_point": "Kubernetes持久化或组件数据写入后不盲目降级；未改引擎不产生新的引擎迁移承诺",
+          "recovery": "保留首失败和journal，验证边界后限定续跑；必要时恢复完整原恢复点",
+          "cleanup": "只回收本run自有对象/故障/进程/租约，不接管其它集群或删除原数据"
+        }
+      ],
+      "official_applicability": [
+        {
+          "id": "ECK-350-SUPPORTED",
+          "evidence_type": "supported",
+          "observed_on": "2026-11-14",
+          "version": "v3.5.0",
+          "url": "https://api.github.com/repos/elastic/cloud-on-k8s/contents/README.md?ref=v3.5.0",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "sha256": "c5b7ad85f7f63bb90d69e5062c27764031fb16a2d8632b2a11675a8e863fe5df",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/eck-350-readme.txt",
+              "sha256": "c5b7ad85f7f63bb90d69e5062c27764031fb16a2d8632b2a11675a8e863fe5df",
+              "bytes": 1677
+            },
+            "git_blob_sha": "2b73a12a4438fe690f351752c148528b39b4a495"
+          },
+          "facts": [
+            "固定v3.5.0 README明确支持Kubernetes1.32–1.36；Elasticsearch/Kibana/APM支持8+、9+，Logstash支持8.12+、9+。",
+            "当前唯一共享ECK3.5.0已是latest；业务ES9.5.6和日志ES/Kibana9.5.1分别属于9+，不能混用常量或顺带统一引擎版本。",
+            "支持声明不是本项目跨minor协调、共享所有权或数据保持的实测。"
+          ],
+          "limitations": "本专题结论不代表四类目录全部已读、项目目标实测或GA。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        }
+      ],
+      "evidence_strength_rule": "保留每条官方来源的实际类型与limitations；最低版本、稳定API、源码契约、逐版tested和官方过程不能互相冒签。",
+      "live_claim": "本记录不证明本跳现场成功；旧GA、当前源码和正式制品分别保留身份。"
+    },
+    {
+      "component_id": "mysql",
+      "decision": "keep",
+      "target_pins": {
+        "v_pxc_operator": "1.20.0",
+        "v_pxc": "8.4.8-8.1",
+        "v_pxc_xtrabackup": "8.4.0-5.1",
+        "v_pxc_haproxy": "2.8.18-1",
+        "v_pxc_fluentbit": "5.0.6-1",
+        "v_pxc_operator_chart_sha256": "b8bff81d0f9691b1e495f958fba1bb268e48838cf548adf6ae6570ea0e0059cf"
+      },
+      "rationale": "PXC Operator1.20.0的官方AKS测试包含1.36，PXC8.4.8-8.1及xtrabackup配套不变；kubeauto不是上游实际认证发行版，按其CNCF/向后兼容声明与项目最小集成划界，不重跑全套数据库故障/性能。",
+      "transition_edges": [
+        {
+          "edge_id": "mysql-k8s13510-to1366",
+          "source": "已接受v1.35.10维护基线及实际现场身份",
+          "target": "Kubernetes v1.36.6及本记录target_pins",
+          "bridge": null,
+          "depends_on": [
+            "UPG-01",
+            "UPG-02",
+            "UPG-03",
+            "UPG-04",
+            "UPG-05"
+          ],
+          "official_source_ids": [
+            "PXC-120-FIRST-HOP"
+          ],
+          "product_entry": "config.yml + kubecli upgrade；目标新建为kubecli setup；未变工具仍属独立tools入口",
+          "preconditions": [
+            "精确源/目标组合、制品及现有数据身份已核验，未知组合先停止对应路径",
+            "最小合同通过；现场持有自有租约、恢复点及业务账本"
+          ],
+          "steps": [
+            "核对实际源固定版本、配置、对象和制品身份；复用对应维护基线及原GA证据，不重演旧组件迁移。",
+            "保持本组件版本、配置和数据格式；核对1.36官方依据的实际力度与稳定API，按所属矩阵补目标平台接口缺口。"
+          ],
+          "success_conditions": [
+            "源对象/数据及自有补丁保持，目标相关API与业务断言通过",
+            "上游测试、支持下限、稳定接口、历史GA与本跳实测分别标注，不互相代签"
+          ],
+          "irreversible_point": "Kubernetes持久化或组件数据写入后不盲目降级；未改引擎不产生新的引擎迁移承诺",
+          "recovery": "保留首失败和journal，验证边界后限定续跑；必要时恢复完整原恢复点",
+          "cleanup": "只回收本run自有对象/故障/进程/租约，不接管其它集群或删除原数据"
+        }
+      ],
+      "official_applicability": [
+        {
+          "id": "PXC-120-FIRST-HOP",
+          "evidence_type": "tested",
+          "observed_on": "2026-11-14",
+          "url": "https://raw.githubusercontent.com/percona/k8spxc-docs/main/docs/ReleaseNotes/Kubernetes-Operator-for-PXC-RN1.20.0.md",
+          "version": "Operator 1.20.0 release notes",
+          "obtained_content": {
+            "representation": "官方响应原文，未改写",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/pxc-120-notes.txt",
+              "sha256": "dbadbe6e562ffc6753b5154e3d7de2c50cf54c002f90b9ff722c68de1a3abc49",
+              "bytes": 29445
+            }
+          },
+          "facts": [
+            "发布说明列GKE/EKS K8s 1.33到1.35、AKS 1.33到1.36、Minikube K8s 1.35.1。",
+            "声明面向CNCF-certified发行版兼容，其他flavors/versions依赖K8s向后兼容；不能说上游实际测试了kubeauto二进制发行版。",
+            "认证镜像表包含源Operator 1.20.0与PXC 8.4.8-8.1及AMD64/ARM64 digest。"
+          ],
+          "limitations": "官方文档仓main中固定版本文件按内容摘要绑定；不等于项目重托管digest或本跳实测。",
+          "use": "upgrade/v1.34.13/research.yaml"
+        }
+      ],
+      "evidence_strength_rule": "保留每条官方来源的实际类型与limitations；最低版本、稳定API、源码契约、逐版tested和官方过程不能互相冒签。",
+      "live_claim": "本记录不证明本跳现场成功；旧GA、当前源码和正式制品分别保留身份。"
+    },
+    {
+      "component_id": "kafka",
+      "decision": "keep",
+      "target_pins": {
+        "v_strimzi_operator": "1.2.0",
+        "v_kafka": "4.3.1",
+        "v_kafka_metadata": "4.3-IV0",
+        "v_strimzi_drain_cleaner": "1.6.1",
+        "v_strimzi_operator_chart_sha256": "0f8a50b2f19bd99482f9fd6e17cf42902f72f9e594a136813ac3f0b7af422efd",
+        "v_strimzi_drain_cleaner_chart_sha256": "ce84b8ddcd105f1b10d085fe69ed0d9185f798d009de3fba967386af2b8f6fdd"
+      },
+      "rationale": "实际维护源为Strimzi1.2.0/Kafka4.3.1；官方表覆盖Kubernetes1.30–1.36并包含Kafka4.3.1。保留metadata4.3-IV0、Chart及DrainCleaner1.6.1，不将旧研究中的1.3.1/4.3.2当本跳输入。",
+      "transition_edges": [
+        {
+          "edge_id": "kafka-k8s13510-to1366",
+          "source": "已接受v1.35.10维护基线及实际现场身份",
+          "target": "Kubernetes v1.36.6及本记录target_pins",
+          "bridge": null,
+          "depends_on": [
+            "UPG-01",
+            "UPG-02",
+            "UPG-03",
+            "UPG-04",
+            "UPG-05"
+          ],
+          "official_source_ids": [
+            "STRIMZI-120",
+            "STRIMZI-DRAIN-161-BEHAVIOR"
+          ],
+          "product_entry": "config.yml + kubecli upgrade；目标新建为kubecli setup；未变工具仍属独立tools入口",
+          "preconditions": [
+            "精确源/目标组合、制品及现有数据身份已核验，未知组合先停止对应路径",
+            "最小合同通过；现场持有自有租约、恢复点及业务账本"
+          ],
+          "steps": [
+            "核对实际源固定版本、配置、对象和制品身份；复用对应维护基线及原GA证据，不重演旧组件迁移。",
+            "保持本组件版本、配置和数据格式；核对1.36官方依据的实际力度与稳定API，按所属矩阵补目标平台接口缺口。"
+          ],
+          "success_conditions": [
+            "源对象/数据及自有补丁保持，目标相关API与业务断言通过",
+            "上游测试、支持下限、稳定接口、历史GA与本跳实测分别标注，不互相代签"
+          ],
+          "irreversible_point": "Kubernetes持久化或组件数据写入后不盲目降级；未改引擎不产生新的引擎迁移承诺",
+          "recovery": "保留首失败和journal，验证边界后限定续跑；必要时恢复完整原恢复点",
+          "cleanup": "只回收本run自有对象/故障/进程/租约，不接管其它集群或删除原数据"
+        }
+      ],
+      "official_applicability": [
+        {
+          "id": "STRIMZI-120",
+          "evidence_type": "supported",
+          "observed_on": "2026-11-13",
+          "url": "https://strimzi.io/downloads/",
+          "version": "1.2.0 行",
+          "obtained_content": {
+            "representation": "HTML 原始响应",
+            "sha256": "907ec975bb5deef510d4dd9ac1c8b7c6f507c60278e2263dbce1ed873ae02f3f",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-13/strimzi.txt",
+              "sha256": "907ec975bb5deef510d4dd9ac1c8b7c6f507c60278e2263dbce1ed873ae02f3f",
+              "bytes": 68138
+            }
+          },
+          "facts": [
+            "1.2.0 行列出 Kubernetes 1.30–1.36；Kafka 配套包含 4.3.1。"
+          ],
+          "limitations": "不外推到 1.37；Drain Cleaner、Chart、CRD、Kafka metadata 和项目存储/客户端仍需核验。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        },
+        {
+          "id": "STRIMZI-DRAIN-161-BEHAVIOR",
+          "evidence_type": "official-procedure",
+          "observed_on": "2026-11-15",
+          "version": "1.6.1",
+          "url": "https://api.github.com/repos/strimzi/drain-cleaner/contents/README.md?ref=1.6.1",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "sha256": "f7261980a0dcc8d3faf72b444c98d81e8263cac150431d9cacde9eecf273a76e",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/drain-cleaner-161-readme.txt",
+              "sha256": "f7261980a0dcc8d3faf72b444c98d81e8263cac150431d9cacde9eecf273a76e",
+              "bytes": 14813
+            },
+            "git_blob_sha": "16b46dcc4ad45ef457e62e0dd3570127affbb766"
+          },
+          "facts": [
+            "默认拒绝Kafka broker/controller的eviction并加manual-rolling-update注解，由Operator逐Pod协调；初次kubectl drain可非零，不等于产品故障。",
+            "legacy模式要同时改变STRIMZI_DENY_EVICTION及PDB，不可为使升级测试通过而直接关闭webhook、删除PDB或使用--disable-eviction。",
+            "固定超时和namespace边界由原产品保留；新runner须有界等待协调后重试drain并区分首失败/预期拒绝，不能盲目吞掉rc。"
+          ],
+          "limitations": "仅本专题的官方来源和适用性，不是完整资料目录/目标实测/GA。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        }
+      ],
+      "evidence_strength_rule": "保留每条官方来源的实际类型与limitations；最低版本、稳定API、源码契约、逐版tested和官方过程不能互相冒签。",
+      "live_claim": "本记录不证明本跳现场成功；旧GA、当前源码和正式制品分别保留身份。"
+    },
+    {
+      "component_id": "mongodb",
+      "decision": "keep",
+      "target_pins": {
+        "v_mongodb_operator": "1.23.1",
+        "v_mongodb_operator_chart": "1.23.2",
+        "v_mongodb_operator_chart_sha256": "80e629dc31f8cfe2615a5efb8b0d1d2ed418f25e8c0b168f981412c8594a07e9",
+        "v_mongodb": "8.0.32-14",
+        "v_mongodb_backup": "2.15.0",
+        "v_mongodb_fluentbit": "5.1.2-1",
+        "v_mongodb_exporter": "0.53.0"
+      },
+      "rationale": "Operator1.23.1官方EKS/AKS/RKE2表包含1.36；保留Mongo8.0.32-14/PBM2.15.0和AMD64 x86-64-v3主机前置，不把flavor测试冒称kubeauto发行认证，最小核对协调/重连。",
+      "transition_edges": [
+        {
+          "edge_id": "mongodb-k8s13510-to1366",
+          "source": "已接受v1.35.10维护基线及实际现场身份",
+          "target": "Kubernetes v1.36.6及本记录target_pins",
+          "bridge": null,
+          "depends_on": [
+            "UPG-01",
+            "UPG-02",
+            "UPG-03",
+            "UPG-04",
+            "UPG-05"
+          ],
+          "official_source_ids": [
+            "MONGODB-1231-FIRST-HOP",
+            "MONGODB-REQUIREMENTS-FIRST-HOP"
+          ],
+          "product_entry": "config.yml + kubecli upgrade；目标新建为kubecli setup；未变工具仍属独立tools入口",
+          "preconditions": [
+            "精确源/目标组合、制品及现有数据身份已核验，未知组合先停止对应路径",
+            "最小合同通过；现场持有自有租约、恢复点及业务账本"
+          ],
+          "steps": [
+            "核对实际源固定版本、配置、对象和制品身份；复用对应维护基线及原GA证据，不重演旧组件迁移。",
+            "保持本组件版本、配置和数据格式；核对1.36官方依据的实际力度与稳定API，按所属矩阵补目标平台接口缺口。"
+          ],
+          "success_conditions": [
+            "源对象/数据及自有补丁保持，目标相关API与业务断言通过",
+            "上游测试、支持下限、稳定接口、历史GA与本跳实测分别标注，不互相代签"
+          ],
+          "irreversible_point": "Kubernetes持久化或组件数据写入后不盲目降级；未改引擎不产生新的引擎迁移承诺",
+          "recovery": "保留首失败和journal，验证边界后限定续跑；必要时恢复完整原恢复点",
+          "cleanup": "只回收本run自有对象/故障/进程/租约，不接管其它集群或删除原数据"
+        }
+      ],
+      "official_applicability": [
+        {
+          "id": "MONGODB-1231-FIRST-HOP",
+          "evidence_type": "tested",
+          "version": "Operator 1.23.1",
+          "observed_on": "2026-11-14",
+          "url": "https://api.github.com/repos/percona/k8spsmdb-docs/contents/docs/RN/Kubernetes-Operator-for-PSMONGODB-RN1.23.1.md",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "git_blob_sha": "28b266847a992ef8ea86c0ea196ee3381d6fc16e",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/mongo-rn1231-api.txt",
+              "sha256": "77b2fa132e67a8a2bb7735350f0b7c081368eeeabc4c26bf1d6951d957e6009a",
+              "bytes": 9674
+            }
+          },
+          "facts": [
+            "支持软件表包含当前MongoDB8.0.32-14、PBM2.15.0、cert-manager1.21.0与fluent-bit5.1.2-1。",
+            "发布测试平台为GKE1.34到1.35、EKS/AKS/RKE2为1.34到1.36、OpenShift4.19到4.22、Minikube K8s1.37.0。",
+            "源1.33不在此发布测试列表，目标1.34在；原项目1.33 GA保留，不能改写成上游测试1.33。",
+            "说明明确其他flavors/versions依赖K8s向后兼容，不代表官方实际测过kubeauto二进制发行版。"
+          ],
+          "limitations": "来自官方文档仓main下准确RN目录，Git blob及SHA256绑定；只支持已述版本/平台主张，不冒签原始归档适用性或目标项目PASS。",
+          "use": "upgrade/v1.34.13/research.yaml"
+        },
+        {
+          "id": "MONGODB-REQUIREMENTS-FIRST-HOP",
+          "evidence_type": "minimum",
+          "observed_on": "2026-11-14",
+          "url": "https://raw.githubusercontent.com/percona/k8spsmdb-docs/main/docs/System-Requirements.md",
+          "version": "main observed 2026-11-14",
+          "obtained_content": {
+            "representation": "官方响应原文，未改写",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/mongo-req-case.txt",
+              "sha256": "f404d22a658d8346c26ae3243f29a9506582105da16026d9880f9a35c50bfd2a",
+              "bytes": 1823
+            }
+          },
+          "facts": [
+            "Operator自1.22.0升UBI10，amd64要求x86-64-v3指令集。",
+            "K8s平台列表include发布说明；本页模板不能单独证明1.23.1的测试窗口。"
+          ],
+          "limitations": "模板未展开，原发布说明路径404，仍需定位include，不能臆造矩阵；变化或缺失才补主机资格。",
+          "use": "upgrade/v1.34.13/research.yaml"
+        }
+      ],
+      "evidence_strength_rule": "保留每条官方来源的实际类型与limitations；最低版本、稳定API、源码契约、逐版tested和官方过程不能互相冒签。",
+      "live_claim": "本记录不证明本跳现场成功；旧GA、当前源码和正式制品分别保留身份。"
+    },
+    {
+      "component_id": "redis",
+      "decision": "keep",
+      "target_pins": {
+        "v_redis_operator": "0.27.0",
+        "v_redis_operator_image": "0.27.0-kubeauto.2",
+        "v_redis": "8.10.2",
+        "v_redis_cluster_image": "8.10.2-kubeauto.1",
+        "v_redis_exporter": "v1.93.0",
+        "v_redis_operator_chart_sha256": "4eabe2cde88657f8b7b21c2ec5ddafa3a305d35c9877021f9be89ac3beeb0f7f"
+      },
+      "rationale": "保留0.27.0-kubeauto.2和8.10.2-kubeauto.1保护修订。上游CI未固定kind服务端版本，不能称1.36认证；按稳定Core/RBAC与现有CRD契约做最小目标协调，不替换原补丁。",
+      "transition_edges": [
+        {
+          "edge_id": "redis-k8s13510-to1366",
+          "source": "已接受v1.35.10维护基线及实际现场身份",
+          "target": "Kubernetes v1.36.6及本记录target_pins",
+          "bridge": null,
+          "depends_on": [
+            "UPG-01",
+            "UPG-02",
+            "UPG-03",
+            "UPG-04",
+            "UPG-05"
+          ],
+          "official_source_ids": [
+            "REDIS-027-CI-SCOPE",
+            "REDIS-027-CLIENT-DEPENDENCIES",
+            "REDIS-027-RBAC-API"
+          ],
+          "product_entry": "config.yml + kubecli upgrade；目标新建为kubecli setup；未变工具仍属独立tools入口",
+          "preconditions": [
+            "精确源/目标组合、制品及现有数据身份已核验，未知组合先停止对应路径",
+            "最小合同通过；现场持有自有租约、恢复点及业务账本"
+          ],
+          "steps": [
+            "核对实际源固定版本、配置、对象和制品身份；复用对应维护基线及原GA证据，不重演旧组件迁移。",
+            "保持本组件版本、配置和数据格式；核对1.36官方依据的实际力度与稳定API，按所属矩阵补目标平台接口缺口。"
+          ],
+          "success_conditions": [
+            "源对象/数据及自有补丁保持，目标相关API与业务断言通过",
+            "上游测试、支持下限、稳定接口、历史GA与本跳实测分别标注，不互相代签"
+          ],
+          "irreversible_point": "Kubernetes持久化或组件数据写入后不盲目降级；未改引擎不产生新的引擎迁移承诺",
+          "recovery": "保留首失败和journal，验证边界后限定续跑；必要时恢复完整原恢复点",
+          "cleanup": "只回收本run自有对象/故障/进程/租约，不接管其它集群或删除原数据"
+        }
+      ],
+      "official_applicability": [
+        {
+          "id": "REDIS-027-CI-SCOPE",
+          "evidence_type": "source-contract",
+          "observed_on": "2026-11-14",
+          "version": "v0.27.0",
+          "url": "https://api.github.com/repos/OT-CONTAINER-KIT/redis-operator/contents/.github/workflows/ci.yaml?ref=v0.27.0",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "sha256": "83a88992f124693a29afba997b8550ecf6c4efdf9bd1673684ecb4d5484e2110",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/redis-027-ci.txt",
+              "sha256": "83a88992f124693a29afba997b8550ecf6c4efdf9bd1673684ecb4d5484e2110",
+              "bytes": 9916
+            },
+            "git_blob_sha": "525baa0724d7b3c41f1f7081f0503b296263e270"
+          },
+          "facts": [
+            "CI包括单测、AMD64/ARM64构建与kind端到端，但此workflow未固定kind节点K8s版本；下载stable.txt客户端不证明1.34服务端测试。",
+            "本项目0.27.0-kubeauto.2与8.10.2-kubeauto.1有明确保护修订，保持其补丁语义，不能用上游原镜像或未测最新tag替换。"
+          ],
+          "limitations": "本专题结论不代表四类目录全部已读、项目目标实测或GA。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        },
+        {
+          "id": "REDIS-027-CLIENT-DEPENDENCIES",
+          "evidence_type": "source-contract",
+          "observed_on": "2026-11-15",
+          "version": "v0.27.0",
+          "url": "https://api.github.com/repos/OT-CONTAINER-KIT/redis-operator/contents/go.mod?ref=v0.27.0",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "sha256": "3181ea6cdf7db9be206094746f97d7b6650a36ea81c5571c2b5e982113faadbc",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/redis-027-go-module.txt",
+              "sha256": "3181ea6cdf7db9be206094746f97d7b6650a36ea81c5571c2b5e982113faadbc",
+              "bytes": 5770
+            },
+            "git_blob_sha": "bdad6cc58715be4f90a46b04b7bc6df04d5eb3c9"
+          },
+          "facts": [
+            "固定Go模块使用client-go/api0.29.x和controller-runtime0.17.2，不能从release日期或Go1.25推测K8s1.34官方e2e。",
+            "客户端依赖pin是source-pin，不等于服务端支持窗口；受保护项目修订与实际稳定API调用仍须明确映射。"
+          ],
+          "limitations": "仅本专题的官方来源和适用性，不是完整资料目录/目标实测/GA。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        },
+        {
+          "id": "REDIS-027-RBAC-API",
+          "evidence_type": "api-contract",
+          "observed_on": "2026-11-15",
+          "version": "Redis Operator v0.27.0; current installation page explicitly unversioned",
+          "url": "https://api.github.com/repos/OT-CONTAINER-KIT/redis-operator/contents/config/rbac/role.yaml?ref=v0.27.0",
+          "obtained_content": {
+            "representation": "GitHub original decoded YAML",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/redis-027-rbac-decoded.txt",
+              "sha256": "d43e2e14208c0a201173998478fc537e49fe133e6502830af90535f8142e0c24",
+              "bytes": 1722
+            }
+          },
+          "facts": [
+            "固定operator访问核心v1资源、apps StatefulSet、coordination Lease、policy PDB、apiextensions CRD及自身Redis CR；这些资源API组不因本跳移除。",
+            "项目实例为自己的redis.redis.opstreelabs.in/v1beta2，不能误认为Kubernetes已移除的内置v1beta API。RBAC声明仅用于接口盘点，不把它当作真实目标业务PASS。"
+          ],
+          "limitations": "最低支持/API契约及源配套依据；不声称官方已独立测K8s1.34，也不是本项目现场验收。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        }
+      ],
+      "evidence_strength_rule": "保留每条官方来源的实际类型与limitations；最低版本、稳定API、源码契约、逐版tested和官方过程不能互相冒签。",
+      "live_claim": "本记录不证明本跳现场成功；旧GA、当前源码和正式制品分别保留身份。"
+    },
+    {
+      "component_id": "minio",
+      "decision": "keep",
+      "target_pins": {
+        "operator_chart": "7.1.1",
+        "tenant_chart": "7.1.1",
+        "v_miniooperator": "7.1.1",
+        "minio_server": "RELEASE.2025-04-08T15-41-24Z"
+      },
+      "rationale": "Operator7.1.1要求Kubernetes>=1.30，非1.36逐版表；保留原Server/租户CA与PVC节点身份，不推进S3数据格式；最小核CSR/租户协调及原对象读取。",
+      "transition_edges": [
+        {
+          "edge_id": "minio-k8s13510-to1366",
+          "source": "已接受v1.35.10维护基线及实际现场身份",
+          "target": "Kubernetes v1.36.6及本记录target_pins",
+          "bridge": null,
+          "depends_on": [
+            "UPG-01",
+            "UPG-02",
+            "UPG-03",
+            "UPG-04",
+            "UPG-05"
+          ],
+          "official_source_ids": [
+            "MINIO-711-REQUIREMENTS",
+            "MINIO-711-CI-SCOPE"
+          ],
+          "product_entry": "config.yml + kubecli upgrade；目标新建为kubecli setup；未变工具仍属独立tools入口",
+          "preconditions": [
+            "精确源/目标组合、制品及现有数据身份已核验，未知组合先停止对应路径",
+            "最小合同通过；现场持有自有租约、恢复点及业务账本"
+          ],
+          "steps": [
+            "核对实际源固定版本、配置、对象和制品身份；复用对应维护基线及原GA证据，不重演旧组件迁移。",
+            "保持本组件版本、配置和数据格式；核对1.36官方依据的实际力度与稳定API，按所属矩阵补目标平台接口缺口。"
+          ],
+          "success_conditions": [
+            "源对象/数据及自有补丁保持，目标相关API与业务断言通过",
+            "上游测试、支持下限、稳定接口、历史GA与本跳实测分别标注，不互相代签"
+          ],
+          "irreversible_point": "Kubernetes持久化或组件数据写入后不盲目降级；未改引擎不产生新的引擎迁移承诺",
+          "recovery": "保留首失败和journal，验证边界后限定续跑；必要时恢复完整原恢复点",
+          "cleanup": "只回收本run自有对象/故障/进程/租约，不接管其它集群或删除原数据"
+        }
+      ],
+      "official_applicability": [
+        {
+          "id": "MINIO-711-REQUIREMENTS",
+          "evidence_type": "minimum",
+          "observed_on": "2026-11-14",
+          "version": "v7.1.1",
+          "url": "https://api.github.com/repos/minio/operator/contents/README.md?ref=v7.1.1",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "sha256": "bc522a60872d147729e86fd2e1b9878bd285065c9ece696e159e6f2d1259fbb1",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/minio-operator-711-readme.txt",
+              "sha256": "bc522a60872d147729e86fd2e1b9878bd285065c9ece696e159e6f2d1259fbb1",
+              "bytes": 9345
+            },
+            "git_blob_sha": "65ef1b33660c29ee4f73286308ee3dd3832eced1"
+          },
+          "facts": [
+            "v7.1.1要求Kubernetes1.30.0及以上；这是最低要求，不冒称1.34列入上游测试。",
+            "每namespace至多一个Tenant；存储建议WaitForFirstConsumer并保留本地卷节点身份；不能用节点drain导致的Pending推断数据损坏。",
+            "TLS/CSR签名与租户CA信任是实际集成边界；Operator不变不触发Server镜像或S3数据格式升级。"
+          ],
+          "limitations": "本专题结论不代表四类目录全部已读、项目目标实测或GA。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        },
+        {
+          "id": "MINIO-711-CI-SCOPE",
+          "evidence_type": "source-contract",
+          "observed_on": "2026-11-14",
+          "version": "v7.1.1",
+          "url": "https://api.github.com/repos/minio/operator/contents/.github/workflows/kubernetes-tests.yml?ref=v7.1.1",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "sha256": "6ffa5c56aef7d91fd5b15907933a7f2d249f2e0cae4b8eaa3d2b7b4f9fa268b0",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/minio-711-k8s-tests.txt",
+              "sha256": "6ffa5c56aef7d91fd5b15907933a7f2d249f2e0cae4b8eaa3d2b7b4f9fa268b0",
+              "bytes": 15203
+            },
+            "git_blob_sha": "deaa797899cec87e7ebf7d851bfc3d2c0c7c93a8"
+          },
+          "facts": [
+            "上游CI包含大量shell测试、Helm与kind路径；Go1.23和ubuntu-latest矩阵是构建平台，不是Kubernetes逐版测试矩阵。",
+            "部分CI下载kubectl1.30.10只表明客户端版本，实际kind节点版本需沿testing脚本确认；不冒称上游已测1.34。"
+          ],
+          "limitations": "本专题结论不代表四类目录全部已读、项目目标实测或GA。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        }
+      ],
+      "evidence_strength_rule": "保留每条官方来源的实际类型与limitations；最低版本、稳定API、源码契约、逐版tested和官方过程不能互相冒签。",
+      "live_claim": "本记录不证明本跳现场成功；旧GA、当前源码和正式制品分别保留身份。"
+    },
+    {
+      "component_id": "nacos",
+      "decision": "keep",
+      "target_pins": {
+        "nacos_server": "2.4.3",
+        "peer_finder_plugin": "1.1",
+        "mysql": "8.0.46",
+        "connector_j": "8.2.0"
+      },
+      "rationale": "保留Nacos2.4.3/MySQL8.0.46及原peer-finder配套；Nacos服务不是逐K8s版本认证组件，平台依赖为稳定Pod/Service发现与PVC/RBAC接口。不迁移业务schema，原业务/恢复深测按同输入复用。",
+      "transition_edges": [
+        {
+          "edge_id": "nacos-k8s13510-to1366",
+          "source": "已接受v1.35.10维护基线及实际现场身份",
+          "target": "Kubernetes v1.36.6及本记录target_pins",
+          "bridge": null,
+          "depends_on": [
+            "UPG-01",
+            "UPG-02",
+            "UPG-03",
+            "UPG-04",
+            "UPG-05"
+          ],
+          "official_source_ids": [
+            "NACOS-DOCKER-243-README",
+            "NACOS-243-COMPATIBLE",
+            "NACOS-PEERFINDER-130-MAIN",
+            "NACOS-243-SCHEMA"
+          ],
+          "product_entry": "config.yml + kubecli upgrade；目标新建为kubecli setup；未变工具仍属独立tools入口",
+          "preconditions": [
+            "精确源/目标组合、制品及现有数据身份已核验，未知组合先停止对应路径",
+            "最小合同通过；现场持有自有租约、恢复点及业务账本"
+          ],
+          "steps": [
+            "核对实际源固定版本、配置、对象和制品身份；复用对应维护基线及原GA证据，不重演旧组件迁移。",
+            "保持本组件版本、配置和数据格式；核对1.36官方依据的实际力度与稳定API，按所属矩阵补目标平台接口缺口。"
+          ],
+          "success_conditions": [
+            "源对象/数据及自有补丁保持，目标相关API与业务断言通过",
+            "上游测试、支持下限、稳定接口、历史GA与本跳实测分别标注，不互相代签"
+          ],
+          "irreversible_point": "Kubernetes持久化或组件数据写入后不盲目降级；未改引擎不产生新的引擎迁移承诺",
+          "recovery": "保留首失败和journal，验证边界后限定续跑；必要时恢复完整原恢复点",
+          "cleanup": "只回收本run自有对象/故障/进程/租约，不接管其它集群或删除原数据"
+        }
+      ],
+      "official_applicability": [
+        {
+          "id": "NACOS-DOCKER-243-README",
+          "evidence_type": "source-pin",
+          "observed_on": "2026-11-15",
+          "url": "https://api.github.com/repos/nacos-group/nacos-docker/contents/README.md?ref=v2.4.3",
+          "version_or_commit": "official URL ref; blob 4bbdc5b910d55b3ac96eac4a28e02b95010868a4",
+          "facts": [
+            "官方2.4.3部署README要求外部MySQL8并首次初始化schema；本跳保留既有DB/schema，不重做初始化。"
+          ],
+          "limitations": "不是Nacos逐K8s1.34测试表；仅支撑未变接口和证据复用边界，不签目标项目PASS。",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/nacos-docker-243-readme.txt",
+              "sha256": "3489c181d1fbc732b646a67480ffcc937d28362b80006df3f92885777087297d",
+              "bytes": 17127
+            }
+          }
+        },
+        {
+          "id": "NACOS-243-COMPATIBLE",
+          "evidence_type": "source-pin",
+          "observed_on": "2026-11-15",
+          "url": "https://api.github.com/repos/alibaba/nacos/contents/README.md?ref=2.4.3",
+          "version_or_commit": "official URL ref; blob 625eb068440e0f7e65368a38956dfffe3ce4e80b",
+          "facts": [
+            "Nacos2.4.3服务/配置协议独立于K8s；README的Kubernetes集成链接不等于1.34兼容矩阵。"
+          ],
+          "limitations": "不是Nacos逐K8s1.34测试表；仅支撑未变接口和证据复用边界，不签目标项目PASS。",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/nacos-243-compatible.txt",
+              "sha256": "a3c75baf221ba00303b6066af647531abc137568a0e94e5d4d680fc173239800",
+              "bytes": 12851
+            }
+          }
+        },
+        {
+          "id": "NACOS-PEERFINDER-130-MAIN",
+          "evidence_type": "api-contract",
+          "observed_on": "2026-11-15",
+          "url": "https://api.github.com/repos/kmodules/peer-finder/contents/peer-finder.go?ref=v1.3.0",
+          "version_or_commit": "official URL ref; blob 4fcad11d5a86f975ca84222dee6b100404225454",
+          "facts": [
+            "固定v1.3.0源码仅在非空-selector时构造Kubernetes client；未传selector时调用DNS SRV，并通过回调脚本更新peer。已从私库双架构实际镜像核对plugin.sh仅传service/domain，无selector。"
+          ],
+          "limitations": "不是Nacos逐K8s1.34测试表；仅支撑未变接口和证据复用边界，不签目标项目PASS。",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/nacos-peerfinder-130-main.txt",
+              "sha256": "73eb92d48bec1abba6d867ee60258e7d8a08155346eaf07c283220c41997a2e3",
+              "bytes": 12131
+            }
+          }
+        },
+        {
+          "id": "NACOS-243-SCHEMA",
+          "evidence_type": "source-pin",
+          "observed_on": "2026-11-15",
+          "url": "https://api.github.com/repos/alibaba/nacos/contents/distribution/conf/mysql-schema.sql?ref=2.4.3",
+          "version_or_commit": "official URL ref; blob d3c06606e1317fd947cba5032e05807ea3c8fb1f",
+          "facts": [
+            "固定2.4.3官方schema已取得；本次不迁移server/DB schema，升级不执行DROP/重新初始化。"
+          ],
+          "limitations": "不是Nacos逐K8s1.34测试表；仅支撑未变接口和证据复用边界，不签目标项目PASS。",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/nacos-243-schema.txt",
+              "sha256": "87aaae43774601ff5223a385de9f0d64840b5b7ec59fb26217e955a276afdb21",
+              "bytes": 11042
+            }
+          }
+        }
+      ],
+      "evidence_strength_rule": "保留每条官方来源的实际类型与limitations；最低版本、稳定API、源码契约、逐版tested和官方过程不能互相冒签。",
+      "live_claim": "本记录不证明本跳现场成功；旧GA、当前源码和正式制品分别保留身份。"
+    },
+    {
+      "component_id": "rocketmq",
+      "decision": "keep",
+      "target_pins": {
+        "operator_chart": "0.1.0",
+        "operator_image_index_digest": "sha256:66516b068aa9b73bee2b218556f551111fc75721a32aa183f655106ef10bcfdf",
+        "broker": "4.5.0-alpine-operator-0.3.0",
+        "nameserver": "4.5.0-alpine-operator-0.3.0",
+        "console": "2.0.0"
+      },
+      "rationale": "保留原GA Operator不可变digest和Broker/NameServer4.5.0配套；无1.36逐版表，旧client-go0.22.1仅按实际共享稳定API和已接受来源边界使用，最小补协调/业务验证，不冒称可核实源码构建。",
+      "transition_edges": [
+        {
+          "edge_id": "rocketmq-k8s13510-to1366",
+          "source": "已接受v1.35.10维护基线及实际现场身份",
+          "target": "Kubernetes v1.36.6及本记录target_pins",
+          "bridge": null,
+          "depends_on": [
+            "UPG-01",
+            "UPG-02",
+            "UPG-03",
+            "UPG-04",
+            "UPG-05"
+          ],
+          "official_source_ids": [
+            "ROCKETMQ-030-GO-DEPS",
+            "CLIENTGO-0221-SHARED-API",
+            "ROCKETMQ-030-API-AND-EXEC-BOUNDARY"
+          ],
+          "product_entry": "config.yml + kubecli upgrade；目标新建为kubecli setup；未变工具仍属独立tools入口",
+          "preconditions": [
+            "精确源/目标组合、制品及现有数据身份已核验，未知组合先停止对应路径",
+            "最小合同通过；现场持有自有租约、恢复点及业务账本"
+          ],
+          "steps": [
+            "核对实际源固定版本、配置、对象和制品身份；复用对应维护基线及原GA证据，不重演旧组件迁移。",
+            "保持本组件版本、配置和数据格式；核对1.36官方依据的实际力度与稳定API，按所属矩阵补目标平台接口缺口。"
+          ],
+          "success_conditions": [
+            "源对象/数据及自有补丁保持，目标相关API与业务断言通过",
+            "上游测试、支持下限、稳定接口、历史GA与本跳实测分别标注，不互相代签"
+          ],
+          "irreversible_point": "Kubernetes持久化或组件数据写入后不盲目降级；未改引擎不产生新的引擎迁移承诺",
+          "recovery": "保留首失败和journal，验证边界后限定续跑；必要时恢复完整原恢复点",
+          "cleanup": "只回收本run自有对象/故障/进程/租约，不接管其它集群或删除原数据"
+        }
+      ],
+      "official_applicability": [
+        {
+          "id": "ROCKETMQ-030-GO-DEPS",
+          "evidence_type": "source-contract",
+          "observed_on": "2026-11-15",
+          "url": "https://api.github.com/repos/apache/rocketmq-operator/contents/go.mod?ref=0.3.0",
+          "facts": [
+            "Official0.3.0 go.mod pins Kubernetes API/apimachinery/client-go0.22.1 and controller-runtime0.10.0. These match both actual image manager binaries module dependencies.",
+            "Dependency equality is not proof of exact source commit or1.34 runtime certification."
+          ],
+          "limitations": "Official source evidence only, not current exact target e2e or proof that the embedded manager was built from this exact Git tag.",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/rocketmq-op-030-go-mod.txt",
+              "sha256": "40c203fed289c45890cdaf414b7c70c6024114b05d513a2288c0b86cf8a3c785",
+              "bytes": 293
+            },
+            "git_blob_sha": "2a3e0a8c9449137acd8d8a33f3d7b84ed490b6c0"
+          },
+          "use": "upgrade/v1.34.13/research.yaml"
+        },
+        {
+          "id": "CLIENTGO-0221-SHARED-API",
+          "evidence_type": "source-contract",
+          "observed_on": "2026-11-15",
+          "url": "https://api.github.com/repos/kubernetes/client-go/contents/README.md?ref=v0.22.1",
+          "facts": [
+            "Official README explains old clients work with many Kubernetes versions through shared APIs. Its printed matrix does not cover Kubernetes1.34.",
+            "The exact consumed API set, removed APIs and object/default behavior still require audit; no target tested/support certification is inferred."
+          ],
+          "limitations": "Official source evidence only, not current exact target e2e or proof that the embedded manager was built from this exact Git tag.",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/clientgo-0221-compatibility.txt",
+              "sha256": "878f9379ff05e5e5b352385a09b445403393ed1adcf17f8dd2dce4fb5c37f27f",
+              "bytes": 10148
+            },
+            "git_blob_sha": "2d8f01794df969f9bf3637d147203513d5f6779a"
+          },
+          "use": "upgrade/v1.34.13/research.yaml"
+        },
+        {
+          "id": "ROCKETMQ-030-API-AND-EXEC-BOUNDARY",
+          "evidence_type": "source-contract",
+          "observed_on": "2026-11-15",
+          "version": "apache/rocketmq-operator tag0.3.0; actual image exact source revision remains unproven",
+          "facts": [
+            "Inspected main controller registration, API GroupVersion and named reconcile/Create/Update/status/exec paths. Operator resources use rocketmq.apache.org/v1alpha1; workload controllers import apps/v1 and core/v1. This is a bounded API audit, not a full operator/source certification.",
+            "tool.K8sClient.Exec POSTs pods/exec through remotecommand.NewSPDYExecutor. Stable resource API availability alone does not prove this transport or actual broker coordination works on target; the focused assertion must exercise operator-owned behavior.",
+            "Controllers use full-object Update; original spec/resource identities and changed defaults need the minimal reconciliation check, not only Pod Ready.",
+            "main has configurable leader election; inspect actual Deployment args rather than assuming its flag default.",
+            "TopicTransfer is registered and has process-local undo/status plus admin operations that stop writes and delete source topics/groups. Project template creates Broker, NameService and Console, not TopicTransfer. Source admission must inventory and refuse unreviewed existing TopicTransfer operations before operator/node restart; do not introduce full topic-transfer regression into this platform-only change."
+          ],
+          "limitations": "Actual binary dependency and original-GA content continuity are separately established in rocketmq-binary-identity/legacy-artifact-continuity, but not an exact official source commit. These source observations do not provide Kubernetes1.34 tested/supported matrix, target live evidence or permission to widen accepted evidence boundaries.",
+          "obtained_contents": [
+            {
+              "url": "https://api.github.com/repos/apache/rocketmq-operator/contents/main.go?ref=0.3.0",
+              "representation": "GitHub contents API base64 decoded original file",
+              "git_blob_sha": "9e97f4ca4b4591f416fd43fd376ecb069815ef5c",
+              "local_copy": {
+                "path": "upgrade/official-snapshots/2026-11-14-first-hop/rocketmq-030-main.txt",
+                "sha256": "729660bf7b101bdb4d2eb199a076443ea5a176e7004c00671753184cc86cf5c9",
+                "bytes": 4318
+              }
+            },
+            {
+              "url": "https://api.github.com/repos/apache/rocketmq-operator/contents/pkg/tool/k8s.go?ref=0.3.0",
+              "representation": "GitHub contents API base64 decoded original file",
+              "git_blob_sha": "b95256a73eb356b5921211392e9649ad14bd6aef",
+              "local_copy": {
+                "path": "upgrade/official-snapshots/2026-11-14-first-hop/rocketmq-030-pkg-tool-k8s.txt",
+                "sha256": "7ad0540312cfb159168584413c0fa931701477dc6fe4475fad074a31a3076785",
+                "bytes": 3646
+              }
+            },
+            {
+              "url": "https://api.github.com/repos/apache/rocketmq-operator/contents/pkg/controller/broker/broker_controller.go?ref=0.3.0",
+              "representation": "GitHub contents API base64 decoded original file",
+              "git_blob_sha": "fb3e76d5c8a83c701271a1cea64b429c2de35872",
+              "local_copy": {
+                "path": "upgrade/official-snapshots/2026-11-14-first-hop/rocketmq-030-pkg-controller-broker-broker_controller.txt",
+                "sha256": "467e6af4922e0a015ce32e40b2b0141e8695441eba91b5b88bd85009e2b75fde",
+                "bytes": 23852
+              }
+            },
+            {
+              "url": "https://api.github.com/repos/apache/rocketmq-operator/contents/pkg/controller/console/console_controller.go?ref=0.3.0",
+              "representation": "GitHub contents API base64 decoded original file",
+              "git_blob_sha": "c5f323d8f9b4b83c3767c384ff664e04159a1a77",
+              "local_copy": {
+                "path": "upgrade/official-snapshots/2026-11-14-first-hop/rocketmq-030-pkg-controller-console-console_controller.txt",
+                "sha256": "880a0b71e1aaf5ba841ba154ae99ba89e5c6b4ebbf8e3ccc5c93594fdef64f05",
+                "bytes": 8818
+              }
+            },
+            {
+              "url": "https://api.github.com/repos/apache/rocketmq-operator/contents/pkg/controller/nameservice/nameservice_controller.go?ref=0.3.0",
+              "representation": "GitHub contents API base64 decoded original file",
+              "git_blob_sha": "ece34de1c4b1bc2b233d7c9eda054ecce779de7f",
+              "local_copy": {
+                "path": "upgrade/official-snapshots/2026-11-14-first-hop/rocketmq-030-pkg-controller-nameservice-nameservice_controller.txt",
+                "sha256": "7122d1fab4db107e6be1a34c6a7b98b381bd86bfa8bccf169d5e6ff6a6fe6436",
+                "bytes": 15486
+              }
+            },
+            {
+              "url": "https://api.github.com/repos/apache/rocketmq-operator/contents/pkg/controller/topictransfer/topictransfer_controller.go?ref=0.3.0",
+              "representation": "GitHub contents API base64 decoded original file",
+              "git_blob_sha": "5f212a47a1157d798a4e083628b60bf36925689b",
+              "local_copy": {
+                "path": "upgrade/official-snapshots/2026-11-14-first-hop/rocketmq-030-pkg-controller-topictransfer-topictransfer_controller.txt",
+                "sha256": "923396b4c51cc21f98990fe24fbd44167a65316a2ce4ac2763a9911a39667bbe",
+                "bytes": 20012
+              }
+            },
+            {
+              "url": "https://api.github.com/repos/apache/rocketmq-operator/contents/pkg/apis/rocketmq/v1alpha1/groupversion_info.go?ref=0.3.0",
+              "representation": "GitHub contents API base64 decoded original file",
+              "git_blob_sha": "cc189602b56b9768eb868a547c859f8a36f220ad",
+              "local_copy": {
+                "path": "upgrade/official-snapshots/2026-11-14-first-hop/rocketmq-030-pkg-apis-rocketmq-v1alpha1-groupversion_info.txt",
+                "sha256": "b51952658f041bb2c451d8e08c2221c9a7811fceb44213465f40bdaae90bff31",
+                "bytes": 1538
+              }
+            }
+          ],
+          "use": "upgrade/v1.34.13/research.yaml + release.yaml rocketmq candidate boundary"
+        }
+      ],
+      "evidence_strength_rule": "保留每条官方来源的实际类型与limitations；最低版本、稳定API、源码契约、逐版tested和官方过程不能互相冒签。",
+      "live_claim": "本记录不证明本跳现场成功；旧GA、当前源码和正式制品分别保留身份。"
+    },
+    {
+      "component_id": "registry",
+      "decision": "bridge",
+      "target_pins": {
+        "harbor": "v2.16.0",
+        "distribution": "v2.8.3",
+        "product_registry_tag": "2.8.3"
+      },
+      "rationale": "Harbor目标固定官方GA2.16.0 AMD64/ARM64完整包；独立Distribution2.8.3不变。213至216不直升：AMD经官方2146桥接；旧第三方ARM仅允许停写后逻辑迁移到干净AMD2146、升216，再以216逻辑恢复到干净ARM216。后者是官方数据库/缓存机制组成的项目集成路径，待实测，不冒称上游跨架构整链认证。外置DB/Redis/对象存储、internalTLS及未审计定制拒绝进入本地快照路径。",
+      "transition_edges": [
+        {
+          "source": "已接受源Harbor2.13.0及原实际制品；独立Distribution2.8.3保持",
+          "target": "官方Harbor2.16.0；原配置/TLS/加密密钥/用户角色/robot/镜像及任务状态保持",
+          "bridge": "官方Harbor2.14.6仅AMD64；不是ARM运行时",
+          "depends_on": [
+            "UPG-01",
+            "UPG-02",
+            "UPG-03",
+            "UPG-04",
+            "UPG-05"
+          ],
+          "official_source_ids": [
+            "HARBOR-2160-RELEASE",
+            "HARBOR-2160-UPGRADE",
+            "HARBOR-214-UPGRADE",
+            "HARBOR-2160-ROLLBACK",
+            "HARBOR-2146-BRIDGE-ASSET",
+            "HARBOR-2160-DB-MIGRATION",
+            "HARBOR-2160-PREPARE-HANDOFF",
+            "POSTGRES-DUMP-ARCHITECTURE-PORTABILITY",
+            "POSTGRES-PORTABLE-RESTORE-CONTRACT",
+            "HARBOR-2160-QUEUE-PERSISTENCE",
+            "DISTRIBUTION-283-REGISTRY-API"
+          ],
+          "product_entry": "config.yml + kubecli setup CLUSTER 11（新建）；kubecli upgrade CLUSTER --harbor OPERATION（维护）",
+          "preconditions": [
+            "取得独占租约，识别实际源架构/镜像/Compose/本地数据及CA，拒绝外来容器和未知持久化。",
+            "阻断外部写入及后台任务，生成完整停机数据/镜像/TLS恢复点；逻辑export不修改该恢复点。",
+            "官方包SHA256与CPU匹配，恢复与失败隔离容量足够，目标空白、原源保持停止；未切换前禁止客户访问目标。"
+          ],
+          "success_conditions": [
+            "官方目标版本和完整健康、组件CPU/镜像身份正确；原用户/角色/robot/project/OCI manifest+blob与队列账本读回。",
+            "原实例恢复验证恢复点前业务身份与数据；恢复点后的目标写入不承诺自动回源。"
+          ],
+          "irreversible_point": "PG15→18物理升级或core schema迁移后禁止镜像降级；跨主机仅在停写维护窗切换单一写入权威",
+          "recovery": "原机restore恢复完整原停机数据/镜像/TLS；导入失败先abort-import停止目标并隔离其数据，再在原机restore，绝不双活或复制物理PG目录跨CPU",
+          "cleanup": "只回收本run自有容器/集群/配置/租约；保留原恢复点、首失败及隔离树直到账本验证与保留期满足",
+          "edge_id": "harbor213-amd64-via2146-to2160",
+          "steps": [
+            "在原AMD64实例完成完整停机备份。",
+            "运行官方2146 prepare并完成core schema迁移，proxy/jobservice保持关闭。",
+            "运行官方216 prepare，完成PG15→18和reindex，再启动core及最终服务，验证业务账本。"
+          ]
+        },
+        {
+          "source": "已接受源Harbor2.13.0及原实际制品；独立Distribution2.8.3保持",
+          "target": "官方Harbor2.16.0；原配置/TLS/加密密钥/用户角色/robot/镜像及任务状态保持",
+          "bridge": "官方Harbor2.14.6仅AMD64；不是ARM运行时",
+          "depends_on": [
+            "UPG-01",
+            "UPG-02",
+            "UPG-03",
+            "UPG-04",
+            "UPG-05"
+          ],
+          "official_source_ids": [
+            "HARBOR-2160-RELEASE",
+            "HARBOR-2160-UPGRADE",
+            "HARBOR-214-UPGRADE",
+            "HARBOR-2160-ROLLBACK",
+            "HARBOR-2146-BRIDGE-ASSET",
+            "HARBOR-2160-DB-MIGRATION",
+            "HARBOR-2160-PREPARE-HANDOFF",
+            "POSTGRES-DUMP-ARCHITECTURE-PORTABILITY",
+            "POSTGRES-PORTABLE-RESTORE-CONTRACT",
+            "HARBOR-2160-QUEUE-PERSISTENCE",
+            "DISTRIBUTION-283-REGISTRY-API"
+          ],
+          "product_entry": "config.yml + kubecli setup CLUSTER 11（新建）；kubecli upgrade CLUSTER --harbor OPERATION（维护）",
+          "preconditions": [
+            "取得独占租约，识别实际源架构/镜像/Compose/本地数据及CA，拒绝外来容器和未知持久化。",
+            "阻断外部写入及后台任务，生成完整停机数据/镜像/TLS恢复点；逻辑export不修改该恢复点。",
+            "官方包SHA256与CPU匹配，恢复与失败隔离容量足够，目标空白、原源保持停止；未切换前禁止客户访问目标。"
+          ],
+          "success_conditions": [
+            "官方目标版本和完整健康、组件CPU/镜像身份正确；原用户/角色/robot/project/OCI manifest+blob与队列账本读回。",
+            "原实例恢复验证恢复点前业务身份与数据；恢复点后的目标写入不承诺自动回源。"
+          ],
+          "irreversible_point": "PG15→18物理升级或core schema迁移后禁止镜像降级；跨主机仅在停写维护窗切换单一写入权威",
+          "recovery": "原机restore恢复完整原停机数据/镜像/TLS；导入失败先abort-import停止目标并隔离其数据，再在原机restore，绝不双活或复制物理PG目录跨CPU",
+          "cleanup": "只回收本run自有容器/集群/配置/租约；保留原恢复点、首失败及隔离树直到账本验证与保留期满足",
+          "edge_id": "harbor213-arm64-logical-via-amd64-to2160",
+          "steps": [
+            "在原ARM213完整停机备份后仅启动原PG，拒绝额外DB/role/tablespace/global setting并导出registry custom archive，再停回原机。",
+            "将私有数据/TLS与逻辑dump传入干净AMD；排除物理database及旧installer。通过官方2146 PG初始化，以--create恢复库级元数据和对象，再完成2146→2160。",
+            "对AMD216同样停机备份/export，在干净ARM216逻辑恢复，核对真实CPU与完整业务/队列账本。每次切换前原源停止，失败隔离目标后回原机完整恢复。"
+          ]
+        }
+      ],
+      "official_applicability": [
+        {
+          "id": "HARBOR-2160-RELEASE",
+          "evidence_type": "release",
+          "observed_on": "2026-11-20",
+          "url": "https://api.github.com/repos/goharbor/harbor/releases/tags/v2.16.0",
+          "facts": [
+            "v2.16.0为正式GA，提供官方amd64/arm64离线包及SHA256和sigstore材料。",
+            "发布说明包含Full Multi-Architecture Enablement及Redis替换为Valkey。"
+          ],
+          "limitations": "GitHub latest指向较晚发布的2.15.5旧系列补丁；不能单凭/latest决定最高GA。",
+          "obtained_content": {
+            "representation": "official raw response",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-release-2160",
+              "sha256": "4eddd9596ff1a61a0aca91bf6601e847bdc3d4acf4a66d991294e19627bcbbdf",
+              "bytes": 60736
+            }
+          }
+        },
+        {
+          "id": "HARBOR-2160-UPGRADE",
+          "evidence_type": "supported",
+          "observed_on": "2026-11-20",
+          "url": "https://raw.githubusercontent.com/goharbor/website/main/docs/administration/upgrade/_index.md",
+          "facts": [
+            "官方2.16指南仅覆盖2.14及之后；必须事先备份，core启动执行数据库schema迁移。"
+          ],
+          "limitations": "现有2.13不能直接据此签原地直升；旧arm64桥接资料和制品尚未闭合。",
+          "obtained_content": {
+            "representation": "official raw response",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-upgrade",
+              "sha256": "3ce37d498c84c7348497da65df2ed2556b245c41685d8af6a206015a1b77c5d8",
+              "bytes": 3745
+            }
+          }
+        },
+        {
+          "id": "HARBOR-214-UPGRADE",
+          "evidence_type": "supported",
+          "observed_on": "2026-11-20",
+          "url": "https://raw.githubusercontent.com/goharbor/website/release-2.14.0/docs/administration/upgrade/_index.md",
+          "facts": [
+            "2.14指南覆盖2.11及以后，包含2.13；与2.16指南组成2.13→2.14→2.16候选路径。"
+          ],
+          "limitations": "2.14.6官方离线包没有独立arm64资产，桥接的架构边界必须单独处理。",
+          "obtained_content": {
+            "representation": "official raw response",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor214-upgrade",
+              "sha256": "52e6a1be8634be90b161eb6657ad10f485e66547448fcfa6b0c2c17d7dae021a",
+              "bytes": 3608
+            }
+          }
+        },
+        {
+          "id": "HARBOR-2160-ROLLBACK",
+          "evidence_type": "supported",
+          "observed_on": "2026-11-20",
+          "url": "https://raw.githubusercontent.com/goharbor/website/main/docs/administration/upgrade/roll-back-upgrade.md",
+          "facts": [
+            "官方支持从升级前备份恢复原状态，不支持数据库原地downgrade。"
+          ],
+          "limitations": "项目还需证明配置、密钥、数据库、registry数据和业务身份的一致恢复。",
+          "obtained_content": {
+            "representation": "official raw response",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-rollback",
+              "sha256": "dee224583fa851b787a7f1c447b7eb69c9a5b98d4555589a05f88f7354fe38a2",
+              "bytes": 1971
+            }
+          }
+        },
+        {
+          "id": "HARBOR-2146-BRIDGE-ASSET",
+          "evidence_type": "release",
+          "observed_on": "2026-11-20",
+          "version_or_commit": "v2.14.6",
+          "url": "https://api.github.com/repos/goharbor/harbor/releases/tags/v2.14.6",
+          "facts": [
+            "官方正式release仅提供AMD64离线包，没有ARM64离线包。",
+            "离线包783725093字节，SHA256 f3adaff30c4531c58f9d6ee8c5164f95f08582651c12b698b92be9e98df55cf6。"
+          ],
+          "limitations": "桥接载荷必须在AMD64主机执行；两架构封装镜像不改变载荷CPU要求。",
+          "obtained_content": {
+            "representation": "official GitHub release API",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor2146-release",
+              "sha256": "33a7e386abde55a87053ace630f41d68575636ccf41a055d8a623b32f627345a",
+              "bytes": 8595
+            }
+          }
+        },
+        {
+          "id": "HARBOR-2160-DB-MIGRATION",
+          "evidence_type": "source-contract",
+          "observed_on": "2026-11-20",
+          "version": "v2.13.0 / v2.14.6 / v2.16.0",
+          "url": "https://github.com/goharbor/harbor/tree/v2.16.0/make/photon/db",
+          "obtained_contents": [
+            {
+              "url": "https://api.github.com/repos/goharbor/harbor/contents/make/photon/db/Dockerfile?ref=v2.13.0",
+              "git_blob_sha": "011bc1d7d4128993c87e0ad738389a1b192de913",
+              "local_copy": {
+                "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.13.0-make_photon_db_Dockerfile",
+                "sha256": "e96dc4e863aa789b01a0ff909afe2b7a1bfbc131aa44e130a18ffaa0d997043c",
+                "bytes": 784
+              }
+            },
+            {
+              "url": "https://api.github.com/repos/goharbor/harbor/contents/make/photon/db/docker-entrypoint.sh?ref=v2.13.0",
+              "git_blob_sha": "e6a363fe493270c4ec807542885e8106a1af70ab",
+              "local_copy": {
+                "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.13.0-make_photon_db_docker-entrypoint.sh",
+                "sha256": "0d4c1588ed23194c4d1fbb36fa6d8fe695a7d57cba79b3c96282ecf3fa7fac1f",
+                "bytes": 3297
+              }
+            },
+            {
+              "url": "https://api.github.com/repos/goharbor/harbor/contents/make/photon/db/upgrade.sh?ref=v2.13.0",
+              "git_blob_sha": "70b54add1b9e056f94df4fd6a8b5e07e504c3f56",
+              "local_copy": {
+                "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.13.0-make_photon_db_upgrade.sh",
+                "sha256": "0205ddf03e7f29172147bbae92f50970cc8e5d9006b25255d45f94fb45817114",
+                "bytes": 1184
+              }
+            },
+            {
+              "url": "https://api.github.com/repos/goharbor/harbor/contents/make/photon/db/Dockerfile?ref=v2.14.6",
+              "git_blob_sha": "011bc1d7d4128993c87e0ad738389a1b192de913",
+              "local_copy": {
+                "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.14.6-make_photon_db_Dockerfile",
+                "sha256": "e96dc4e863aa789b01a0ff909afe2b7a1bfbc131aa44e130a18ffaa0d997043c",
+                "bytes": 784
+              }
+            },
+            {
+              "url": "https://api.github.com/repos/goharbor/harbor/contents/make/photon/db/docker-entrypoint.sh?ref=v2.14.6",
+              "git_blob_sha": "e6a363fe493270c4ec807542885e8106a1af70ab",
+              "local_copy": {
+                "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.14.6-make_photon_db_docker-entrypoint.sh",
+                "sha256": "0d4c1588ed23194c4d1fbb36fa6d8fe695a7d57cba79b3c96282ecf3fa7fac1f",
+                "bytes": 3297
+              }
+            },
+            {
+              "url": "https://api.github.com/repos/goharbor/harbor/contents/make/photon/db/upgrade.sh?ref=v2.14.6",
+              "git_blob_sha": "70b54add1b9e056f94df4fd6a8b5e07e504c3f56",
+              "local_copy": {
+                "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.14.6-make_photon_db_upgrade.sh",
+                "sha256": "0205ddf03e7f29172147bbae92f50970cc8e5d9006b25255d45f94fb45817114",
+                "bytes": 1184
+              }
+            },
+            {
+              "url": "https://api.github.com/repos/goharbor/harbor/contents/make/photon/db/Dockerfile?ref=v2.16.0",
+              "git_blob_sha": "4b8086e400bba3a23f3085ed38308a814e614146",
+              "local_copy": {
+                "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.16.0-make_photon_db_Dockerfile",
+                "sha256": "8a04bed59f9c799c783f5947225eda4486dfb115a3cd457beb97169d9c18312f",
+                "bytes": 784
+              }
+            },
+            {
+              "url": "https://api.github.com/repos/goharbor/harbor/contents/make/photon/db/docker-entrypoint.sh?ref=v2.16.0",
+              "git_blob_sha": "8a2ab4b09a112852dfde6aae8ebda09b086f9ae3",
+              "local_copy": {
+                "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.16.0-make_photon_db_docker-entrypoint.sh",
+                "sha256": "e339e36fd46e0ad246b6a902ec3e88291b9bc8347b3b85cd9ae3a5b6570a4acd",
+                "bytes": 4819
+              }
+            },
+            {
+              "url": "https://api.github.com/repos/goharbor/harbor/contents/make/photon/db/upgrade.sh?ref=v2.16.0",
+              "git_blob_sha": "8e27d73196bdeb0b194e3885dec555bbff9a0ea8",
+              "local_copy": {
+                "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.16.0-make_photon_db_upgrade.sh",
+                "sha256": "3028e8bdd43fdb50f03d34c4fafeaf129fd162c5c3aa45b85644b2f7357b463e",
+                "bytes": 3155
+              }
+            }
+          ],
+          "facts": [
+            "2.13.0与2.14.6的数据库入口为PostgreSQL14→15；2.16.0为15→18。",
+            "数据库major迁移在harbor-db启动入口执行，成功后会删除旧PG15目录；Harbor业务schema迁移由core启动执行。",
+            "2.16启动脚本读取旧pg_controldata checksum设置；旧库未启用时用--no-data-checksums初始化新库，避免PG18默认差异导致迁移拒绝。",
+            "2.16 upgrade.sh只刷新collation元数据，不重建索引；存在非ASCII数据或严格排序约束时，上游要求维护窗口内另做reindexdb。",
+            "跨架构不可从上述脚本推导物理目录可直接复制；须另遵守PostgreSQL逻辑备份可移植性并验证恢复。"
+          ],
+          "limitations": "源码确认机制与不可逆点，不代表本项目迁移/恢复已实测。旧ARM64第三方镜像的实际PG版本仍须只读核验。",
+          "use": "upgrade/v1.36.6/research.yaml"
+        },
+        {
+          "id": "HARBOR-2160-PREPARE-HANDOFF",
+          "evidence_type": "source-contract",
+          "observed_on": "2026-11-20",
+          "version": "v2.14.6 / v2.16.0",
+          "facts": [
+            "官方prepare shell用grep/awk解析data_volume，不能把YAML字符串引号当成路径值；项目216模板保留安全plain scalar并在任何现场操作前拒绝不支持路径。",
+            "官方migrate用BFS从配置_version经过down_revisions转换；配置格式版本与运行版本不同，源213模板的_version2.12不是运行镜像版本。",
+            "官方core镜像healthcheck访问本机ping；项目分段迁移先等core健康，不在214桥接阶段开放proxy/jobservice；全组件健康和原业务身份仍需真实集成验收。"
+          ],
+          "limitations": "固定源码/官方发布包解析及本地合同，不是项目现场迁移或旧ARM第三方实例认证。",
+          "obtained_contents": [
+            {
+              "url": "https://api.github.com/repos/goharbor/harbor/contents/make/photon/prepare/utils/migration.py?ref=v2.16.0",
+              "local_copy": {
+                "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.16.0-make_photon_prepare_utils_migration.py",
+                "sha256": "4cd7dddafa62e613d9165e17e942a50a724c66dd30117880e17417ce95484fcc",
+                "bytes": 2710
+              }
+            },
+            {
+              "url": "https://api.github.com/repos/goharbor/harbor/contents/make/photon/prepare/utils/migration.py?ref=v2.14.6",
+              "local_copy": {
+                "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.14.6-make_photon_prepare_utils_migration.py",
+                "sha256": "4cd7dddafa62e613d9165e17e942a50a724c66dd30117880e17417ce95484fcc",
+                "bytes": 2710
+              }
+            },
+            {
+              "url": "https://github.com/goharbor/harbor/releases/download/v2.16.0/harbor-offline-installer-v2.16.0-amd64.tgz",
+              "local_copy": {
+                "path": "upgrade/tests/fixtures/harbor216-prepare.sh.txt",
+                "sha256": "8730100efcea0ca3ee5a210a7dd9947633b99ec1122671217ea26093eda91ae2",
+                "bytes": 2211
+              }
+            },
+            {
+              "url": "https://api.github.com/repos/goharbor/harbor/contents/make/photon/core/Dockerfile?ref=v2.16.0",
+              "local_copy": {
+                "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.16.0-make_photon_core_Dockerfile",
+                "sha256": "a5d4c49b2d7e5bc38d040713e217877b236d630dca2aba185edbf8a95c89bf12",
+                "bytes": 837
+              }
+            }
+          ]
+        },
+        {
+          "id": "POSTGRES-DUMP-ARCHITECTURE-PORTABILITY",
+          "evidence_type": "official-procedure",
+          "observed_on": "2026-11-20",
+          "version": "PostgreSQL SQL dump documentation",
+          "url": "https://www.postgresql.org/docs/14/backup-dump.html",
+          "obtained_content": {
+            "representation": "Official documentation HTML",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-20-next-hop/postgres-portability",
+              "sha256": "783ed16e80d6a13198ed57826beac7936f4f41baa91ec23b80c91764e798d2f6",
+              "bytes": 29633
+            }
+          },
+          "facts": [
+            "SQL dump可用于数据库转移到不同机器架构；文件级备份不能据此认为同样可移植。",
+            "pg_dump/恢复目标版本、数据库角色、权限、编码与依赖仍需另行核验；本条不承诺任意Harbor业务schema跨版本直接恢复。"
+          ],
+          "limitations": "跨架构备份方法依据，不是Harbor2.13→2.16直接支持承诺或项目恢复PASS。",
+          "use": "upgrade/v1.36.6/research.yaml"
+        },
+        {
+          "id": "POSTGRES-PORTABLE-RESTORE-CONTRACT",
+          "evidence_type": "official-procedure",
+          "observed_on": "2026-11-21",
+          "version": "PostgreSQL 15 / 18",
+          "url": "https://www.postgresql.org/docs/15/app-pgrestore.html",
+          "obtained_contents": [
+            {
+              "url": "https://www.postgresql.org/docs/15/app-pgdump.html",
+              "local_copy": {
+                "path": "upgrade/official-snapshots/2026-11-20-next-hop/postgres15-pg-dump",
+                "sha256": "5a5540c7214433ae1d123d20373c24c2c8ce826226e90dff6903a3a1b19ad456",
+                "bytes": 76345
+              }
+            },
+            {
+              "url": "https://www.postgresql.org/docs/15/app-pgrestore.html",
+              "local_copy": {
+                "path": "upgrade/official-snapshots/2026-11-20-next-hop/postgres15-pg-restore",
+                "sha256": "3a5d8bcd339fefc3c2ad3734486506a231b0111adf20c3869334e2c64be97f80",
+                "bytes": 53245
+              }
+            },
+            {
+              "url": "https://www.postgresql.org/docs/18/app-pgrestore.html",
+              "local_copy": {
+                "path": "upgrade/official-snapshots/2026-11-20-next-hop/postgres18-pg-restore",
+                "sha256": "34ec8878f44c8de1c811165e525000223f99d0271c0892493c8f53c0062636a7",
+                "bytes": 59521
+              }
+            }
+          ],
+          "facts": [
+            "custom archive可跨架构；pg_dump只导出单数据库，不包含role/tablespace等集群globals。",
+            "pg_restore --create --clean -d postgres按archive中原库名重建目标库，恢复库级comment、ACL、ALTER DATABASE及ALTER ROLE IN DATABASE设置；不使用--no-acl/--no-owner。",
+            "CREATE DATABASE不能放在单一事务；项目在未开放core/jobservice/proxy的空目标上使用--exit-on-error，失败停止目标并保留原源完整恢复点，不重试部分目标。",
+            "单库之外的定制数据库、SQL角色、自定义tablespace、全局role setting/membership须单独协调；本路径预检拒绝，不能静默丢失。"
+          ],
+          "limitations": "仅核对dump/restore依赖接口，不声称完整PostgreSQL手册研究或Harbor跨架构实测。",
+          "use": "upgrade/product/library/harbor_migration.py"
+        },
+        {
+          "id": "HARBOR-2160-QUEUE-PERSISTENCE",
+          "evidence_type": "source-contract-and-official-procedure",
+          "observed_on": "2026-11-21",
+          "version": "Harbor v2.13.0 / v2.14.6 / v2.16.0; Valkey migration documentation",
+          "obtained_contents": [
+            {
+              "url": "https://api.github.com/repos/goharbor/harbor/contents/make/photon/redis/Dockerfile?ref=v2.13.0",
+              "git_blob_sha": "a2a782f7731c185c1283bd47424441912aa016fd",
+              "local_copy": {
+                "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.13.0-make_photon_redis_Dockerfile",
+                "sha256": "348bfbf005131f158b5b8717494ac4736287d3e8fac24c19c251c5a7837fc1e0",
+                "bytes": 460
+              }
+            },
+            {
+              "url": "https://api.github.com/repos/goharbor/harbor/contents/make/photon/redis/redis.conf?ref=v2.13.0",
+              "git_blob_sha": "e36ef8c8c6f6877872e943b8f05fe26c9c9caa52",
+              "local_copy": {
+                "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.13.0-make_photon_redis_redis.conf",
+                "sha256": "86c5aeee67355b2cc04181e3d5a0ff1d9722412b38a4d121b9f2d2363717f4d4",
+                "bytes": 57777
+              }
+            },
+            {
+              "url": "https://api.github.com/repos/goharbor/harbor/contents/make/photon/redis/Dockerfile?ref=v2.14.6",
+              "git_blob_sha": "a2a782f7731c185c1283bd47424441912aa016fd",
+              "local_copy": {
+                "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.14.6-make_photon_redis_Dockerfile",
+                "sha256": "348bfbf005131f158b5b8717494ac4736287d3e8fac24c19c251c5a7837fc1e0",
+                "bytes": 460
+              }
+            },
+            {
+              "url": "https://api.github.com/repos/goharbor/harbor/contents/make/photon/redis/redis.conf?ref=v2.14.6",
+              "git_blob_sha": "e36ef8c8c6f6877872e943b8f05fe26c9c9caa52",
+              "local_copy": {
+                "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.14.6-make_photon_redis_redis.conf",
+                "sha256": "86c5aeee67355b2cc04181e3d5a0ff1d9722412b38a4d121b9f2d2363717f4d4",
+                "bytes": 57777
+              }
+            },
+            {
+              "url": "https://api.github.com/repos/goharbor/harbor/contents/make/photon/valkey/Dockerfile?ref=v2.16.0",
+              "git_blob_sha": "878e6bdd0cb445dd65a2c0e641e9bbb3c7ee2a83",
+              "local_copy": {
+                "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.16.0-make_photon_valkey_Dockerfile",
+                "sha256": "8e350ecaf861ee2f2c64172478df7e713366287a80af610676e8e0de5c263f27",
+                "bytes": 467
+              }
+            },
+            {
+              "url": "https://raw.githubusercontent.com/goharbor/harbor/v2.16.0/make/photon/valkey/redis.conf",
+              "local_copy": {
+                "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.16.0-make_photon_valkey_redis.conf",
+                "sha256": "86c5aeee67355b2cc04181e3d5a0ff1d9722412b38a4d121b9f2d2363717f4d4",
+                "bytes": 57777
+              }
+            },
+            {
+              "url": "https://raw.githubusercontent.com/goharbor/harbor/v2.16.0/make/photon/prepare/utils/redis.py",
+              "local_copy": {
+                "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.16.0-make_photon_prepare_utils_redis.py",
+                "sha256": "fe78136a49e725523b09b05f301c698b7b4e0554a1f5139912b25415c819d3e5",
+                "bytes": 238
+              }
+            },
+            {
+              "url": "https://api.github.com/repos/goharbor/harbor/contents/make/photon/redis/Dockerfile.base?ref=v2.13.0",
+              "git_blob_sha": "331306bd8ee84c8add3a44325894f6f256d4ff82",
+              "local_copy": {
+                "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.13.0-make_photon_redis_Dockerfile.base",
+                "sha256": "17a4b763f02fcdf5a70b168bf1f6f32a1815313f5faca6e499c864d3a037a6fd",
+                "bytes": 234
+              }
+            },
+            {
+              "url": "https://api.github.com/repos/goharbor/harbor/contents/make/photon/valkey/Dockerfile.base?ref=v2.16.0",
+              "git_blob_sha": "9d8bdda8ba8cfbf19fd8bd901d626850ac056701",
+              "local_copy": {
+                "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.16.0-make_photon_valkey_Dockerfile.base",
+                "sha256": "b738badf07ad566fd39df66621890f64fbf9d2576a420482057d5c279fcdb1d5",
+                "bytes": 2317
+              }
+            },
+            {
+              "url": "https://api.github.com/repos/goharbor/harbor/contents/make/photon/valkey/docker-healthcheck?ref=v2.16.0",
+              "git_blob_sha": "6352150fdb8348862b2404df8c2ed30fc2a800d6",
+              "local_copy": {
+                "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.16.0-make_photon_valkey_docker-healthcheck",
+                "sha256": "922f8d10fd6c30a5fa7267e14ce6b9abffe96ee9ad81092df519e9c8ec419c13",
+                "bytes": 124
+              }
+            },
+            {
+              "url": "https://valkey.io/topics/migration/",
+              "local_copy": {
+                "path": "upgrade/official-snapshots/2026-11-20-next-hop/valkey-migration",
+                "sha256": "536e174ecb79891412a2e916cd9318b6896267a1020b2bdc5e991800bd0d96b9",
+                "bytes": 89827
+              }
+            },
+            {
+              "url": "https://valkey.io/topics/persistence/",
+              "local_copy": {
+                "path": "upgrade/official-snapshots/2026-11-20-next-hop/valkey-persistence",
+                "sha256": "257058aba6cd71776efe241f414eac7c5dca0a7d91608a544593c85d0d38c2ce",
+                "bytes": 83207
+              }
+            }
+          ],
+          "facts": [
+            "2.13与2.14使用redis-photon，2.16使用valkey-photon；各固定redis.conf正文摘要一致，dir=/var/lib/redis、dbfilename=dump.rdb、appendonly=no。",
+            "原redis和目标valkey官方base均使用UID/GID 999，持久卷挂载位置不变；ARM目标自源码构建Valkey，AMD由Photon软件包提供，不能由同名Harbor tag推断引擎二进制相同。",
+            "Valkey官方明确兼容Redis OSS7.2及更早的协议、配置和RDB/AOF；Redis CE7.4及之后数据文件不在承诺内。",
+            "官方物理迁移要求先断开活跃连接、生成新快照并复制RDB；AOF启用时会优先读取AOF，不能只复制RDB而声称数据完整。",
+            "项目按真实INFO及CONFIG检查引擎与持久路径，先停内部写入服务再SAVE，确认落盘后全停备份；拒绝公开内部队列端口及未审计持久模式。"
+          ],
+          "limitations": "官方Redis→Valkey方法及固定Harbor配置/身份依据；不构成旧第三方ARM认证或跨CPU完整迁移PASS，仍须项目队列/业务和恢复实测。",
+          "use": "upgrade/product/library/harbor_migration.py"
+        },
+        {
+          "id": "DISTRIBUTION-283-REGISTRY-API",
+          "url": "https://raw.githubusercontent.com/distribution/distribution/v2.8.3/docs/spec/api.md",
+          "observed_on": "2026-11-16",
+          "version": "v2.8.3",
+          "facts": [
+            "Registry V2通过POST创建upload、带digest的PUT校验并提交blob，再PUT manifest；manifest本身按响应原始字节SHA256核验。",
+            "实验室供应仅复制缺失的已验收AMD64制品，不覆盖已有tag；已有不同manifest序列化须核rootfs diff_ids和有效容器配置，不能只凭tag或忽略运行参数变化。"
+          ],
+          "obtained_content": {
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-16-next-hop/distribution283-api.md.txt",
+              "sha256": "87415dd72912a503f6c3a169497418857dd1ae50522f3f2c2fb0cc9126ef05e6",
+              "bytes": 146712
+            }
+          }
+        }
+      ],
+      "evidence_strength_rule": "保留每条官方来源的实际类型与limitations；最低版本、稳定API、源码契约、逐版tested和官方过程不能互相冒签。",
+      "live_claim": "本记录不证明本跳现场成功；旧GA、当前源码和正式制品分别保留身份。"
+    },
+    {
+      "component_id": "control-client",
+      "decision": "keep",
+      "target_pins": {
+        "kubernetes-python": "35.0.0"
+      },
+      "rationale": "保留PythonSDK35.0.0；35与1.35同API集合，1.36只能按官方共享稳定API规则适用。仅使用CoreV1/RBAC及配置加载，目标补这些真实调用，不升级整个Python依赖栈。",
+      "transition_edges": [
+        {
+          "edge_id": "control-client-k8s13510-to1366",
+          "source": "已接受v1.35.10维护基线及实际现场身份",
+          "target": "Kubernetes v1.36.6及本记录target_pins",
+          "bridge": null,
+          "depends_on": [
+            "UPG-01",
+            "UPG-02",
+            "UPG-03",
+            "UPG-04",
+            "UPG-05"
+          ],
+          "official_source_ids": [
+            "PYTHONCLIENT-350-COMPATIBILITY"
+          ],
+          "product_entry": "config.yml + kubecli upgrade；目标新建为kubecli setup；未变工具仍属独立tools入口",
+          "preconditions": [
+            "精确源/目标组合、制品及现有数据身份已核验，未知组合先停止对应路径",
+            "最小合同通过；现场持有自有租约、恢复点及业务账本"
+          ],
+          "steps": [
+            "核对实际源固定版本、配置、对象和制品身份；复用对应维护基线及原GA证据，不重演旧组件迁移。",
+            "保持本组件版本、配置和数据格式；核对1.36官方依据的实际力度与稳定API，按所属矩阵补目标平台接口缺口。"
+          ],
+          "success_conditions": [
+            "源对象/数据及自有补丁保持，目标相关API与业务断言通过",
+            "上游测试、支持下限、稳定接口、历史GA与本跳实测分别标注，不互相代签"
+          ],
+          "irreversible_point": "Kubernetes持久化或组件数据写入后不盲目降级；未改引擎不产生新的引擎迁移承诺",
+          "recovery": "保留首失败和journal，验证边界后限定续跑；必要时恢复完整原恢复点",
+          "cleanup": "只回收本run自有对象/故障/进程/租约，不接管其它集群或删除原数据"
+        }
+      ],
+      "official_applicability": [
+        {
+          "id": "PYTHONCLIENT-350-COMPATIBILITY",
+          "evidence_type": "api-contract",
+          "observed_on": "2026-11-14",
+          "version": "v35.0.0",
+          "url": "https://api.github.com/repos/kubernetes-client/python/contents/README.md?ref=v35.0.0",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "sha256": "ad901d765b7eca7eb80239e4a5c49439e7ac3c7fc09f59d07208154711a8e67d",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/pythonclient-350-readme.txt",
+              "sha256": "ad901d765b7eca7eb80239e4a5c49439e7ac3c7fc09f59d07208154711a8e67d",
+              "bytes": 16869
+            },
+            "git_blob_sha": "db330e02b92675a36d9b03d6d34b220fb0a3b0ad"
+          },
+          "facts": [
+            "官方35.y.z表对K8s1.34及以下标为+-；35与1.35才是同功能集合，不伪称1.34完整逐版测试。",
+            "官方解释共享API能够工作，alpha接口可能在一个release变化或消失；主项目仅使用CoreV1/RbacAuthorizationV1及配置加载，不新增35专属API。",
+            "保留固定PythonSDK35.0.0，平台目标补现有节点/RBAC调用集成；不为K8sminor更新整个Python/Ansible/PyInstaller依赖栈。"
+          ],
+          "limitations": "本专题结论不代表四类目录全部已读、项目目标实测或GA。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        }
+      ],
+      "evidence_strength_rule": "保留每条官方来源的实际类型与limitations；最低版本、稳定API、源码契约、逐版tested和官方过程不能互相冒签。",
+      "live_claim": "本记录不证明本跳现场成功；旧GA、当前源码和正式制品分别保留身份。"
+    },
+    {
+      "component_id": "test-infrastructure",
+      "decision": "keep",
+      "target_pins": {
+        "ansible_core": "2.18.6",
+        "ansible_core_py314": "2.20.9",
+        "pyinstaller": "v6.16.0",
+        "runner_contract": "upgrade/validate.py:v1",
+        "lab_authority": "AGENTS.md-fixed-whitelist"
+      },
+      "rationale": "保留固定runner/Ansible/PyInstaller配套；本跳只适配真实136前后置、制品身份、租约和清理，当前合同先行，完成后才开现场；不复用135最终PASS签本跳。",
+      "transition_edges": [
+        {
+          "edge_id": "test-infrastructure-k8s13510-to1366",
+          "source": "已接受v1.35.10维护基线及实际现场身份",
+          "target": "Kubernetes v1.36.6及本记录target_pins",
+          "bridge": null,
+          "depends_on": [
+            "UPG-01",
+            "UPG-02",
+            "UPG-03",
+            "UPG-04",
+            "UPG-05"
+          ],
+          "official_source_ids": [
+            "ACTIONS-PRODUCT-RELEASE-SCOPE",
+            "PYINSTALLER-616-UPGRADE-DATA",
+            "ANSIBLE-UPGRADE-INVENTORY-CONTRACT",
+            "K8S-API-HEALTH-CONTRACT"
+          ],
+          "product_entry": "config.yml + kubecli upgrade；目标新建为kubecli setup；未变工具仍属独立tools入口",
+          "preconditions": [
+            "精确源/目标组合、制品及现有数据身份已核验，未知组合先停止对应路径",
+            "最小合同通过；现场持有自有租约、恢复点及业务账本"
+          ],
+          "steps": [
+            "核对实际源固定版本、配置、对象和制品身份；复用对应维护基线及原GA证据，不重演旧组件迁移。",
+            "保持本组件版本、配置和数据格式；核对1.36官方依据的实际力度与稳定API，按所属矩阵补目标平台接口缺口。"
+          ],
+          "success_conditions": [
+            "源对象/数据及自有补丁保持，目标相关API与业务断言通过",
+            "上游测试、支持下限、稳定接口、历史GA与本跳实测分别标注，不互相代签"
+          ],
+          "irreversible_point": "Kubernetes持久化或组件数据写入后不盲目降级；未改引擎不产生新的引擎迁移承诺",
+          "recovery": "保留首失败和journal，验证边界后限定续跑；必要时恢复完整原恢复点",
+          "cleanup": "只回收本run自有对象/故障/进程/租约，不接管其它集群或删除原数据"
+        }
+      ],
+      "official_applicability": [
+        {
+          "id": "ACTIONS-PRODUCT-RELEASE-SCOPE",
+          "evidence_type": "api-contract",
+          "observed_on": "2026-11-15",
+          "version": "GitHub Actions rolling docs observed2026-11-15",
+          "url": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax",
+          "obtained_content": {
+            "representation": "official documentation HTML",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/actions-workflow-syntax-upgrade.txt",
+              "bytes": 2106278,
+              "sha256": "a90db6cfc3a8683137f7c3efe12b3d341d5d323087d4de3c812cea8c47fdcfe7"
+            }
+          },
+          "facts": [
+            "官方steps.run通过runner shell执行原始命令；显式CLI参数决定脚本的真实构建范围，workflow的step名称不能约束build.py默认行为。",
+            "官方job timeout-minutes默认360分钟；当前Longhorn任务未配置覆盖，超时前仍需基于可见进度诊断，不能从API仅显示Publish shard推测具体编译子步骤。"
+          ],
+          "limitations": "只证明workflow shell/超时契约，不签署实际发布成功。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        },
+        {
+          "id": "PYINSTALLER-616-UPGRADE-DATA",
+          "evidence_type": "api-contract",
+          "observed_on": "2026-11-15",
+          "version": "v6.16.0",
+          "url": "https://api.github.com/repos/pyinstaller/pyinstaller/contents/doc/spec-files.rst?ref=v6.16.0",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/pyinstaller616-specfiles-source.txt",
+              "sha256": "d840474d554a866817c0b072614d5175e7a7bb6e27d15244092cf74c0bf4ebe0",
+              "bytes": 32138
+            }
+          },
+          "facts": [
+            "Fixed6.16 spec files manual defines datas source/destination tuple and glob expansion; YAML data needs explicit entries while imported Python modules are collected by Analysis.",
+            "kubecli-onefile.spec adds only upgrade/product/*.yml; local contract follows actual import_tasks/include_tasks closure and excludes upgrade evidence/snapshots and independent tools. No executable build/release was performed."
+          ],
+          "limitations": "Official fixed data/API contract; local scope only, not a build, live acceptance or GA",
+          "use": "upgrade/v1.34.13/release.yaml"
+        },
+        {
+          "id": "ANSIBLE-UPGRADE-INVENTORY-CONTRACT",
+          "evidence_type": "source-contract",
+          "observed_on": "2026-11-15",
+          "version": "ansible-core2.16.14 and2.20.9; special variable docs at recorded git blob",
+          "facts": [
+            "INI inventory uses groups/children and merged host variables; inline values, group vars and config extra-vars must be resolved by Ansible, not another ad hoc INI parser.",
+            "Magic groups lists full inventory group membership, while play host sets can be limited. Compare observed host events with full group union before accepting a source.",
+            "Both pinned debug action implementations set _requires_connection=False. The observation playbook uses only assert/debug with gather_facts:false.",
+            "ansible_host is the transport address, distinct from inventory_hostname. Existing product units use inventory_hostname as service address; aliases require explicit review."
+          ],
+          "limitations": "Controller inventory/template observation only; no Kubernetes compatibility certification, host health, lease, recovery point or mutation admission. Rolling documentation is bound by the exact recorded blob.",
+          "obtained_contents": [
+            {
+              "url": "https://api.github.com/repos/ansible/ansible/contents/lib/ansible/plugins/inventory/ini.py?ref=v2.16.14",
+              "representation": "GitHub contents API base64 decoded original file",
+              "git_blob_sha": "1ff4bf167d5d269f382aa97cd9bbf0443aab428b",
+              "local_copy": {
+                "path": "upgrade/official-snapshots/2026-11-14-first-hop/ansible216-ini.txt",
+                "sha256": "06c5ab4b493a1cddf0d268bcd923550142796935fd418972f6c1f28122f4ca31",
+                "bytes": 17606
+              }
+            },
+            {
+              "url": "https://api.github.com/repos/ansible/ansible/contents/lib/ansible/plugins/action/debug.py?ref=v2.16.14",
+              "representation": "GitHub contents API base64 decoded original file",
+              "git_blob_sha": "9e23c5fa56056b9af48fc2eebd037359fc7366f2",
+              "local_copy": {
+                "path": "upgrade/official-snapshots/2026-11-14-first-hop/ansible216-debug.txt",
+                "sha256": "c0f929c7ba051845035cfc52468a496c4477c5d02b7ece487e3bebe4a38abc82",
+                "bytes": 3525
+              }
+            },
+            {
+              "url": "https://api.github.com/repos/ansible/ansible/contents/lib/ansible/plugins/action/debug.py?ref=v2.20.9",
+              "representation": "GitHub contents API base64 decoded original file",
+              "git_blob_sha": "55016e5b0b5952b27c50b14737ac4d3220d5da1a",
+              "local_copy": {
+                "path": "upgrade/official-snapshots/2026-11-14-first-hop/ansible220-debug.txt",
+                "sha256": "28f5ad1843db735d7dfded6b350ced081fb0cde94939b02fd7aa893473d435be",
+                "bytes": 3604
+              }
+            },
+            {
+              "url": "https://api.github.com/repos/ansible/ansible-documentation/contents/docs/docsite/rst/reference_appendices/special_variables.rst?ref=devel",
+              "representation": "GitHub contents API base64 decoded original file",
+              "git_blob_sha": "55f24949fad1d826515ce30fe14c781149fc72b9",
+              "local_copy": {
+                "path": "upgrade/official-snapshots/2026-11-14-first-hop/ansible-special-variables.txt",
+                "sha256": "eae2222cc554f34e6dc6b9ec9c253b82a58bd131ad8006e09af07f067e54a21a",
+                "bytes": 8518
+              }
+            }
+          ],
+          "use": "upgrade/product/inventory.py + upgrade/product/inventory.yml"
+        },
+        {
+          "id": "K8S-API-HEALTH-CONTRACT",
+          "evidence_type": "source-contract",
+          "observed_on": "2026-11-15",
+          "version": "rolling documentation; observed 2026-11-14",
+          "url": "https://kubernetes.io/docs/reference/using-api/health-checks/",
+          "obtained_content": {
+            "representation": "official documentation HTML",
+            "sha256": "9b0c829aa0f7d9ea24507fb258e739c21bbc15de38dff813e0260a8aa3acd34b",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/k8s-health-check-contract.txt",
+              "sha256": "9b0c829aa0f7d9ea24507fb258e739c21bbc15de38dff813e0260a8aa3acd34b",
+              "bytes": 506665
+            }
+          },
+          "facts": [
+            "官方要求机器依赖HTTP健康状态，而非verbose正文；readyz包含etcd等就绪检查，不使用exclude绕开。",
+            "只读预检依赖kubectl get --raw=/readyz的成功退出，不将返回正文ok作为固定接口。"
+          ],
+          "limitations": "定点消化此接口，不代表四类资料目录全部完成或现场/父项PASS。",
+          "use": "upgrade/product/kubernetes_preflight.py"
+        }
+      ],
+      "evidence_strength_rule": "保留每条官方来源的实际类型与limitations；最低版本、稳定API、源码契约、逐版tested和官方过程不能互相冒签。",
+      "live_claim": "本记录不证明本跳现场成功；旧GA、当前源码和正式制品分别保留身份。"
+    },
+    {
+      "component_id": "tools",
+      "decision": "keep",
+      "target_pins": {
+        "scripts_sha256": {
+          "CalicoPolicyCli": "8b172fcdd8a13110e24327d7ed720fc812191aae67607dc3132ec74da5c9f137",
+          "KubeBackupCli": "ce1a03afaaac8e6ccd7b61256265fade8e51780214b8f1ae9b7f14fa6b281d00",
+          "KubePublishCli": "df122fe8d2d0a02258085bfe9818c923cd6ddb4ce65b68e6a34417452af8187b"
+        },
+        "kubernetes_python": "35.0.0",
+        "nerdctl": "2.4.2",
+        "docker": "28.5.2",
+        "calicoctl_target": "v3.32.4"
+      },
+      "rationale": "独立tools脚本及依赖未变；KubernetesSDK共享稳定API、Calico3.32.4 API和nerdctl2.4.2维护证据分别复用，不打包或运行全tools回归，核心升级PASS也不代签工具发布。",
+      "transition_edges": [
+        {
+          "edge_id": "tools-k8s13510-to1366",
+          "source": "已接受v1.35.10维护基线及实际现场身份",
+          "target": "Kubernetes v1.36.6及本记录target_pins",
+          "bridge": null,
+          "depends_on": [
+            "UPG-01",
+            "UPG-02",
+            "UPG-03",
+            "UPG-04",
+            "UPG-05"
+          ],
+          "official_source_ids": [
+            "PYTHONCLIENT-350-COMPATIBILITY",
+            "CALICO3324-HOSTENDPOINT-API",
+            "CALICO3324-GLOBALNETWORKPOLICY-API"
+          ],
+          "product_entry": "config.yml + kubecli upgrade；目标新建为kubecli setup；未变工具仍属独立tools入口",
+          "preconditions": [
+            "精确源/目标组合、制品及现有数据身份已核验，未知组合先停止对应路径",
+            "最小合同通过；现场持有自有租约、恢复点及业务账本"
+          ],
+          "steps": [
+            "核对实际源固定版本、配置、对象和制品身份；复用对应维护基线及原GA证据，不重演旧组件迁移。",
+            "保持本组件版本、配置和数据格式；核对1.36官方依据的实际力度与稳定API，按所属矩阵补目标平台接口缺口。"
+          ],
+          "success_conditions": [
+            "源对象/数据及自有补丁保持，目标相关API与业务断言通过",
+            "上游测试、支持下限、稳定接口、历史GA与本跳实测分别标注，不互相代签"
+          ],
+          "irreversible_point": "Kubernetes持久化或组件数据写入后不盲目降级；未改引擎不产生新的引擎迁移承诺",
+          "recovery": "保留首失败和journal，验证边界后限定续跑；必要时恢复完整原恢复点",
+          "cleanup": "只回收本run自有对象/故障/进程/租约，不接管其它集群或删除原数据"
+        }
+      ],
+      "official_applicability": [
+        {
+          "id": "PYTHONCLIENT-350-COMPATIBILITY",
+          "evidence_type": "api-contract",
+          "observed_on": "2026-11-14",
+          "version": "v35.0.0",
+          "url": "https://api.github.com/repos/kubernetes-client/python/contents/README.md?ref=v35.0.0",
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "sha256": "ad901d765b7eca7eb80239e4a5c49439e7ac3c7fc09f59d07208154711a8e67d",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/pythonclient-350-readme.txt",
+              "sha256": "ad901d765b7eca7eb80239e4a5c49439e7ac3c7fc09f59d07208154711a8e67d",
+              "bytes": 16869
+            },
+            "git_blob_sha": "db330e02b92675a36d9b03d6d34b220fb0a3b0ad"
+          },
+          "facts": [
+            "官方35.y.z表对K8s1.34及以下标为+-；35与1.35才是同功能集合，不伪称1.34完整逐版测试。",
+            "官方解释共享API能够工作，alpha接口可能在一个release变化或消失；主项目仅使用CoreV1/RbacAuthorizationV1及配置加载，不新增35专属API。",
+            "保留固定PythonSDK35.0.0，平台目标补现有节点/RBAC调用集成；不为K8sminor更新整个Python/Ansible/PyInstaller依赖栈。"
+          ],
+          "limitations": "本专题结论不代表四类目录全部已读、项目目标实测或GA。",
+          "use": "upgrade/v1.34.13/release.yaml"
+        },
+        {
+          "id": "CALICO3324-HOSTENDPOINT-API",
+          "evidence_type": "source-contract",
+          "observed_on": "2026-11-15",
+          "url": "https://api.github.com/repos/projectcalico/calico/contents/api/pkg/apis/projectcalico/v3/hostendpoint.go?ref=v3.32.4",
+          "version_or_commit": "50069983484f9744f82a93c6bd69539f6892e108",
+          "facts": [
+            "固定3.32.4 HostEndpoint仍使用spec.node/interfaceName/expectedIPs/profiles，node必填且interfaceName或expectedIPs至少一个；API仍为projectcalico/v3。",
+            "工具按Calico实际etcd datastore选择同版本calicoctl；字段存在不证明安全策略数据面或所有自定义输入均通过。"
+          ],
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/calico3324-hostendpoint-api.txt",
+              "sha256": "719c37ac4b7de679fff3c29740233993d27fb99d0f5c3b9ac2789b13ab9a6b9a",
+              "bytes": 5525
+            }
+          }
+        },
+        {
+          "id": "CALICO3324-GLOBALNETWORKPOLICY-API",
+          "evidence_type": "source-contract",
+          "observed_on": "2026-11-15",
+          "url": "https://api.github.com/repos/projectcalico/calico/contents/api/pkg/apis/projectcalico/v3/globalnetworkpolicy.go?ref=v3.32.4",
+          "version_or_commit": "1c88aee036c0f13928669e0b713db23b712cc9bf",
+          "facts": [
+            "固定3.32.4 GlobalNetworkPolicy保留tier/order/selector/types/ingress/egress/preDNAT/applyOnForward；tier默认default，指定非默认tier须先存在。",
+            "源工具对tier和Profile的显式归属约束继续保留；不静默更改客户tier或由字段存在冒称目标策略安全验收。"
+          ],
+          "obtained_content": {
+            "representation": "GitHub contents API base64 decoded original file",
+            "local_copy": {
+              "path": "upgrade/official-snapshots/2026-11-14-first-hop/calico3324-globalnetworkpolicy-api.txt",
+              "sha256": "91e5cbdeb7915f9a2f5166c8e39993e5a61dfd6dec294376f7923ef44f6478e8",
+              "bytes": 8423
+            }
+          }
+        }
+      ],
+      "evidence_strength_rule": "保留每条官方来源的实际类型与limitations；最低版本、稳定API、源码契约、逐版tested和官方过程不能互相冒签。",
+      "live_claim": "本记录不证明本跳现场成功；旧GA、当前源码和正式制品分别保留身份。"
+    }
+  ],
+  "customer_signoff": null
+}

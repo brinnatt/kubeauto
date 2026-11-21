@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "run_id": "v1366-harbor-portable-20261121a",
+  "claim": "两条逻辑迁移及源恢复子资格通过后，原父按归属停止并清理两端数据和运行时；完整私有恢复档案逐文件校验后保留，六节点release均failed=0/unreachable=0、owner消失及四共享锁可用。原失败父durable1/1保留，不冒签最终干净链。",
+  "cleanup_marker": "HARBOR_FOCUSED_CLEAN_VERIFY_PASS",
+  "parent_durable_rc": 1,
+  "parent_finalized_rc": 1,
+  "references": [
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-portable-20261121a/harbor-data-clean.json",
+      "sha256": "0bc997d741dbf455c567e11c2586a9fe802f0835f65b480892d7776dc301d8b7"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-portable-20261121a/target-harbor-data-clean.json",
+      "sha256": "0bc997d741dbf455c567e11c2586a9fe802f0835f65b480892d7776dc301d8b7"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-portable-20261121a/harbor-node-clean.json",
+      "sha256": "91b483dc8a45a7e389942ddd19c506d4ce58f90943aac506913ee1807ef49023"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-portable-20261121a/target-harbor-node-clean.json",
+      "sha256": "2587dda25f233d610713386a5199d842aca738c7c42a1c3c8c691cc60fa87841"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-portable-20261121a/harbor-runtime-clean.json",
+      "sha256": "41f4babfaac6f87becacb5a3f1cae5dbe21d317bc7115a7ddf562bd4b6ae691e"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-portable-20261121a/target-harbor-runtime-clean.json",
+      "sha256": "41f4babfaac6f87becacb5a3f1cae5dbe21d317bc7115a7ddf562bd4b6ae691e"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-portable-20261121a/harbor-recovery-archive.json",
+      "sha256": "c8431fa1a28a6625a542d019be2ed749098d4ba1cd4e9ea59c09020ab14e7bed"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-portable-20261121a/target-harbor-recovery-archive.json",
+      "sha256": "d36c411f352467e46e57f97b7c99fd299736c236f8d6b5431f9efee0c0d30047"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-portable-20261121a/portable-final-cleanup-observation.json",
+      "sha256": "e34fd7c76c75946079cc6c71e7982d25e7158714bbcb83ffee2b63d6d1270972"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-portable-20261121a/v1366-harbor-portable-20261121a.log",
+      "sha256": "2cff546bd6fc94c5daad544ef8a1a318096e515be1624cb3431d27852fda36ba"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-portable-20261121a/v1366-harbor-portable-20261121a.exit",
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-portable-20261121a/v1366-harbor-portable-20261121a.finalized",
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+    }
+  ],
+  "archive_boundary": "控制机/home/kubeauto-v1366-archives/所属run保留完整恢复材料；本地只收小证据和逐文件摘要。"
+}

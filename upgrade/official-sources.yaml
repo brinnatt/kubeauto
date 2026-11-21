@@ -6282,7 +6282,506 @@ sources:
       path: upgrade/official-snapshots/2026-11-16-next-hop/calico3324-validator.go.txt
       sha256: 51a30be2263c7cf0759693db29fd56fbca5b8826cf14bb51bb900401c7a97d3f
       bytes: 86864
+- id: K8S-1366-STABLE
+  evidence_type: release-pointer
+  observed_on: '2026-11-20'
+  url: https://dl.k8s.io/release/stable-1.36.txt
+  facts:
+  - stable-1.36.txt返回v1.36.6；从已接受v1.35.10只推进一个minor。
+  limitations: 指针不代表生态兼容或项目验收。
+  obtained_content:
+    representation: official raw response
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/k8s-stable-136
+      sha256: d0ec8cffc62437dc087b77a3e55fcf8b9784255944f2fe4f677ad5f62da935b9
+      bytes: 7
+- id: K8S-1366-RELEASE
+  evidence_type: release
+  observed_on: '2026-11-20'
+  url: https://api.github.com/repos/kubernetes/kubernetes/releases/tags/v1.36.6
+  facts:
+  - 官方v1.36.6发行metadata存在；两架构六项.sha256均已取得。
+  limitations: 当前v1.36.6标签的CHANGELOG-1.36.md未提供同名patch章节，不能冒称完整patch说明已读。
+  obtained_content:
+    representation: official raw response
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/k8s-release-1366
+      sha256: 4cc750d0756226deb020d4259aa3f4e06ce00b44429a579fa3d8444a10d4da2d
+      bytes: 2426
+- id: K8S-1366-FEATURES
+  evidence_type: source-contract
+  observed_on: '2026-11-20'
+  url: https://raw.githubusercontent.com/kubernetes/kubernetes/v1.36.6/pkg/features/kube_features.go
+  facts:
+  - GitRepoVolumeDriver在1.36锁定false；ImageVolume在1.36 GA并锁定true。
+  limitations: 完整移除/默认变更与项目配置影响仍需逐项比对。
+  obtained_content:
+    representation: official raw response
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/k8s136-features
+      sha256: c170e0e53e485674820e0a6e54feba77e5bc74b66365ec20a2a245157084e639
+      bytes: 113528
+- id: CONTAINERD-K8S136-COMPAT
+  evidence_type: supported
+  observed_on: '2026-11-20'
+  url: https://raw.githubusercontent.com/containerd/containerd/v2.3.7/RELEASES.md
+  facts:
+  - 固定v2.3.7官方RELEASES.md列K8s1.36推荐containerd2.3.0+或2.2.0+；现有2.3.7覆盖，无需跨系列桥接。
+  limitations: 推荐组合不替代项目CRI及sandbox保持验证。
+  obtained_content:
+    representation: official raw response
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/containerd-support
+      sha256: 5f4b8e1c2328c07da56e6181688d578a392970a0a5ed428356240d2de916c3b2
+      bytes: 39044
+- id: CALICO-332-K8S136-COMPAT
+  evidence_type: supported
+  observed_on: '2026-11-20'
+  url: https://docs.tigera.io/calico/3.32/getting-started/kubernetes/requirements
+  facts:
+  - Calico3.32官方测试表列K8s1.34、1.35、1.36；当前3.32.4属于该系列。
+  limitations: 不能将3.33 latest页面用作3.32的依据；不切换datastore/数据面。
+  obtained_content:
+    representation: official raw response
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/calico-332-requirements
+      sha256: 8d3857417b6a6175d52725fc1317653503c490e351f59ee67e33b6f3d23f313f
+      bytes: 68328
+- id: CILIUM-1205-K8S136-COMPAT
+  evidence_type: supported
+  observed_on: '2026-11-20'
+  url: https://raw.githubusercontent.com/cilium/cilium/v1.20.5/Documentation/network/kubernetes/compatibility.rst
+  facts:
+  - v1.20.5固定源码兼容文档列1.33–1.36为e2e测试范围。
+  limitations: 源为1.20.4；是否采用1.20.5、Chart/CRD及patch差异尚需核对。
+  obtained_content:
+    representation: official raw response
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/cilium120-support
+      sha256: 4119df582c01582bc082c529b6faf29167d07f129c1cec2583117fc37e2e4b13
+      bytes: 2797
+- id: CEPH-CSI-3172-K8S136-COMPAT
+  evidence_type: supported
+  observed_on: '2026-11-20'
+  url: https://raw.githubusercontent.com/ceph/ceph-csi/v3.17.2/README.md
+  facts:
+  - v3.17.2固定README逐版测试表列K8s1.34、1.35、1.36。
+  limitations: Ceph引擎未变化；sidecar具体pin仍需核对，不因此重跑整套Ceph。
+  obtained_content:
+    representation: official raw response
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/ceph-csi-support
+      sha256: 7f4c9b5b14d1300568b323e65e580d65a42479e52ee77f146788cf2bd49c58f5
+      bytes: 19009
+- id: HARBOR-2160-RELEASE
+  evidence_type: release
+  observed_on: '2026-11-20'
+  url: https://api.github.com/repos/goharbor/harbor/releases/tags/v2.16.0
+  facts:
+  - v2.16.0为正式GA，提供官方amd64/arm64离线包及SHA256和sigstore材料。
+  - 发布说明包含Full Multi-Architecture Enablement及Redis替换为Valkey。
+  limitations: GitHub latest指向较晚发布的2.15.5旧系列补丁；不能单凭/latest决定最高GA。
+  obtained_content:
+    representation: official raw response
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/harbor-release-2160
+      sha256: 4eddd9596ff1a61a0aca91bf6601e847bdc3d4acf4a66d991294e19627bcbbdf
+      bytes: 60736
+- id: HARBOR-2160-UPGRADE
+  evidence_type: supported
+  observed_on: '2026-11-20'
+  url: https://raw.githubusercontent.com/goharbor/website/main/docs/administration/upgrade/_index.md
+  facts:
+  - 官方2.16指南仅覆盖2.14及之后；必须事先备份，core启动执行数据库schema迁移。
+  limitations: 现有2.13不能直接据此签原地直升；旧arm64桥接资料和制品尚未闭合。
+  obtained_content:
+    representation: official raw response
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/harbor-upgrade
+      sha256: 3ce37d498c84c7348497da65df2ed2556b245c41685d8af6a206015a1b77c5d8
+      bytes: 3745
+- id: HARBOR-214-UPGRADE
+  evidence_type: supported
+  observed_on: '2026-11-20'
+  url: https://raw.githubusercontent.com/goharbor/website/release-2.14.0/docs/administration/upgrade/_index.md
+  facts:
+  - 2.14指南覆盖2.11及以后，包含2.13；与2.16指南组成2.13→2.14→2.16候选路径。
+  limitations: 2.14.6官方离线包没有独立arm64资产，桥接的架构边界必须单独处理。
+  obtained_content:
+    representation: official raw response
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/harbor214-upgrade
+      sha256: 52e6a1be8634be90b161eb6657ad10f485e66547448fcfa6b0c2c17d7dae021a
+      bytes: 3608
+- id: HARBOR-2160-ROLLBACK
+  evidence_type: supported
+  observed_on: '2026-11-20'
+  url: https://raw.githubusercontent.com/goharbor/website/main/docs/administration/upgrade/roll-back-upgrade.md
+  facts:
+  - 官方支持从升级前备份恢复原状态，不支持数据库原地downgrade。
+  limitations: 项目还需证明配置、密钥、数据库、registry数据和业务身份的一致恢复。
+  obtained_content:
+    representation: official raw response
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/harbor-rollback
+      sha256: dee224583fa851b787a7f1c447b7eb69c9a5b98d4555589a05f88f7354fe38a2
+      bytes: 1971
 
+- id: K8S-1366-PATCH-DELTA
+  evidence_type: source-contract
+  observed_on: '2026-11-20'
+  version: v1.36.5...v1.36.6
+  url: https://api.github.com/repos/kubernetes/kubernetes/compare/v1.36.5...v1.36.6
+  obtained_content:
+    representation: Official GitHub compare REST response
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/k8s1366-patch-compare.json
+      sha256: 21bacf5f77aa017bfef0fec525c2e03a23c45e044da39795d82d3c59a940e2fb
+      bytes: 194277
+  facts:
+  - 精确compare为ahead，24 commits/25 files；该版本CHANGELOG仅新增1.36.5章节，故补读compare而不虚构1.36.6发布章节。
+  - 变化包括调度器负向namespace selector、ResourceClaim status抖动、Job重建expectations、conntrack最大值/哈希设置、Go版本及构建镜像。
+  - 没有用Job/调度器上游单元测试结果替代本项目跨minor集成；DRA驱动不在已交付范围，非空DRA资源由预检拒绝。
+  limitations: 完整patch差异来源；项目PASS另由当前矩阵证明。
+  use: upgrade/v1.36.6/research.yaml
+- id: HARBOR-2160-DB-MIGRATION
+  evidence_type: source-contract
+  observed_on: '2026-11-20'
+  version: v2.13.0 / v2.14.6 / v2.16.0
+  url: https://github.com/goharbor/harbor/tree/v2.16.0/make/photon/db
+  obtained_contents:
+  - url: https://api.github.com/repos/goharbor/harbor/contents/make/photon/db/Dockerfile?ref=v2.13.0
+    git_blob_sha: 011bc1d7d4128993c87e0ad738389a1b192de913
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.13.0-make_photon_db_Dockerfile
+      sha256: e96dc4e863aa789b01a0ff909afe2b7a1bfbc131aa44e130a18ffaa0d997043c
+      bytes: 784
+  - url: https://api.github.com/repos/goharbor/harbor/contents/make/photon/db/docker-entrypoint.sh?ref=v2.13.0
+    git_blob_sha: e6a363fe493270c4ec807542885e8106a1af70ab
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.13.0-make_photon_db_docker-entrypoint.sh
+      sha256: 0d4c1588ed23194c4d1fbb36fa6d8fe695a7d57cba79b3c96282ecf3fa7fac1f
+      bytes: 3297
+  - url: https://api.github.com/repos/goharbor/harbor/contents/make/photon/db/upgrade.sh?ref=v2.13.0
+    git_blob_sha: 70b54add1b9e056f94df4fd6a8b5e07e504c3f56
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.13.0-make_photon_db_upgrade.sh
+      sha256: 0205ddf03e7f29172147bbae92f50970cc8e5d9006b25255d45f94fb45817114
+      bytes: 1184
+  - url: https://api.github.com/repos/goharbor/harbor/contents/make/photon/db/Dockerfile?ref=v2.14.6
+    git_blob_sha: 011bc1d7d4128993c87e0ad738389a1b192de913
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.14.6-make_photon_db_Dockerfile
+      sha256: e96dc4e863aa789b01a0ff909afe2b7a1bfbc131aa44e130a18ffaa0d997043c
+      bytes: 784
+  - url: https://api.github.com/repos/goharbor/harbor/contents/make/photon/db/docker-entrypoint.sh?ref=v2.14.6
+    git_blob_sha: e6a363fe493270c4ec807542885e8106a1af70ab
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.14.6-make_photon_db_docker-entrypoint.sh
+      sha256: 0d4c1588ed23194c4d1fbb36fa6d8fe695a7d57cba79b3c96282ecf3fa7fac1f
+      bytes: 3297
+  - url: https://api.github.com/repos/goharbor/harbor/contents/make/photon/db/upgrade.sh?ref=v2.14.6
+    git_blob_sha: 70b54add1b9e056f94df4fd6a8b5e07e504c3f56
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.14.6-make_photon_db_upgrade.sh
+      sha256: 0205ddf03e7f29172147bbae92f50970cc8e5d9006b25255d45f94fb45817114
+      bytes: 1184
+  - url: https://api.github.com/repos/goharbor/harbor/contents/make/photon/db/Dockerfile?ref=v2.16.0
+    git_blob_sha: 4b8086e400bba3a23f3085ed38308a814e614146
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.16.0-make_photon_db_Dockerfile
+      sha256: 8a04bed59f9c799c783f5947225eda4486dfb115a3cd457beb97169d9c18312f
+      bytes: 784
+  - url: https://api.github.com/repos/goharbor/harbor/contents/make/photon/db/docker-entrypoint.sh?ref=v2.16.0
+    git_blob_sha: 8a2ab4b09a112852dfde6aae8ebda09b086f9ae3
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.16.0-make_photon_db_docker-entrypoint.sh
+      sha256: e339e36fd46e0ad246b6a902ec3e88291b9bc8347b3b85cd9ae3a5b6570a4acd
+      bytes: 4819
+  - url: https://api.github.com/repos/goharbor/harbor/contents/make/photon/db/upgrade.sh?ref=v2.16.0
+    git_blob_sha: 8e27d73196bdeb0b194e3885dec555bbff9a0ea8
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.16.0-make_photon_db_upgrade.sh
+      sha256: 3028e8bdd43fdb50f03d34c4fafeaf129fd162c5c3aa45b85644b2f7357b463e
+      bytes: 3155
+  facts:
+  - 2.13.0与2.14.6的数据库入口为PostgreSQL14→15；2.16.0为15→18。
+  - 数据库major迁移在harbor-db启动入口执行，成功后会删除旧PG15目录；Harbor业务schema迁移由core启动执行。
+  - 2.16启动脚本读取旧pg_controldata checksum设置；旧库未启用时用--no-data-checksums初始化新库，避免PG18默认差异导致迁移拒绝。
+  - 2.16 upgrade.sh只刷新collation元数据，不重建索引；存在非ASCII数据或严格排序约束时，上游要求维护窗口内另做reindexdb。
+  - 跨架构不可从上述脚本推导物理目录可直接复制；须另遵守PostgreSQL逻辑备份可移植性并验证恢复。
+  limitations: 源码确认机制与不可逆点，不代表本项目迁移/恢复已实测。旧ARM64第三方镜像的实际PG版本仍须只读核验。
+  use: upgrade/v1.36.6/research.yaml
+- id: POSTGRES-DUMP-ARCHITECTURE-PORTABILITY
+  evidence_type: official-procedure
+  observed_on: '2026-11-20'
+  version: PostgreSQL SQL dump documentation
+  url: https://www.postgresql.org/docs/14/backup-dump.html
+  obtained_content:
+    representation: Official documentation HTML
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/postgres-portability
+      sha256: 783ed16e80d6a13198ed57826beac7936f4f41baa91ec23b80c91764e798d2f6
+      bytes: 29633
+  facts:
+  - SQL dump可用于数据库转移到不同机器架构；文件级备份不能据此认为同样可移植。
+  - pg_dump/恢复目标版本、数据库角色、权限、编码与依赖仍需另行核验；本条不承诺任意Harbor业务schema跨版本直接恢复。
+  limitations: 跨架构备份方法依据，不是Harbor2.13→2.16直接支持承诺或项目恢复PASS。
+  use: upgrade/v1.36.6/research.yaml
+
+- id: CILIUM-1204-K8S136-COMPAT
+  evidence_type: tested
+  observed_on: '2026-11-20'
+  version_or_commit: v1.20.4
+  url: https://api.github.com/repos/cilium/cilium/contents/Documentation/network/kubernetes/compatibility.rst?ref=v1.20.4
+  facts:
+  - 固定v1.20.4源码兼容表明确列1.33、1.34、1.35、1.36；当前制品与源版本保持，无需为了平台升级改为1.20.5。
+  limitations: 官方e2e范围；本项目保留原内核/数据面配置并核对目标接口，不代表本轮全CNI实测。
+  obtained_content:
+    representation: GitHub contents API original bytes with Git blob verification
+    git_blob: 07cb46fbbed2918db40d7fe1deec15840dbe18db
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/cilium1204-support
+      sha256: 4119df582c01582bc082c529b6faf29167d07f129c1cec2583117fc37e2e4b13
+      bytes: 2797
+- id: INGRESS-1151-K8S136-BOUNDARY
+  evidence_type: tested-boundary
+  observed_on: '2026-11-20'
+  version_or_commit: controller-v1.15.1
+  url: https://api.github.com/repos/kubernetes/ingress-nginx/contents/README.md?ref=controller-v1.15.1
+  facts:
+  - v1.15.1固定README明确测试1.31–1.35，不包含1.36。
+  - 项目已归档；继续保留必须按用户已接受的稳定API加最小集成、生命周期限制分别声明，不能标为1.36官方认证。
+  limitations: 新平台超出上游测试表；本项目目标路由和准入验证不能扩大上游支持承诺。
+  obtained_content:
+    representation: GitHub contents API original bytes with Git blob verification
+    git_blob: c78f41f4f1bcf0642f8d1caa1ee5a1c77004da61
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/ingress1151-readme
+      sha256: a4f3f0bd1e79edf908752261d92dc8430d931d002f0833f293c14a9ab6f147e5
+      bytes: 11576
+- id: CEPHCSI-3172-RBD-EXACT-SIDECARS
+  evidence_type: source-composition
+  observed_on: '2026-11-20'
+  version_or_commit: v3.17.2
+  url: https://api.github.com/repos/ceph/ceph-csi/contents/charts/ceph-csi-rbd/values.yaml?ref=v3.17.2
+  facts:
+  - v3.17.2官方Chart保持node-driver-registrar2.16.0、provisioner6.2.0、attacher4.11.0、resizer2.1.0、snapshotter8.5.0；与本项目固定配套一致。
+  limitations: Chart配套关系不是各sidecar独立认证；平台依据另取CSI3.17.2的1.34–1.36测试表。
+  obtained_content:
+    representation: GitHub contents API original bytes with Git blob verification
+    git_blob: 565a872f2d471a8f5e9a742a4ed9291415e7f90e
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/ceph3172-values-rbd
+      sha256: de41051d115dabe3c7730a8b28070de41dc6bca137ea551292d11a00c9b24e04
+      bytes: 22873
+- id: CEPHCSI-3172-CEPHFS-EXACT-SIDECARS
+  evidence_type: source-composition
+  observed_on: '2026-11-20'
+  version_or_commit: v3.17.2
+  url: https://api.github.com/repos/ceph/ceph-csi/contents/charts/ceph-csi-cephfs/values.yaml?ref=v3.17.2
+  facts:
+  - v3.17.2官方CephFS Chart的五项sidecar与RBD相同，项目保持原配套，不改Ceph数据格式。
+  limitations: 新平台集成与原存储深测分开，本项不是本轮挂载实测。
+  obtained_content:
+    representation: GitHub contents API original bytes with Git blob verification
+    git_blob: cf7d887523d3d40f195caa0ad16c7c528cbbaa91
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/ceph3172-values-cephfs
+      sha256: 79f1407a6bd4a8db4fcc7261a38e1f82b510631fac4da66a16dd6e4e1b8b1931
+      bytes: 17392
+- id: HARBOR-2146-BRIDGE-ASSET
+  evidence_type: release
+  observed_on: '2026-11-20'
+  version_or_commit: v2.14.6
+  url: https://api.github.com/repos/goharbor/harbor/releases/tags/v2.14.6
+  facts:
+  - 官方正式release仅提供AMD64离线包，没有ARM64离线包。
+  - 离线包783725093字节，SHA256 f3adaff30c4531c58f9d6ee8c5164f95f08582651c12b698b92be9e98df55cf6。
+  limitations: 桥接载荷必须在AMD64主机执行；两架构封装镜像不改变载荷CPU要求。
+  obtained_content:
+    representation: official GitHub release API
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/harbor2146-release
+      sha256: 33a7e386abde55a87053ace630f41d68575636ccf41a055d8a623b32f627345a
+      bytes: 8595
+- id: HARBOR-2160-PREPARE-HANDOFF
+  evidence_type: source-contract
+  observed_on: '2026-11-20'
+  version: v2.14.6 / v2.16.0
+  facts:
+  - 官方prepare shell用grep/awk解析data_volume，不能把YAML字符串引号当成路径值；项目216模板保留安全plain scalar并在任何现场操作前拒绝不支持路径。
+  - 官方migrate用BFS从配置_version经过down_revisions转换；配置格式版本与运行版本不同，源213模板的_version2.12不是运行镜像版本。
+  - 官方core镜像healthcheck访问本机ping；项目分段迁移先等core健康，不在214桥接阶段开放proxy/jobservice；全组件健康和原业务身份仍需真实集成验收。
+  limitations: 固定源码/官方发布包解析及本地合同，不是项目现场迁移或旧ARM第三方实例认证。
+  obtained_contents:
+  - url: https://api.github.com/repos/goharbor/harbor/contents/make/photon/prepare/utils/migration.py?ref=v2.16.0
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.16.0-make_photon_prepare_utils_migration.py
+      sha256: 4cd7dddafa62e613d9165e17e942a50a724c66dd30117880e17417ce95484fcc
+      bytes: 2710
+  - url: https://api.github.com/repos/goharbor/harbor/contents/make/photon/prepare/utils/migration.py?ref=v2.14.6
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.14.6-make_photon_prepare_utils_migration.py
+      sha256: 4cd7dddafa62e613d9165e17e942a50a724c66dd30117880e17417ce95484fcc
+      bytes: 2710
+  - url: https://github.com/goharbor/harbor/releases/download/v2.16.0/harbor-offline-installer-v2.16.0-amd64.tgz
+    local_copy:
+      path: upgrade/tests/fixtures/harbor216-prepare.sh.txt
+      sha256: 8730100efcea0ca3ee5a210a7dd9947633b99ec1122671217ea26093eda91ae2
+      bytes: 2211
+  - url: https://api.github.com/repos/goharbor/harbor/contents/make/photon/core/Dockerfile?ref=v2.16.0
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.16.0-make_photon_core_Dockerfile
+      sha256: a5d4c49b2d7e5bc38d040713e217877b236d630dca2aba185edbf8a95c89bf12
+      bytes: 837
+- id: K8S-13413-EVICTION-DELETION-HANDOFF
+  evidence_type: source-contract
+  observed_on: '2026-11-16'
+  version: v1.34.13
+  urls:
+  - https://raw.githubusercontent.com/kubernetes/kubernetes/v1.34.13/staging/src/k8s.io/kubectl/pkg/cmd/wait/delete.go
+  - https://raw.githubusercontent.com/kubernetes/kubernetes/v1.34.13/staging/src/k8s.io/kubectl/pkg/drain/drain.go
+  - https://raw.githubusercontent.com/kubernetes/kubernetes/v1.34.13/staging/src/k8s.io/kubectl/pkg/drain/filters.go
+  - https://raw.githubusercontent.com/kubernetes/kubernetes/v1.34.13/staging/src/k8s.io/kubectl/pkg/cmd/wait/wait.go
+  obtained_contents:
+  - representation: official pinned Go source
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/k8s13413-kubectl-wait-delete.go.txt
+      sha256: 39527c2167a41cf73206483a3548dce357adc16a6330a07cd516f75a8259d692
+      bytes: 4759
+  - representation: official pinned Go source
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/k8s13413-kubectl-drain.go.txt
+      sha256: 505864ae6d175f5a2e88267637b24c2747e5bb4f9b2bbe4342f51be7e1451e7e
+      bytes: 16193
+  - representation: official pinned Go source
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/k8s13413-kubectl-drain-filters.go.txt
+      sha256: a723a5141bb93256c4c14a8c2d748d33d9860ce4568f818f28bc44b5126e8f32
+      bytes: 8164
+  - representation: official pinned Go source
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-16-next-hop/k8s13413-kubectl-wait.go.txt
+      sha256: 69f31f9f282ca752c0e71ec12307bc4568f76f78e4cddbdbd5bed01cd3d79cee
+      bytes: 13239
+  facts:
+  - EvictPod只是提交Eviction；官方drain随后调用waitForDelete，等待对象NotFound或原UID消失。
+  - localStorageFilter仍拒绝含emptyDir且尚未结束的Pod，不能将驱逐请求成功等同于删除完成。
+  - kubectl wait --for=delete会忽略已NotFound资源，并使用有界等待；名称若被重新使用，等待更保守，后续drain仍独立检查实际本地数据。
+  limitations: 证明异步删除交接机制；不等于项目修复现场或GA签署，不采用force、零grace、跳过等待或delete-emptydir-data。
+  use: upgrade/product/metrics-eviction.yml
+- id: POSTGRES-PORTABLE-RESTORE-CONTRACT
+  evidence_type: official-procedure
+  observed_on: '2026-11-21'
+  version: PostgreSQL 15 / 18
+  url: https://www.postgresql.org/docs/15/app-pgrestore.html
+  obtained_contents:
+  - url: https://www.postgresql.org/docs/15/app-pgdump.html
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/postgres15-pg-dump
+      sha256: 5a5540c7214433ae1d123d20373c24c2c8ce826226e90dff6903a3a1b19ad456
+      bytes: 76345
+  - url: https://www.postgresql.org/docs/15/app-pgrestore.html
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/postgres15-pg-restore
+      sha256: 3a5d8bcd339fefc3c2ad3734486506a231b0111adf20c3869334e2c64be97f80
+      bytes: 53245
+  - url: https://www.postgresql.org/docs/18/app-pgrestore.html
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/postgres18-pg-restore
+      sha256: 34ec8878f44c8de1c811165e525000223f99d0271c0892493c8f53c0062636a7
+      bytes: 59521
+  facts:
+  - custom archive可跨架构；pg_dump只导出单数据库，不包含role/tablespace等集群globals。
+  - pg_restore --create --clean -d postgres按archive中原库名重建目标库，恢复库级comment、ACL、ALTER
+    DATABASE及ALTER ROLE IN DATABASE设置；不使用--no-acl/--no-owner。
+  - CREATE DATABASE不能放在单一事务；项目在未开放core/jobservice/proxy的空目标上使用--exit-on-error，失败停止目标并保留原源完整恢复点，不重试部分目标。
+  - 单库之外的定制数据库、SQL角色、自定义tablespace、全局role setting/membership须单独协调；本路径预检拒绝，不能静默丢失。
+  limitations: 仅核对dump/restore依赖接口，不声称完整PostgreSQL手册研究或Harbor跨架构实测。
+  use: upgrade/product/library/harbor_migration.py
+- id: HARBOR-2160-QUEUE-PERSISTENCE
+  evidence_type: source-contract-and-official-procedure
+  observed_on: '2026-11-21'
+  version: Harbor v2.13.0 / v2.14.6 / v2.16.0; Valkey migration documentation
+  obtained_contents:
+  - url: https://api.github.com/repos/goharbor/harbor/contents/make/photon/redis/Dockerfile?ref=v2.13.0
+    git_blob_sha: a2a782f7731c185c1283bd47424441912aa016fd
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.13.0-make_photon_redis_Dockerfile
+      sha256: 348bfbf005131f158b5b8717494ac4736287d3e8fac24c19c251c5a7837fc1e0
+      bytes: 460
+  - url: https://api.github.com/repos/goharbor/harbor/contents/make/photon/redis/redis.conf?ref=v2.13.0
+    git_blob_sha: e36ef8c8c6f6877872e943b8f05fe26c9c9caa52
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.13.0-make_photon_redis_redis.conf
+      sha256: 86c5aeee67355b2cc04181e3d5a0ff1d9722412b38a4d121b9f2d2363717f4d4
+      bytes: 57777
+  - url: https://api.github.com/repos/goharbor/harbor/contents/make/photon/redis/Dockerfile?ref=v2.14.6
+    git_blob_sha: a2a782f7731c185c1283bd47424441912aa016fd
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.14.6-make_photon_redis_Dockerfile
+      sha256: 348bfbf005131f158b5b8717494ac4736287d3e8fac24c19c251c5a7837fc1e0
+      bytes: 460
+  - url: https://api.github.com/repos/goharbor/harbor/contents/make/photon/redis/redis.conf?ref=v2.14.6
+    git_blob_sha: e36ef8c8c6f6877872e943b8f05fe26c9c9caa52
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.14.6-make_photon_redis_redis.conf
+      sha256: 86c5aeee67355b2cc04181e3d5a0ff1d9722412b38a4d121b9f2d2363717f4d4
+      bytes: 57777
+  - url: https://api.github.com/repos/goharbor/harbor/contents/make/photon/valkey/Dockerfile?ref=v2.16.0
+    git_blob_sha: 878e6bdd0cb445dd65a2c0e641e9bbb3c7ee2a83
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.16.0-make_photon_valkey_Dockerfile
+      sha256: 8e350ecaf861ee2f2c64172478df7e713366287a80af610676e8e0de5c263f27
+      bytes: 467
+  - url: https://raw.githubusercontent.com/goharbor/harbor/v2.16.0/make/photon/valkey/redis.conf
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.16.0-make_photon_valkey_redis.conf
+      sha256: 86c5aeee67355b2cc04181e3d5a0ff1d9722412b38a4d121b9f2d2363717f4d4
+      bytes: 57777
+  - url: https://raw.githubusercontent.com/goharbor/harbor/v2.16.0/make/photon/prepare/utils/redis.py
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.16.0-make_photon_prepare_utils_redis.py
+      sha256: fe78136a49e725523b09b05f301c698b7b4e0554a1f5139912b25415c819d3e5
+      bytes: 238
+  - url: https://api.github.com/repos/goharbor/harbor/contents/make/photon/redis/Dockerfile.base?ref=v2.13.0
+    git_blob_sha: 331306bd8ee84c8add3a44325894f6f256d4ff82
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.13.0-make_photon_redis_Dockerfile.base
+      sha256: 17a4b763f02fcdf5a70b168bf1f6f32a1815313f5faca6e499c864d3a037a6fd
+      bytes: 234
+  - url: https://api.github.com/repos/goharbor/harbor/contents/make/photon/valkey/Dockerfile.base?ref=v2.16.0
+    git_blob_sha: 9d8bdda8ba8cfbf19fd8bd901d626850ac056701
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.16.0-make_photon_valkey_Dockerfile.base
+      sha256: b738badf07ad566fd39df66621890f64fbf9d2576a420482057d5c279fcdb1d5
+      bytes: 2317
+  - url: https://api.github.com/repos/goharbor/harbor/contents/make/photon/valkey/docker-healthcheck?ref=v2.16.0
+    git_blob_sha: 6352150fdb8348862b2404df8c2ed30fc2a800d6
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.16.0-make_photon_valkey_docker-healthcheck
+      sha256: 922f8d10fd6c30a5fa7267e14ce6b9abffe96ee9ad81092df519e9c8ec419c13
+      bytes: 124
+  - url: https://valkey.io/topics/migration/
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/valkey-migration
+      sha256: 536e174ecb79891412a2e916cd9318b6896267a1020b2bdc5e991800bd0d96b9
+      bytes: 89827
+  - url: https://valkey.io/topics/persistence/
+    local_copy:
+      path: upgrade/official-snapshots/2026-11-20-next-hop/valkey-persistence
+      sha256: 257058aba6cd71776efe241f414eac7c5dca0a7d91608a544593c85d0d38c2ce
+      bytes: 83207
+  facts:
+  - 2.13与2.14使用redis-photon，2.16使用valkey-photon；各固定redis.conf正文摘要一致，dir=/var/lib/redis、dbfilename=dump.rdb、appendonly=no。
+  - 原redis和目标valkey官方base均使用UID/GID 999，持久卷挂载位置不变；ARM目标自源码构建Valkey，AMD由Photon软件包提供，不能由同名Harbor
+    tag推断引擎二进制相同。
+  - Valkey官方明确兼容Redis OSS7.2及更早的协议、配置和RDB/AOF；Redis CE7.4及之后数据文件不在承诺内。
+  - 官方物理迁移要求先断开活跃连接、生成新快照并复制RDB；AOF启用时会优先读取AOF，不能只复制RDB而声称数据完整。
+  - 项目按真实INFO及CONFIG检查引擎与持久路径，先停内部写入服务再SAVE，确认落盘后全停备份；拒绝公开内部队列端口及未审计持久模式。
+  limitations: 官方Redis→Valkey方法及固定Harbor配置/身份依据；不构成旧第三方ARM认证或跨CPU完整迁移PASS，仍须项目队列/业务和恢复实测。
+  use: upgrade/product/library/harbor_migration.py
 lookup_only:
 - id: K8S-API-CHANGES
   status: pending
@@ -6325,39 +6824,3 @@ access_gaps:
     error: 'HTTPError: HTTP Error 404: Not Found'
   consequence: 文档站403、尝试的固定版本源码路径404；先查正确官方tag/目录与既有记录，不能宣称这些路径已读，不转为现场回归。
   resolution: 已找到官方文档仓main的PXC ReleaseNotes和MongoDB RN正确路径并取得固定版本文件，分别绑定PXC-120-FIRST-HOP、MONGODB-1231-FIRST-HOP；旧403/404作为原访问事实保留，不再把它们当作当前矩阵不可读。
-- id: K8S-13413-EVICTION-DELETION-HANDOFF
-  evidence_type: source-contract
-  observed_on: '2026-11-16'
-  version: v1.34.13
-  urls:
-  - https://raw.githubusercontent.com/kubernetes/kubernetes/v1.34.13/staging/src/k8s.io/kubectl/pkg/cmd/wait/delete.go
-  - https://raw.githubusercontent.com/kubernetes/kubernetes/v1.34.13/staging/src/k8s.io/kubectl/pkg/drain/drain.go
-  - https://raw.githubusercontent.com/kubernetes/kubernetes/v1.34.13/staging/src/k8s.io/kubectl/pkg/drain/filters.go
-  - https://raw.githubusercontent.com/kubernetes/kubernetes/v1.34.13/staging/src/k8s.io/kubectl/pkg/cmd/wait/wait.go
-  obtained_contents:
-  - representation: official pinned Go source
-    local_copy:
-      path: upgrade/official-snapshots/2026-11-16-next-hop/k8s13413-kubectl-wait-delete.go.txt
-      sha256: 39527c2167a41cf73206483a3548dce357adc16a6330a07cd516f75a8259d692
-      bytes: 4759
-  - representation: official pinned Go source
-    local_copy:
-      path: upgrade/official-snapshots/2026-11-16-next-hop/k8s13413-kubectl-drain.go.txt
-      sha256: 505864ae6d175f5a2e88267637b24c2747e5bb4f9b2bbe4342f51be7e1451e7e
-      bytes: 16193
-  - representation: official pinned Go source
-    local_copy:
-      path: upgrade/official-snapshots/2026-11-16-next-hop/k8s13413-kubectl-drain-filters.go.txt
-      sha256: a723a5141bb93256c4c14a8c2d748d33d9860ce4568f818f28bc44b5126e8f32
-      bytes: 8164
-  - representation: official pinned Go source
-    local_copy:
-      path: upgrade/official-snapshots/2026-11-16-next-hop/k8s13413-kubectl-wait.go.txt
-      sha256: 69f31f9f282ca752c0e71ec12307bc4568f76f78e4cddbdbd5bed01cd3d79cee
-      bytes: 13239
-  facts:
-  - EvictPod只是提交Eviction；官方drain随后调用waitForDelete，等待对象NotFound或原UID消失。
-  - localStorageFilter仍拒绝含emptyDir且尚未结束的Pod，不能将驱逐请求成功等同于删除完成。
-  - kubectl wait --for=delete会忽略已NotFound资源，并使用有界等待；名称若被重新使用，等待更保守，后续drain仍独立检查实际本地数据。
-  limitations: 证明异步删除交接机制；不等于项目修复现场或GA签署，不采用force、零grace、跳过等待或delete-emptydir-data。
-  use: upgrade/product/metrics-eviction.yml

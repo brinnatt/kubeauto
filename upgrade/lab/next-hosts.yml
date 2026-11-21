@@ -10,7 +10,7 @@
           - groups['kube_master'] | sort == ['192.168.122.217', '192.168.122.243', '192.168.122.246']
           - groups['kube_node'] | sort == ['192.168.122.193', '192.168.122.210', '192.168.122.216']
           - groups['etcd'] | sort == groups['kube_master'] | sort
-          - NEXT_RUN_ID is match('^v13510-[a-z0-9-]{1,48}$')
+          - NEXT_RUN_ID is match('^v1366-[a-z0-9-]{1,48}$')
           - NEXT_HOST_OPERATION in ['admit', 'claim', 'marked', 'owned', 'storage-clean', 'clean', 'release']
 
 - name: Check all hosts before any marker or cleanup change
@@ -23,7 +23,7 @@
         set -eu
         hostname -I | tr ' ' '\n' | grep -Fx -- {{ inventory_hostname | quote }}
         uname -r
-        marker=/var/tmp/kubeauto-v13510-node-owner
+        marker=/var/tmp/kubeauto-v1366-node-owner
         if test -L "$marker"; then exit 1; fi
         if test -e "$marker"; then
           test "$(stat -c '%u:%a' "$marker")" = 0:600
@@ -100,13 +100,13 @@
   tasks:
     - name: Claim a clean node without overwriting any existing owner
       ansible.builtin.copy:
-        dest: /var/tmp/kubeauto-v13510-node-owner
+        dest: /var/tmp/kubeauto-v1366-node-owner
         content: "{{ NEXT_RUN_ID }}\n"
         mode: '0600'
         force: false
       when: NEXT_HOST_OPERATION == 'claim'
     - name: Release exactly the verified clean node's marker
       ansible.builtin.file:
-        path: /var/tmp/kubeauto-v13510-node-owner
+        path: /var/tmp/kubeauto-v1366-node-owner
         state: absent
       when: NEXT_HOST_OPERATION == 'release'

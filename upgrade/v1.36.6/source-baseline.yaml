@@ -1,0 +1,59 @@
+schema_version: 1
+kind: accepted-source-baseline
+recorded_on: '2026-11-20'
+kubernetes: v1.35.10
+accepted_ga_baseline: true
+identity_verified: true
+source_commit: 048f5e9f6b20e98c3d7cf326c4ea4615365e9e96
+maintenance_baseline:
+  path: upgrade/v1.35.10/maintenance-baseline.yaml
+  sha256: af301c489a6a9f6ee7e9242bf18f115d74342b4b28720db5a4267ce58a3f92fc
+  bytes: 9674
+repositories:
+- repository: kubeauto
+  branch: v1.35.10
+  source_commit: 048f5e9f6b20e98c3d7cf326c4ea4615365e9e96
+  branch_tip: de3fa136ac3737f036f1f03d1094ab5fbb5598d0
+  record_only_successor: true
+- repository: kubeauto-dockerfile
+  branch: v1.35.10
+  source_commit: 3fc520628a8b94e9926133b32b5d19d592359078
+  branch_tip: 3fc520628a8b94e9926133b32b5d19d592359078
+  record_only_successor: false
+- repository: kubeauto-k8s-bin-dockerfile
+  branch: v1.35.10
+  source_commit: b2ef19130a32e75abf0bfef74e03483aa8aeed9e
+  branch_tip: b2ef19130a32e75abf0bfef74e03483aa8aeed9e
+  record_only_successor: false
+- repository: kubeauto-ext-bin-dockerfile
+  branch: v1.35.10
+  source_commit: 312d41f7c4adba9a86647ad4bc586543ec5d1e9f
+  branch_tip: 312d41f7c4adba9a86647ad4bc586543ec5d1e9f
+  record_only_successor: false
+- repository: kubeauto-ext-bin-sp1-dockerfile
+  branch: v1.35.10
+  source_commit: cd439d9cb0f6f0b8701b802ac3c37fd4ac420b79
+  branch_tip: cd439d9cb0f6f0b8701b802ac3c37fd4ac420b79
+  record_only_successor: false
+- repository: kubeauto-ext-images-dockerfile
+  branch: v1.35.10
+  source_commit: b3b35856cbe6cdc8b9cf4ee4c766cbe75477e149
+  branch_tip: b3b35856cbe6cdc8b9cf4ee4c766cbe75477e149
+  record_only_successor: false
+profiles:
+  default_new_install:
+    kubernetes: v1.35.10
+    ext_bin: 1.17.1
+    nerdctl: 2.4.2
+    containerd: 2.3.7
+    runc: v1.5.2
+    etcd: v3.6.16
+    assertion: 默认pin变化已由原认证证据和当前消费合同覆盖；不冒称本次新建完整集群。
+  accepted_minor_migration:
+    artifact_pins:
+      path: upgrade/v1.35.10/artifact-pins.json
+      sha256: 6ceaf94c0fb6657a66017ff1563b9743c754ff1c7282b36242ade029b9a25047
+    ext_bin: 1.17.0
+    nerdctl: 2.3.4
+    assertion: 迁移路径、制品固定记录和原现场组合不变；不将新建默认包替换进历史迁移输入。
+boundary: 按已接受维护组合建立六仓分支；源身份接受仍须核验正式证据副本及原始边界。客户实际安装和实验室状态由变更前预检另证；旧产品镜像v0.1.8不代表当前维护源码。

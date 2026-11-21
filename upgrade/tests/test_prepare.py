@@ -25,7 +25,7 @@ class PrepareContracts(unittest.TestCase):
         self.cluster = 'customer-source'
         cluster = self.root/'clusters'/self.cluster
         cluster.mkdir(parents=True)
-        (cluster/'config.yml').write_text('K8S_VER: 1.34.13\nCONTAINER_RUNTIME: containerd\n')
+        (cluster/'config.yml').write_text('K8S_VER: 1.35.10\nCONTAINER_RUNTIME: containerd\n')
         # kubectl fixture binds the canonical config path, independent of this
         # manager's directory. A symlink is adequate for this TLS-free fixture.
         (cluster/'kubectl.kubeconfig').symlink_to(self.root/'config')
@@ -70,7 +70,7 @@ class PrepareContracts(unittest.TestCase):
         for path in self.state.iterdir():
             self.assertEqual(path.stat().st_mode & 0o777,0o600)
         lease=Path(str(self.state)+'.lease')
-        coordinator._verify_source_lease(source='v1.34.13',target='v1.35.10',cluster=self.cluster,
+        coordinator._verify_source_lease(source='v1.35.10',target='v1.36.6',cluster=self.cluster,
             lease=lease,receipt_path=Path(str(self.state)+'.receipt.json'))
         before={p.name:p.read_bytes() for p in self.state.iterdir()}
         with self.assertRaisesRegex(Refused,'already exists'):self.run_prepare()

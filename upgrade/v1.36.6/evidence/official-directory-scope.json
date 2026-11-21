@@ -1,0 +1,802 @@
+{
+  "schema_version": 1,
+  "claim": "本跳官方版本目录复用与增量范围；源取已接受维护组合，非旧135历史默认包。未完成的历史全站阅读保持缺口，不据此宣称全部官方站点已读。",
+  "source_maintenance": {
+    "path": "upgrade/v1.35.10/maintenance-baseline.yaml",
+    "sha256": "af301c489a6a9f6ee7e9242bf18f115d74342b4b28720db5a4267ce58a3f92fc"
+  },
+  "same_version_count": 21,
+  "changed_version_count": 9,
+  "components": [
+    {
+      "component_id": "product",
+      "source_pins": {
+        "kubeauto": "v0.1.8",
+        "ansible_core": "2.18.6",
+        "ansible_core_py314": "2.20.9",
+        "kubecli_scope": "kubecli-only"
+      },
+      "target_pins": {
+        "kubeauto": "v0.1.9",
+        "ansible_core": "2.18.6",
+        "ansible_core_py314": "2.20.9",
+        "kubecli_scope": "kubecli-only"
+      },
+      "same_official_version": false,
+      "official_source_ids": [
+        "ACTIONS-PRODUCT-RELEASE-SCOPE",
+        "PYINSTALLER-616-UPGRADE-DATA",
+        "ANSIBLE-UPGRADE-INVENTORY-CONTRACT"
+      ],
+      "document_disposition": "产品版本/包装身份与上游版本分别审查；Kubernetes与Harbor增量目录及正文见research.yaml和三手册"
+    },
+    {
+      "component_id": "kubernetes",
+      "source_pins": {
+        "kubernetes": "v1.35.10"
+      },
+      "target_pins": {
+        "kubernetes": "v1.36.6"
+      },
+      "same_official_version": false,
+      "official_source_ids": [
+        "K8S-SKEW",
+        "K8S-1366-STABLE",
+        "K8S-1366-RELEASE",
+        "K8S-1366-PATCH-DELTA",
+        "K8S-1366-FEATURES"
+      ],
+      "document_disposition": "产品版本/包装身份与上游版本分别审查；Kubernetes与Harbor增量目录及正文见research.yaml和三手册"
+    },
+    {
+      "component_id": "binary-packs",
+      "source_pins": {
+        "v_extra_bin": "1.17.1",
+        "v_extra_bin_sp1": "1.3.1",
+        "etcd": "3.6.16"
+      },
+      "target_pins": {
+        "v_extra_bin": "1.17.1",
+        "v_extra_bin_sp1": "1.3.1",
+        "etcd": "3.6.16"
+      },
+      "same_official_version": true,
+      "official_source_ids": [
+        "EXTBIN-OFFICIAL-ASSETS-ETCD-3616",
+        "ETCD-3616-SNAPSHOT-COMMAND",
+        "ETCD-3616-SNAPSHOT-INTEGRITY",
+        "ETCD-3616-SNAPSHOT-OUTPUT"
+      ],
+      "document_disposition": "复用源目录及未变结论，目标兼容差异见UPG-02"
+    },
+    {
+      "component_id": "runtime",
+      "source_pins": {
+        "containerd": "2.3.7",
+        "containerd_bridge": "2.2.10",
+        "runc": "1.5.2",
+        "v_nerdctl": "2.4.2",
+        "v_docker": "28.5.2",
+        "v_cri_dockerd": "0.4.10"
+      },
+      "target_pins": {
+        "containerd": "2.3.7",
+        "runc": "1.5.2",
+        "v_nerdctl": "2.4.2",
+        "v_docker": "28.5.2",
+        "v_cri_dockerd": "0.4.10"
+      },
+      "same_official_version": false,
+      "official_source_ids": [
+        "CONTAINERD-K8S136-COMPAT",
+        "CONTAINERD-237-RUNC-PIN",
+        "CRI-DOCKERD-0410-CRI-V1",
+        "DOCKER-2852-API-CONTRACT"
+      ],
+      "document_disposition": "产品版本/包装身份与上游版本分别审查；Kubernetes与Harbor增量目录及正文见research.yaml和三手册"
+    },
+    {
+      "component_id": "calico",
+      "source_pins": {
+        "v_calico": "v3.32.4",
+        "v_calico_source_bridge": "v3.31.7",
+        "calicoctl": "v3.32.4",
+        "calicoctl_source_bridge": "v3.31.7",
+        "cniVersion": "1.0.0",
+        "datastore": "etcdv3",
+        "dataplane": "iptables"
+      },
+      "target_pins": {
+        "v_calico": "v3.32.4",
+        "calicoctl": "v3.32.4",
+        "cniVersion": "1.0.0",
+        "datastore": "etcdv3",
+        "dataplane": "iptables"
+      },
+      "same_official_version": false,
+      "official_source_ids": [
+        "CALICO-332-K8S136-COMPAT",
+        "CALICO-332-HOST-PLATFORM"
+      ],
+      "document_disposition": "产品版本/包装身份与上游版本分别审查；Kubernetes与Harbor增量目录及正文见research.yaml和三手册"
+    },
+    {
+      "component_id": "flannel",
+      "source_pins": {
+        "v_flannel": "v0.28.10",
+        "v_flannel_cni": "v1.9.1-flannel3",
+        "cniVersion": "1.0.0",
+        "healthz_address": "127.0.0.1:8081"
+      },
+      "target_pins": {
+        "v_flannel": "v0.28.10",
+        "v_flannel_cni": "v1.9.1-flannel3",
+        "cniVersion": "1.0.0",
+        "healthz_address": "127.0.0.1:8081"
+      },
+      "same_official_version": true,
+      "official_source_ids": [
+        "FLANNEL-02810-FIRST-HOP",
+        "FLANNEL-02810-MANIFEST",
+        "FLANNEL-CNI-191-MECHANISM"
+      ],
+      "document_disposition": "复用源目录及未变结论，目标兼容差异见UPG-02"
+    },
+    {
+      "component_id": "cilium",
+      "source_pins": {
+        "v_cilium": "v1.20.4",
+        "v_cilium_source_bridge": "v1.19.10",
+        "v_cilium_hubble_ui": "v0.13.6",
+        "upgradeCompatibility": "1.19",
+        "vendored_charts_sha256": {
+          "roles/cilium/files/cilium-1.19.10.tgz": "b7252afca3413a33e2b987c954e52441e96979e411e1495ecc6aefe8cd258863",
+          "roles/cilium/files/cilium-1.20.4.tgz": "505abff8385811df1a949776fc42e9f10697989a332acc86d6e8933efcb855ed"
+        }
+      },
+      "target_pins": {
+        "v_cilium": "v1.20.4",
+        "v_cilium_hubble_ui": "v0.13.6",
+        "upgradeCompatibility": "1.19",
+        "vendored_charts_sha256": {
+          "roles/cilium/files/cilium-1.19.10.tgz": "b7252afca3413a33e2b987c954e52441e96979e411e1495ecc6aefe8cd258863",
+          "roles/cilium/files/cilium-1.20.4.tgz": "505abff8385811df1a949776fc42e9f10697989a332acc86d6e8933efcb855ed"
+        }
+      },
+      "same_official_version": false,
+      "official_source_ids": [
+        "CILIUM-1204-K8S136-COMPAT",
+        "CILIUM-1204-REQUIRED",
+        "CILIUM-1204-VALUES"
+      ],
+      "document_disposition": "产品版本/包装身份与上游版本分别审查；Kubernetes与Harbor增量目录及正文见research.yaml和三手册"
+    },
+    {
+      "component_id": "kube-router",
+      "source_pins": {
+        "v_kuberouter": "v2.12.0",
+        "source_bridge": "v1.5.4",
+        "cni_config": "v1",
+        "iptables_mode": "explicit-project-default"
+      },
+      "target_pins": {
+        "v_kuberouter": "v2.12.0",
+        "cni_config": "v1",
+        "iptables_mode": "explicit-project-default"
+      },
+      "same_official_version": false,
+      "official_source_ids": [
+        "KUBEROUTER-212-GUIDE",
+        "KUBEROUTER-212-MANIFEST",
+        "KUBEROUTER-212-INFORMERS",
+        "KUBEROUTER-212-CNI-CONFIG"
+      ],
+      "document_disposition": "产品版本/包装身份与上游版本分别审查；Kubernetes与Harbor增量目录及正文见research.yaml和三手册"
+    },
+    {
+      "component_id": "kube-ovn",
+      "source_pins": {
+        "v_kubeovn": "v1.17.1",
+        "source_bridge": "v1.11.5",
+        "chart_app_version": "1.17.1",
+        "kube_minimum": "v1.29.0"
+      },
+      "target_pins": {
+        "v_kubeovn": "v1.17.1",
+        "chart_app_version": "1.17.1",
+        "kube_minimum": "v1.29.0"
+      },
+      "same_official_version": false,
+      "official_source_ids": [
+        "KUBEOVN-117-REQUIREMENTS",
+        "KUBEOVN-1171-CHART",
+        "KUBEOVN-117-MAINTENANCE"
+      ],
+      "document_disposition": "产品版本/包装身份与上游版本分别审查；Kubernetes与Harbor增量目录及正文见research.yaml和三手册"
+    },
+    {
+      "component_id": "dns",
+      "source_pins": {
+        "v_coredns": "1.15.0",
+        "v_dnsnodecache": "1.26.8",
+        "nodecache_embedded_coredns": "1.13.2"
+      },
+      "target_pins": {
+        "v_coredns": "1.15.0",
+        "v_dnsnodecache": "1.26.8",
+        "nodecache_embedded_coredns": "1.13.2"
+      },
+      "same_official_version": true,
+      "official_source_ids": [
+        "COREDNS-115-KUBERNETES",
+        "COREDNS-115-CONTROLLER",
+        "DNS-1268-VERSION-POLICY",
+        "DNS-1268-DEPS"
+      ],
+      "document_disposition": "复用源目录及未变结论，目标兼容差异见UPG-02"
+    },
+    {
+      "component_id": "metrics",
+      "source_pins": {
+        "v_metricsserver": "v0.9.1"
+      },
+      "target_pins": {
+        "v_metricsserver": "v0.9.1"
+      },
+      "same_official_version": true,
+      "official_source_ids": [
+        "METRICS-091-FIRST-HOP",
+        "METRICS-091-FAQ",
+        "METRICS-V1BETA1-WIRE-CONTRACT"
+      ],
+      "document_disposition": "复用源目录及未变结论，目标兼容差异见UPG-02"
+    },
+    {
+      "component_id": "ingress",
+      "source_pins": {
+        "v_ingressnginx": "4.15.1",
+        "v_ingress_nginx_controller": "v1.15.1",
+        "v_webhook_certgen": "v1.6.9",
+        "chart_sha256": "3eff0bd18151d6e6b1c441463410571443dda1ac78292cb189346628de784f0c"
+      },
+      "target_pins": {
+        "v_ingressnginx": "4.15.1",
+        "v_ingress_nginx_controller": "v1.15.1",
+        "v_webhook_certgen": "v1.6.9",
+        "chart_sha256": "3eff0bd18151d6e6b1c441463410571443dda1ac78292cb189346628de784f0c"
+      },
+      "same_official_version": true,
+      "official_source_ids": [
+        "INGRESS-1151-K8S136-BOUNDARY",
+        "INGRESS-ARCHIVED",
+        "INGRESS-4151-CHART",
+        "INGRESS-4151-VALUES"
+      ],
+      "document_disposition": "复用源目录及未变结论，目标兼容差异见UPG-02"
+    },
+    {
+      "component_id": "dashboard",
+      "source_pins": {
+        "chart": "7.14.0",
+        "api": "1.14.0",
+        "auth": "1.4.0",
+        "web": "1.7.0",
+        "metrics_scraper": "1.2.2",
+        "kong": "3.9"
+      },
+      "target_pins": {
+        "chart": "7.14.0",
+        "api": "1.14.0",
+        "auth": "1.4.0",
+        "web": "1.7.0",
+        "metrics_scraper": "1.2.2",
+        "kong": "3.9"
+      },
+      "same_official_version": true,
+      "official_source_ids": [
+        "DASHBOARD-714-PINS",
+        "DASHBOARD-714-INSTALL-CONTRACT",
+        "DASHBOARD-ARCHIVED"
+      ],
+      "document_disposition": "复用源目录及未变结论，目标兼容差异见UPG-02"
+    },
+    {
+      "component_id": "local-storage",
+      "source_pins": {
+        "local_path_provisioner": "v0.0.37",
+        "local_path_helper": "busybox:1.37",
+        "nfs_provisioner": "v4.0.2",
+        "openebs_chart": "4.3.2",
+        "openebs_hostpath": "4.3.0",
+        "openebs_lvm": "1.7.0"
+      },
+      "target_pins": {
+        "local_path_provisioner": "v0.0.37",
+        "local_path_helper": "busybox:1.37",
+        "nfs_provisioner": "v4.0.2",
+        "openebs_chart": "4.3.2",
+        "openebs_hostpath": "4.3.0",
+        "openebs_lvm": "1.7.0"
+      },
+      "same_official_version": true,
+      "official_source_ids": [
+        "LOCALPATH-037-BEHAVIOR",
+        "NFS-402-BEHAVIOR",
+        "OPENEBS-LVM-170-SYSTEM",
+        "OPENEBS-HOSTPATH-430-MATRIX",
+        "OPENEBS-432-ENGINE-BOUNDARY"
+      ],
+      "document_disposition": "复用源目录及未变结论，目标兼容差异见UPG-02"
+    },
+    {
+      "component_id": "ceph",
+      "source_pins": {
+        "v_ceph": "20.2.4",
+        "v_ceph_upgrade_source": "20.2.3",
+        "v_cephadm_sha256": "5b78c8d5772ef7c5c8619dac6ee0b36716b829338ea7a11c9f2b896626ab354f",
+        "v_ceph_csi": "v3.17.2",
+        "v_ceph_csi_registrar": "v2.16.0",
+        "v_ceph_csi_provisioner": "v6.2.0",
+        "v_ceph_csi_attacher": "v4.11.0",
+        "v_ceph_csi_resizer": "v2.1.0",
+        "v_ceph_csi_snapshotter": "v8.5.0",
+        "vendored_charts_sha256": {
+          "roles/ceph/files/ceph-csi-cephfs-3.17.1.tgz": "100c00932b1969df63400e5bb477b5ef2701371fb350e5b8cb8c4fb2873aa117",
+          "roles/ceph/files/ceph-csi-rbd-3.17.1.tgz": "75527adefcdf248e9acd2e9759205ddf4fd444824157e3e1914cf9659544bffc"
+        }
+      },
+      "target_pins": {
+        "v_ceph": "20.2.4",
+        "v_ceph_upgrade_source": "20.2.3",
+        "v_cephadm_sha256": "5b78c8d5772ef7c5c8619dac6ee0b36716b829338ea7a11c9f2b896626ab354f",
+        "v_ceph_csi": "v3.17.2",
+        "v_ceph_csi_registrar": "v2.16.0",
+        "v_ceph_csi_provisioner": "v6.2.0",
+        "v_ceph_csi_attacher": "v4.11.0",
+        "v_ceph_csi_resizer": "v2.1.0",
+        "v_ceph_csi_snapshotter": "v8.5.0",
+        "vendored_charts_sha256": {
+          "roles/ceph/files/ceph-csi-cephfs-3.17.1.tgz": "100c00932b1969df63400e5bb477b5ef2701371fb350e5b8cb8c4fb2873aa117",
+          "roles/ceph/files/ceph-csi-rbd-3.17.1.tgz": "75527adefcdf248e9acd2e9759205ddf4fd444824157e3e1914cf9659544bffc"
+        }
+      },
+      "same_official_version": true,
+      "official_source_ids": [
+        "CEPH-CSI-3172-K8S136-COMPAT",
+        "CEPHCSI-3172-RBD-EXACT-SIDECARS",
+        "CEPHCSI-3172-CEPHFS-EXACT-SIDECARS"
+      ],
+      "document_disposition": "复用源目录及未变结论，目标兼容差异见UPG-02"
+    },
+    {
+      "component_id": "longhorn",
+      "source_pins": {
+        "v_longhorn": "1.12.2",
+        "v_longhorn_upgrade_source": "1.12.1",
+        "v_longhorn_snapshot_controller": "v8.6.0",
+        "chart_sha256": "3514c3a802ec910b3e97698f0b816c038d66547e1bf3d1a4ebad44a9f5b8ac8a",
+        "images": {
+          "longhorn-engine": "v1.12.2",
+          "longhorn-manager": "v1.12.2-kubeauto.1",
+          "longhorn-ui": "v1.12.2",
+          "longhorn-instance-manager": "v1.12.2-kubeauto.1",
+          "longhorn-share-manager": "v1.12.2",
+          "longhorn-backing-image-manager": "v1.12.2",
+          "longhorn-support-bundle-kit": "v1.0.5",
+          "longhorn-csi-attacher": "v4.13.0-20261028",
+          "longhorn-csi-provisioner": "v5.3.0-20261028",
+          "longhorn-csi-node-driver-registrar": "v2.18.0-20261028",
+          "longhorn-csi-resizer": "v2.3.0-20261028",
+          "longhorn-csi-snapshotter": "v8.7.0-20261028",
+          "longhorn-livenessprobe": "v2.20.0-20261028"
+        }
+      },
+      "target_pins": {
+        "v_longhorn": "1.12.2",
+        "v_longhorn_upgrade_source": "1.12.1",
+        "v_longhorn_snapshot_controller": "v8.6.0",
+        "chart_sha256": "3514c3a802ec910b3e97698f0b816c038d66547e1bf3d1a4ebad44a9f5b8ac8a",
+        "images": {
+          "longhorn-engine": "v1.12.2",
+          "longhorn-manager": "v1.12.2-kubeauto.1",
+          "longhorn-ui": "v1.12.2",
+          "longhorn-instance-manager": "v1.12.2-kubeauto.1",
+          "longhorn-share-manager": "v1.12.2",
+          "longhorn-backing-image-manager": "v1.12.2",
+          "longhorn-support-bundle-kit": "v1.0.5",
+          "longhorn-csi-attacher": "v4.13.0-20261028",
+          "longhorn-csi-provisioner": "v5.3.0-20261028",
+          "longhorn-csi-node-driver-registrar": "v2.18.0-20261028",
+          "longhorn-csi-resizer": "v2.3.0-20261028",
+          "longhorn-csi-snapshotter": "v8.7.0-20261028",
+          "longhorn-livenessprobe": "v2.20.0-20261028"
+        }
+      },
+      "same_official_version": true,
+      "official_source_ids": [
+        "LONGHORN-1122-PLATFORM",
+        "LONGHORN-1122-CHART-COMPOSITION",
+        "LONGHORN-1122-MANAGER-IDENTITY",
+        "LONGHORN-1122-IM-IDENTITY"
+      ],
+      "document_disposition": "复用源目录及未变结论，目标兼容差异见UPG-02"
+    },
+    {
+      "component_id": "monitoring",
+      "source_pins": {
+        "v_promchart": "88.0.0",
+        "v_prometheus_operator": "v0.93.0",
+        "v_prometheus_config_reloader": "v0.93.0",
+        "v_prometheus_admission_webhook": "v0.93.0",
+        "v_prometheus": "v3.13.1-distroless",
+        "v_alertmanager": "v0.33.1",
+        "v_node_exporter": "v1.12.1",
+        "v_kube_state_metrics": "v2.18.0",
+        "v_grafana": "13.1.1",
+        "v_k8s_sidecar": "1.30.5",
+        "v_prometheus_webhook_certgen": "1.8.5",
+        "v_thanos": "v0.41.0",
+        "v_prometheus_adapter": "v0.12.0",
+        "v_blackbox_exporter": "v0.27.0",
+        "vendored_charts_sha256": {
+          "roles/cluster-addon/files/kube-prometheus-stack-88.0.0.tgz": "f96cb0a0999f7375b2899e4b60e6ec0e8f7133e5847f39ac87d53baea765eb32"
+        }
+      },
+      "target_pins": {
+        "v_promchart": "88.0.0",
+        "v_prometheus_operator": "v0.93.0",
+        "v_prometheus_config_reloader": "v0.93.0",
+        "v_prometheus_admission_webhook": "v0.93.0",
+        "v_prometheus": "v3.13.1-distroless",
+        "v_alertmanager": "v0.33.1",
+        "v_node_exporter": "v1.12.1",
+        "v_kube_state_metrics": "v2.18.0",
+        "v_grafana": "13.1.1",
+        "v_k8s_sidecar": "1.30.5",
+        "v_prometheus_webhook_certgen": "1.8.5",
+        "v_thanos": "v0.41.0",
+        "v_prometheus_adapter": "v0.12.0",
+        "v_blackbox_exporter": "v0.27.0",
+        "vendored_charts_sha256": {
+          "roles/cluster-addon/files/kube-prometheus-stack-88.0.0.tgz": "f96cb0a0999f7375b2899e4b60e6ec0e8f7133e5847f39ac87d53baea765eb32"
+        }
+      },
+      "same_official_version": true,
+      "official_source_ids": [
+        "PROM-093-COMPATIBILITY",
+        "PROM-STACK-880-PINS",
+        "KSM-218-K8S134-MATRIX",
+        "PROM-ADAPTER-012-API"
+      ],
+      "document_disposition": "复用源目录及未变结论，目标兼容差异见UPG-02"
+    },
+    {
+      "component_id": "logging",
+      "source_pins": {
+        "eck_operator": "3.5.0",
+        "elasticsearch": "9.5.1",
+        "kibana": "9.5.1",
+        "fluent_bit": "5.1.1",
+        "loki": "3.7.6",
+        "loki_chart": "18.9.0",
+        "alloy": "1.18.1",
+        "alloy_chart": "1.11.1"
+      },
+      "target_pins": {
+        "eck_operator": "3.5.0",
+        "elasticsearch": "9.5.1",
+        "kibana": "9.5.1",
+        "fluent_bit": "5.1.1",
+        "loki": "3.7.6",
+        "loki_chart": "18.9.0",
+        "alloy": "1.18.1",
+        "alloy_chart": "1.11.1"
+      },
+      "same_official_version": true,
+      "official_source_ids": [
+        "ECK-350-SUPPORTED",
+        "ALLOY1181-KUBERNETES-DISCOVERY",
+        "ALLOY1181-KUBERNETES-LOGS",
+        "LOKI1890-CHART",
+        "ALLOY1111-CHART"
+      ],
+      "document_disposition": "复用源目录及未变结论，目标兼容差异见UPG-02"
+    },
+    {
+      "component_id": "elasticsearch",
+      "source_pins": {
+        "v_eck_operator": "3.5.0",
+        "v_elasticsearch": "9.5.1",
+        "v_business_elasticsearch": "9.5.6",
+        "v_elasticsearch_upgrade_source": "9.5.5",
+        "v_elasticsearch_exporter": "v1.11.0",
+        "v_elasticsearch_client": "9.5.1-kubeauto.1",
+        "v_elasticsearch_rally": "2.13.0-kubeauto.1"
+      },
+      "target_pins": {
+        "v_eck_operator": "3.5.0",
+        "v_elasticsearch": "9.5.1",
+        "v_business_elasticsearch": "9.5.6",
+        "v_elasticsearch_upgrade_source": "9.5.5",
+        "v_elasticsearch_exporter": "v1.11.0",
+        "v_elasticsearch_client": "9.5.1-kubeauto.1",
+        "v_elasticsearch_rally": "2.13.0-kubeauto.1"
+      },
+      "same_official_version": true,
+      "official_source_ids": [
+        "ECK-350-SUPPORTED"
+      ],
+      "document_disposition": "复用源目录及未变结论，目标兼容差异见UPG-02"
+    },
+    {
+      "component_id": "mysql",
+      "source_pins": {
+        "v_pxc_operator": "1.20.0",
+        "v_pxc": "8.4.8-8.1",
+        "v_pxc_xtrabackup": "8.4.0-5.1",
+        "v_pxc_haproxy": "2.8.18-1",
+        "v_pxc_fluentbit": "5.0.6-1",
+        "v_pxc_operator_chart_sha256": "b8bff81d0f9691b1e495f958fba1bb268e48838cf548adf6ae6570ea0e0059cf"
+      },
+      "target_pins": {
+        "v_pxc_operator": "1.20.0",
+        "v_pxc": "8.4.8-8.1",
+        "v_pxc_xtrabackup": "8.4.0-5.1",
+        "v_pxc_haproxy": "2.8.18-1",
+        "v_pxc_fluentbit": "5.0.6-1",
+        "v_pxc_operator_chart_sha256": "b8bff81d0f9691b1e495f958fba1bb268e48838cf548adf6ae6570ea0e0059cf"
+      },
+      "same_official_version": true,
+      "official_source_ids": [
+        "PXC-120-FIRST-HOP"
+      ],
+      "document_disposition": "复用源目录及未变结论，目标兼容差异见UPG-02"
+    },
+    {
+      "component_id": "kafka",
+      "source_pins": {
+        "v_strimzi_operator": "1.2.0",
+        "v_kafka": "4.3.1",
+        "v_kafka_metadata": "4.3-IV0",
+        "v_strimzi_drain_cleaner": "1.6.1",
+        "v_strimzi_operator_chart_sha256": "0f8a50b2f19bd99482f9fd6e17cf42902f72f9e594a136813ac3f0b7af422efd",
+        "v_strimzi_drain_cleaner_chart_sha256": "ce84b8ddcd105f1b10d085fe69ed0d9185f798d009de3fba967386af2b8f6fdd"
+      },
+      "target_pins": {
+        "v_strimzi_operator": "1.2.0",
+        "v_kafka": "4.3.1",
+        "v_kafka_metadata": "4.3-IV0",
+        "v_strimzi_drain_cleaner": "1.6.1",
+        "v_strimzi_operator_chart_sha256": "0f8a50b2f19bd99482f9fd6e17cf42902f72f9e594a136813ac3f0b7af422efd",
+        "v_strimzi_drain_cleaner_chart_sha256": "ce84b8ddcd105f1b10d085fe69ed0d9185f798d009de3fba967386af2b8f6fdd"
+      },
+      "same_official_version": true,
+      "official_source_ids": [
+        "STRIMZI-120",
+        "STRIMZI-DRAIN-161-BEHAVIOR"
+      ],
+      "document_disposition": "复用源目录及未变结论，目标兼容差异见UPG-02"
+    },
+    {
+      "component_id": "mongodb",
+      "source_pins": {
+        "v_mongodb_operator": "1.23.1",
+        "v_mongodb_operator_chart": "1.23.2",
+        "v_mongodb_operator_chart_sha256": "80e629dc31f8cfe2615a5efb8b0d1d2ed418f25e8c0b168f981412c8594a07e9",
+        "v_mongodb": "8.0.32-14",
+        "v_mongodb_backup": "2.15.0",
+        "v_mongodb_fluentbit": "5.1.2-1",
+        "v_mongodb_exporter": "0.53.0"
+      },
+      "target_pins": {
+        "v_mongodb_operator": "1.23.1",
+        "v_mongodb_operator_chart": "1.23.2",
+        "v_mongodb_operator_chart_sha256": "80e629dc31f8cfe2615a5efb8b0d1d2ed418f25e8c0b168f981412c8594a07e9",
+        "v_mongodb": "8.0.32-14",
+        "v_mongodb_backup": "2.15.0",
+        "v_mongodb_fluentbit": "5.1.2-1",
+        "v_mongodb_exporter": "0.53.0"
+      },
+      "same_official_version": true,
+      "official_source_ids": [
+        "MONGODB-1231-FIRST-HOP",
+        "MONGODB-REQUIREMENTS-FIRST-HOP"
+      ],
+      "document_disposition": "复用源目录及未变结论，目标兼容差异见UPG-02"
+    },
+    {
+      "component_id": "redis",
+      "source_pins": {
+        "v_redis_operator": "0.27.0",
+        "v_redis_operator_image": "0.27.0-kubeauto.2",
+        "v_redis": "8.10.2",
+        "v_redis_cluster_image": "8.10.2-kubeauto.1",
+        "v_redis_exporter": "v1.93.0",
+        "v_redis_operator_chart_sha256": "4eabe2cde88657f8b7b21c2ec5ddafa3a305d35c9877021f9be89ac3beeb0f7f"
+      },
+      "target_pins": {
+        "v_redis_operator": "0.27.0",
+        "v_redis_operator_image": "0.27.0-kubeauto.2",
+        "v_redis": "8.10.2",
+        "v_redis_cluster_image": "8.10.2-kubeauto.1",
+        "v_redis_exporter": "v1.93.0",
+        "v_redis_operator_chart_sha256": "4eabe2cde88657f8b7b21c2ec5ddafa3a305d35c9877021f9be89ac3beeb0f7f"
+      },
+      "same_official_version": true,
+      "official_source_ids": [
+        "REDIS-027-CI-SCOPE",
+        "REDIS-027-CLIENT-DEPENDENCIES",
+        "REDIS-027-RBAC-API"
+      ],
+      "document_disposition": "复用源目录及未变结论，目标兼容差异见UPG-02"
+    },
+    {
+      "component_id": "minio",
+      "source_pins": {
+        "operator_chart": "7.1.1",
+        "tenant_chart": "7.1.1",
+        "v_miniooperator": "7.1.1",
+        "minio_server": "RELEASE.2025-04-08T15-41-24Z"
+      },
+      "target_pins": {
+        "operator_chart": "7.1.1",
+        "tenant_chart": "7.1.1",
+        "v_miniooperator": "7.1.1",
+        "minio_server": "RELEASE.2025-04-08T15-41-24Z"
+      },
+      "same_official_version": true,
+      "official_source_ids": [
+        "MINIO-711-REQUIREMENTS",
+        "MINIO-711-CI-SCOPE"
+      ],
+      "document_disposition": "复用源目录及未变结论，目标兼容差异见UPG-02"
+    },
+    {
+      "component_id": "nacos",
+      "source_pins": {
+        "nacos_server": "2.4.3",
+        "peer_finder_plugin": "1.1",
+        "mysql": "8.0.46",
+        "connector_j": "8.2.0"
+      },
+      "target_pins": {
+        "nacos_server": "2.4.3",
+        "peer_finder_plugin": "1.1",
+        "mysql": "8.0.46",
+        "connector_j": "8.2.0"
+      },
+      "same_official_version": true,
+      "official_source_ids": [
+        "NACOS-DOCKER-243-README",
+        "NACOS-243-COMPATIBLE",
+        "NACOS-PEERFINDER-130-MAIN",
+        "NACOS-243-SCHEMA"
+      ],
+      "document_disposition": "复用源目录及未变结论，目标兼容差异见UPG-02"
+    },
+    {
+      "component_id": "rocketmq",
+      "source_pins": {
+        "operator_chart": "0.1.0",
+        "operator_image_index_digest": "sha256:66516b068aa9b73bee2b218556f551111fc75721a32aa183f655106ef10bcfdf",
+        "broker": "4.5.0-alpine-operator-0.3.0",
+        "nameserver": "4.5.0-alpine-operator-0.3.0",
+        "console": "2.0.0"
+      },
+      "target_pins": {
+        "operator_chart": "0.1.0",
+        "operator_image_index_digest": "sha256:66516b068aa9b73bee2b218556f551111fc75721a32aa183f655106ef10bcfdf",
+        "broker": "4.5.0-alpine-operator-0.3.0",
+        "nameserver": "4.5.0-alpine-operator-0.3.0",
+        "console": "2.0.0"
+      },
+      "same_official_version": true,
+      "official_source_ids": [
+        "ROCKETMQ-030-GO-DEPS",
+        "CLIENTGO-0221-SHARED-API",
+        "ROCKETMQ-030-API-AND-EXEC-BOUNDARY"
+      ],
+      "document_disposition": "复用源目录及未变结论，目标兼容差异见UPG-02"
+    },
+    {
+      "component_id": "registry",
+      "source_pins": {
+        "harbor": "v2.13.0",
+        "distribution": "v2.8.3",
+        "product_registry_tag": "2.8.3"
+      },
+      "target_pins": {
+        "harbor": "v2.16.0",
+        "distribution": "v2.8.3",
+        "product_registry_tag": "2.8.3"
+      },
+      "same_official_version": false,
+      "official_source_ids": [
+        "HARBOR-2160-RELEASE",
+        "HARBOR-2160-UPGRADE",
+        "HARBOR-214-UPGRADE",
+        "HARBOR-2160-ROLLBACK",
+        "HARBOR-2146-BRIDGE-ASSET",
+        "HARBOR-2160-DB-MIGRATION",
+        "HARBOR-2160-PREPARE-HANDOFF",
+        "POSTGRES-DUMP-ARCHITECTURE-PORTABILITY",
+        "POSTGRES-PORTABLE-RESTORE-CONTRACT",
+        "HARBOR-2160-QUEUE-PERSISTENCE",
+        "DISTRIBUTION-283-REGISTRY-API"
+      ],
+      "document_disposition": "产品版本/包装身份与上游版本分别审查；Kubernetes与Harbor增量目录及正文见research.yaml和三手册"
+    },
+    {
+      "component_id": "control-client",
+      "source_pins": {
+        "kubernetes-python": "35.0.0"
+      },
+      "target_pins": {
+        "kubernetes-python": "35.0.0"
+      },
+      "same_official_version": true,
+      "official_source_ids": [
+        "PYTHONCLIENT-350-COMPATIBILITY"
+      ],
+      "document_disposition": "复用源目录及未变结论，目标兼容差异见UPG-02"
+    },
+    {
+      "component_id": "test-infrastructure",
+      "source_pins": {
+        "ansible_core": "2.18.6",
+        "ansible_core_py314": "2.20.9",
+        "pyinstaller": "v6.16.0",
+        "runner_contract": "upgrade/validate.py:v1",
+        "lab_authority": "AGENTS.md-fixed-whitelist"
+      },
+      "target_pins": {
+        "ansible_core": "2.18.6",
+        "ansible_core_py314": "2.20.9",
+        "pyinstaller": "v6.16.0",
+        "runner_contract": "upgrade/validate.py:v1",
+        "lab_authority": "AGENTS.md-fixed-whitelist"
+      },
+      "same_official_version": true,
+      "official_source_ids": [
+        "ACTIONS-PRODUCT-RELEASE-SCOPE",
+        "PYINSTALLER-616-UPGRADE-DATA",
+        "ANSIBLE-UPGRADE-INVENTORY-CONTRACT",
+        "K8S-API-HEALTH-CONTRACT"
+      ],
+      "document_disposition": "复用源目录及未变结论，目标兼容差异见UPG-02"
+    },
+    {
+      "component_id": "tools",
+      "source_pins": {
+        "scripts_sha256": {
+          "CalicoPolicyCli": "8b172fcdd8a13110e24327d7ed720fc812191aae67607dc3132ec74da5c9f137",
+          "KubeBackupCli": "ce1a03afaaac8e6ccd7b61256265fade8e51780214b8f1ae9b7f14fa6b281d00",
+          "KubePublishCli": "df122fe8d2d0a02258085bfe9818c923cd6ddb4ce65b68e6a34417452af8187b"
+        },
+        "kubernetes_python": "35.0.0",
+        "nerdctl": "2.3.4",
+        "docker": "28.5.2",
+        "calicoctl_target": "v3.32.4",
+        "calicoctl_bridge": "v3.31.7"
+      },
+      "target_pins": {
+        "scripts_sha256": {
+          "CalicoPolicyCli": "8b172fcdd8a13110e24327d7ed720fc812191aae67607dc3132ec74da5c9f137",
+          "KubeBackupCli": "ce1a03afaaac8e6ccd7b61256265fade8e51780214b8f1ae9b7f14fa6b281d00",
+          "KubePublishCli": "df122fe8d2d0a02258085bfe9818c923cd6ddb4ce65b68e6a34417452af8187b"
+        },
+        "kubernetes_python": "35.0.0",
+        "nerdctl": "2.4.2",
+        "docker": "28.5.2",
+        "calicoctl_target": "v3.32.4"
+      },
+      "same_official_version": false,
+      "official_source_ids": [
+        "PYTHONCLIENT-350-COMPATIBILITY",
+        "CALICO3324-HOSTENDPOINT-API",
+        "CALICO3324-GLOBALNETWORKPOLICY-API"
+      ],
+      "document_disposition": "产品版本/包装身份与上游版本分别审查；Kubernetes与Harbor增量目录及正文见research.yaml和三手册"
+    }
+  ]
+}

@@ -1,0 +1,145 @@
+{
+  "schema_version": 1,
+  "accepted": true,
+  "source": "v1.35.10",
+  "target": "v1.36.6",
+  "case_ids": [
+    "UPG-05"
+  ],
+  "method": "live",
+  "claim": "由已接受维护提交建立六节点1.35.10源；三API及六kubelet精确版本、Ready和原PVC/Service业务账本通过，etcd实际快照经离线restore完整性验证。本项只签源准备及持锁交接边界，不代签升级或灾难恢复演练。",
+  "covered_subcases": [
+    "clean-six-node-source-identity",
+    "api-and-kubelet-exact-v13510",
+    "all-nodes-ready-and-pods-healthy",
+    "etcd-backup-recovery-point",
+    "exclusive-lease-and-journal",
+    "time-qualified-source-environment"
+  ],
+  "inputs": {
+    "upgrade/v1.36.6/source-baseline.yaml": "9e5e8ce1480f87b35424182ef2c391cf2f8e65367fad751a81b52f2aad465ef2",
+    "upgrade/v1.36.6/release.yaml": "c85bdb55513ba62c141924c32f5dc8c1f4794f8e4db32dfeee4da505abe37e8f",
+    "upgrade/v1.36.6/artifact-pins.json": "6ceaf94c0fb6657a66017ff1563b9743c754ff1c7282b36242ade029b9a25047",
+    "upgrade/product/prepare.py": "145cbda05d0d16f985a1b3e1ba9134b2d05563e806ea91ce0f0c18afdef39b95",
+    "upgrade/product/continuity.py": "c5834306448f21dd167e4909cfe6380a1d29f10f908cefc2ded450aed65a6538",
+    "upgrade/lab/next-hosts.yml": "d7b9ff348850831b87b1d03fa1f579f4255a97d8a0b964772aa59a5fffa547af",
+    "upgrade/v1.36.6/evidence/raw/local-qualification/kubernetes-qualified-next_session.py.txt": "542ea11c51f4109db9311858e636d017746966d72518bea7000ba10395fd053c"
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/source/continuity.json",
+      "sha256": "ac5a5d3d3fbe923ac9c89984cfad76ca2677c4770cbd408e9604d37b03149abe"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/source/hosts",
+      "sha256": "3a444d60a5bd76ff89080619c431879cd8487abea243297043ed60d95db02a1d"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/source/ledger-namespace.json",
+      "sha256": "97872aace8cbeac3af63a10b36895a4cb13ecb2ee180dc128aa1d1040c12327d"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/source/plan.json",
+      "sha256": "3a9b583c67e5f1e2acce68b90e2f27a2f2d1a748fd49444c6e61685769b39309"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/source/prepared-boundary.json",
+      "sha256": "f1e85d8772272d2e3d605b9aaae7f5687c18609886783d6da30384d98beaa2bc"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/source/product-state/etcd-source.json",
+      "sha256": "20f3254a383fd9fe3c0c666325aed60e9a119f2a8006bc14068e2956a09533c2"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/source/product-state/etcd-unit-192.168.122.217.json",
+      "sha256": "6b794c77f65f5ff12d0818153a5a7da7769ae5c01781729a82987b353c92104a"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/source/product-state/etcd-unit-192.168.122.243.json",
+      "sha256": "b43d55049ac3f0042033ddb45aa0a292f07fa84de9dfc3ab735769b9b27f1277"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/source/product-state/etcd-unit-192.168.122.246.json",
+      "sha256": "46ef0315176300826db54abd2d3bea3ac4b54b35cde0f5c71a422f0c8f10dbbe"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/source/product-state/prepared-receipt.json",
+      "sha256": "f1e85d8772272d2e3d605b9aaae7f5687c18609886783d6da30384d98beaa2bc"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/source/product-state/product-config.json",
+      "sha256": "2aa1e74744fb3ce8134734d5177fbb33974410cc1aec01e43184d6363bdb6255"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/source/product-state/snapshot.db",
+      "sha256": "7841100d22a3d89c655df5e570e241649b34814a7dcbc42eadc06db1ae3b90b9"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/source/product-state/source-observation.json",
+      "sha256": "b7340cb534525a5fa9b1a1936f9f0878fe3a19984d3d8e438deac35561b60e27"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/source/source-config.json",
+      "sha256": "3157df51464bd85bb9d57ca0dea5a356eebbdb0e4cb10a4c717b59be3e4f721c"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/source/source-health.json",
+      "sha256": "f4fc034d15510a4877950e56d58274729decd41451f8affbcf203e8878e19ca7"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/source/source.attempt-1.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/source/source.attempt-1.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/source/source.attempt-1.log",
+      "sha256": "a640cb5e1561785f193ed5c6aa89f0207178a99e180e842c41b48b91c82adf09"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/source/source.status.json",
+      "sha256": "9dd402ec6fb58e31e755007a62c5dd7aaab72daaa2e8df552281dbbab43bf471"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/source/staged-input-manifest.json",
+      "sha256": "00c906f49bcffa5840d845e73e6e819a400d941470e44970dc450b8781ae849a"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/local-qualification/UPG-05-before-final-runner.json",
+      "sha256": "d2b21b3575d547549687ae5167d2f697c0d06154f10547e8c0439a890b877f7e"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/kubernetes-runner-final-applicability.json",
+      "sha256": "b6fcf1c2d14c3d0662aed352578e246c95d658d219807c3191116c9412c2dfe2"
+    }
+  ],
+  "run_id": "v1366-qualify-20261121a/source.attempt-1",
+  "durable_rc": 0,
+  "finalized_rc": 0,
+  "failure_markers": 0,
+  "success_marker": "UPGRADE_NEXT_SOURCE_PASS",
+  "cleanup_marker": "NEXT_SESSION_PHASE_SCOPE_VERIFY_PASS phase=source ownership=retained",
+  "log": {
+    "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/source/source.attempt-1.log",
+    "sha256": "a640cb5e1561785f193ed5c6aa89f0207178a99e180e842c41b48b91c82adf09"
+  },
+  "durable_exit": {
+    "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/source/source.attempt-1.exit",
+    "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+  },
+  "durable_finalized": {
+    "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/source/source.attempt-1.finalized",
+    "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+  },
+  "business_assertions": [
+    "三个API后端v1.35.10并readyz成功",
+    "六个kubelet精确v1.35.10且Ready、节点UID一致",
+    "PVC/PV/Service/namespace UID及HTTP账本SHA256绑定，prepare实际读取原账本",
+    "etcd snapshot revision2721、683keys、SHA256一致、离线restore验证",
+    "固定六节点独占租约和所有权复验通过、无注入故障，控制机隔离，保留健康源用于控制面迁移"
+  ],
+  "customer_signoff": null,
+  "runner_applicability": "原现场helper已保留原字节；当前final扩展适用性见kubernetes-runner-final-applicability.json。原现场run/durable/log/业务断言未修改。"
+}

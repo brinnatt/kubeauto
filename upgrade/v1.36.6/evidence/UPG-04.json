@@ -1,0 +1,368 @@
+{
+  "schema_version": 1,
+  "accepted": true,
+  "source": "v1.35.10",
+  "target": "v1.36.6",
+  "case_ids": [
+    "UPG-04"
+  ],
+  "method": "static",
+  "claim": "当前产品/升级合同438项成功（4项原生渲染相关skip已由另跑14项实际工具合同补齐）；控制机隔离修复25项、CLI/六仓消费33项及55文件静态检查通过。官方1.36.6 AMD64二进制实际解析40个产品service参数组合并拒绝未知参数。证明当前已实现入口及固定K8s runner的交接/拒绝/恢复合同；Harbor Docker/SQL仍为夹具，不签真实迁移、数据库恢复或ARM运行。新增现场runner或产品变更必须补其最小合同并更新本项依赖，不能沿用本项预签未来代码。 后续增量81项合同全部成功且无skip：官方Compose尾斜杠路径等价修复、真实Compose渲染、可选Docker目录执行权限恢复、原生AMD Harbor固定runner的阶段交接/首失败/归档清理。ARM运行、新建Harbor及真实迁移仍不由静态合同签署。 入口增量合同通过：目标健康交接/拒绝、真实CLI作用域、HTTP/HTTPS确认内容、错误CA须rc60、Webhook拒绝与UID/标签清理；另两镜像按既有digest补到实验室，非发布。 Harbor扩展同一固定入口覆盖独立243目标新建和幂等；合同确认目标回收不触碰仍运行源，完整回收最后释放六节点租约；两台Harbor均明确使用Docker库存。 最终增量103项无skip；Harbor归档逐文件摘要和只收小型证据的fetch合同通过，原恢复archive保留控制机私有目录。 Harbor版本读取增量54项合同通过且无skip：按官方2.13/2.14/2.16处理器使用原管理员认证读取受保护版本，保留本机监听与原CA校验；匿名200不再误判为完整版本。未更改源安装、业务或原始归档。 干净主机安装修复65项合同无skip：Harbor角色显式保证tar/gzip、原配置认证读取版本；固定受限续跑仅接受本次解压前缺tar、原配置/租约和无Harbor容器，复用01/03，仅执行setup11。原父资格失败状态不改签，子资格独立收证据后限定清理。 Harbor限定清理21项合同通过：无Kubernetes安装的Compose资格不调用Kubernetes destroy；先按原归属验证无K8s服务/数据及剩余容器，再调用固定主机wipe。节点helper已绑定恢复归档，新增只读前置经stdin执行，不覆盖已归档原始文件。 恢复归档增量23项合同无skip；实际rsync证明同主机完整快照内容复用、变化内容复制和历史字节保持，排除其它主机及未完成快照；清理失败重试保留独立attempt与原durable失败。 最终组合入口增量79项无skip，覆盖K8s→Harbor锁内交接、最终失败不改签、ingress自动交接；不签最终现场成功。 逻辑导出syslog启动依赖及有界恢复75项合同无skip；原完整备份不覆盖、所有业务写服务保持停止。 Valkey 9.0.3官方RDB格式及停止检查点续跑增量123项合同成功无skip；验证原格式、错误/未来格式拒绝、配置/容器/tag/部分归档拒绝、原首次逻辑导入复用及后半链交接；未签现场结果。 干净checkout打包准入10项合同成功：完整验收后导出policy，构建绑定精确产品输入与矩阵，不将私有日志加入Git或冻结包；不签最终现场或正式构建。 PV异步回收门禁增量71项合同无skip：原namespace消失后仅等待原PV/PVC/namespace UID匹配的Delete卷；拒绝外来/替换/Retain/目标卷，超时保留集群，等待结束前不得destroy或wipe。原最终source-clean首失败保留，不由本项签修复后现场或最终成功。 干净作用域交接增量87项合同无skip：真实客户端切换/恢复、限定复用七步已清理证据、拒绝产品/制品/其它门禁漂移、锁内只读交接资格与无重跑续接、原父失败保留及子链期间证据漂移拒签；产品输入摘要和十个K8s阶段函数AST保持，不由静态合同签新现场。 最终新装到逻辑迁移夹具交接增量92项合同无skip：两条真实portable路径在源停止备份前准备固定包，校验原始SHA/节点所有权、拒绝外来与部分文件、临时文件校验后原子落盘；暂停补给只允许原SIGSTOP监督/四锁/四步首次成功/原配置/未导入边界，并绑定补给helper摘要才允许SIGCONT。当前组合现场使用冻结旧runner与有记录的私有夹具补给，不冒称新runner完整现场通过。",
+  "covered_subcases": [
+    "product-config-and-inventory-handoff-contract",
+    "legacy-minor-refusal-and-version-identity-contract",
+    "control-plane-node-journal-and-component-stage-contracts",
+    "launcher-refuses-pending-or-disabled-prerequisites-before-mutation"
+  ],
+  "inputs": {
+    "upgrade/product/api-auth-observe.yml": "6c3fa82c10570193cc9c3a4d39fc87add749ffe2771604d23390f5cde2ce4093",
+    "upgrade/product/api-auth.yml": "b25ddd0eaa687685fb0dda80cff2cc20e2a89f0f872cbb62df2158b405911498",
+    "upgrade/product/calico-client.yml": "b2e366fa261f74a3fcac97aad482cdd570f81d6ceb25280c73482b66305905c9",
+    "upgrade/product/calico-qualify.yml": "0fc5a386665c8f4dad0e11ac58381d5724b8cbdf27999ed4b7aec7746f383fa7",
+    "upgrade/product/calico_stage.py": "e60de46a942bd8e21a0d0562f53cbcbf8059b1d0d75618f9c5581e4dd577942a",
+    "upgrade/product/cgroup.yml": "e8bffc201e6bad16b075d3d0889f26d1c730e746e6520664cd4230f1d2400c58",
+    "upgrade/product/cilium.py": "98ac5d8ad92a011484c417ace6b66c0d9f30bc9b9789439621fe700f1d41080b",
+    "upgrade/product/cilium_stage.py": "62adddb7872a6d55638c3685acd10627d0bf23d8258e7f76ecb3c72c103f3f1b",
+    "upgrade/product/containerd-admission.yml": "0a14f42e8212b002b8182565876fe46318e9f34d93d40562f01385200feedcec",
+    "upgrade/product/containerd-config-v3.toml": "2f7ef797aba95b2861ab97bb923afa652970500cff6ae5860e1307c82b87a80a",
+    "upgrade/product/containerd-edge.yml": "a2461a62f93a2d73a2f64f2ae450d3873f89a609140a3bb179a936b4c7d3af4c",
+    "upgrade/product/containerd.yml": "ac0247bb20476cf445b85bd41e7d7201173e38d03b19ea9c726aee266413933f",
+    "upgrade/product/continuity.py": "c5834306448f21dd167e4909cfe6380a1d29f10f908cefc2ded450aed65a6538",
+    "upgrade/product/control-plane.yml": "b2cb0dad62f1bd9a9d231da30506a05916a86b858413e4cfa749ae3e9cd595ef",
+    "upgrade/product/coordinator.py": "3e95c6742a291cb51334a9bfd7c8e4dd54de2e88eb5e30e1c286c4107af3eb55",
+    "upgrade/product/dns_stage.py": "d7555d630560643bc73dd313c646aa10fdaa48c45a0ed4af310f7186bf2e66a8",
+    "upgrade/product/docker-admission.yml": "ccecc215795b9b597460d792312f479ea79fb0c8fea845ada8b754922c26a2d4",
+    "upgrade/product/docker.yml": "7da6f05b0c6b456ad4a348203623c9f5b09bd848247c84f28ce5917676f87163",
+    "upgrade/product/entrypoint.py": "3c89771a898672b58ac37b56cbbeeabd1f249ce6133cca060fb7a78bb92a1c73",
+    "upgrade/product/etcd-observe.yml": "717533afbb0209c6552d0f9465d0ca1fc337461193fe17b9813993021e7e9ba1",
+    "upgrade/product/etcd.yml": "ef881e24e82093a6714465e38a93d8bdc32388487fddc5e14d111473764b19a2",
+    "upgrade/product/flannel_stage.py": "a090a488a991c57e030905cd8dcaeb0e27957ed2ce598b15be5f6a048e8f9e86",
+    "upgrade/product/harbor.yml": "0915a3af1d0f209fe08778494a1b321c4cb54bc9823ff13f462b2799c0b63796",
+    "upgrade/product/hop.py": "92c952aedb67fb4b60aa7b4e6ebfa577240ead19d7c3556471dd7c724b32802a",
+    "upgrade/product/inventory.py": "66b51949ba7946bb63cc3c2978d8630c8f591f8cd9b1a321aa8af4df9cc51af8",
+    "upgrade/product/inventory.yml": "c5f5e2b9b35ce1029235959d4f59199ac46ca256afd554f57d3d8c586c978e5b",
+    "upgrade/product/journal.py": "ff445ee4356712256d146f5d28cd298a83aa0ce08072e14ade3e23f1df67e87d",
+    "upgrade/product/kubernetes-observe.yml": "493b2ec1c90f91d468038d424ab76f07349a9596c0ede84772c7afae0e4b666d",
+    "upgrade/product/kubernetes_preflight.py": "4c88f0984533a22d8f970eb6a8e8547d965be48257ec42cb82edc215af2c3080",
+    "upgrade/product/kubernetes_stage.py": "312129f61989e75954e3aab446577e2e0cf537c21df6653ce98c4b2b96e2d586",
+    "upgrade/product/launcher.py": "79f8492c01a351dbd9e03d68fd79448b0c8e3bcd3ef6934dde1cd82dc5caf845",
+    "upgrade/product/library/harbor_migration.py": "7673ce57ad0c409c49ff853f02aaecf0cc27daa6743fea00a3f286ed809ebb13",
+    "upgrade/product/local_path_stage.py": "7b7bba1ccc4901ad28de47b15a4ca768a36d6e3708f2220b7de4c62ded5387bd",
+    "upgrade/product/metrics-eviction.yml": "e30b53957e946b8d69dcea3b2feeaaacb895713f68c031e5d467e4e6d933b745",
+    "upgrade/product/metrics_stage.py": "2c35a9a93f12a9f1bcffb4a3be8c24e0c520e02dc2896bc10ac6419ea534aafa",
+    "upgrade/product/next-preconditions.yml": "5d0785b65105a03b0d26f4693fda5376940739b5e269432c7b19ae58f5d70566",
+    "upgrade/product/next_addons.py": "11b3f4238ddb2620c57978ee92f2f5d09f6986093bd4ff8631d8bb445eb6c86c",
+    "upgrade/product/next_api.py": "0ee7405c3f10abd711c9bdb33fa81a1b4ac2406b932b3902e252a17c2026688d",
+    "upgrade/product/next_config.py": "11cdfb5615b2b4e60bbc5ee8901db652aca6729ed6f1bc506b3e9eba88f3fb28",
+    "upgrade/product/next_etcd.py": "01262e97c80615b3aa1eb02bd17b3e96f4d760213b7ec6e7f88e3f6366976cc9",
+    "upgrade/product/next_platform.py": "78c0631680e65b189f44ae7e5efe572d9f1443830d676ad542230a05474ce2bf",
+    "upgrade/product/node.yml": "0112a7d7eb7b528575f7e4da5f7147108f3820f6f819e0904a839da936d6627c",
+    "upgrade/product/prepare.py": "145cbda05d0d16f985a1b3e1ba9134b2d05563e806ea91ce0f0c18afdef39b95",
+    "upgrade/product/release_policy.py": "fa23b99648d7be2f7dd9d2682325e83b4fea1a3e7ba48672d13687357b034acf",
+    "upgrade/lab/final-regression.sh": "9f051f000c77ae1dab583ba861447ef98cf22bf8774a54fc4149eb670a60456f",
+    "upgrade/lab/isolate-control.sh": "1a5bd87966b01b6a152bf773928a8bfeae7e2b3f367d37195384050eca74c496",
+    "upgrade/lab/next-control.sh": "c33354ccb664df6c8facfb40694b195a93701cf24c86b66ab212841607a66b15",
+    "upgrade/lab/next-hosts.yml": "d7b9ff348850831b87b1d03fa1f579f4255a97d8a0b964772aa59a5fffa547af",
+    "upgrade/lab/next-inventory.sh": "e65d9b56ebec83696d77bef1d00244e0a5daa621dd20855a4e29c837abd7844a",
+    "upgrade/lab/next-session.sh": "d82d2f6a204b2e2b20455ec0531d6a10ea813f7bf3f7cad2947f3d5fc5e06dc1",
+    "upgrade/lab/next_inputs.py": "7c2d80ac440b9bcfe90a3c40b94396dfd5c4da1ef738d65b5ab9f418898773a0",
+    "upgrade/lab/next_registry.py": "f4ff21f7daf2dc6eeca5924e371db156cff6d812ebb687ac7e59cd7751b74cb8",
+    "upgrade/lab/next_session.py": "a41c70e2bef969bf78dae2f3419d4be9c559d1df0331e97b5b215d2fb77ee530",
+    "upgrade/lab/source-preflight.sh": "53968c47a8d5d9dd80aabe921dc6c722287416a7a416352031c34ce04e5f5d99",
+    "upgrade/lab/time-qualification.sh": "c4ac958cdf893d74980f61dab899479f0a06262f28c5c2ddb5a3edc231b02b0d",
+    "common/constants.py": "f1a09af57ad4b6aea36c3a6454190220fca2a34e0ebecf408d218f7b04a5f81f",
+    "controller/cluster/cli.py": "c55b55b4d999978e16dfb37809656c442c9e55db910f62a13696c8dd6795d41c",
+    "service/cluster/downloader.py": "dc920a824f620fc51638aa235c215b36a9c09af03270fd100297f324f33708d2",
+    "kubecli-onefile.spec": "f8c40a8ac98977152659ca1fe0f3e53ca63e0dccf330f14b8efdf70244e34a76",
+    "roles/harbor/tasks/main.yml": "61a9da72850e38e19fc3534e0061e06a94023929e52bdd0120486854eaa5df02",
+    "roles/harbor/templates/harbor-v2.16.yml.j2": "e060c8ad2f94b1d609293aa3924d706c5846596a72d806c5424b96423fbdb6a8",
+    "upgrade/lab/harbor-control.sh": "7999f9f5c943f0975d723d8d06908da4946fe0237146888398d5b1e8e9e8e920",
+    "upgrade/lab/harbor-session.sh": "9a045e3bb3389fe9d2bed5f028b629d4008fc797eba750b732228bd62a5dbd43",
+    "upgrade/lab/harbor-inventory.sh": "ea8a79bdc9fa090973458c5d4f1f67482212ffd91f443f9801b67cf263bf7e0a",
+    "upgrade/lab/harbor_fixture.py": "c315bcff7debf567e5d284305cee84eae566ef701fde7fa8cba56e403e6cdfab",
+    "upgrade/lab/harbor_inputs.py": "537f650748fa5d62bd2040415b9ac660865ae2833b16e72d716c0782bfb87055",
+    "upgrade/lab/harbor_node.py": "6bb03b22ffb74f0c1dc2bec2e2dd8e4a1beaf87b714297556472692217e205ec",
+    "upgrade/lab/harbor_session.py": "d17e4ab75e6e3e307cd30bec0c9622e5887fd1abc5233156c2d6fd2444251e6d",
+    "upgrade/tests/test_harbor_fixture.py": "b68b77c6167d8c330f64f6132505726426a1cc2b2be393afed1f7c4bcb9fd340",
+    "upgrade/tests/test_harbor_inputs.py": "ae4c845366fd8c45f41d90cd66e06d520fd6c394ace74db2eb9a202ee540e087",
+    "upgrade/tests/test_harbor_inventory.py": "948f76298aee4e95cecfa053a3b64146f4f74e4f4e4785026e0f422d4dcbbe5d",
+    "upgrade/tests/test_harbor_session.py": "0523831d61a1ac5a4b72d256eedd64a8eef1f4a3219e181d2646d93cc2a6e51e",
+    "upgrade/tests/test_harbor_migration.py": "b498a0a5bca254c2c52c77758bb17feaecef6374a225b4a6044cc10689070f32",
+    "upgrade/tests/test_next_session.py": "0c8f6a561396ed485152f5b87302fc6afcd367e38aa2d3d4c49fdaa711f0aa4b",
+    "upgrade/lab/ingress_qualification.py": "a15c588c62222256f811a1118ffca205dc60e1c47b0f66eb328a01502f75589c",
+    "upgrade/tests/test_ingress_qualification.py": "0af1a4dd2c68b55e643144e9439a961b043ffaf0760b434693ccfa80fa812f9d",
+    "upgrade/tests/test_next_registry.py": "0a5f37a9d13d23bb1045022f06d4a292bb07bda6774fd30af842381a59eb25b3",
+    "upgrade/tests/test_harbor_install.py": "50bc3d6e2ef2184f57815f646b32f78de08969f9972caf65084982d5683842bd",
+    "upgrade/tests/test_release_policy.py": "80d8529f393389f2f849d3e7341ab0e4406124e5f2834eeefb0ea7113915a436",
+    "upgrade/tests/test_product_release_scope.py": "ab0a35171507d87667344b09cebcefa8c99c5dea2dc85681695eb41611cb98b8"
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/local-qualification/control-isolation-contracts.log",
+      "sha256": "841b0e78f5ec810f4cbe3d72cb8ec892b393b9610a69c681cb1ab91a566c3e43"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/local-qualification/native-render-contracts.log",
+      "sha256": "d9299c7a43b0a4f8f53d437c746c5155044854da2fb65dfd0ba32c6205570953"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/local-qualification/product-delta-contracts.log",
+      "sha256": "cb167517b3d70ee81c49fd0f493b10d4ac0b4460df1cde0fbbf073954b8faa39"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/local-qualification/static-preflight.json",
+      "sha256": "020048474ca462d4d53ed433f87a9f58a13c56197b4939ab520ee6ccd6e23a47"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/local-qualification/upgrade-contracts-4.log",
+      "sha256": "29f4a9e2a128293e032cff0f14f1cfd3db44943051c482fe366a8f17554d0b65"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/native-service-qualification.json",
+      "sha256": "f9456c3d963ff6457c998ac68fbd40285d24010ad5adc35b09c1478e64b431fe"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/local-qualification/harbor-admission-contracts.log",
+      "sha256": "8cdf7f76a5dd3baa0be5a849e8a359ecbc09baf70a368ea1081a753e39209e23"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/local-qualification/ingress-focused-contracts.log",
+      "sha256": "885a0986ddf1c999f8d59ff17e31fc538daeda97187c87a68c47562d47ae3e13"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/local-qualification/harbor-final-admission-contracts.log",
+      "sha256": "aca86b45f4a48bf46d1617228d1a74703cef6e2ffddf2d0b2c47da0e90df1c3e"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/local-qualification/combined-focused-contracts.log",
+      "sha256": "6c3af4f6fad160278c3fee460bcd7e4841419ecd5b310d5890934b63987a908b"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/local-qualification/ingress-config-handoff-contracts.log",
+      "sha256": "78658c19157ad5442e9e35fbdb3a054a6d1506ad518aa506b79c7e09b0f2b1fa"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/local-qualification/ingress-frontend-handoff-contracts.log",
+      "sha256": "719be55a2e2fd73ec4f90f1b3eee43d0596ca13289504f1be900c0c95b2fded7"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/local-qualification/harbor-auth-contracts.log",
+      "sha256": "52b299f101d766a450b0d216fdf2e7d33801b3da8d111d57ee616af9ef691e03"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.13.0-systeminfo.go",
+      "sha256": "5c50ba391b9e8e55ccbb27136a0e65180dc15e293c639be20437bdd21b34ed1f",
+      "url": "https://github.com/goharbor/harbor/blob/v2.13.0/src/server/v2.0/handler/systeminfo.go"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.14.6-systeminfo.go",
+      "sha256": "5c50ba391b9e8e55ccbb27136a0e65180dc15e293c639be20437bdd21b34ed1f",
+      "url": "https://github.com/goharbor/harbor/blob/v2.14.6/src/server/v2.0/handler/systeminfo.go"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.16.0-systeminfo.go",
+      "sha256": "5c50ba391b9e8e55ccbb27136a0e65180dc15e293c639be20437bdd21b34ed1f",
+      "url": "https://github.com/goharbor/harbor/blob/v2.16.0/src/server/v2.0/handler/systeminfo.go"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/local-qualification/harbor-clean-install-repair-contracts.log",
+      "sha256": "459c9a152e80098713626af167d6b61698673b04d355f9942590c39cd25ca680"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/local-qualification/harbor-cleanup-repair-contracts.log",
+      "sha256": "e7cf5b52af052626db4d6b48ec55983bc678b685e6818dd61e00965e5c0ae106"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/local-qualification/harbor-archive-repair-contracts.log",
+      "sha256": "99d1b1744ef9bcbd8e4f2e53dc201090522295419614ee258ee6010e2de25989"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/local-qualification/harbor-logical-contracts.log",
+      "sha256": "cce1b8a4f9c6cac50dd65f652abac4f2f457ffa044361839bcfe76342c7cd86a"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/local-qualification/combined-final-contracts.log",
+      "sha256": "aae6a7a2b05400d0946fb262f2ec440dadfb7d3745254f809c1410f3b54c0a16"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/local-qualification/harbor-export-syslog-contracts.log",
+      "sha256": "f4eca1039d73c0b74c7c3039a09f92ac4efabc85edbcbce93a528469a119d178"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/local-qualification/harbor-valkey-stopped-resume-contracts.log",
+      "sha256": "e396bd8ba32a928798758b3fc6804adf58b7b67b10e3cc4d4c79241d9639c7bf"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/valkey-rdb-format.json",
+      "sha256": "a05c13c3688c91b629ef0a0b91e3e1913166d0ed4a9602aca9173cdd1e0a84aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/valkey-9.0.3/rdb.c",
+      "sha256": "448dad6d339e5b880548b3024ab1aa73c3c851eaf1e8c54fdce7fcdccc35df9f"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/valkey-9.0.3/rdb.h",
+      "sha256": "c4346d93e3a7822ef19e0b10a106243130447d1bc3a48ffcae76e63afd36209c"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/local-qualification/release-policy-clean-checkout-contracts.log",
+      "sha256": "494b4b1856572e831a3d392076fbed1412521459936f5d14f040e4775bb67779"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/pv-async-reclaim.json",
+      "sha256": "b65ea9a06444e7e6d05e1ad37574bc29b132da6e20dfdae91549cb298e55f021"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/local-qualification/pv-async-reclaim-contracts.log",
+      "sha256": "f48e32ab7fc003d7b0c9f63731dc86952b54258578a697c95fb9b550a3488238"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/completed-scope-handoff.json",
+      "sha256": "55ac8eb2f3baf969c35dd21400e53b3ef442d8f69d5db2bb5e54623098c07916"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/local-qualification/package-fixture-contracts.log",
+      "sha256": "7a1485ecd3e4c00829e7d77887e010d4790d17ac5de0062a9ce235e75c0b82a5"
+    }
+  ],
+  "checks": [
+    {
+      "command": ".venv/bin/python -B -m unittest discover -s upgrade/tests -v",
+      "rc": 0,
+      "tests": 438,
+      "skipped": 4
+    },
+    {
+      "command": "PATH=<qualified Helm> UPGRADE_CONTAINERD_FIXTURE_DIR=<qualified cached binaries> unittest Cilium/Ingress/Longhorn/Containerd native-render contracts",
+      "rc": 0,
+      "tests": 14
+    },
+    {
+      "command": ".venv/bin/python -B -m unittest upgrade.tests.test_next_session -v",
+      "rc": 0,
+      "tests": 25
+    },
+    {
+      "command": ".venv/bin/python -B -m unittest tests.unit.test_cli_version tests.unit.test_cli_completion tests.unit.test_six_repo_version_sync -v",
+      "rc": 0,
+      "tests": 33
+    },
+    {
+      "command": "Python AST + yaml.safe_load_all + bash -n for exact changed files",
+      "rc": 0,
+      "files": 55
+    },
+    {
+      "command": "five checksum-qualified official 1.36.6 binaries --help with 40 rendered product profiles and unknown-flag negative probes",
+      "rc": 0
+    },
+    {
+      "command": "isolated unittest Harbor migration/session/inputs/fixture/inventory + next_session; qualified real Compose enabled",
+      "rc": 0,
+      "tests": 81,
+      "skipped": 0
+    },
+    {
+      "command": "isolated ingress_qualification + next_registry + next_session unittest; bash -n next-control",
+      "rc": 0
+    },
+    {
+      "command": "isolated Harbor migration/session/inputs/fixture/inventory; actual qualified Compose",
+      "rc": 0,
+      "tests": 57,
+      "skipped": 0
+    },
+    {
+      "command": "isolated Harbor + ingress + next registry/session scoped contracts with actual Compose",
+      "rc": 0,
+      "tests": 103,
+      "skipped": 0
+    },
+    {
+      "command": "isolated actual setup config handoff through real Ansible plus ingress/next session contracts; bash -n frontend",
+      "rc": 0,
+      "tests": 42,
+      "skipped": 0
+    },
+    {
+      "command": "isolated ingress frontend transfer closure and config handoff contracts",
+      "rc": 0,
+      "tests": 16,
+      "skipped": 0
+    },
+    {
+      "command": "unittest upgrade.tests.test_harbor_migration upgrade.tests.test_harbor_session upgrade.tests.test_harbor_entry (qualified native Compose)",
+      "rc": 0,
+      "tests": 54,
+      "skipped": 0,
+      "scope": "Authenticated local protected systeminfo; exact failure regression; original CA and local listener retained"
+    },
+    {
+      "command": "bash -n upgrade/lab/harbor-control.sh; unittest Harbor installation/session/migration/Ansible entry contracts with real Compose",
+      "rc": 0,
+      "tests": 65,
+      "skipped": 0,
+      "scope": "Minimal-host archive dependencies, protected systeminfo credentials, exact first-failure repair with original config and held leases; setup11 only"
+    },
+    {
+      "command": "bash -n upgrade/lab/harbor-control.sh; unittest upgrade.tests.test_harbor_session -v",
+      "rc": 0,
+      "tests": 21,
+      "skipped": 0,
+      "scope": "Harbor-only runtime cleanup; refuse Kubernetes services/data or remaining containers; retain archived helper bytes and source/target ownership"
+    },
+    {
+      "command": "bash -n Harbor frontends; Python AST; isolated unittest Harbor session/migration/entry with qualified real Compose",
+      "rc": 0,
+      "tests": 70,
+      "skipped": 0,
+      "scope": "logical 213→2146→216 and 216 import handoff, first-failure stop, real tar pipeline, original identity protection, separate recovery archive filesystem; native x86 only"
+    },
+    {
+      "command": "isolated unittest next_session ingress_qualification harbor_session; Python AST and bash syntax preflight",
+      "rc": 0,
+      "tests": 79,
+      "skipped": 0,
+      "scope": "Final combined path prerequisite refusal, durable zero/first-attempt, owner release and ingress handoff; qualify phase implementations unchanged"
+    },
+    {
+      "command": "isolated Harbor migration/session/entry contracts with real Compose; bash -n Harbor frontend; Python AST",
+      "tests": 75,
+      "skipped": 0,
+      "rc": 0,
+      "scope": "source syslog before PostgreSQL, stop on failure, incomplete export safe retry, exact owned repair with original backups and no setup replay"
+    },
+    {
+      "command": "KUBEAUTO_LOG_DIR=<temporary> UPGRADE_COMPOSE_FIXTURE=<qualified docker-compose> .venv/bin/python -B -m unittest upgrade.tests.test_harbor_migration upgrade.tests.test_harbor_session upgrade.tests.test_next_session upgrade.tests.test_ingress_qualification; bash -n upgrade/lab/harbor-control.sh",
+      "rc": 0,
+      "tests": 123,
+      "skipped": 0,
+      "scope": "Valkey 9.0.3 VALKEY080, immutable stopped checkpoint archive resume, original imported ledger and bounded second failure recovery; no first import replay"
+    },
+    {
+      "command": "KUBEAUTO_LOG_DIR=<temporary> .venv/bin/python -B -m unittest upgrade.tests.test_release_policy upgrade.tests.test_product_release_scope",
+      "rc": 0,
+      "tests": 10,
+      "skipped": 0,
+      "scope": "实际15项完整夹具导出后删除私有证据，原export真实拒绝；clean checkout仅校验已导出policy、矩阵和产品源摘要，缺失/变化拒绝。spec只调用构建准入，不重读私有证据。"
+    },
+    {
+      "command": ".venv/bin/python -B -m unittest upgrade.tests.test_next_session upgrade.tests.test_harbor_session -v",
+      "rc": 0
+    },
+    {
+      "command": ".venv/bin/python -B -m unittest upgrade.tests.test_next_session upgrade.tests.test_harbor_session -v",
+      "tests": 87,
+      "skipped": 0,
+      "rc": 0
+    },
+    {
+      "command": ".venv/bin/python -B -m unittest upgrade.tests.test_harbor_session upgrade.tests.test_next_session -v",
+      "rc": 0,
+      "tests": 92,
+      "skipped": 0,
+      "log": "upgrade/v1.36.6/evidence/raw/local-qualification/package-fixture-contracts.log"
+    }
+  ],
+  "customer_signoff": null
+}

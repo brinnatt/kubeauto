@@ -1,0 +1,51 @@
+# Independent registry maintenance: never invoke Kubernetes setup or playbook 93.
+- name: Maintain the inventoried Harbor instance
+  hosts: harbor
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - name: Require one explicit Harbor owner and a separate recovery directory
+      ansible.builtin.assert:
+        that:
+          - groups['harbor'] | length == 1
+          - ansible_play_hosts_all | length == 1
+          - UPGRADE_HARBOR_OPERATION in ['backup', 'upgrade', 'restore', 'export', 'import', 'abort-import']
+          - UPGRADE_HARBOR_BACKUP is match('^/[A-Za-z0-9_./-]+$')
+          - "'..' not in UPGRADE_HARBOR_BACKUP.split('/')"
+          - UPGRADE_HARBOR_BACKUP != '/'
+
+    - name: Read the original installed configuration for a stopped backup
+      ansible.builtin.slurp:
+        src: '{{ HARBOR_PATH }}/harbor/harbor.yml'
+      register: harbor_source_config
+      no_log: true
+      when: UPGRADE_HARBOR_OPERATION == 'backup'
+
+    - name: Read the existing private recovery checkpoint
+      ansible.builtin.slurp:
+        src: "{{ UPGRADE_HARBOR_TRANSFER + '/portable.json' if UPGRADE_HARBOR_OPERATION == 'import' else UPGRADE_HARBOR_BACKUP + '/receipt.json' }}"
+      register: harbor_original_receipt
+      no_log: true
+      when: UPGRADE_HARBOR_OPERATION != 'backup'
+
+    - name: Bind the original configuration without publishing its credentials
+      ansible.builtin.set_fact:
+        harbor_original_config: "{{ (harbor_source_config.content | b64decode | from_yaml) if UPGRADE_HARBOR_OPERATION == 'backup' else (harbor_original_receipt.content | b64decode | from_json).original_configuration }}"
+        harbor_original_ca: "{{ UPGRADE_HARBOR_CA if UPGRADE_HARBOR_OPERATION == 'backup' else (harbor_original_receipt.content | b64decode | from_json).tls_paths.ca }}"
+      no_log: true
+
+    - name: Execute the identity-bound Harbor operation
+      harbor_migration:
+        operation: '{{ UPGRADE_HARBOR_OPERATION }}'
+        data_directory: '{{ HARBOR_PATH }}'
+        backup_directory: '{{ UPGRADE_HARBOR_BACKUP }}'
+        binary_directory: '{{ bin_dir }}'
+        configuration: '{{ harbor_original_config }}'
+        ca_file: '{{ harbor_original_ca }}'
+        packages: '{{ UPGRADE_HARBOR_PACKAGES }}'
+        transfer_directory: '{{ UPGRADE_HARBOR_TRANSFER | default(omit, true) }}'
+      register: harbor_migration_result
+
+    - name: Report only the public operation boundary
+      ansible.builtin.debug:
+        msg: '{{ harbor_migration_result.marker }}'

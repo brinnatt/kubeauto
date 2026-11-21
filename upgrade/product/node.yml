@@ -12,7 +12,7 @@
           - UPGRADE_PRECONDITIONS_VERIFIED | default(false) | bool
           - >-
             [UPGRADE_SOURCE_VERSION | default(''), K8S_VER] in
-            [['v1.33.6', 'v1.34.13'], ['v1.34.13', 'v1.35.10']]
+            [['v1.33.6', 'v1.34.13'], ['v1.34.13', 'v1.35.10'], ['v1.35.10', 'v1.36.6']]
           - UPGRADE_RUN_ID | default('') is match('^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,95}$')
           - UPGRADE_NODE_HOST | default('') in (groups['kube_master'] + groups['kube_node'])
           - UPGRADE_NODE_NAME == hostvars[UPGRADE_NODE_HOST].k8s_nodename
@@ -142,11 +142,11 @@
   serial: 1
   any_errors_fatal: true
   tasks:
-    - name: Admit the actual cgroup policy before draining a Kubernetes 1.35 node
+    - name: Admit the actual cgroup policy before draining a Kubernetes 1.35+ node
       ansible.builtin.include_tasks: cgroup.yml
       vars:
         UPGRADE_CGROUP_OBSERVE_ONLY: true
-      when: K8S_VER == 'v1.35.10'
+      when: K8S_VER in ['v1.35.10', 'v1.36.6']
 
     - name: Read actual running node executables before maintenance
       ansible.builtin.shell: |
@@ -172,7 +172,7 @@
 
     - name: Evict only the reviewed stateless Metrics Server cache before normal drain
       ansible.builtin.include_tasks: metrics-eviction.yml
-      when: K8S_VER == 'v1.35.10'
+      when: K8S_VER in ['v1.35.10', 'v1.36.6']
 
     # kubectl retries PDB HTTP 429 internally until the declared timeout. Other
     # failures stop here. A Cleaner webhook denial needs caller-owned diagnosis
@@ -199,9 +199,9 @@
       ansible.builtin.include_tasks: docker.yml
       when: CONTAINER_RUNTIME == 'docker'
 
-    - name: Apply the reviewed Kubernetes 1.35 cgroup policy after drain
+    - name: Apply the reviewed Kubernetes 1.35+ cgroup policy after drain
       ansible.builtin.include_tasks: cgroup.yml
-      when: K8S_VER == 'v1.35.10'
+      when: K8S_VER in ['v1.35.10', 'v1.36.6']
 
     - name: Replace only the drained node executables
       ansible.builtin.copy:

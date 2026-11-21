@@ -1,0 +1,872 @@
+[
+  {
+    "id": "k8s-stable-136",
+    "url": "https://dl.k8s.io/release/stable-1.36.txt",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/k8s-stable-136",
+      "sha256": "d0ec8cffc62437dc087b77a3e55fcf8b9784255944f2fe4f677ad5f62da935b9",
+      "bytes": 7
+    }
+  },
+  {
+    "id": "k8s-stable",
+    "url": "https://dl.k8s.io/release/stable.txt",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/k8s-stable",
+      "sha256": "72fd4b4e60a8fca76519db865f2ad94eeb426aef4b52d2b0c232c93e7b6c613f",
+      "bytes": 7
+    }
+  },
+  {
+    "id": "k8s-changelog",
+    "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/v1.36.6/CHANGELOG/CHANGELOG-1.36.md",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/k8s-changelog",
+      "sha256": "7807fdc75792d2c2c5f0d4ddfdfe09de33a6cbaed088f12503a4e4ce547ffa1f",
+      "bytes": 372896
+    }
+  },
+  {
+    "id": "k8s-skew",
+    "url": "https://kubernetes.io/releases/version-skew-policy/",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/k8s-skew",
+      "sha256": "78f537506b4352598db3dd033d6dca3a083dd1ae4f767fe1a592c4a25ab59168",
+      "bytes": 57075
+    }
+  },
+  {
+    "id": "harbor-release-2160",
+    "url": "https://api.github.com/repos/goharbor/harbor/releases/tags/v2.16.0",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-release-2160",
+      "sha256": "4eddd9596ff1a61a0aca91bf6601e847bdc3d4acf4a66d991294e19627bcbbdf",
+      "bytes": 60736
+    }
+  },
+  {
+    "id": "harbor-2160-template",
+    "url": "https://raw.githubusercontent.com/goharbor/harbor/v2.16.0/make/harbor.yml.tmpl",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-2160-template",
+      "sha256": "30c303e76f5248b87ae6e81cfc8bed6fa25015c86f0c242621be5eac39e75bab",
+      "bytes": 15194
+    }
+  },
+  {
+    "id": "harbor-2160-install",
+    "url": "https://raw.githubusercontent.com/goharbor/harbor/v2.16.0/make/install.sh",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-2160-install",
+      "sha256": "e9cb425aa63b9c3d8e60ac2398222d8b055d4984b6f249cf3420bd00e50e8110",
+      "bytes": 1975
+    }
+  },
+  {
+    "id": "harbor-2160-prepare",
+    "url": "https://raw.githubusercontent.com/goharbor/harbor/v2.16.0/make/prepare",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-2160-prepare",
+      "sha256": "b69786057bf925dc306212a5544f5434418b584988b36ae565123eae6133265a",
+      "bytes": 2207
+    }
+  },
+  {
+    "id": "harbor-multiarch-pr",
+    "url": "https://api.github.com/repos/goharbor/harbor/pulls/22311",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-multiarch-pr",
+      "sha256": "a5facb090b23a90b095cba92aee288aeacb94303eaecfe8b9a339145f9544f4f",
+      "bytes": 26697
+    }
+  },
+  {
+    "id": "harbor-upgrade",
+    "url": "https://raw.githubusercontent.com/goharbor/website/main/docs/administration/upgrade/_index.md",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-upgrade",
+      "sha256": "3ce37d498c84c7348497da65df2ed2556b245c41685d8af6a206015a1b77c5d8",
+      "bytes": 3745
+    }
+  },
+  {
+    "id": "harbor-rollback",
+    "url": "https://raw.githubusercontent.com/goharbor/website/main/docs/administration/upgrade/roll-back-upgrade.md",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-rollback",
+      "sha256": "dee224583fa851b787a7f1c447b7eb69c9a5b98d4555589a05f88f7354fe38a2",
+      "bytes": 1971
+    }
+  },
+  {
+    "id": "harbor-compatibility",
+    "url": "https://raw.githubusercontent.com/goharbor/website/main/docs/install-config/harbor-compatibility-list.md",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-compatibility",
+      "sha256": "79c4bc4156c191e3619588d43a319864fd83eff274c2911995afea5f364e32b2",
+      "bytes": 7602
+    }
+  },
+  {
+    "id": "harbor-backup",
+    "url": "https://raw.githubusercontent.com/goharbor/website/main/docs/administration/backup-restore/_index.md",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-backup",
+      "sha256": "8f3edf300d7c37f939ebbe190a464bf6dd0bace51358123ef689c934b4818f0e",
+      "bytes": 6550
+    }
+  },
+  {
+    "id": "harbor-migration-utils",
+    "url": "https://raw.githubusercontent.com/goharbor/harbor/v2.16.0/make/photon/prepare/utils/migration.py",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-migration-utils",
+      "sha256": "4cd7dddafa62e613d9165e17e942a50a724c66dd30117880e17417ce95484fcc",
+      "bytes": 2710
+    }
+  },
+  {
+    "id": "harbor-migration216",
+    "url": "https://raw.githubusercontent.com/goharbor/harbor/v2.16.0/make/photon/prepare/migrations/version_2_16_0/__init__.py",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-migration216",
+      "sha256": "1568df520adcbbb6c440160d3d881a71bdcc378eba0500965d4c1bd84cd62ac3",
+      "bytes": 626
+    }
+  },
+  {
+    "id": "harbor-compose-template",
+    "url": "https://raw.githubusercontent.com/goharbor/harbor/v2.16.0/make/photon/prepare/templates/docker_compose/docker-compose.yml.jinja",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-compose-template",
+      "sha256": "0fabbb94dcdc8b7b5a6171c275437dca2b7f69de8d61f911c35b4d9f5fc88add",
+      "bytes": 10267
+    }
+  },
+  {
+    "id": "k8s-release-1366",
+    "url": "https://api.github.com/repos/kubernetes/kubernetes/releases/tags/v1.36.6",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/k8s-release-1366",
+      "sha256": "4cc750d0756226deb020d4259aa3f4e06ce00b44429a579fa3d8444a10d4da2d",
+      "bytes": 2426
+    }
+  },
+  {
+    "id": "k8s-release-1360",
+    "url": "https://api.github.com/repos/kubernetes/kubernetes/releases/tags/v1.36.0",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/k8s-release-1360",
+      "sha256": "4c3c66d2983a36b76d02197b9f5ba89a7a3ec8d4ab238d035394e3c1f17dc179",
+      "bytes": 2432
+    }
+  },
+  {
+    "id": "k8s-api-deprecations",
+    "url": "https://kubernetes.io/docs/reference/using-api/deprecation-guide/",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/k8s-api-deprecations",
+      "sha256": "a797bfdb122ccd7a941183f28f0663c77d21754e8e03c82257877f387379d441",
+      "bytes": 531700
+    }
+  },
+  {
+    "id": "cilium-support",
+    "url": "https://docs.cilium.io/en/stable/network/kubernetes/compatibility/",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/cilium-support",
+      "sha256": "0e20bf8712d49eb99c35ffa5ee88292d2b067afe69947562e575a94967cc60d5",
+      "bytes": 31791
+    }
+  },
+  {
+    "id": "calico-requirements",
+    "url": "https://docs.tigera.io/calico/latest/getting-started/kubernetes/requirements",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/calico-requirements",
+      "sha256": "e7e9ab46925e7086d36bc41b3b756a92c7b0fcdb0685b6eb72304a38002308d3",
+      "bytes": 68322
+    }
+  },
+  {
+    "id": "ceph-csi-support",
+    "url": "https://raw.githubusercontent.com/ceph/ceph-csi/v3.17.2/README.md",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/ceph-csi-support",
+      "sha256": "7f4c9b5b14d1300568b323e65e580d65a42479e52ee77f146788cf2bd49c58f5",
+      "bytes": 19009
+    }
+  },
+  {
+    "id": "harbor-install-prereqs",
+    "url": "https://raw.githubusercontent.com/goharbor/website/main/docs/install-config/installation-prereqs.md",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-install-prereqs",
+      "sha256": "11cf509f553d8ff120701a8f41d649b8e8577de5bd583083c9404f7cf2354f4f",
+      "bytes": 2054
+    }
+  },
+  {
+    "id": "calico-332-requirements",
+    "url": "https://docs.tigera.io/calico/3.32/getting-started/kubernetes/requirements",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/calico-332-requirements",
+      "sha256": "8d3857417b6a6175d52725fc1317653503c490e351f59ee67e33b6f3d23f313f",
+      "bytes": 68328
+    }
+  },
+  {
+    "id": "cilium120-support",
+    "url": "https://raw.githubusercontent.com/cilium/cilium/v1.20.5/Documentation/network/kubernetes/compatibility.rst",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/cilium120-support",
+      "sha256": "4119df582c01582bc082c529b6faf29167d07f129c1cec2583117fc37e2e4b13",
+      "bytes": 2797
+    }
+  },
+  {
+    "id": "containerd-support",
+    "url": "https://raw.githubusercontent.com/containerd/containerd/v2.3.7/RELEASES.md",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/containerd-support",
+      "sha256": "5f4b8e1c2328c07da56e6181688d578a392970a0a5ed428356240d2de916c3b2",
+      "bytes": 39044
+    }
+  },
+  {
+    "id": "longhorn-release",
+    "url": "https://api.github.com/repos/longhorn/longhorn/releases/tags/v1.12.2",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/longhorn-release",
+      "sha256": "43dfb8f08e08d79571973f0f710121864e2b8cdca7be397185f441e696a5bba4",
+      "bytes": 33795
+    }
+  },
+  {
+    "id": "harbor214-upgrade",
+    "url": "https://raw.githubusercontent.com/goharbor/website/release-2.14.0/docs/administration/upgrade/_index.md",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor214-upgrade",
+      "sha256": "52e6a1be8634be90b161eb6657ad10f485e66547448fcfa6b0c2c17d7dae021a",
+      "bytes": 3608
+    }
+  },
+  {
+    "id": "harbor216-migrate214",
+    "url": "https://raw.githubusercontent.com/goharbor/harbor/v2.16.0/make/photon/prepare/migrations/version_2_14_0/__init__.py",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor216-migrate214",
+      "sha256": "ddd7a9467e4695114fb90753de9a06601080e9f99783216c0cdb24879e8c2b48",
+      "bytes": 626
+    }
+  },
+  {
+    "id": "k8s136-features",
+    "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/v1.36.6/pkg/features/kube_features.go",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/k8s136-features",
+      "sha256": "c170e0e53e485674820e0a6e54feba77e5bc74b66365ec20a2a245157084e639",
+      "bytes": 113528
+    }
+  },
+  {
+    "id": "k8s136-kubelet",
+    "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/v1.36.6/staging/src/k8s.io/kubelet/config/v1beta1/types.go",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/k8s136-kubelet",
+      "sha256": "210947b343ef4220a005d71d602fa1f5cb71de2714f001977df142f745afacea",
+      "bytes": 61729
+    }
+  },
+  {
+    "id": "k8s136-proxy",
+    "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/v1.36.6/pkg/proxy/apis/config/types.go",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/k8s136-proxy",
+      "sha256": "78c3779f4c811691fc26135e93c03e1a957d0ffb00134ba4807222240c82026c",
+      "bytes": 12683
+    }
+  },
+  {
+    "id": "k8s136-dependencies",
+    "url": "https://raw.githubusercontent.com/kubernetes/kubernetes/v1.36.6/build/dependencies.yaml",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/k8s136-dependencies",
+      "sha256": "cae79d3577b2978ee942d0524b9986cbbb13434e9334314ea29be165bc7e9b43",
+      "bytes": 12123
+    }
+  },
+  {
+    "id": "k8s136-amd64-kube-apiserver-sha256",
+    "url": "https://dl.k8s.io/release/v1.36.6/bin/linux/amd64/kube-apiserver.sha256",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/k8s136-amd64-kube-apiserver-sha256",
+      "sha256": "9ea51cd507fcfa8664199bf7833df7a93dcfbfbf1d902bd9f1eae4fd5364938b",
+      "bytes": 64
+    }
+  },
+  {
+    "id": "k8s136-amd64-kube-controller-manager-sha256",
+    "url": "https://dl.k8s.io/release/v1.36.6/bin/linux/amd64/kube-controller-manager.sha256",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/k8s136-amd64-kube-controller-manager-sha256",
+      "sha256": "4a41525b2575948b16f280417e13b9651ee71c443f147a0d827ac7f5e32d1be0",
+      "bytes": 64
+    }
+  },
+  {
+    "id": "k8s136-amd64-kube-scheduler-sha256",
+    "url": "https://dl.k8s.io/release/v1.36.6/bin/linux/amd64/kube-scheduler.sha256",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/k8s136-amd64-kube-scheduler-sha256",
+      "sha256": "8bcab132568d620c6fb6dd9a038fe716116843bd79b343c66cfe399d53fbb09c",
+      "bytes": 64
+    }
+  },
+  {
+    "id": "k8s136-amd64-kubelet-sha256",
+    "url": "https://dl.k8s.io/release/v1.36.6/bin/linux/amd64/kubelet.sha256",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/k8s136-amd64-kubelet-sha256",
+      "sha256": "1a25ea90563bdc5c52dd0e71906fcfca18bdf685741b144febb4c173cb3a60f6",
+      "bytes": 64
+    }
+  },
+  {
+    "id": "k8s136-amd64-kube-proxy-sha256",
+    "url": "https://dl.k8s.io/release/v1.36.6/bin/linux/amd64/kube-proxy.sha256",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/k8s136-amd64-kube-proxy-sha256",
+      "sha256": "79918c57b1c9ef2a13acc6c14410f2691622f56c47c77e54e80ccc4466278828",
+      "bytes": 64
+    }
+  },
+  {
+    "id": "k8s136-amd64-kubectl-sha256",
+    "url": "https://dl.k8s.io/release/v1.36.6/bin/linux/amd64/kubectl.sha256",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/k8s136-amd64-kubectl-sha256",
+      "sha256": "d99bdfb7552626a6b9d28f54d4a64ac8e8cbad1afff0eb0c68ad94b505e50248",
+      "bytes": 64
+    }
+  },
+  {
+    "id": "k8s136-arm64-kube-apiserver-sha256",
+    "url": "https://dl.k8s.io/release/v1.36.6/bin/linux/arm64/kube-apiserver.sha256",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/k8s136-arm64-kube-apiserver-sha256",
+      "sha256": "2ba6a1709aabc534ec8d616eb287297eee67cc0044d7b9888ee6013a2fe139af",
+      "bytes": 64
+    }
+  },
+  {
+    "id": "k8s136-arm64-kube-controller-manager-sha256",
+    "url": "https://dl.k8s.io/release/v1.36.6/bin/linux/arm64/kube-controller-manager.sha256",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/k8s136-arm64-kube-controller-manager-sha256",
+      "sha256": "c056e3aac1b1db58c9e6f2dc42e4a3b36e15f759d4b11fcf8d09a1ae6b9dee1f",
+      "bytes": 64
+    }
+  },
+  {
+    "id": "k8s136-arm64-kube-scheduler-sha256",
+    "url": "https://dl.k8s.io/release/v1.36.6/bin/linux/arm64/kube-scheduler.sha256",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/k8s136-arm64-kube-scheduler-sha256",
+      "sha256": "88c3fd9c7eb7b4c57ca4e096dee6603e50985529ae0a84d8d0441bbeef8c80a0",
+      "bytes": 64
+    }
+  },
+  {
+    "id": "k8s136-arm64-kubelet-sha256",
+    "url": "https://dl.k8s.io/release/v1.36.6/bin/linux/arm64/kubelet.sha256",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/k8s136-arm64-kubelet-sha256",
+      "sha256": "0c93bc56743a1a5762fdfa0e7a7caa52de1a9ff44d78841a193f5e25deb440fa",
+      "bytes": 64
+    }
+  },
+  {
+    "id": "k8s136-arm64-kube-proxy-sha256",
+    "url": "https://dl.k8s.io/release/v1.36.6/bin/linux/arm64/kube-proxy.sha256",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/k8s136-arm64-kube-proxy-sha256",
+      "sha256": "91897f3715ffaddf2ba813ec88ba034a5388e3af1e72e36fefdc5646f1ed9e8d",
+      "bytes": 64
+    }
+  },
+  {
+    "id": "k8s136-arm64-kubectl-sha256",
+    "url": "https://dl.k8s.io/release/v1.36.6/bin/linux/arm64/kubectl.sha256",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/k8s136-arm64-kubectl-sha256",
+      "sha256": "ab3bb6a3a081b185b67259cd9775186339e2ceb102853a0bc963ee726c339127",
+      "bytes": 64
+    }
+  },
+  {
+    "id": "k8s1366-patch-compare.json",
+    "url": "https://api.github.com/repos/kubernetes/kubernetes/compare/v1.36.5...v1.36.6",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/k8s1366-patch-compare.json",
+      "sha256": "21bacf5f77aa017bfef0fec525c2e03a23c45e044da39795d82d3c59a940e2fb",
+      "bytes": 194277
+    }
+  },
+  {
+    "id": "harbor-v2.13.0-make_photon_db_Dockerfile",
+    "url": "https://api.github.com/repos/goharbor/harbor/contents/make/photon/db/Dockerfile?ref=v2.13.0",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.13.0-make_photon_db_Dockerfile",
+      "sha256": "e96dc4e863aa789b01a0ff909afe2b7a1bfbc131aa44e130a18ffaa0d997043c",
+      "bytes": 784
+    }
+  },
+  {
+    "id": "harbor-v2.13.0-make_photon_db_docker-entrypoint.sh",
+    "url": "https://api.github.com/repos/goharbor/harbor/contents/make/photon/db/docker-entrypoint.sh?ref=v2.13.0",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.13.0-make_photon_db_docker-entrypoint.sh",
+      "sha256": "0d4c1588ed23194c4d1fbb36fa6d8fe695a7d57cba79b3c96282ecf3fa7fac1f",
+      "bytes": 3297
+    }
+  },
+  {
+    "id": "harbor-v2.13.0-make_photon_db_upgrade.sh",
+    "url": "https://api.github.com/repos/goharbor/harbor/contents/make/photon/db/upgrade.sh?ref=v2.13.0",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.13.0-make_photon_db_upgrade.sh",
+      "sha256": "0205ddf03e7f29172147bbae92f50970cc8e5d9006b25255d45f94fb45817114",
+      "bytes": 1184
+    }
+  },
+  {
+    "id": "harbor-v2.14.6-make_photon_db_Dockerfile",
+    "url": "https://api.github.com/repos/goharbor/harbor/contents/make/photon/db/Dockerfile?ref=v2.14.6",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.14.6-make_photon_db_Dockerfile",
+      "sha256": "e96dc4e863aa789b01a0ff909afe2b7a1bfbc131aa44e130a18ffaa0d997043c",
+      "bytes": 784
+    }
+  },
+  {
+    "id": "harbor-v2.14.6-make_photon_db_docker-entrypoint.sh",
+    "url": "https://api.github.com/repos/goharbor/harbor/contents/make/photon/db/docker-entrypoint.sh?ref=v2.14.6",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.14.6-make_photon_db_docker-entrypoint.sh",
+      "sha256": "0d4c1588ed23194c4d1fbb36fa6d8fe695a7d57cba79b3c96282ecf3fa7fac1f",
+      "bytes": 3297
+    }
+  },
+  {
+    "id": "harbor-v2.14.6-make_photon_db_upgrade.sh",
+    "url": "https://api.github.com/repos/goharbor/harbor/contents/make/photon/db/upgrade.sh?ref=v2.14.6",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.14.6-make_photon_db_upgrade.sh",
+      "sha256": "0205ddf03e7f29172147bbae92f50970cc8e5d9006b25255d45f94fb45817114",
+      "bytes": 1184
+    }
+  },
+  {
+    "id": "harbor-v2.16.0-make_photon_db_Dockerfile",
+    "url": "https://api.github.com/repos/goharbor/harbor/contents/make/photon/db/Dockerfile?ref=v2.16.0",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.16.0-make_photon_db_Dockerfile",
+      "sha256": "8a04bed59f9c799c783f5947225eda4486dfb115a3cd457beb97169d9c18312f",
+      "bytes": 784
+    }
+  },
+  {
+    "id": "harbor-v2.16.0-make_photon_db_docker-entrypoint.sh",
+    "url": "https://api.github.com/repos/goharbor/harbor/contents/make/photon/db/docker-entrypoint.sh?ref=v2.16.0",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.16.0-make_photon_db_docker-entrypoint.sh",
+      "sha256": "e339e36fd46e0ad246b6a902ec3e88291b9bc8347b3b85cd9ae3a5b6570a4acd",
+      "bytes": 4819
+    }
+  },
+  {
+    "id": "harbor-v2.16.0-make_photon_db_upgrade.sh",
+    "url": "https://api.github.com/repos/goharbor/harbor/contents/make/photon/db/upgrade.sh?ref=v2.16.0",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.16.0-make_photon_db_upgrade.sh",
+      "sha256": "3028e8bdd43fdb50f03d34c4fafeaf129fd162c5c3aa45b85644b2f7357b463e",
+      "bytes": 3155
+    }
+  },
+  {
+    "id": "postgres-portability",
+    "url": "https://www.postgresql.org/docs/14/backup-dump.html",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/postgres-portability",
+      "sha256": "783ed16e80d6a13198ed57826beac7936f4f41baa91ec23b80c91764e798d2f6",
+      "bytes": 29633
+    }
+  },
+  {
+    "path": "upgrade/official-snapshots/2026-11-20-next-hop/cilium1204-support",
+    "sha256": "4119df582c01582bc082c529b6faf29167d07f129c1cec2583117fc37e2e4b13",
+    "bytes": 2797,
+    "url": "https://api.github.com/repos/cilium/cilium/contents/Documentation/network/kubernetes/compatibility.rst?ref=v1.20.4",
+    "git_blob": "07cb46fbbed2918db40d7fe1deec15840dbe18db"
+  },
+  {
+    "path": "upgrade/official-snapshots/2026-11-20-next-hop/ingress1151-readme",
+    "sha256": "a4f3f0bd1e79edf908752261d92dc8430d931d002f0833f293c14a9ab6f147e5",
+    "bytes": 11576,
+    "url": "https://api.github.com/repos/kubernetes/ingress-nginx/contents/README.md?ref=controller-v1.15.1",
+    "git_blob": "c78f41f4f1bcf0642f8d1caa1ee5a1c77004da61"
+  },
+  {
+    "path": "upgrade/official-snapshots/2026-11-20-next-hop/ceph3172-values-rbd",
+    "sha256": "de41051d115dabe3c7730a8b28070de41dc6bca137ea551292d11a00c9b24e04",
+    "bytes": 22873,
+    "url": "https://api.github.com/repos/ceph/ceph-csi/contents/charts/ceph-csi-rbd/values.yaml?ref=v3.17.2",
+    "git_blob": "565a872f2d471a8f5e9a742a4ed9291415e7f90e"
+  },
+  {
+    "path": "upgrade/official-snapshots/2026-11-20-next-hop/ceph3172-values-cephfs",
+    "sha256": "79f1407a6bd4a8db4fcc7261a38e1f82b510631fac4da66a16dd6e4e1b8b1931",
+    "bytes": 17392,
+    "url": "https://api.github.com/repos/ceph/ceph-csi/contents/charts/ceph-csi-cephfs/values.yaml?ref=v3.17.2",
+    "git_blob": "cf7d887523d3d40f195caa0ad16c7c528cbbaa91"
+  },
+  {
+    "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor2146-release",
+    "sha256": "33a7e386abde55a87053ace630f41d68575636ccf41a055d8a623b32f627345a",
+    "bytes": 8595,
+    "url": "https://api.github.com/repos/goharbor/harbor/releases/tags/v2.14.6"
+  },
+  {
+    "id": "harbor-v2.16.0-make_migrations_postgresql_0001_initial_schema.up.sql",
+    "url": "https://api.github.com/repos/goharbor/harbor/contents/make/migrations/postgresql/0001_initial_schema.up.sql?ref=v2.16.0",
+    "version": "v2.16.0",
+    "git_blob": "e3f2bb903f4565a1c97c3e7471a029f0dcf27acf",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.16.0-make_migrations_postgresql_0001_initial_schema.up.sql",
+      "sha256": "fd8d8c82179036bc7eda5d7a88486f3e561193a07cebf8eaae4e32e23159f0f0",
+      "bytes": 11799
+    }
+  },
+  {
+    "id": "harbor-v2.16.0-make_migrations_postgresql_0160_2.13.0_schema.up.sql",
+    "url": "https://api.github.com/repos/goharbor/harbor/contents/make/migrations/postgresql/0160_2.13.0_schema.up.sql?ref=v2.16.0",
+    "version": "v2.16.0",
+    "git_blob": "127ca2d4c2171afdaa0e8f9703e618f4007e987f",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.16.0-make_migrations_postgresql_0160_2.13.0_schema.up.sql",
+      "sha256": "fe1b9835c61684f9b7c0282bbc800f1849abd01637a9d497b43943043391d8a4",
+      "bytes": 964
+    }
+  },
+  {
+    "id": "harbor-v2.16.0-make_photon_core_Dockerfile",
+    "url": "https://api.github.com/repos/goharbor/harbor/contents/make/photon/core/Dockerfile?ref=v2.16.0",
+    "version": "v2.16.0",
+    "git_blob": "da561a875b58a1634a486c4332506f1e67725258",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.16.0-make_photon_core_Dockerfile",
+      "sha256": "a5d4c49b2d7e5bc38d040713e217877b236d630dca2aba185edbf8a95c89bf12",
+      "bytes": 837
+    }
+  },
+  {
+    "id": "harbor-v2.16.0-make_photon_prepare_utils_migration.py",
+    "url": "https://api.github.com/repos/goharbor/harbor/contents/make/photon/prepare/utils/migration.py?ref=v2.16.0",
+    "version": "v2.16.0",
+    "git_blob": "a29b1b9df930e5aecfbfc6db24a8c82066057e0e",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.16.0-make_photon_prepare_utils_migration.py",
+      "sha256": "4cd7dddafa62e613d9165e17e942a50a724c66dd30117880e17417ce95484fcc",
+      "bytes": 2710
+    }
+  },
+  {
+    "id": "harbor-v2.14.6-make_photon_prepare_utils_migration.py",
+    "url": "https://api.github.com/repos/goharbor/harbor/contents/make/photon/prepare/utils/migration.py?ref=v2.14.6",
+    "version": "v2.14.6",
+    "git_blob": "a29b1b9df930e5aecfbfc6db24a8c82066057e0e",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.14.6-make_photon_prepare_utils_migration.py",
+      "sha256": "4cd7dddafa62e613d9165e17e942a50a724c66dd30117880e17417ce95484fcc",
+      "bytes": 2710
+    }
+  },
+  {
+    "id": "harbor-v2.16.0-docs_README.md",
+    "url": "https://api.github.com/repos/goharbor/harbor/contents/docs/README.md?ref=v2.16.0",
+    "version": "v2.16.0",
+    "git_blob": "66bca50ddf45020f87611a167102f171fb9f4de1",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.16.0-docs_README.md",
+      "sha256": "608ea185b0cea54741a630de2d072fbf573f4eb7a295fd521a6066b467843d60",
+      "bytes": 231
+    }
+  },
+  {
+    "id": "harbor-v2.16.0-api_v2.0_README.md",
+    "url": "https://api.github.com/repos/goharbor/harbor/contents/api/v2.0/README.md?ref=v2.16.0",
+    "version": "v2.16.0",
+    "git_blob": "7d3d4b5aad577705146d9ba29d95ed4e351926b7",
+    "observed_on": "2026-11-20",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.16.0-api_v2.0_README.md",
+      "sha256": "61c77df1f0a2c9f011d151288dd875478c552df5669c0ab9e82e97ea4304d227",
+      "bytes": 801
+    }
+  },
+  {
+    "id": "harbor216-release-prepare-script",
+    "url": "https://github.com/goharbor/harbor/releases/download/v2.16.0/harbor-offline-installer-v2.16.0-amd64.tgz",
+    "observed_on": "2026-11-20",
+    "representation": "harbor/prepare extracted from the official AMD64 offline installer",
+    "archive_sha256": "643c137d8e829c857ef0ba45c46b5d6d8553077340bbd4929ded7e92808e77ff",
+    "local_copy": {
+      "path": "upgrade/tests/fixtures/harbor216-prepare.sh.txt",
+      "sha256": "8730100efcea0ca3ee5a210a7dd9947633b99ec1122671217ea26093eda91ae2",
+      "bytes": 2211
+    }
+  },
+  {
+    "id": "postgres15-pg-dump",
+    "url": "https://www.postgresql.org/docs/15/app-pgdump.html",
+    "observed_on": "2026-11-21",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/postgres15-pg-dump",
+      "sha256": "5a5540c7214433ae1d123d20373c24c2c8ce826226e90dff6903a3a1b19ad456",
+      "bytes": 76345
+    }
+  },
+  {
+    "id": "postgres15-pg-restore",
+    "url": "https://www.postgresql.org/docs/15/app-pgrestore.html",
+    "observed_on": "2026-11-21",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/postgres15-pg-restore",
+      "sha256": "3a5d8bcd339fefc3c2ad3734486506a231b0111adf20c3869334e2c64be97f80",
+      "bytes": 53245
+    }
+  },
+  {
+    "id": "postgres18-pg-restore",
+    "url": "https://www.postgresql.org/docs/18/app-pgrestore.html",
+    "observed_on": "2026-11-21",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/postgres18-pg-restore",
+      "sha256": "34ec8878f44c8de1c811165e525000223f99d0271c0892493c8f53c0062636a7",
+      "bytes": 59521
+    }
+  },
+  {
+    "id": "harbor-v2.13.0-make_photon_redis_Dockerfile",
+    "url": "https://api.github.com/repos/goharbor/harbor/contents/make/photon/redis/Dockerfile?ref=v2.13.0",
+    "observed_on": "2026-11-21",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.13.0-make_photon_redis_Dockerfile",
+      "sha256": "348bfbf005131f158b5b8717494ac4736287d3e8fac24c19c251c5a7837fc1e0",
+      "bytes": 460
+    }
+  },
+  {
+    "id": "harbor-v2.13.0-make_photon_redis_redis.conf",
+    "url": "https://api.github.com/repos/goharbor/harbor/contents/make/photon/redis/redis.conf?ref=v2.13.0",
+    "observed_on": "2026-11-21",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.13.0-make_photon_redis_redis.conf",
+      "sha256": "86c5aeee67355b2cc04181e3d5a0ff1d9722412b38a4d121b9f2d2363717f4d4",
+      "bytes": 57777
+    }
+  },
+  {
+    "id": "harbor-v2.14.6-make_photon_redis_Dockerfile",
+    "url": "https://api.github.com/repos/goharbor/harbor/contents/make/photon/redis/Dockerfile?ref=v2.14.6",
+    "observed_on": "2026-11-21",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.14.6-make_photon_redis_Dockerfile",
+      "sha256": "348bfbf005131f158b5b8717494ac4736287d3e8fac24c19c251c5a7837fc1e0",
+      "bytes": 460
+    }
+  },
+  {
+    "id": "harbor-v2.14.6-make_photon_redis_redis.conf",
+    "url": "https://api.github.com/repos/goharbor/harbor/contents/make/photon/redis/redis.conf?ref=v2.14.6",
+    "observed_on": "2026-11-21",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.14.6-make_photon_redis_redis.conf",
+      "sha256": "86c5aeee67355b2cc04181e3d5a0ff1d9722412b38a4d121b9f2d2363717f4d4",
+      "bytes": 57777
+    }
+  },
+  {
+    "id": "harbor-v2.16.0-make_photon_valkey_Dockerfile",
+    "url": "https://api.github.com/repos/goharbor/harbor/contents/make/photon/valkey/Dockerfile?ref=v2.16.0",
+    "observed_on": "2026-11-21",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.16.0-make_photon_valkey_Dockerfile",
+      "sha256": "8e350ecaf861ee2f2c64172478df7e713366287a80af610676e8e0de5c263f27",
+      "bytes": 467
+    }
+  },
+  {
+    "id": "harbor-v2.16.0-make_photon_valkey_redis.conf",
+    "url": "https://raw.githubusercontent.com/goharbor/harbor/v2.16.0/make/photon/valkey/redis.conf",
+    "observed_on": "2026-11-21",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.16.0-make_photon_valkey_redis.conf",
+      "sha256": "86c5aeee67355b2cc04181e3d5a0ff1d9722412b38a4d121b9f2d2363717f4d4",
+      "bytes": 57777
+    }
+  },
+  {
+    "id": "harbor-v2.16.0-make_photon_prepare_utils_redis.py",
+    "url": "https://raw.githubusercontent.com/goharbor/harbor/v2.16.0/make/photon/prepare/utils/redis.py",
+    "observed_on": "2026-11-21",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.16.0-make_photon_prepare_utils_redis.py",
+      "sha256": "fe78136a49e725523b09b05f301c698b7b4e0554a1f5139912b25415c819d3e5",
+      "bytes": 238
+    }
+  },
+  {
+    "id": "harbor-v2.13.0-make_photon_redis_Dockerfile.base",
+    "url": "https://api.github.com/repos/goharbor/harbor/contents/make/photon/redis/Dockerfile.base?ref=v2.13.0",
+    "observed_on": "2026-11-21",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.13.0-make_photon_redis_Dockerfile.base",
+      "sha256": "17a4b763f02fcdf5a70b168bf1f6f32a1815313f5faca6e499c864d3a037a6fd",
+      "bytes": 234
+    }
+  },
+  {
+    "id": "harbor-v2.16.0-make_photon_valkey_Dockerfile.base",
+    "url": "https://api.github.com/repos/goharbor/harbor/contents/make/photon/valkey/Dockerfile.base?ref=v2.16.0",
+    "observed_on": "2026-11-21",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.16.0-make_photon_valkey_Dockerfile.base",
+      "sha256": "b738badf07ad566fd39df66621890f64fbf9d2576a420482057d5c279fcdb1d5",
+      "bytes": 2317
+    }
+  },
+  {
+    "id": "harbor-v2.16.0-make_photon_valkey_docker-healthcheck",
+    "url": "https://api.github.com/repos/goharbor/harbor/contents/make/photon/valkey/docker-healthcheck?ref=v2.16.0",
+    "observed_on": "2026-11-21",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.16.0-make_photon_valkey_docker-healthcheck",
+      "sha256": "922f8d10fd6c30a5fa7267e14ce6b9abffe96ee9ad81092df519e9c8ec419c13",
+      "bytes": 124
+    }
+  },
+  {
+    "id": "valkey-migration",
+    "url": "https://valkey.io/topics/migration/",
+    "observed_on": "2026-11-21",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/valkey-migration",
+      "sha256": "536e174ecb79891412a2e916cd9318b6896267a1020b2bdc5e991800bd0d96b9",
+      "bytes": 89827
+    }
+  },
+  {
+    "id": "valkey-persistence",
+    "url": "https://valkey.io/topics/persistence/",
+    "observed_on": "2026-11-21",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/valkey-persistence",
+      "sha256": "257058aba6cd71776efe241f414eac7c5dca0a7d91608a544593c85d0d38c2ce",
+      "bytes": 83207
+    }
+  },
+  {
+    "id": "harbor-v2.13.0-systeminfo.go",
+    "url": "https://raw.githubusercontent.com/goharbor/harbor/v2.13.0/src/server/v2.0/handler/systeminfo.go",
+    "observed_on": "2026-11-21",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.13.0-systeminfo.go",
+      "sha256": "5c50ba391b9e8e55ccbb27136a0e65180dc15e293c639be20437bdd21b34ed1f",
+      "bytes": 3570
+    }
+  },
+  {
+    "id": "harbor-v2.14.6-systeminfo.go",
+    "url": "https://raw.githubusercontent.com/goharbor/harbor/v2.14.6/src/server/v2.0/handler/systeminfo.go",
+    "observed_on": "2026-11-21",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.14.6-systeminfo.go",
+      "sha256": "5c50ba391b9e8e55ccbb27136a0e65180dc15e293c639be20437bdd21b34ed1f",
+      "bytes": 3570
+    }
+  },
+  {
+    "id": "harbor-v2.16.0-systeminfo.go",
+    "url": "https://raw.githubusercontent.com/goharbor/harbor/v2.16.0/src/server/v2.0/handler/systeminfo.go",
+    "observed_on": "2026-11-21",
+    "local_copy": {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.16.0-systeminfo.go",
+      "sha256": "5c50ba391b9e8e55ccbb27136a0e65180dc15e293c639be20437bdd21b34ed1f",
+      "bytes": 3570
+    }
+  }
+]

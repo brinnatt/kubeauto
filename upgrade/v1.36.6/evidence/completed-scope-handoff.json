@@ -1,0 +1,184 @@
+{
+  "schema_version": 1,
+  "classification": "test-gate",
+  "run_id": "v1366-final-20261121b",
+  "original_parent_rc": 1,
+  "original_finalized_rc": 1,
+  "claim": "Kubernetes七个阶段首次成功且清理；源客户端按runner设计切换为目标后未恢复，Harbor初始输入准入因此拒绝。Harbor未创建run目录或取得节点所有权。保留失败父，仅复用七个独立干净范围，新的完成run执行Harbor六阶段，最后再验组合。",
+  "cause": "stage_upgrade_clients以目标六项客户端替换source-product/kube-bin；Harbor继承Session.owner_check按初始源manifest核验，产生确定的前后条件冲突。六项现值分别等于冻结目标摘要，原源备份全部等于冻结源摘要；除此之外暂存清单无差异。",
+  "repair": "正常交接验证并恢复原源客户端、保留目标客户端副本。续接通过同一final入口，严格检查原七阶段first-attempt日志/双0/清理、原失败父状态、原manifest与当前输入，拒绝Harbor已启动、活动owner、产品/制品/其它门禁漂移；Harbor执行期间再次检查复用文件摘要。",
+  "production_build_inputs_sha256": "13de1107e13c72dc8049c64609c792149b56ff06ac794f923888f48f66b6231b",
+  "unchanged_functions": [
+    "inventory",
+    "cluster_names",
+    "stage_upgrade_clients",
+    "Session.source_phase",
+    "Session.control_phase",
+    "Session.protection_phase",
+    "Session.nodes_phase",
+    "Session.clean_phase",
+    "Session.install_phase",
+    "Session.host_operation"
+  ],
+  "changed_gate_files": [
+    "upgrade/lab/next_session.py",
+    "upgrade/lab/next-session.sh",
+    "upgrade/lab/next-control.sh",
+    "upgrade/tests/test_next_session.py"
+  ],
+  "checks": [
+    {
+      "command": "AST comparison against exact final-b runner",
+      "rc": 0
+    },
+    {
+      "command": "build_inputs_digest(current) == build_inputs_digest(final-b staged product)",
+      "rc": 0
+    },
+    {
+      "command": ".venv/bin/python -B -m unittest upgrade.tests.test_next_session upgrade.tests.test_harbor_session -v",
+      "tests": 87,
+      "skipped": 0,
+      "rc": 0
+    }
+  ],
+  "references": [
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/local-qualification/handoff-before-repair/upgrade/lab/next_session.py",
+      "sha256": "855aef3c84aded02af6adaf533c412bc92bfdffa831b5f79e3dbd85e99c655e9"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/local-qualification/handoff-repair-contracts.log",
+      "sha256": "6d40d3e2a7699e0d57fdc12e8875d6e44d80dacb8c13b6794a2cc8d491408300"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-final-20261121b/staged-input-manifest-before-handoff.json",
+      "sha256": "9f94565aad86ad89cec64592b12f635d11d974f662e9e00d820881c8f88fefb8"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-final-20261121b/source.status.json",
+      "sha256": "0e03c751949fe96a1edd2aaf140c5b950593a70dc250ca3bf5d30240e0c525d6"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-final-20261121b/source.attempt-1.log",
+      "sha256": "fbfd278bc6add1dd4b0478daad51702adb29b00021e4169ab50376202e6c378a"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-final-20261121b/source.attempt-1.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-final-20261121b/source.attempt-1.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-final-20261121b/control.status.json",
+      "sha256": "e532d15eb0291cc3ec8b3d8ed1ae6c5d2afbd2f0d81fe0d35b69e9d6afc86c0d"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-final-20261121b/control.attempt-1.log",
+      "sha256": "e556f00bae6d929f33ea84c3f886ad924049bdb4fae32733fd9cbec7c4bc6b6c"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-final-20261121b/control.attempt-1.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-final-20261121b/control.attempt-1.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-final-20261121b/nodes.status.json",
+      "sha256": "51d16aab0aa25bdd9b298a8cef877fafb279bd46911438639273391925cf1650"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-final-20261121b/nodes.attempt-1.log",
+      "sha256": "da2901dea2e90fcbfec7de7644c5ac78db37c9e9a29f9fefe6c6f66ce80494d1"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-final-20261121b/nodes.attempt-1.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-final-20261121b/nodes.attempt-1.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-final-20261121b/source-clean.status.json",
+      "sha256": "b03cc6b3c786f7e026ad3b92bdc7ededc82b19678379747468131e4501891c67"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-final-20261121b/source-clean.attempt-1.log",
+      "sha256": "4ae4d497036c024f171ac5d5f6642d24439ec4b506a703e1e1b8a85d9d59b012"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-final-20261121b/source-clean.attempt-1.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-final-20261121b/source-clean.attempt-1.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-final-20261121b/new-install.status.json",
+      "sha256": "f13f560ba0e591afbf403f15ff4282ff685791333ee017240c856155517f1d16"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-final-20261121b/new-install.attempt-1.log",
+      "sha256": "52b995cffdd78a12f088524d8b024ff97000a67030b4c2718ca178394f6ed715"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-final-20261121b/new-install.attempt-1.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-final-20261121b/new-install.attempt-1.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-final-20261121b/ingress.status.json",
+      "sha256": "71aca7ffdff3a03382de40fcc54a6007607478a2d2f574b153f8366176b06a27"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-final-20261121b/ingress.attempt-1.log",
+      "sha256": "851c3549d3198c66b27349f4c4cf865ea51d7a513fc54564300128288290cd13"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-final-20261121b/ingress.attempt-1.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-final-20261121b/ingress.attempt-1.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-final-20261121b/target-clean.status.json",
+      "sha256": "1aadcc0380940ec1704e3dfdd83b38e95d5f47561c17d188eeb95a4b5fc0b930"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-final-20261121b/target-clean.attempt-1.log",
+      "sha256": "5b418add840feb0497dfea785220adf3b636008a93131680b2da02518864488e"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-final-20261121b/target-clean.attempt-1.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-final-20261121b/target-clean.attempt-1.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-final-20261121b/v1366-final-20261121b.log",
+      "sha256": "b0a3083f0ad3feb3c5c90f8c1f00b0e88af8598aa6348dad2d321b7699a62a34"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-final-20261121b/v1366-final-20261121b.exit",
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-final-20261121b/v1366-final-20261121b.finalized",
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+    }
+  ],
+  "boundary": "不签新的最终PASS，不改旧父结果；ARM64仍仅官方来源/制品/静态，未经原生运行。"
+}

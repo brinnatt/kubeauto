@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "case_id": "UPG-09",
+  "component_boundaries": [
+    {
+      "component_id": "local-storage",
+      "target_pins": {
+        "local_path_provisioner": "v0.0.37",
+        "local_path_helper": "busybox:1.37",
+        "nfs_provisioner": "v4.0.2",
+        "openebs_chart": "4.3.2",
+        "openebs_hostpath": "4.3.0",
+        "openebs_lvm": "1.7.0"
+      },
+      "rationale": "保持LocalPath0.0.37/NFS4.0.2/OpenEBS4.3.2原配套和本地卷节点身份；最低要求/稳定API不等于1.36逐版认证。唯一新平台kubectl helper为1.36.6，不改存储引擎、VG/LV或PV归属；最小补数据重挂载/消费者接口。",
+      "source_ids": [
+        "LOCALPATH-037-BEHAVIOR",
+        "NFS-402-BEHAVIOR",
+        "OPENEBS-LVM-170-SYSTEM",
+        "OPENEBS-HOSTPATH-430-MATRIX",
+        "OPENEBS-432-ENGINE-BOUNDARY"
+      ]
+    },
+    {
+      "component_id": "ceph",
+      "target_pins": {
+        "v_ceph": "20.2.4",
+        "v_ceph_upgrade_source": "20.2.3",
+        "v_cephadm_sha256": "5b78c8d5772ef7c5c8619dac6ee0b36716b829338ea7a11c9f2b896626ab354f",
+        "v_ceph_csi": "v3.17.2",
+        "v_ceph_csi_registrar": "v2.16.0",
+        "v_ceph_csi_provisioner": "v6.2.0",
+        "v_ceph_csi_attacher": "v4.11.0",
+        "v_ceph_csi_resizer": "v2.1.0",
+        "v_ceph_csi_snapshotter": "v8.5.0",
+        "vendored_charts_sha256": {
+          "roles/ceph/files/ceph-csi-cephfs-3.17.1.tgz": "100c00932b1969df63400e5bb477b5ef2701371fb350e5b8cb8c4fb2873aa117",
+          "roles/ceph/files/ceph-csi-rbd-3.17.1.tgz": "75527adefcdf248e9acd2e9759205ddf4fd444824157e3e1914cf9659544bffc"
+        }
+      },
+      "rationale": "保留Ceph20.2.4、CSI3.17.2及原项目Chart补丁；上游3.17.2表含1.34/1.35/1.36，官方Chart五sidecar与项目精确一致。不改Ceph数据格式、存储深测或自有补丁；只补目标CSI接口/卷身份缺口。",
+      "source_ids": [
+        "CEPH-CSI-3172-K8S136-COMPAT",
+        "CEPHCSI-3172-RBD-EXACT-SIDECARS",
+        "CEPHCSI-3172-CEPHFS-EXACT-SIDECARS"
+      ]
+    },
+    {
+      "component_id": "longhorn",
+      "target_pins": {
+        "v_longhorn": "1.12.2",
+        "v_longhorn_upgrade_source": "1.12.1",
+        "v_longhorn_snapshot_controller": "v8.6.0",
+        "chart_sha256": "3514c3a802ec910b3e97698f0b816c038d66547e1bf3d1a4ebad44a9f5b8ac8a",
+        "images": {
+          "longhorn-engine": "v1.12.2",
+          "longhorn-manager": "v1.12.2-kubeauto.1",
+          "longhorn-ui": "v1.12.2",
+          "longhorn-instance-manager": "v1.12.2-kubeauto.1",
+          "longhorn-share-manager": "v1.12.2",
+          "longhorn-backing-image-manager": "v1.12.2",
+          "longhorn-support-bundle-kit": "v1.0.5",
+          "longhorn-csi-attacher": "v4.13.0-20261028",
+          "longhorn-csi-provisioner": "v5.3.0-20261028",
+          "longhorn-csi-node-driver-registrar": "v2.18.0-20261028",
+          "longhorn-csi-resizer": "v2.3.0-20261028",
+          "longhorn-csi-snapshotter": "v8.7.0-20261028",
+          "longhorn-livenessprobe": "v2.20.0-20261028"
+        }
+      },
+      "rationale": "1.12.2官方推荐测试覆盖1.34–1.37，保留manager/instance-manager自有修订和全部CSI配套，不重编十小时源码、不改CRD/快照控制器所有权，最小核对目标CSI与drain语义。",
+      "source_ids": [
+        "LONGHORN-1122-PLATFORM",
+        "LONGHORN-1122-CHART-COMPOSITION",
+        "LONGHORN-1122-MANAGER-IDENTITY",
+        "LONGHORN-1122-IM-IDENTITY"
+      ]
+    }
+  ],
+  "source_identity": "upgrade/v1.36.6/evidence/source/identity.json",
+  "input_review": "upgrade/v1.36.6/evidence/retained-network-storage-inputs.json",
+  "new_live": {
+    "run_id": "v1366-qualify-20261121a",
+    "phase": "nodes",
+    "evidence": "upgrade/v1.36.6/evidence/UPG-07.json"
+  },
+  "not_new_measurement": "未重跑Ceph/Longhorn/其它CNI的业务深测、性能/故障/灾备；原结果按原版本硬件场景保留，不外推1.36性能或SLA。"
+}

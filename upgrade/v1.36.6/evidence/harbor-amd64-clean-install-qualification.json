@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "run_id": "v1366-harbor-qualify-20261121a/harbor-new-install-repair.attempt-1",
+  "architecture": "native-amd64",
+  "durable_rc": 0,
+  "finalized_rc": 0,
+  "failure_markers": 0,
+  "claim": "独立243官方2.16.0新建与第二次setup11幂等，原创建业务账本保持，原源217恢复态业务未改变；仅续跑原配置setup11，不重做01/03或源迁移。首个缺tar失败保留于原父记录；本子资格不签父链从未失败或双架构GA。",
+  "business": {
+    "marker": "HARBOR_BUSINESS_LEDGER_PASS",
+    "project_id": 2,
+    "artifact_id": 1,
+    "digest": "sha256:b0233f64d4400d24cffa7feb868cbb44106b87f769aca9c4d672ed0ef0dd71e0",
+    "payload_sha256": "517aef10289ebf4fbc9de74573596fc84f03d8d668d0d7075b8a5086dcfcd1a0",
+    "assertions": [
+      "private-project-and-membership-preserved",
+      "original-robot-secret-usable",
+      "reader-and-robot-pull-allowed-push-denied",
+      "original-manifest-and-payload-preserved"
+    ]
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/harbor-new-install-repair.attempt-1.log",
+      "sha256": "88a21aadfe698199468c22654fc66c5e31e612cea20f60ab34fc4fbf06f6c7e5"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/harbor-new-install-repair.attempt-1.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/harbor-new-install-repair.attempt-1.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/target-created-business.json",
+      "sha256": "006f5e077e1c5358f4b1e1a7aa17132f76f125cc4a3a7775c1f57371a1f72b16"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/target-installed-business.json",
+      "sha256": "006f5e077e1c5358f4b1e1a7aa17132f76f125cc4a3a7775c1f57371a1f72b16"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/target-idempotent-business.json",
+      "sha256": "006f5e077e1c5358f4b1e1a7aa17132f76f125cc4a3a7775c1f57371a1f72b16"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/repair-source-preserved-business.json",
+      "sha256": "23117d1f15e2f46a3a4ddd2044d4c8df4fd505e89328bee49d1df8dac9a04e04"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/harbor-new-install.attempt-1.target.node-state.manifest.json",
+      "sha256": "5ccc456e858ecc0e7395a5181fa198b7eabfeeece1a32743875b772e56de15d0"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/harbor-clean-install-repair-inputs.json",
+      "sha256": "09ee29eb93ee7783496c8e7f84bc8dbab206c0f26fece8aadb6698e9d8679985"
+    }
+  ],
+  "parent_acceptance": false
+}

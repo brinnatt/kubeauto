@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "run_id": "v1366-harbor-portable-20261121a",
+  "repair_run_id": "harbor-portable-backup-repair.attempt-1",
+  "architecture": "native-amd64",
+  "durable_rc": 0,
+  "finalized_rc": 0,
+  "failure_markers": 0,
+  "claim": "实际config+kubecli完成2.13逻辑导入2146再升216，以及Valkey9.0.3完整停止备份后的216同版逻辑导入；目标abort两遍幂等、原源2.13恢复后原项目/制品ID、原用户与只拉机器人权限、digest及实际层内容保持。仅签本独立子资格；原父及首次修复失败保留，不签最终干净完整或ARM运行。",
+  "source_kept_stopped_until_target_abort": true,
+  "original_ledger_verified_at": [
+    "portable213-imported",
+    "portable216-imported",
+    "portable-source-restored"
+  ],
+  "original_failures": [
+    {
+      "attempt": "harbor-portable.attempt-1",
+      "classification": "product",
+      "cause": "PostgreSQL syslog driver requires official log service to start first"
+    },
+    {
+      "attempt": "harbor-portable-repair.attempt-1",
+      "classification": "product",
+      "cause": "Valkey9.0.3 writes VALKEY080, old Redis-only header assertion refused stopped target backup before archive creation"
+    }
+  ],
+  "recovery_boundary": "原首次导入与停止检查点复用；不覆盖原恢复点，不删除半成品；限定清理另有独立回执，原失败父状态保持。",
+  "execution_inputs": {
+    "upgrade/product/library/harbor_migration.py": "7673ce57ad0c409c49ff853f02aaecf0cc27daa6743fea00a3f286ed809ebb13",
+    "upgrade/lab/harbor_session.py": "c181978118f17fd701a7417b4e19c8a6fb56b603ee83efe0cc25f8499fd72cd0",
+    "upgrade/lab/harbor-control.sh": "e525a005f26147b9282d3612ccac218eed7469c6e8a1f446a33e7bd0cec9a8ba"
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-portable-20261121a/created-business.json",
+      "sha256": "0985c677a21128a5178820dacb0ee2aaaeb208dd226555a206a01f9e6f87013a"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-portable-20261121a/portable213-imported-business.json",
+      "sha256": "0985c677a21128a5178820dacb0ee2aaaeb208dd226555a206a01f9e6f87013a"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-portable-20261121a/portable216-imported-business.json",
+      "sha256": "0985c677a21128a5178820dacb0ee2aaaeb208dd226555a206a01f9e6f87013a"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-portable-20261121a/portable-source-restored-business.json",
+      "sha256": "0985c677a21128a5178820dacb0ee2aaaeb208dd226555a206a01f9e6f87013a"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-portable-20261121a/harbor-portable-backup-repair.attempt-1.log",
+      "sha256": "3f4f04ab8e43d1b62801e8cb6fa3e03298121fcffb9d04c78463ab820247f94f"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-portable-20261121a/harbor-portable-backup-repair.attempt-1.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-portable-20261121a/harbor-portable-backup-repair.attempt-1.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-portable-20261121a/harbor-portable.attempt-1.log",
+      "sha256": "2ffe6d3753966ab2c499bc78c921ab5567ff6cdc2ba1193b8f7b721fe5ccecc8"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-portable-20261121a/harbor-portable-repair.attempt-1.log",
+      "sha256": "c4b052e470dd2b6d92d17074c0317ca702be3457b86b4f39579e212409ca5670"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-portable-20261121a/harbor-portable-repair.attempt-1.exit",
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-portable-20261121a/harbor-portable-repair.attempt-1.finalized",
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-portable-20261121a/harbor-portable-target.attempt-1.target.node-state.manifest.json",
+      "sha256": "f31cf709d2dcf11df82e802d1c8e9d2ea614c0c286b8a741479848b8992d287c"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-portable-20261121a/valkey-repair-original-inputs/upgrade/product/library/harbor_migration.py",
+      "sha256": "33dc8162b2237c1fb3f762a0db6dd591b9cb6e66fdcafc954b203188696bda99"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-portable-20261121a/valkey-repair-original-inputs/upgrade/lab/harbor_session.py",
+      "sha256": "97937e710b0ca0ec93d1ef48648ee29445c3c68678088585e52f49adb56d3068"
+    }
+  ],
+  "parent_acceptance": false,
+  "first_import_inputs_boundary": "首次2.13导入发生于Valkey修复前，原执行product/runner字节保存在valkey-repair-original-inputs；当前execution_inputs只绑定停止备份续跑、216导入、撤回和源恢复子链。"
+}

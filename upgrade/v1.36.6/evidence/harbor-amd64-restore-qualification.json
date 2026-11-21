@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "run_id": "v1366-harbor-qualify-20261121a",
+  "phase": "harbor-restore",
+  "architecture": "native-amd64",
+  "durable_rc": 0,
+  "finalized_rc": 0,
+  "failure_markers": 0,
+  "claim": "实际config+kubecli从同一升级前完整停止备份恢复原2.13.0，保留目标隔离目录；原项目/制品ID、digest/层文件、原用户和只拉机器人允许/拒绝行为全部保持。只签原生AMD原点恢复，不推导ARM或备份后新增写入。",
+  "references": [
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/harbor-restore.status.json",
+      "sha256": "ffe026c2625463bd20545877ea41f5c78bc7fe406b119610a45f54ea8a026950"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/harbor-restore.attempt-1.log",
+      "sha256": "272a426739e52811a8243059fa650b19cd81b83b4103412f4030d1601fda13ad"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/harbor-restore.attempt-1.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/harbor-restore.attempt-1.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/harbor-restore.attempt-1.node-state.manifest.json",
+      "sha256": "4f7aca53dc3da3acf88442c9cecb8758d1c711710e449370afc2523a23aa3460"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/created-business.json",
+      "sha256": "23117d1f15e2f46a3a4ddd2044d4c8df4fd505e89328bee49d1df8dac9a04e04"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/restored-business.json",
+      "sha256": "23117d1f15e2f46a3a4ddd2044d4c8df4fd505e89328bee49d1df8dac9a04e04"
+    }
+  ],
+  "elapsed_seconds": 144.225181,
+  "parent_acceptance": false
+}

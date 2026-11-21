@@ -9,8 +9,9 @@ import platform
 import subprocess
 import tempfile
 
-from upgrade.product.calico_stage import CalicoStage, SECRET, content, matches, manifests
-from upgrade.product.kubernetes_preflight import Refused
+from upgrade.product.calico_stage import CalicoStage, SECRET, content, matches, manifests, healthy
+from upgrade.product.kubernetes_preflight import Refused, mapping, query
+from upgrade.product.hop import PINS_PATH
 
 PRODUCT = Path(__file__).parent
 
@@ -72,12 +73,39 @@ class PlatformPrerequisites:
             '--cacert='+str(ssl/'ca.pem'), '--cert='+str(ssl/'etcd.pem'),
             '--key='+str(ssl/'etcd-key.pem'), '--dial-timeout=5s', '--command-timeout=15s']
         self.original_datastore = snapshot(state/'calico-datastore.json', self.datastore)
+        self.retained = (source.get('source'), source.get('target')) == ('v1.35.10', 'v1.36.6')
+        if self.retained:
+            self.retained_objects = snapshot(state/'calico-retained-objects.json', self.read_retained)
         self.edges = snapshot(state/'calico-edges.json', self.planned_edges)
         if self.edges not in [[], [['v3.31.7', 'v3.32.4']],
                              [['v3.28.4', 'v3.31.7'], ['v3.31.7', 'v3.32.4']]]:
             raise Refused('durable Calico edge plan is outside the admitted source profiles')
+        if self.retained and self.edges:
+            raise Refused('this hop retains Calico and cannot replay historical migration edges')
+
+    def read_retained(self):
+        objects = {}
+        expected = manifests(self.variables, 'v3.32.4')
+        for ref in ['daemonset/calico-node', 'deployment/calico-kube-controllers', SECRET]:
+            obj = mapping(query(self.binary, self.kubeconfig, self.source['api_backends'][0]['server'],
+                ['-n', 'kube-system', 'get', ref, '-o', 'json']))
+            if ref in expected and not matches(obj, expected[ref]):
+                raise Refused('retained Calico differs from its reviewed 3.32.4 declaration')
+            if ref != SECRET and not healthy(obj, len(self.source['nodes'])):
+                raise Refused('retained Calico workloads are not fully converged')
+            objects[ref] = content(obj)
+        return objects
+
+    def verify_retained(self):
+        if self.retained:
+            if self.read_retained() != self.retained_objects:
+                raise Refused('retained Calico object identity or configuration changed')
+            self.verify_datastore()
 
     def planned_edges(self):
+        if self.retained:
+            self.verify_retained()
+            return []
         stage = CalicoStage(self.binary, self.kubeconfig, self.source, self.variables,
             ('v3.28.4', 'v3.31.7'), run_id=self.variables['UPGRADE_RUN_ID'])
         obj = stage.read(['get', 'daemonset/calico-node', '-o', 'json'])
@@ -146,7 +174,7 @@ class PlatformPrerequisites:
     def install_client(self, version):
         base = Path(self.variables['base_dir'])
         path = base/'extra-bin'/('calicoctl' if version == 'v3.32.4' else 'upgrade/calicoctl-v3.31.7')
-        pins = json.loads((PRODUCT.parent/'v1.35.10/artifact-pins.json').read_text())
+        pins = json.loads(PINS_PATH.read_text())
         arch = {'x86_64': 'amd64', 'aarch64': 'arm64'}.get(platform.machine())
         digest = pins['calicoctl'][version][arch]
         if hashlib.sha256(path.read_bytes()).hexdigest() != digest:
@@ -159,6 +187,10 @@ class PlatformPrerequisites:
         return ['platform/calico-'+edge[1] for edge in self.edges]
 
     def run(self, journal):
+        self.verify_retained()
+        if self.retained:
+            self.traffic()
+            return
         for step, edge in zip(self.steps, self.edges):
             if step in journal.data['completed']:
                 continue

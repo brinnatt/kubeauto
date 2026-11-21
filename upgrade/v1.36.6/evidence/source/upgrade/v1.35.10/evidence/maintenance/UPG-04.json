@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "accepted": true,
+  "source": "v1.34.13",
+  "target": "v1.35.10",
+  "case_ids": [
+    "UPG-04"
+  ],
+  "covered_subcases": [
+    "product-config-and-inventory-handoff-contract",
+    "legacy-minor-refusal-and-version-identity-contract",
+    "control-plane-node-journal-and-component-stage-contracts",
+    "launcher-refuses-pending-or-disabled-prerequisites-before-mutation"
+  ],
+  "recorded_on": "2026-11-20",
+  "method": "reuse",
+  "claim": "原升级实现和runner合同复用；仅默认nerdctl/扩展包pin变化，由已接受真实认证证据及当前88项消费/工具/准入合同补齐。旧清单格式测试已修复；四制品仓与ext-images共224项合同通过。无新产品实现或集群操作。",
+  "inputs": {
+    "common/constants.py": "113fa6ad2e0ca661dc232a550be1ec421fecab3ae1fb0f89e15d2907ba7d3447",
+    "conf/config.yml": "0a9c205e7a3bb950db6935e07e0dab1ad4ffc6fe98e7bbe5221c3d3c07c4dc7a",
+    "service/cluster/manager.py": "1c448c16edc121b3c580e5e13c4e2455d1cd761074ae18300122994a7b179a3f",
+    "upgrade/lab/isolate-control.sh": "91a6cc789fa46baa139ef6ce7ff28a64e38ea45d733280a194e0832c007ae102",
+    "upgrade/lab/next-control.sh": "0a4978ad6adedd2bd1cbe302a8647e82da8250aadeffacc275e5fb75ad2be30c",
+    "upgrade/lab/next-hosts.yml": "12a5b78b2862ed0bd3b7f9e69f79e075bd1cf0edbad922ccc1d4402f04997738",
+    "upgrade/lab/next-inventory.sh": "6993ca2751bf8dc0b3e7a9335ac0b4cf23d3cfecf1daf12449d510daa76bddba",
+    "upgrade/lab/next-ledger.yaml": "b4848224438ef4358105489dcac799c1109b15e358a0f8bbfdb1adeeb91804a1",
+    "upgrade/lab/next-session.sh": "34220599cc16b4f86e386d48700e3fa8cf7daed755a2153fabc449ba8eb3fa26",
+    "upgrade/lab/next_inputs.py": "2aac0a35d928abababd0de4b7a5585cac847422953b854e5e4208b4ff72df80c",
+    "upgrade/lab/next_registry.py": "8a921c16185cfc4fb338cf664d19a3ea41f281d4c4c719b468acff03807f9506",
+    "upgrade/lab/next_session.py": "4bcf9aac42c40ef0d9092949cb113a5ecef9c9af73e295fcc69268c9fce7dcae",
+    "upgrade/product/api-auth-observe.yml": "6c3fa82c10570193cc9c3a4d39fc87add749ffe2771604d23390f5cde2ce4093",
+    "upgrade/product/api-auth.yml": "b25ddd0eaa687685fb0dda80cff2cc20e2a89f0f872cbb62df2158b405911498",
+    "upgrade/product/calico-client.yml": "b2e366fa261f74a3fcac97aad482cdd570f81d6ceb25280c73482b66305905c9",
+    "upgrade/product/calico-qualify.yml": "0fc5a386665c8f4dad0e11ac58381d5724b8cbdf27999ed4b7aec7746f383fa7",
+    "upgrade/product/calico_stage.py": "e60de46a942bd8e21a0d0562f53cbcbf8059b1d0d75618f9c5581e4dd577942a",
+    "upgrade/product/cgroup.yml": "e8bffc201e6bad16b075d3d0889f26d1c730e746e6520664cd4230f1d2400c58",
+    "upgrade/product/cilium.py": "98ac5d8ad92a011484c417ace6b66c0d9f30bc9b9789439621fe700f1d41080b",
+    "upgrade/product/cilium_stage.py": "62adddb7872a6d55638c3685acd10627d0bf23d8258e7f76ecb3c72c103f3f1b",
+    "upgrade/product/containerd-admission.yml": "0a14f42e8212b002b8182565876fe46318e9f34d93d40562f01385200feedcec",
+    "upgrade/product/containerd-config-v3.toml": "2f7ef797aba95b2861ab97bb923afa652970500cff6ae5860e1307c82b87a80a",
+    "upgrade/product/containerd-edge.yml": "a2461a62f93a2d73a2f64f2ae450d3873f89a609140a3bb179a936b4c7d3af4c",
+    "upgrade/product/containerd.yml": "ac0247bb20476cf445b85bd41e7d7201173e38d03b19ea9c726aee266413933f",
+    "upgrade/product/continuity.py": "c5834306448f21dd167e4909cfe6380a1d29f10f908cefc2ded450aed65a6538",
+    "upgrade/product/control-plane.yml": "a67a6294e035e0b6481d82d0b5cca72cf4646954cf70d06053c5491234ad8d51",
+    "upgrade/product/coordinator.py": "38e1b8e51d3a4bd318d83d8e7d6ddca4c4df9d0210ed0a0fc94d5ca3d2521a6f",
+    "upgrade/product/dns_stage.py": "d1472378bcf7e3411a69ce0784dafc9b2900e57f9ac3313d2f5498033fd2df09",
+    "upgrade/product/docker-admission.yml": "ccecc215795b9b597460d792312f479ea79fb0c8fea845ada8b754922c26a2d4",
+    "upgrade/product/docker.yml": "7da6f05b0c6b456ad4a348203623c9f5b09bd848247c84f28ce5917676f87163",
+    "upgrade/product/entrypoint.py": "d0e79d976da76a3795e84b2f2ab67fa6ef1b632bb9f6ca727b15ed8300735fa3",
+    "upgrade/product/etcd-observe.yml": "717533afbb0209c6552d0f9465d0ca1fc337461193fe17b9813993021e7e9ba1",
+    "upgrade/product/etcd.yml": "ef881e24e82093a6714465e38a93d8bdc32388487fddc5e14d111473764b19a2",
+    "upgrade/product/flannel_stage.py": "a090a488a991c57e030905cd8dcaeb0e27957ed2ce598b15be5f6a048e8f9e86",
+    "upgrade/product/inventory.py": "b23cac55a967812dbd5f7fe553d0250f01d61872f80b319067e9286344c1f738",
+    "upgrade/product/inventory.yml": "8be72d54890f938aba9eba58a5b463aa31992fedb816ad490a2bce360f5c3f10",
+    "upgrade/product/journal.py": "ff445ee4356712256d146f5d28cd298a83aa0ce08072e14ade3e23f1df67e87d",
+    "upgrade/product/kubernetes-observe.yml": "79e2b2ec2e73528a3dd357933c55a19adbfbe98261ab5b42f07d20b68780acbe",
+    "upgrade/product/kubernetes_preflight.py": "4c88f0984533a22d8f970eb6a8e8547d965be48257ec42cb82edc215af2c3080",
+    "upgrade/product/kubernetes_stage.py": "e59fe56ad7a0404e159930a8189f643e2ff77e211ae32f0459166331f2976537",
+    "upgrade/product/launcher.py": "79f8492c01a351dbd9e03d68fd79448b0c8e3bcd3ef6934dde1cd82dc5caf845",
+    "upgrade/product/local_path_stage.py": "7b7bba1ccc4901ad28de47b15a4ca768a36d6e3708f2220b7de4c62ded5387bd",
+    "upgrade/product/metrics-eviction.yml": "e30b53957e946b8d69dcea3b2feeaaacb895713f68c031e5d467e4e6d933b745",
+    "upgrade/product/metrics_stage.py": "406665ccd7a20dd2d31b1d684849eb9fcbde5b8032f2fe198ba273b04442836d",
+    "upgrade/product/next-preconditions.yml": "8d584c4ec8017be1d5271f8b487f368852b764c89c0d9f012128df30e13fc02d",
+    "upgrade/product/next_addons.py": "11b3f4238ddb2620c57978ee92f2f5d09f6986093bd4ff8631d8bb445eb6c86c",
+    "upgrade/product/next_api.py": "876302abc3d30b513c7df23119ca1b8925ee657fc6f65b1cbad17777f3d0172d",
+    "upgrade/product/next_config.py": "9e90484f2f7998b01cd9b39c9c7dc6d25e1bb04d24355d17a3f99a3ffdba58a5",
+    "upgrade/product/next_etcd.py": "75beaffaf932721a7151bdb3fed3c1f465237752bed81c11ed7cbd0ec07a7102",
+    "upgrade/product/next_platform.py": "8def9871f75000ec28c94242e8001bbd850b54cb3a34acda92c2b3a8f5f6d05a",
+    "upgrade/product/node.yml": "1d886e7d07ed90494b54589cbb7ab788d5afd3187780f86d557b8795fbcfc190",
+    "upgrade/product/prepare.py": "fe5606569233a2e0166eeced42ff507e0764dd562cbd98405526187e36759fb8",
+    "upgrade/product/release_policy.py": "ee4f2fce425d0be5e57c6f535ebb1d94f5611c421a4a38bc32e8270d2160e264",
+    "upgrade/tests/test_next_session.py": "fcf5be5334be7675bffdf36653fc35a49477b7b9d46e96e215c7c3437ae06306",
+    "upgrade/tests/test_next_api.py": "ea8be853e227cd79f84c128f3ce9301322d4aac2b192df689a610ddd9f945a23",
+    "upgrade/tests/test_calico_stage.py": "4728190431f87886f1955849747ba492210447ec871ab6d5a63b764b5715d8a5",
+    "upgrade/tests/fixtures/calico_kubectl.py": "290daca67b66d14b85e348851903a47972bcf49cde5dcac340e3c19a2037a6b5",
+    "upgrade/tests/test_next_platform.py": "826b01f90eb23af1c675fddba5f682e198ea0e439a79c0d3d54055d078ac978d",
+    "upgrade/tests/fixtures/calico_datastore.py": "559a4a2253d8591d8093a058fdb94fc4769230660c9076ab1e699adfd9a10d73",
+    "upgrade/tests/test_metrics_eviction.py": "fad0002780b84f03c8e91044bbdb439f7c87f7469c8d0ed9bcd33c315d2380b9",
+    "tests/helpers/lab-wipe-nodes.sh": "267f8c1fb08d369932d46ef8bd59507243c69936960e965c53c3e331ed12cd6f",
+    "tests/unit/test_nerdctl.py": "8133303c4fe455ba10dadec053a4bcb637761f38d262269b16d4494922e4e5dd",
+    "tests/unit/test_six_repo_version_sync.py": "66f221d0cc580031f3404f4da869def7ec1fc2df908091ff224b4f5861ee4e27"
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.35.10/evidence/UPG-04.json",
+      "sha256": "1cc8a4b64e23ec83eed133ceb2605f70047cd513daf49136d3f92d4d768c75ef"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/maintenance/qualification.json",
+      "sha256": "c2c30ee51d7ac34b1f3d56a920d39eb12e6f18574f05c352ea983183e89321ae"
+    },
+    {
+      "path": "upgrade/v1.35.10/maintenance-baseline.yaml",
+      "sha256": "af301c489a6a9f6ee7e9242bf18f115d74342b4b28720db5a4267ce58a3f92fc"
+    }
+  ],
+  "applicability": {
+    "conditions": "原证据及其原始引用保持不变；原运行输入逐项核验，当前变化按维护基线明确分层。",
+    "differences": "common/constants.py仅nerdctl/包tag改变；生产roles、迁移实现及runner不变。测试仅适配清单schema2。",
+    "reason": "变化有独立的既有实测和当前聚焦证据；未变路径保留原身份，不因分支/目录/SHA变化重跑全部现场。"
+  },
+  "customer_signoff": null
+}

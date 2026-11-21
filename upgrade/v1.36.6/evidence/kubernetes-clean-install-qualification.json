@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "accepted": true,
+  "source": "v1.35.10",
+  "target": "v1.36.6",
+  "case_ids": [
+    "UPG-13"
+  ],
+  "method": "live",
+  "claim": "仅签Kubernetes六节点目标干净安装和二次setup90幂等；不签Harbor新建、ARM或整个父项。",
+  "covered_subcases": [
+    "independent-clean-target-install-through-config-and-kubecli",
+    "target-version-network-dns-and-runtime-identity",
+    "metrics-api-readyz-and-no-failed-pods",
+    "second-setup-idempotence-and-image-digest-readback"
+  ],
+  "inputs": {
+    "upgrade/lab/next_session.py": "542ea11c51f4109db9311858e636d017746966d72518bea7000ba10395fd053c",
+    "upgrade/lab/next-ledger.yaml": "c909a62d53cf7bd6c1f26b16f761062f3ee70c0f482277b7c7fd2dade0aa62ae",
+    "upgrade/v1.36.6/artifact-pins.json": "6ceaf94c0fb6657a66017ff1563b9743c754ff1c7282b36242ade029b9a25047"
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/new-install/new-install.status.json",
+      "sha256": "cd1376a408bc3af5122ff1ea3f6327f20a0d8f8473a4c8b8bbfb3384c0bc0e0d"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/new-install/new-install.attempt-1.log",
+      "sha256": "368da6c7fc7a85468c32b108c37ad67d24d83ace3a3f8830706aa8d80c8a8d52"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/new-install/new-install.attempt-1.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/new-install/new-install.attempt-1.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/new-install/target-install.json",
+      "sha256": "a2dc5f893f758b093dbe7dafb6fd953a56c532d11def37cdfc5ac73256ae594d"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/new-install/target-config.json",
+      "sha256": "81de7abebcc1927f17e6931ba0f109aedea04ce75b2928d58c9e1fbe00c44ea7"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/new-install/target-readonly-interfaces.json",
+      "sha256": "b0de4008a32f785b850ec9da65f6d6eb8cdafc47c9255ae14af285c598fb95d5"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/new-install/plan.json",
+      "sha256": "3a9b583c67e5f1e2acce68b90e2f27a2f2d1a748fd49444c6e61685769b39309"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/local-qualification/kubernetes-qualified-static-snapshot.json",
+      "sha256": "5817081eb9a766300d6f40d9dd6c14555cf0a0a3c87ab446109c19a2837518cf"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/kubernetes-clean-install-image-readback.json",
+      "sha256": "7981798618bca700e1b545aa13223ea91d7fc1b96ad461c9330e42796863f7f5"
+    }
+  ],
+  "run_id": "v1366-qualify-20261121a/new-install.attempt-1",
+  "business_assertions": [
+    "两次config+kubecli setup90均成功；六节点kubelet精确1.36.6、全部Ready且所有Running工作负载Ready。",
+    "三API后端readyz通过；两遍安装节点UID映射相同。",
+    "实际读取metrics API六节点样本；干净目标无中间件CRD，未以Pod Ready替代metrics取值。",
+    "28个实际运行/初始化容器imageID均与已准入AMD64子manifest精确一致；未将源码pin当作现场读回。"
+  ],
+  "durable_rc": 0,
+  "finalized_rc": 0,
+  "failure_markers": 0,
+  "success_marker": "UPGRADE_NEXT_INSTALL_PASS",
+  "cleanup_marker": "NEXT_SESSION_PHASE_SCOPE_VERIFY_PASS phase=new-install ownership=retained",
+  "log": {
+    "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/new-install/new-install.attempt-1.log",
+    "sha256": "368da6c7fc7a85468c32b108c37ad67d24d83ace3a3f8830706aa8d80c8a8d52"
+  },
+  "durable_exit": {
+    "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/new-install/new-install.attempt-1.exit",
+    "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+  },
+  "durable_finalized": {
+    "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/new-install/new-install.attempt-1.finalized",
+    "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+  },
+  "parent_pending": "UPG-13仍等待Harbor各架构新建与最终限定清理；此记录不是父项PASS。",
+  "customer_signoff": null
+}

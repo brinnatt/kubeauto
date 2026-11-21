@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "accepted": true,
+  "source": "v1.35.10",
+  "target": "v1.36.6",
+  "case_ids": [
+    "UPG-12"
+  ],
+  "method": "live",
+  "claim": "Kubernetes真实PDB拒绝、原journal/UID和cordon保持、同边界续跑及最终账本保持；Harbor原点停止备份恢复、213经2146至216逻辑导入、216同版逻辑导入、目标撤回与源恢复均完成原身份/权限/层内容复验及限定清理。原失败与两次修复分别保留，不签最终干净完整或原生ARM。未变Longhorn/Elasticsearch恢复断言按UPG09/10的原GA及官方依据复用，未新增其现场深测。 runner后续仅修改固定离线包夹具准备及暂停补给入口；本项恢复函数与产品代码AST/字节未变，原现场绑定归档helper快照，依据package-fixture-handoff.json复用，不把旧运行改签成新helper实测。",
+  "covered_subcases": [
+    "journal-binding-and-exclusive-owner-refusal",
+    "first-failure-stop-without-rollback-or-uncordon",
+    "accepted-boundary-resume-and-adjacent-runtime-edges",
+    "completed-order-and-no-downgrade-observation",
+    "harbor-stopped-consistent-backup-and-restored-business-identity"
+  ],
+  "inputs": {
+    "upgrade/product/journal.py": "ff445ee4356712256d146f5d28cd298a83aa0ce08072e14ade3e23f1df67e87d",
+    "upgrade/product/coordinator.py": "3e95c6742a291cb51334a9bfd7c8e4dd54de2e88eb5e30e1c286c4107af3eb55",
+    "upgrade/product/node.yml": "0112a7d7eb7b528575f7e4da5f7147108f3820f6f819e0904a839da936d6627c",
+    "upgrade/product/library/harbor_migration.py": "7673ce57ad0c409c49ff853f02aaecf0cc27daa6743fea00a3f286ed809ebb13",
+    "upgrade/v1.36.6/evidence/raw/local-qualification/kubernetes-qualified-next_session.py.txt": "542ea11c51f4109db9311858e636d017746966d72518bea7000ba10395fd053c",
+    "upgrade/v1.36.6/evidence/raw/local-qualification/package-fixture-before-repair/upgrade/lab/harbor_session.py": "c181978118f17fd701a7417b4e19c8a6fb56b603ee83efe0cc25f8499fd72cd0"
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.36.6/evidence/UPG-06.json",
+      "sha256": "30cd35f422fc69dfaf450dada3d82789e7454d1de1e40364c2749d9f5f8b119b"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/UPG-07.json",
+      "sha256": "a4504e8b6985d9e4a7244dd494b8ca17252c909fac1275443a95c7497a2ad0d1"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/UPG-09.json",
+      "sha256": "e4e443202ee8ab885f9c6237d5d2b20a43a97730179dd2186f97c107646067fe"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/UPG-10.json",
+      "sha256": "cb059408b56654d687929cb84ca0a355a815de65bffa87efc816984a9c63538c"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/local-qualification/UPG-04-before-build-policy.json",
+      "sha256": "ac8d006484641faa7c16e97cca38080df558891299c912009e20420b8f224e83"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/kubernetes-qualification-cleanup.json",
+      "sha256": "6b7919b30def185068b2fb3ec63968d6adc6716edb564728bbfa6da0dc33fa05"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/harbor-amd64-restore-qualification.json",
+      "sha256": "f1350543ff902d2909955542132a1c20c90011c3a820e431670754e89bf04161"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/harbor-qualification-cleanup.json",
+      "sha256": "3344ba192c0bebcaad47153c342529a723a9ebd633c7648140d538d169d06860"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/harbor-logical-qualification.json",
+      "sha256": "675fe1288eca3ebdaafb72d2a97ea39e72d5e5e650565a918ed8d3b359eab1fd"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/harbor-logical-cleanup.json",
+      "sha256": "99572812da9f279ccaf1db694dc7c66f860f55c37c9a23369c9de56bfe1c0c34"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/valkey-rdb-format.json",
+      "sha256": "a05c13c3688c91b629ef0a0b91e3e1913166d0ed4a9602aca9173cdd1e0a84aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/package-fixture-handoff.json",
+      "sha256": "8080f76064f9e732164ca3d8ea5b802b14f0f6e76b3e76ca697560027e19b4b4"
+    }
+  ],
+  "run_id": "v1366-qualify-20261121a/nodes-protection.attempt-1",
+  "additional_run_ids": [
+    "v1366-harbor-qualify-20261121a/harbor-restore.attempt-1",
+    "v1366-harbor-portable-20261121a/harbor-portable-backup-repair.attempt-1"
+  ],
+  "durable_rc": 0,
+  "finalized_rc": 0,
+  "failure_markers": 0,
+  "success_marker": "UPGRADE_NEXT_PDB_REFUSAL_PASS",
+  "cleanup_marker": "NEXT_SESSION_PHASE_SCOPE_VERIFY_PASS phase=nodes-protection ownership=retained",
+  "business_assertions": [
+    "PDB真实拒绝后的journal、节点UID和cordon保持；解除同一PDB阻断条件后从原边界继续，未自动回滚或降级。",
+    "节点及Harbor各次恢复后均读原账本，不重建原身份/用户/机器人或制品掩盖丢失。",
+    "Harbor两条逻辑目标均先完成数据库逻辑恢复再启动Core/schema；216保存Valkey080快照；目标撤回和重复撤回幂等，源在目标停写后恢复213。",
+    "源/目标恢复档案私有保留并验证摘要，自有数据/运行时及六节点租约已限定清理，原失败父1/1未改写。"
+  ],
+  "log": {
+    "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes-protection/nodes-protection.attempt-1.log",
+    "sha256": "aed87ce7b224d2f0cdacd45a5da584cce385051233931b50e1cf4ee53474bbfd"
+  },
+  "durable_exit": {
+    "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes-protection/nodes-protection.attempt-1.exit",
+    "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+  },
+  "durable_finalized": {
+    "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes-protection/nodes-protection.attempt-1.finalized",
+    "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+  },
+  "customer_signoff": null,
+  "build_policy_applicability": "后续修改仅新增构建时校验和发行导出摘要，原admit_packaged/runtime_data与非冻结现场入口未变；本项绑定原UPG04字节，实际日志、durable、业务与清理断言不变。"
+}

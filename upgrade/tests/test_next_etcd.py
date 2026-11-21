@@ -111,6 +111,22 @@ class NextEtcdContracts(unittest.TestCase):
             self.assertEqual(data['completed'],[])
             self.assertEqual(data['failures'][0]['category'],'kubernetes')
 
+    def test_136_retained_etcd_is_verified_without_copy_or_restart(self):
+        self.source.update(source='v1.35.10',target='v1.36.6')
+        f=self.fixture
+        f.state['version']={host:'3.6.16' for host in HOSTS}
+        binary_hash=hashlib.sha256((self.assets/'etcd').read_bytes()).hexdigest()
+        f.state['disk_hash']={host:binary_hash for host in HOSTS}
+        (self.root/'state.json').write_text(json.dumps(f.state))
+        with patch.object(next_etcd,'PINS_PATH',self.pins):
+            stage=self.stage()
+            self.assertEqual(self.run_stage(stage),stage.steps,self.results[-1].stdout)
+            self.assertFalse(any(t['module'] in ['copy','systemd_service'] for t in f.trace))
+            f.state['version'][HOSTS[0]]='3.6.4'
+            (self.root/'state.json').write_text(json.dumps(f.state))
+            with self.assertRaisesRegex(Refused,'playbook refused'):self.run_stage(self.stage())
+            self.assertFalse(any(t['module'] in ['copy','systemd_service'] for t in f.trace))
+
     def test_unhealthy_source_or_changed_official_bytes_refuse_before_playbook(self):
         with patch.object(next_etcd,'PINS_PATH',self.pins):
             self.fixture.state['unhealthy']=True

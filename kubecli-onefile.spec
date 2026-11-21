@@ -4,7 +4,8 @@
 from pathlib import Path
 
 from common.utils import get_pkg_dir
-from upgrade.product.release_policy import export as export_upgrade_policy
+from upgrade.product.release_policy import admit_build as admit_upgrade_build
+from upgrade.product.hop import TARGET
 
 block_cipher = None
 
@@ -13,9 +14,10 @@ project_root = Path(SPECPATH)
 ANSIBLE_RUNNER_DIR = get_pkg_dir('ansible_runner')
 
 # A customer binary cannot rely on a development checkout or silently bypass
-# unfinished acceptance. Export only after the authoritative matrix is complete.
-export_upgrade_policy(project_root, project_root/'upgrade/v1.35.10/test-matrix.yaml',
-                      project_root/'build/upgrade-policy/release-policy.json')
+# unfinished acceptance. Export the policy with the private evidence before
+# release; clean CI verifies that exact policy, matrix and distributable inputs.
+admit_upgrade_build(project_root, project_root/'upgrade'/TARGET/'test-matrix.yaml',
+                    project_root/'upgrade'/TARGET/'release-policy.json')
 
 # Data files: first path = source (relative to spec dir), second = destination in bundle.
 added_files = [
@@ -24,8 +26,9 @@ added_files = [
     ('conf', 'conf'),
     ('upgrade/product/*.yml', 'upgrade/product'),
     ('upgrade/product/*.toml', 'upgrade/product'),
-    ('upgrade/v1.35.10/artifact-pins.json', 'upgrade/v1.35.10'),
-    ('build/upgrade-policy/release-policy.json', 'upgrade/v1.35.10'),
+    ('upgrade/product/library/*.py', 'upgrade/product/library'),
+    ('upgrade/'+TARGET+'/artifact-pins.json', 'upgrade/'+TARGET),
+    ('upgrade/'+TARGET+'/release-policy.json', 'upgrade/'+TARGET),
 ]
 
 a = Analysis(

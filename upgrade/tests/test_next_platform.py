@@ -90,6 +90,61 @@ class NextPlatformContracts(unittest.TestCase):
         self.assertEqual(self.fixture.mutations(),[])
         self.assertEqual(self.clients,[])
 
+    def retained_profile(self):
+        self.configure('v3.32.4')
+        f = self.fixture
+        f.source.update(source='v1.35.10', target='v1.36.6')
+        f.state['platform'] = 'v1.35.10'
+        for node in f.state['nodes']:
+            node['status']['nodeInfo']['kubeletVersion'] = 'v1.35.10'
+        f.save()
+        # The retained path uses the shared read-only observer rather than the
+        # mutating Calico transport. Accept that exact CLI layout in this fixture.
+        script = f.binary.read_text()
+        start = script.index('assert args[:4]')
+        end = script.index("with (root/'calls.jsonl')", start)
+        script = script[:start] + '''assert args[:6] == ['--kubeconfig', str(root/'source/kubectl.kubeconfig'),
+ '--server', args[3], '--insecure-skip-tls-verify=false', '--request-timeout=10s']
+assert args[6:8] == ['-n', 'kube-system']
+server, args = args[3], args[8:]
+''' + script[end:]
+        f.binary.write_text(script)
+
+    def test_136_retains_calico_and_private_identities_without_replaying_old_edges(self):
+        self.retained_profile()
+        stage = self.stage()
+        self.assertEqual(stage.steps, [])
+        self.run_stage(stage)
+        before = (self.state/'calico-retained-objects.json').read_bytes()
+        self.stage().verify_retained()
+        self.assertEqual((self.state/'calico-retained-objects.json').read_bytes(), before)
+        self.assertEqual(self.fixture.mutations(), [])
+        self.assertEqual(self.clients, [])
+        self.assertEqual(self.books, [])
+
+    def test_136_refuses_retained_secret_or_datastore_drift_before_mutation(self):
+        self.retained_profile()
+        stage = self.stage()
+        secret = self.fixture.state['objects']['secret/calico-etcd-secrets']
+        secret['metadata']['uid'] = 'foreign-secret'
+        self.fixture.save()
+        with self.assertRaisesRegex(Refused, 'identity or configuration changed'):
+            stage.verify_retained()
+        with patch.object(stage, 'read_retained', return_value=stage.retained_objects), \
+             patch.object(stage, 'datastore', return_value={}):
+            with self.assertRaisesRegex(Refused, 'pools/policies/host endpoints changed'):
+                stage.verify_retained()
+        self.assertEqual(self.fixture.mutations(), [])
+
+    def test_136_refuses_historical_edge_in_an_existing_journal_plan(self):
+        self.retained_profile()
+        self.stage()
+        path = self.state/'calico-edges.json'
+        path.write_text(json.dumps([['v3.31.7', 'v3.32.4']]))
+        with self.assertRaisesRegex(Refused, 'cannot replay historical'):
+            self.stage()
+        self.assertEqual(self.fixture.mutations(), [])
+
     def test_nonempty_datastore_has_same_identity_before_and_after_snapshot_reload(self):
         # Real etcd JSON strings; the empty fixture cannot expose tuple/list drift.
         binary=self.fixture.root/'extra-bin/etcdctl'

@@ -1,0 +1,131 @@
+{
+  "schema_version": 1,
+  "run_id": "v1366-harbor-qualify-20261121a",
+  "claim": "独立AMD64 Harbor资格的限定清理与六节点租约释放完成；恢复档案保留控制机私有目录。原父链失败1/1，成功清理子任务0/0，不签最终干净完整验收或双架构GA。",
+  "cleanup_child": {
+    "attempt": 2,
+    "durable_rc": 0,
+    "finalized_rc": 0,
+    "failure_markers": 0,
+    "marker": "HARBOR_CLEANUP_REPAIR_PASS lease=held"
+  },
+  "parent": {
+    "durable_rc": 1,
+    "finalized_rc": 1,
+    "reason": "original clean-install product failure retained; scoped cleanup completed",
+    "six_host_release_recap": "all failed=0 and unreachable=0",
+    "controller_owner": "absent",
+    "shared_locks": "available"
+  },
+  "failures_preserved": [
+    {
+      "boundary": "original parent cleanup",
+      "classification": "test-gate",
+      "cause": "Compose-only Harbor qualification incorrectly called Kubernetes destroy and was refused by the production Kubernetes guard",
+      "repair": "verify runtime-only admission, then fixed scoped host wipe; no production guard bypass"
+    },
+    {
+      "boundary": "cleanup repair attempt1",
+      "classification": "test-gate plus environment capacity",
+      "cause": "lexical source snapshot chosen as sole rsync link-dest missed unchanged recovery files; ENOSPC and rsync rc11 stopped source archive transfer",
+      "repair": "checksum and completed same-host link-dest snapshots; separate retry attempt2; historical completed files unchanged"
+    }
+  ],
+  "contracts": {
+    "tests": 23,
+    "rc": 0,
+    "skipped": 0,
+    "reference": "upgrade/v1.36.6/evidence/raw/local-qualification/harbor-archive-repair-contracts.log"
+  },
+  "capacity_observation": {
+    "controller_free_bytes": 843988992,
+    "boundary": "空间不足1GiB；后续stage/现场前必须重新核验容量，不能据已清理六节点推断控制机有足够空间。"
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/harbor-cleanup-repair.attempt-1.log",
+      "sha256": "516e56aa98545476c24b521b66736cd2dfe1d90affbe58cacaa4697403179f64"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/harbor-cleanup-repair.attempt-1.exit",
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/harbor-cleanup-repair.attempt-1.finalized",
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/harbor-cleanup-repair.attempt-2.log",
+      "sha256": "016bda27286033ad9714ee2fbcf1f9e60345a78c840e647b9529be41397f7ad6"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/harbor-cleanup-repair.attempt-2.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/harbor-cleanup-repair.attempt-2.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/harbor-cleanup-repair-inputs.json",
+      "sha256": "b4af0b66d6954fd863ddd44c77b90d51389717c04b06ccea28c02a84b8667529"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/harbor-archive-repair-inputs.json",
+      "sha256": "2d05b5aa6a47c49bf8db36b99c2b6b2919618b7910b5682a9bab6c1079ffa7b6"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/target-harbor-data-clean.json",
+      "sha256": "0bc997d741dbf455c567e11c2586a9fe802f0835f65b480892d7776dc301d8b7"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/target-harbor-runtime-clean.json",
+      "sha256": "41f4babfaac6f87becacb5a3f1cae5dbe21d317bc7115a7ddf562bd4b6ae691e"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/target-harbor-node-clean.json",
+      "sha256": "13dc9f76f0934d816b59105c2be0fea4464178327cac61a0d1af59a44809400b"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/target-harbor-recovery-archive.json",
+      "sha256": "e607ef71d0875379c59a1fa94381d72aabfeb6fd887ce0b49273b1347b1f92f2"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/harbor-data-clean.json",
+      "sha256": "0bc997d741dbf455c567e11c2586a9fe802f0835f65b480892d7776dc301d8b7"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/harbor-runtime-clean.json",
+      "sha256": "41f4babfaac6f87becacb5a3f1cae5dbe21d317bc7115a7ddf562bd4b6ae691e"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/harbor-node-clean.json",
+      "sha256": "90f86c60c168c94e24bdaea6d68010d5d71cd71748dc83a69d8e1cf4662c648b"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/harbor-recovery-archive.json",
+      "sha256": "1b28474621b1587d3ab90194d9f3a5929b89a8f714dd1f3b32f2f5ed693f8ba1"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/cleanup-release-observation.json",
+      "sha256": "c1aca1a8e9f66c84d0741140fa1adc685bdea1c786626faf27249bfd9e5f5613"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/v1366-harbor-qualify-20261121a.log",
+      "sha256": "e3813ac44f6b23dea6ea639948614eb4d4b034da84167d615ed05216130a7f98"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/v1366-harbor-qualify-20261121a.exit",
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/v1366-harbor-qualify-20261121a.finalized",
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/discarded-incomplete-archive.json",
+      "sha256": "3f5030899b17aed792601884fc964b54d5f9948eb3bd35b1e57b82e4e3a6c36f"
+    }
+  ],
+  "failed_partial_archive": "failed transfer inventory preserved; incomplete directory removed after complete recovery archive verification"
+}

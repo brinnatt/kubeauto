@@ -9,6 +9,7 @@ import unittest
 from unittest.mock import patch
 
 import yaml
+from upgrade.product.hop import TARGET
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -41,14 +42,24 @@ class ProductReleaseScopeContracts(unittest.TestCase):
         tree = ast.parse((ROOT/'kubecli-onefile.spec').read_text())
         assignment = next(node for node in tree.body if isinstance(node, ast.Assign) and
                           any(isinstance(t, ast.Name) and t.id == 'added_files' for t in node.targets))
-        data = ast.literal_eval(assignment.value)
+        # Evaluate only the data expression with the same fixed hop constant;
+        # never execute the spec's export, Analysis or packaging operations.
+        data = eval(compile(ast.Expression(assignment.value), '<bundle-data>', 'eval'),
+                    {'__builtins__': {}, 'TARGET': TARGET})
         entries = [entry for entry in data if entry[0].startswith('upgrade')]
         self.assertEqual(entries, [('upgrade/product/*.yml', 'upgrade/product'),
             ('upgrade/product/*.toml', 'upgrade/product'),
-            ('upgrade/v1.35.10/artifact-pins.json', 'upgrade/v1.35.10')])
-        self.assertIn(('build/upgrade-policy/release-policy.json', 'upgrade/v1.35.10'), data)
+            ('upgrade/product/library/*.py', 'upgrade/product/library'),
+            (f'upgrade/{TARGET}/artifact-pins.json', f'upgrade/{TARGET}'),
+            (f'upgrade/{TARGET}/release-policy.json', f'upgrade/{TARGET}')])
+        calls = [node for node in ast.walk(tree) if isinstance(node, ast.Call)
+                 and isinstance(node.func, ast.Name)]
+        self.assertTrue(any(node.func.id == 'admit_upgrade_build' for node in calls))
+        self.assertFalse(any(node.func.id == 'export_upgrade_policy' for node in calls))
         bundled = {path.resolve() for path in ROOT.glob(entries[0][0])}
         self.assertIn((ROOT/'upgrade/product/node.yml').resolve(), bundled)
+        self.assertIn((ROOT/'upgrade/product/library/harbor_migration.py').resolve(),
+                      {path.resolve() for pattern, _ in entries for path in ROOT.glob(pattern)})
         for path in bundled:
             with self.subTest(path=path.name):
                 content = yaml.safe_load(path.read_text())

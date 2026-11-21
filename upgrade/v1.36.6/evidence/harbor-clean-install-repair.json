@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "run_id": "v1366-harbor-qualify-20261121a",
+  "phase": "harbor-new-install",
+  "first_failed_attempt": 1,
+  "classification": "product",
+  "first_failure": "rc127 tar: command not found before installer extraction",
+  "first_failure_evidence": {
+    "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/harbor-new-install.attempt-1.log",
+    "sha256": "bd0a04166fd67dcdadf74978d962ff3e11e60a40a85a833da5b46626634a0950"
+  },
+  "additional_proven_defect": "target installation readiness used anonymous systeminfo, which omits protected harbor_version",
+  "repair_scope": [
+    "roles/harbor: clean-install archive dependencies",
+    "roles/harbor: installed configuration authenticated TLS readiness",
+    "fixed runner: resume setup11 from original config without bootstrap or setup01/03"
+  ],
+  "contracts": {
+    "path": "upgrade/v1.36.6/evidence/raw/local-qualification/harbor-clean-install-repair-contracts.log",
+    "sha256": "459c9a152e80098713626af167d6b61698673b04d355f9942590c39cd25ca680",
+    "tests": 65,
+    "rc": 0,
+    "skipped": 0
+  },
+  "runtime_requalification": "focused setup11 clean installation, original-ledger readback, second setup11 idempotence and source preservation passed; durable 0/0; parent original failure retained",
+  "parent_status_rule": "original failed parent remains failed; focused repair child accepted independently; then original supervisor scoped cleanup"
+}

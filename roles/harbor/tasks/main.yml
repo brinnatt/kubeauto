@@ -1,3 +1,12 @@
+- name: Validate the path consumed by the official Harbor prepare script
+  ansible.builtin.assert:
+    that:
+      - HARBOR_PATH is match('^/[A-Za-z0-9_./-]+$')
+      - HARBOR_PATH != '/'
+      - "'..' not in HARBOR_PATH.split('/')"
+    fail_msg: The official Harbor prepare script requires an absolute data path without spaces or quotes; use a path such as /var/data.
+  when: HARBOR_VER == 'v2.16.0'
+
 - name: create {{ HARBOR_PATH }} directory
   file:
     path: "{{ HARBOR_PATH }}"
@@ -16,18 +25,52 @@
     msg: "A running Harbor registry container was detected; installation is not required."
   when: '"registry" in result.stdout'
 
+# A stopped installation still owns its database, credentials and configuration.
+# setup must never interpret it as permission to initialize a new instance.
+- name: Read existing Harbor installation and persistent state
+  ansible.builtin.stat:
+    path: '{{ item }}'
+    follow: false
+  loop:
+    - '{{ HARBOR_PATH }}/harbor/harbor.yml'
+    - '{{ HARBOR_PATH }}/database'
+    - '{{ HARBOR_PATH }}/registry'
+    - '{{ HARBOR_PATH }}/secret'
+  register: harbor_existing_state
+
+- name: Refuse reinitialization over stopped or incomplete Harbor data
+  ansible.builtin.assert:
+    that:
+      - '"registry" in result.stdout or (harbor_existing_state.results | selectattr("stat.exists") | list | length == 0)'
+    fail_msg: Existing Harbor state requires the documented recovery or upgrade path; setup will not overwrite its configuration or credentials.
+
 - block:
+  - name: Ensure Harbor archive tools on a minimal host
+    vars:
+      harbor_archive_install:
+        RedHat: dnf install -y tar gzip
+        Debian: env DEBIAN_FRONTEND=noninteractive apt-get install -y tar gzip
+        Suse: zypper --non-interactive install --no-recommends tar gzip
+    ansible.builtin.shell: |
+      if command -v tar >/dev/null 2>&1 && command -v gzip >/dev/null 2>&1; then
+        echo HARBOR_ARCHIVE_TOOLS_PRESENT
+      else
+        {{ harbor_archive_install[ansible_os_family] }}
+        command -v tar >/dev/null 2>&1 && command -v gzip >/dev/null 2>&1 || exit 1
+        echo HARBOR_ARCHIVE_TOOLS_INSTALLED
+      fi
+    register: harbor_archive_tools
+    changed_when: "'HARBOR_ARCHIVE_TOOLS_INSTALLED' in harbor_archive_tools.stdout"
+
   - name: Generate random password for Harbor
     shell: < /dev/urandom tr -dc 0-9A-Za-z-_ | head -c 16
     register: harbor_password_gen
-  
-  - debug: var="harbor_password_gen.stdout"
+    no_log: true
   
   - name: Generate random password for DB
     shell: < /dev/urandom tr -dc 0-9A-Za-z-_ | head -c 16
     register: db_password_gen
-  
-  - debug: var="db_password_gen.stdout"
+    no_log: true
   
   - name: distribute docker compose binary
     copy: src={{ base_dir }}/extra-bin/docker-compose dest={{ bin_dir }}/docker-compose mode=0755
@@ -36,6 +79,27 @@
     copy:
       src: "{{ base_dir }}/down/harbor-offline-installer-{{ HARBOR_VER }}.tgz"
       dest: "{{ HARBOR_PATH }}/harbor-offline-installer-{{ HARBOR_VER }}.tgz"
+
+  - name: Hash the official installer before extraction
+    ansible.builtin.stat:
+      path: '{{ HARBOR_PATH }}/harbor-offline-installer-{{ HARBOR_VER }}.tgz'
+      checksum_algorithm: sha256
+      follow: false
+    register: harbor_official_package
+    when: HARBOR_VER == 'v2.16.0'
+
+  - name: Require the official package for this host architecture
+    vars:
+      harbor_official_sha256:
+        x86_64: 643c137d8e829c857ef0ba45c46b5d6d8553077340bbd4929ded7e92808e77ff
+        aarch64: 6525af9c26cc24e48ecf37d3f7d9d139895b39a037a3de697f995171ce65524a
+    ansible.builtin.assert:
+      that:
+        - ansible_architecture in harbor_official_sha256
+        - harbor_official_package.stat.isreg | default(false)
+        - not (harbor_official_package.stat.islnk | default(false))
+        - harbor_official_package.stat.checksum == harbor_official_sha256[ansible_architecture]
+    when: HARBOR_VER == 'v2.16.0'
 
   - name: uncompress harbor offline package
     shell: "cd {{ HARBOR_PATH }} && tar zxf harbor-offline-installer-{{ HARBOR_VER }}.tgz"
@@ -72,7 +136,8 @@
     when: 'not HARBOR_SELF_SIGNED_CERT|bool'
   
   - name: prepare harbor configuration
-    template: src=harbor-{{ HARBOR_VER_MAIN }}.yml.j2 dest={{ HARBOR_PATH }}/harbor/harbor.yml
+    template: src=harbor-{{ HARBOR_VER_MAIN }}.yml.j2 dest={{ HARBOR_PATH }}/harbor/harbor.yml mode=0600
+    no_log: true
 
   - set_fact: HARBOR_INST_OPS="{{ HARBOR_INST_OPS }} --with-trivy"
     when: "HARBOR_WITH_TRIVY|bool"
@@ -80,9 +145,9 @@
   - debug: var="HARBOR_INST_OPS"
 
   - name: install harbor
-    shell: "cd {{ HARBOR_PATH }}/harbor && \
+    shell: "umask 077; cd {{ HARBOR_PATH | quote }}/harbor && \
             export PATH={{ bin_dir }}:$PATH && \
-            ./install.sh {{ HARBOR_INST_OPS }} >> /tmp/harbor-`date +'%Y%m%d%H%M%S'`.log 2>&1"
+            ./install.sh {{ HARBOR_INST_OPS }} >> installation.log 2>&1"
   when: '"registry" not in result.stdout'
 
 - name: check harbor status ready or not
@@ -91,3 +156,28 @@
     port: "{{ HARBOR_TLS_PORT }}"
     timeout: 60
   run_once: true
+
+- name: Read installed Harbor credentials for protected version inventory
+  ansible.builtin.slurp:
+    src: '{{ HARBOR_PATH }}/harbor/harbor.yml'
+  register: harbor_installed_configuration
+  when: HARBOR_VER == 'v2.16.0'
+  no_log: true
+
+- name: Require the target Harbor API and complete component health
+  ansible.builtin.uri:
+    url: 'https://{{ inventory_hostname if HARBOR_SELF_SIGNED_CERT | bool else HARBOR_HOSTNAME }}:{{ HARBOR_TLS_PORT }}/api/v2.0/{{ item }}'
+    ca_path: '{{ (ca_dir ~ "/ca.pem") if HARBOR_SELF_SIGNED_CERT | bool else omit }}'
+    validate_certs: true
+    return_content: true
+    use_proxy: false
+    url_username: admin
+    url_password: '{{ (harbor_installed_configuration.content | b64decode | from_yaml).harbor_admin_password }}'
+    force_basic_auth: true
+  loop: [systeminfo, health]
+  register: harbor_api_readiness
+  until: harbor_api_readiness.status == 200 and ((item == 'systeminfo' and harbor_api_readiness.json.harbor_version is match('^v?2\.16\.0(?:[-+].*)?$')) or (item == 'health' and harbor_api_readiness.json.status == 'healthy'))
+  retries: 30
+  delay: 5
+  when: HARBOR_VER == 'v2.16.0'
+  no_log: true

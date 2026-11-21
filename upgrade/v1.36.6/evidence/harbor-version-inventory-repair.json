@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "run_id": "v1366-harbor-qualify-20261121a",
+  "phase": "harbor-migration",
+  "failed_attempt": 1,
+  "classification": "product",
+  "first_failure": "version inventory omitted authentication; anonymous systeminfo HTTP200 has no harbor_version",
+  "upstream_basis": [
+    {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.13.0-systeminfo.go",
+      "sha256": "5c50ba391b9e8e55ccbb27136a0e65180dc15e293c639be20437bdd21b34ed1f",
+      "url": "https://github.com/goharbor/harbor/blob/v2.13.0/src/server/v2.0/handler/systeminfo.go"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.14.6-systeminfo.go",
+      "sha256": "5c50ba391b9e8e55ccbb27136a0e65180dc15e293c639be20437bdd21b34ed1f",
+      "url": "https://github.com/goharbor/harbor/blob/v2.14.6/src/server/v2.0/handler/systeminfo.go"
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.16.0-systeminfo.go",
+      "sha256": "5c50ba391b9e8e55ccbb27136a0e65180dc15e293c639be20437bdd21b34ed1f",
+      "url": "https://github.com/goharbor/harbor/blob/v2.16.0/src/server/v2.0/handler/systeminfo.go"
+    }
+  ],
+  "observed": {
+    "anonymous_version": null,
+    "authenticated_version": "v2.13.0-db1569ae",
+    "backup_exists": false
+  },
+  "impact": "before backup creation or stop; original source business evidence unchanged",
+  "repair": "authenticate protected systeminfo using original config credential over original CA-verified local TLS listener",
+  "contracts": {
+    "path": "upgrade/v1.36.6/evidence/raw/local-qualification/harbor-auth-contracts.log",
+    "sha256": "52b299f101d766a450b0d216fdf2e7d33801b3da8d111d57ee616af9ef691e03"
+  },
+  "runtime_requalification": "harbor-migration attempt2 passed with original data and business identities; 0/0 durable; see harbor-amd64-migration-qualification.json",
+  "first_failure_evidence": {
+    "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/harbor-migration.attempt-1.log",
+    "sha256": "fe4097f7a568b97baa1d2b47c71f9f63ce4a3b134e6dacb57fe0a0dc7eecf532"
+  }
+}

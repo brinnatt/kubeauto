@@ -101,7 +101,7 @@ class MetricsStage:
         nodes = source.get('nodes', [])
         self.cluster_uid = source.get('cluster_identity', {}).get('uid')
         if ((source.get('source'), source.get('target')) not in {
-                ('v1.33.6', 'v1.34.13'), ('v1.34.13', 'v1.35.10')} or
+                ('v1.33.6', 'v1.34.13'), ('v1.34.13', 'v1.35.10'), ('v1.35.10', 'v1.36.6')} or
                 source.get('mutation') != 'none' or not self.cluster_uid or
                 source.get('cluster_identity', {}).get('namespace') != 'kube-system' or
                 not isinstance(nodes, list) or not nodes or

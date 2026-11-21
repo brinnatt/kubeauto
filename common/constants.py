@@ -31,7 +31,7 @@ class KubeConstant:
         "refer_github": "https://github.com/Mirantis/cri-dockerd/releases",
         "description": "cri-dockerd CRI shim for dockerd; pairs with Engine 28.x over CRI v1",
     })
-    v_kubeauto: str = field(default="v0.1.8", metadata={
+    v_kubeauto: str = field(default="v0.1.9", metadata={
         "refer_github": "https://github.com/brinnatt"
     })
     v_talkedu_registry: str = field(default="hub.talkedu.cn/kubeauto", metadata={
@@ -50,7 +50,7 @@ class KubeConstant:
         ),
     })
     v_ansible_core_py314: str = field(default="2.20.9")
-    v_k8s_bin: str = field(default="v1.35.10", metadata={
+    v_k8s_bin: str = field(default="v1.36.6", metadata={
         "refer_all": "https://kubernetes.io/releases/download/",
         "refer_bin": "https://www.downloadkubernetes.com/",
         "refer_old": "https://github.com/kubernetes/kubernetes/tree/master/CHANGELOG",
@@ -80,9 +80,9 @@ class KubeConstant:
         "refer_github": "https://github.com/containerd/nerdctl/releases",
         "description": "nerdctl with equivalent registry host authentication fix; minimal tarball only",
     })
-    v_harbor: str = field(default="v2.13.0", metadata={
-        "refer_image": "https://github.com/wise2c-devops/build-harbor-aarch64",
-        "description": "None-official"
+    v_harbor: str = field(default="v2.16.0", metadata={
+        "refer_image": "https://github.com/goharbor/harbor/releases/tag/v2.16.0",
+        "description": "Official GA offline installer for linux/amd64 and linux/arm64"
     })
     # Pack / component image pins (brinnatt/* dual-publish tags)
     v_kube_state_metrics: str = field(default="v2.18.0", metadata={

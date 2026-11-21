@@ -1,0 +1,18 @@
+{
+  "component": "valkey",
+  "version": "9.0.3",
+  "official_sources": [
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/valkey-9.0.3/rdb.c",
+      "sha256": "448dad6d339e5b880548b3024ab1aa73c3c851eaf1e8c54fdce7fcdccc35df9f",
+      "url": "https://raw.githubusercontent.com/valkey-io/valkey/9.0.3/src/rdb.c"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/valkey-9.0.3/rdb.h",
+      "sha256": "c4346d93e3a7822ef19e0b10a106243130447d1bc3a48ffcae76e63afd36209c",
+      "url": "https://raw.githubusercontent.com/valkey-io/valkey/9.0.3/src/rdb.h"
+    }
+  ],
+  "finding": "rdb.h RDB_VERSION=80; rdb.c writes VALKEY%03d. Harbor 2.16 queue snapshot must accept VALKEY080. Redis legacy format remains separately validated; no Redis downgrade compatibility claim.",
+  "scope": "Harbor stopped backup and portable export/import; no native ARM execution claim"
+}

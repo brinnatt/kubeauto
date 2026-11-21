@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "accepted": true,
+  "source": "v1.35.10",
+  "target": "v1.36.6",
+  "case_ids": [
+    "UPG-14"
+  ],
+  "method": "analysis",
+  "claim": "本跳正式三手册按现有标准完成来源、内容、静态、操作证据及新手/熟练读者路径检查；Harbor96官方目录90理解转化、6有据排除，30组件版本目录按维护基线复用/补增量，Valkey固定源码及真实逻辑恢复写回。明确x86实测/ARM静态、历史全站阅读缺口及未测能力；冻结产品目标v0.1.9，正式发布在UPG15通过后执行，当前不冒称已发布或客户签收。 开发手册补全完整验收后导出policy与干净CI验证的分工，实际完整夹具/删除私有证据/拒绝变更合同通过；不提前签实际构建。 最终执行编号更新为v1366-final-20261121b；前次a在源清理的PV异步等待门禁失败并保留，不改客户路径、冻结范围或产品输入。 开发手册补齐独立干净作用域之间的受限续接与真实run身份边界，并区分主仓release.yml和镜像仓build.yml；执行编号c显式复用b的七步干净K8s范围，仅新执行Harbor六步，b原父rc1/1不变。",
+  "covered_subcases": [
+    "customer-operator-entry-and-preflight",
+    "frozen-component-combination-and-evidence-boundary",
+    "stop-resume-recovery-and-rollback-limits",
+    "official-source-directory-and-reader-path"
+  ],
+  "inputs": {
+    "upgrade/v1.36.6/operations-manual.md": "a216d7230f2a9736a9067d636c3a8b4860110ae0bbe5a79272e9088470e07009",
+    "upgrade/v1.36.6/technical-whitepaper.md": "03230c511dc97efc063983f9122fe0ab9fdd37552ecc8468e488762d0223a4ff",
+    "upgrade/v1.36.6/development-manual.md": "44679d65a0329e1e61e31e9b082e97f6789a1ca02221a72dfa46f23455c295ff",
+    "upgrade/v1.36.6/research.yaml": "f9ed1c5c29df01168049a10230661e13138dab3ad0676a7d5728ff193bd1a880",
+    "upgrade/v1.36.6/acceptance-plan.yaml": "64950ea7da228bc055044a6e31ad3d33b2ab7a46c852d415f7494a2c981b7923",
+    "upgrade/v1.36.6/artifact-pins.json": "6ceaf94c0fb6657a66017ff1563b9743c754ff1c7282b36242ade029b9a25047"
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.36.6/evidence/document-review.json",
+      "sha256": "5264c4fbeed2e0869499c4df1dc2de0928181cb7e728e4659a1a55f918317169"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/official-directory-scope.json",
+      "sha256": "22d5bb37354f7018b6192c88a73b38fac862d4832370028c5f302f1a1627510a"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/local-qualification/document-static-current.json",
+      "sha256": "eba61f417fcd125169b6f3869f458c82e7a64c1aa6d0f5641726c9c0676cb4e2"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/UPG-02.json",
+      "sha256": "b3d0d99f4852a61bcdd33ed9b4329e6ad911e46314460426fa29b152c83c4718"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/UPG-12.json",
+      "sha256": "8c3e3f9ffb08bf36051e7b34baad4325f7854fe424cd64437f38bb291ffad643"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/UPG-13.json",
+      "sha256": "60eaaebc6db0ee66b044cb150faae69ecc614baa9b72bf75d3fac869be93d725"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/harbor-logical-qualification.json",
+      "sha256": "675fe1288eca3ebdaafb72d2a97ea39e72d5e5e650565a918ed8d3b359eab1fd"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/harbor-logical-cleanup.json",
+      "sha256": "99572812da9f279ccaf1db694dc7c66f860f55c37c9a23369c9de56bfe1c0c34"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/completed-scope-handoff.json",
+      "sha256": "55ac8eb2f3baf969c35dd21400e53b3ef442d8f69d5db2bb5e54623098c07916"
+    }
+  ],
+  "applicability": {
+    "conditions": "固定源维护组合与本跳目标；实际config+kubecli路径及当前已接受运行证据，旧成熟功能未重写。",
+    "differences": "Kubernetes1.36及Harbor2.16/Valkey/逻辑迁移为本次增量；未变组件目录及旧GA按精确输入复用，历史源完整全站阅读缺口不伪造关闭。",
+    "reason": "正文任务、机制和判断/恢复出口均与本跳已验证作用域一致；最终现场、发行制品及客户签收分别保留为其所属出口。"
+  },
+  "customer_signoff": null
+}

@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "classification": "test-gate",
+  "source": "v1.35.10",
+  "target": "v1.36.6",
+  "run_id": "v1366-final-20261121a",
+  "failed_phase": "source-clean",
+  "failure_preserved": true,
+  "product_change": false,
+  "official_source": {
+    "url": "https://github.com/rancher/local-path-provisioner/blob/v0.0.37/provisioner.go#L572",
+    "snapshot": {
+      "path": "upgrade/v1.36.6/evidence/raw/local-path-v0.0.37/provisioner.go",
+      "sha256": "ea6b59f6acac5edb7b59fc3d291f8a78bd9f054050312fb8bc13553e0f0ec8e9"
+    },
+    "mechanism": "Delete路径调用独立helper Pod，默认命令等待120秒；namespace消失不代表PV teardown已经完成。"
+  },
+  "observed": {
+    "deletion_started_utc": "2026-11-21T07:03:48Z",
+    "helper_deleted_volume_utc": "2026-11-21T07:03:51Z",
+    "readonly_followup": "PV/PVC均为空；原provisioner健康，失败为立即取样而未等待"
+  },
+  "repair": "只轮询原账本PV/PVC和namespace UID匹配、Delete策略的原卷；300秒有界等待；不删除PV/finalizer，不接管外来卷；target任何PV仍拒绝。",
+  "checks": [
+    {
+      "command": ".venv/bin/python -B -m unittest upgrade.tests.test_next_session upgrade.tests.test_harbor_session -v",
+      "rc": 0,
+      "tests": 71,
+      "skipped": 0
+    }
+  ],
+  "references": [
+    {
+      "path": "upgrade/v1.36.6/private/v1366-final-20261121a/source-clean.failure-1.json",
+      "sha256": "539f841cb5984fb0bdc28b99b26f27d1dcec0d96c9cc2deb933a82db87b0b82a"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-final-20261121a/source-clean.attempt-1.log",
+      "sha256": "32f71863b03d92b4f951ad855b8cfc71a9367f54bb4118d20d5b402bd0d2f92f"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-final-20261121a/source-clean-readonly-diagnostics.log",
+      "sha256": "b9faf94f5ffc1dd4e547466824528e277a41ccf6739f8e2e7997e0ae90a45595"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/local-qualification/pv-async-reclaim-contracts.log",
+      "sha256": "f48e32ab7fc003d7b0c9f63731dc86952b54258578a697c95fb9b550a3488238"
+    }
+  ],
+  "claim_boundary": "精确合同及官方/原现场反证；不将失败父运行改签为最终干净成功，修复后的真实清理与最终链另行验收。"
+}

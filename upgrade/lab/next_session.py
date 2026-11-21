@@ -25,21 +25,22 @@ import yaml
 
 from upgrade.product.launcher import admit_static, UpgradeAdmissionRefused
 from upgrade import validate
+from upgrade.product.hop import SOURCE, TARGET, MATRIX_PATH
 
 ROOT = Path(__file__).resolve().parents[2]
-STATE = Path('/var/tmp/kubeauto-v13510-lab')
-MATRIX = ROOT/'upgrade/v1.35.10/test-matrix.yaml'
-SOURCE_COMMIT = '0eac368744cf82fdd401d278858859927a82e387'
+STATE = Path('/var/tmp/kubeauto-v1366-lab')
+MATRIX = MATRIX_PATH
+SOURCE_COMMIT = '048f5e9f6b20e98c3d7cf326c4ea4615365e9e96'
 MASTERS = ['192.168.122.217', '192.168.122.243', '192.168.122.246']
 WORKERS = ['192.168.122.193', '192.168.122.210', '192.168.122.216']
-SOURCE_CLUSTER, TARGET_CLUSTER = 'upgrade-v13413-source', 'upgrade-v13510-clean'
+SOURCE_CLUSTER, TARGET_CLUSTER = 'upgrade-v13510-source', 'upgrade-v1366-clean'
 PHASES = ['source', 'control', 'nodes-protection', 'nodes', 'source-clean', 'new-install', 'target-clean']
 REQUIRED = {'source': range(1, 5), 'control': range(1, 6), 'nodes': range(1, 7), 'nodes-protection': range(1, 7),
             'source-clean': range(1, 8), 'new-install': range(1, 5), 'target-clean': range(1, 5)}
-LEDGER = 'kubeauto-v13413-to-v13510-persistent-ledger\n'
+LEDGER = 'kubeauto-v13510-to-v1366-persistent-ledger\n'
 LOCK_DIRECTORY = Path('/var/lock')
 LOCKS = {9:'kubeauto-ceph-priority.lock',7:'kubeauto-ceph-compute.lock',
-         8:'kubeauto-redis-core-pool.lock',6:'kubeauto-v13510-lab.lock'}
+         8:'kubeauto-redis-core-pool.lock',6:'kubeauto-v1366-lab.lock'}
 
 
 def verify_leases():
@@ -183,8 +184,35 @@ def stage_upgrade_clients(source, target, run_id):
                     copy_function=copy_distinct)
 
 
+def restore_source_clients(state, run_id):
+    """Restore the verified pre-upgrade clients after clean Kubernetes exit."""
+    source=state/'source-product'
+    backup=source/('kube-bin-source-'+run_id)
+    retired=source/('kube-bin-upgraded-'+run_id)
+    manifest=json.loads((state/'input-manifest.json').read_text())['trees']
+    expected={p.removeprefix('kube-bin/'):h for p,h in manifest['source-product'].items()
+              if p.startswith('kube-bin/')}
+    def hashes(directory):
+        if directory.is_symlink() or not directory.is_dir():
+            raise ValueError('unsafe Kubernetes client directory')
+        paths=list(directory.rglob('*'))
+        if any(p.is_symlink() for p in paths):raise ValueError('unsafe Kubernetes client file')
+        return {str(p.relative_to(directory)):sha(p) for p in paths if p.is_file()}
+    if not expected or hashes(backup)!=expected:
+        raise ValueError('original source clients differ from the frozen manifest')
+    upgraded={p.removeprefix('kube-bin/'):h for p,h in manifest['target-product'].items()
+              if p.startswith('kube-bin/')}
+    if hashes(source/'kube-bin')!=upgraded or retired.exists() or retired.is_symlink():
+        raise ValueError('upgraded source clients differ or retirement already exists')
+    # Preserve both exact sets; do not fetch, overwrite or erase failure data.
+    (source/'kube-bin').rename(retired)
+    backup.rename(source/'kube-bin')
+    verify_inputs(state,state/'target-product')
+    print('NEXT_SESSION_SOURCE_CLIENTS_RESTORED_PASS',flush=True)
+
+
 def plan(mode, run_id):
-    if mode not in ['qualify', 'final'] or not re.fullmatch(r'v13510-[a-z0-9-]{1,48}', run_id):
+    if mode not in ['qualify', 'final'] or not re.fullmatch(r'v1366-[a-z0-9-]{1,48}', run_id):
         raise ValueError('invalid fixed session identity')
     required = [f'UPG-{i:02}' for i in (range(1, 15) if mode == 'final' else range(1, 5))]
     admit_static(MATRIX, required=required)
@@ -192,14 +220,27 @@ def plan(mode, run_id):
     if (matrix['meta'].get('execution_enabled') is not True or
             matrix['meta'].get('runner') != 'upgrade/lab/next-session.sh'):
         raise UpgradeAdmissionRefused('fixed next-hop runner is not enabled and bound')
-    return {'run_id': run_id, 'mode': mode, 'control': '192.168.122.2',
+    phases=PHASES if mode=='qualify' else [p for p in PHASES if p!='nodes-protection']
+    if mode=='final':phases=phases[:-1]+['ingress',phases[-1]]
+    result={'run_id': run_id, 'mode': mode, 'control': '192.168.122.2',
         'registry': '192.168.122.2:5000', 'masters': MASTERS, 'workers': WORKERS,
-        'source_commit': SOURCE_COMMIT, 'source': 'v1.34.13', 'target': 'v1.35.10',
+        'source_commit': SOURCE_COMMIT, 'source': SOURCE, 'target': TARGET,
         'clusters':list(cluster_names(run_id)),
-        'phases': PHASES, 'builds': [], 'middleware_deep_regressions': [],
+        'phases': phases, 'builds': [], 'middleware_deep_regressions': [],
         'entry': 'config.yml + kubecli new/setup/upgrade/destroy',
         'cleanup': 'only marked pool nodes after cluster CA verification; no disks or control services',
         'control_home': 'private mount namespace; original SSH directory mounted read-only'}
+    if mode=='final':
+        from upgrade.lab.harbor_session import plan as harbor_plan
+        child='v1366-harbor-final-'+hashlib.sha256(run_id.encode()).hexdigest()[:12]
+        result['harbor']=harbor_plan(child,'final')
+        reuse=yaml.safe_load((MATRIX.parent/'acceptance-plan.yaml').read_text()).get('final_kubernetes_reuse')
+        if reuse:
+            if (not re.fullmatch(r'v1366-[a-z0-9-]{1,48}',str(reuse.get('run_id',''))) or
+                    reuse['run_id']==run_id or not re.fullmatch('[a-f0-9]{64}',str(reuse.get('manifest_sha256','')))):
+                raise ValueError('invalid completed Kubernetes scope reference')
+            result['kubernetes_reuse']=reuse
+    return result
 
 
 class Session:
@@ -281,7 +322,7 @@ class Session:
                [(self.source, self.source_cluster), (self.target, self.target_cluster)]):
             raise ValueError('foreign cluster directory exists before ownership')
         verify_inputs(self.state, self.target)
-        verify_registry_supply(self.target/'upgrade/v1.35.10/evidence/lab-registry-supply.json')
+        verify_registry_supply(self.target/'upgrade/v1.36.6/evidence/lab-registry-supply.json')
         self.evidence.mkdir(mode=0o700, parents=True, exist_ok=False)
         self.evidence.joinpath('hosts').write_text(inventory(self.source, self.source_cluster))
         write(self.owner, self.plan)
@@ -297,7 +338,7 @@ class Session:
         directory = self.base/'clusters'/self.cluster
         (directory/'hosts').write_text(inventory(self.base, self.cluster))
         data = yaml.safe_load((directory/'config.yml').read_text())
-        data.update(K8S_VER='1.35.10' if target else '1.34.13',
+        data.update(K8S_VER=(TARGET if target else SOURCE).removeprefix('v'),
             REGISTRY_HOST_IP='192.168.122.2', KUBE_RESERVED_ENABLED='no', SYS_RESERVED_ENABLED='no',
             local_path_provisioner_install='yes', local_path_provisioner_dir='/opt/local-path-provisioner',
             local_path_provisioner_ver='v0.0.37', local_path_storage_class='local-path')
@@ -342,7 +383,7 @@ class Session:
                 raise ValueError('source configuration changed since this session created it')
         if not (self.evidence/'source-health.json').exists():
             self.cli(self.source, self.source, 'setup', self.cluster, '90')
-        observed = self.wait_healthy('v1.34.13')
+        observed = self.wait_healthy(SOURCE)
         write(self.evidence/'source-health.json', observed)
         # A PVC-backed server and a separate controller-managed client give a
         # real service/DNS/storage ledger. No test writes after admission.
@@ -387,7 +428,7 @@ class Session:
         result = json.loads(Path('/var/tmp/kubeauto-upgrade-'+self.cluster+'/first-hop-result.json').read_text())
         if result['success_marker']!='UPGRADE_CONTROL_PLANE_STAGE_PASS':
             raise ValueError('control-plane handoff did not stop at its exact boundary')
-        self.healthy('v1.34.13')
+        self.healthy(SOURCE)
         write(self.evidence/'control-boundary.json',result)
         print('UPGRADE_NEXT_CONTROL_PASS',flush=True)
 
@@ -417,10 +458,10 @@ class Session:
             journal=json.loads((state/'journal/journal.json').read_text())
             if journal.get('active')!='kubernetes/node/upgrade-worker-193':
                 raise ValueError('upgrade stopped outside the intended PDB-owned node') from None
-            observed=self.healthy('v1.34.13') if not journal.get('completed') else json.loads(self.kubectl('get','nodes','-o','json'))
+            observed=self.healthy(SOURCE) if not journal.get('completed') else json.loads(self.kubectl('get','nodes','-o','json'))
             nodes=observed.get('items',observed.get('nodes',[]))
             blocked=next(n for n in nodes if n['metadata']['name']=='upgrade-worker-193')
-            if blocked['status']['nodeInfo']['kubeletVersion']!='v1.34.13' or not blocked['spec'].get('unschedulable'):
+            if blocked['status']['nodeInfo']['kubeletVersion']!=SOURCE or not blocked['spec'].get('unschedulable'):
                 raise ValueError('protected node changed its executable or lost its cordon')
             raw=self.kubectl('-n','upgrade-ledger','exec','deployment/upgrade-client','--',
                 'wget','-T','10','-qO-','http://ledger:8080/ledger')
@@ -442,7 +483,7 @@ class Session:
                     'preconditions':{'uid':expected['metadata']['uid']}}))
             write(self.evidence/'protection-released.json',{'uid':expected['metadata']['uid']})
         self.cli(self.source,self.target,'upgrade',self.cluster)
-        observed = self.wait_healthy('v1.35.10')
+        observed = self.wait_healthy(TARGET)
         result = json.loads(Path('/var/tmp/kubeauto-upgrade-'+self.cluster+'/first-hop-result.json').read_text())
         if result['success_marker']!='UPGRADE_NEXT_HOP_STAGE_PASS':
             raise ValueError('node/addon/config handoff is incomplete')
@@ -469,8 +510,7 @@ class Session:
                 data=json.dumps({'apiVersion':'v1','kind':'DeleteOptions',
                     'preconditions':{'uid':recorded['metadata']['uid']}}))
             self.kubectl('wait','--for=delete','namespace/upgrade-ledger','--timeout=300s')
-        if json.loads(self.kubectl('get','pv','-o','json'))['items']:
-            raise ValueError('volumes remain; retain the cluster for scoped storage cleanup')
+        self.wait_volume_reclaim(target=target)
         self.host_operation('storage-clean')
         self.cli(self.base,self.target,'destroy',self.cluster)
         # Product destroy removes the cluster. The existing lab wipe also
@@ -480,6 +520,40 @@ class Session:
                       *MASTERS, *WORKERS], capture=False)
         self.host_operation('clean')
         print('UPGRADE_NEXT_'+('TARGET' if target else 'SOURCE')+'_CLEAN_PASS',flush=True)
+
+    def wait_volume_reclaim(self, *, target=False):
+        """Allow asynchronous deletion only for the admitted source ledger PV.
+
+        Namespace deletion does not wait for the provisioner's teardown Pod.
+        Never delete a PV or its finalizers here, and reject foreign identities
+        immediately rather than waiting for somebody else's volume to vanish.
+        """
+        deadline=time.monotonic()+300
+        while True:
+            volumes=json.loads(self.kubectl('get','pv','-o','json'))['items']
+            if not volumes:return
+            boundary=self.evidence/'prepared-boundary.json'
+            identity=self.evidence/'ledger-namespace.json'
+            if target or not boundary.is_file() or not identity.is_file():
+                raise ValueError('volumes remain without an owned source ledger; retain the cluster')
+            contract=json.loads(boundary.read_text()).get('continuity',{})
+            namespace=json.loads(identity.read_text()).get('metadata',{}).get('uid')
+            if (not namespace or contract.get('namespace_uid')!=namespace or
+                    contract.get('namespace')!='upgrade-ledger' or
+                    not all(contract.get(key) for key in ['pv','pv_uid','pvc','pvc_uid'])):
+                raise ValueError('volumes remain without the accepted ledger identities')
+            for volume in volumes:
+                claim=volume.get('spec',{}).get('claimRef',{})
+                if (volume.get('metadata',{}).get('name')!=contract['pv'] or
+                        volume.get('metadata',{}).get('uid')!=contract['pv_uid'] or
+                        claim.get('namespace')!=contract['namespace'] or
+                        claim.get('name')!=contract['pvc'] or claim.get('uid')!=contract['pvc_uid'] or
+                        volume.get('spec',{}).get('persistentVolumeReclaimPolicy')!='Delete'):
+                    raise ValueError('volumes remain with foreign identity or reclaim policy; retain the cluster')
+            if time.monotonic()>=deadline:
+                raise ValueError('owned volume reclaim timed out; retain the cluster and provisioner')
+            print('NEXT_SESSION_VOLUME_RECLAIM_WAIT pv='+contract['pv']+' timeout=300s',flush=True)
+            time.sleep(2)
 
     def install_phase(self):
         if not (self.evidence/'target-config.json').exists():
@@ -492,9 +566,9 @@ class Session:
             if sha(recorded['path'])!=recorded['sha256']:
                 raise ValueError('target configuration changed since this session created it')
         self.cli(self.target,self.target,'setup',self.cluster,'90')
-        before=self.wait_healthy('v1.35.10')
+        before=self.wait_healthy(TARGET)
         self.cli(self.target,self.target,'setup',self.cluster,'90')
-        after=self.wait_healthy('v1.35.10')
+        after=self.wait_healthy(TARGET)
         identity=lambda d:{n['metadata']['name']:n['metadata']['uid'] for n in d['nodes']}
         if identity(before)!=identity(after):raise ValueError('second setup changed node identities')
         write(self.evidence/'target-install.json',after)
@@ -559,10 +633,14 @@ class Session:
         for signum in [signal.SIGINT,signal.SIGTERM]:
             signal.signal(signum,lambda signum,frame:print('NEXT_SESSION_SIGNAL lease=retained cleanup=required',flush=True))
         self.owner_check()
-        operations=[self.source_phase,self.control_phase,self.protection_phase,self.nodes_phase,self.clean_phase,
-                    self.install_phase,lambda:self.clean_phase(target=True)]
-        for phase,operation in zip(PHASES,operations):
-            if self.mode=='final' and phase=='nodes-protection':continue
+        operations=dict(zip(PHASES,[self.source_phase,self.control_phase,self.protection_phase,self.nodes_phase,self.clean_phase,
+                    self.install_phase,lambda:self.clean_phase(target=True)]))
+        def ingress():
+            from upgrade.lab.ingress_qualification import run_session
+            run_session(self)
+        operations['ingress']=ingress
+        for phase in self.plan['phases']:
+            operation=operations[phase]
             while True:
                 started=datetime.now(timezone.utc).isoformat()
                 attempt=1+len(list(self.evidence.glob(phase+'.attempt-*.log')))
@@ -582,7 +660,7 @@ class Session:
                     write(self.evidence/(phase+'.status.json'),failure)
                     print('NEXT_SESSION_MODULE_STOP phase='+phase+' reason='+str(error),flush=True)
                     action=self.wait(phase,failed=True)
-                    if action=='retry':continue
+                    if action=='retry' and self.mode=='qualify':continue
                     # Cleanup still verifies markers and the actual cluster CA.
                     self.guarded_shutdown(phase)
                     raise RuntimeError('session failed; owned cleanup completed') from error
@@ -607,17 +685,137 @@ class Session:
                 self.wait('target-clean',failed=True)
         print('LAB_CLEAN_VERIFY_PASS',flush=True)
         self.owner.unlink()
-        print('UPGRADE_NEXT_'+('FINAL' if self.mode=='final' else 'QUALIFICATION')+'_PASS',flush=True)
+        print('UPGRADE_NEXT_'+('KUBERNETES_SCOPE' if self.mode=='final' else 'QUALIFICATION')+'_PASS',flush=True)
+
+    def reused_kubernetes_scope(self, *, record=True):
+        """Admit a fully clean scope; never reuse a failed Kubernetes phase."""
+        from types import SimpleNamespace
+        verify_leases()
+        if self.owner.exists() or self.owner.is_symlink() or self.evidence.exists():
+            raise ValueError('fresh unowned completion run required')
+        reference=self.plan['kubernetes_reuse']
+        run_id=reference['run_id'];evidence=self.state/'runs'/run_id
+        old_plan=json.loads((evidence/'plan.json').read_text())
+        if (old_plan.get('run_id')!=run_id or old_plan.get('mode')!='final' or
+                old_plan.get('phases')!=self.plan['phases'] or old_plan.get('kubernetes_reuse') or
+                old_plan.get('source_commit')!=SOURCE_COMMIT):
+            raise ValueError('original Kubernetes final scope differs')
+        for suffix in ['exit','finalized']:
+            if (self.state/(run_id+'.'+suffix)).read_text().strip()!='1':
+                raise ValueError('original failed parent status must remain intact')
+        parent_log=(self.state/(run_id+'.log')).read_text()
+        if ('UPGRADE_NEXT_KUBERNETES_SCOPE_PASS' not in parent_log or
+                parent_log.count('Traceback (most recent call last):')!=1 or
+                'ValueError: staged product input differs: source-product/kube-bin/' not in parent_log or
+                (self.state/'runs'/old_plan['harbor']['run_id']).exists()):
+            raise ValueError('only the proven pre-Harbor input handoff failure is reusable')
+        original=evidence/'staged-input-manifest-before-handoff.json'
+        if sha(original)!=reference['manifest_sha256']:
+            raise ValueError('original staged input manifest differs')
+        before=json.loads(original.read_text())
+        after=verify_inputs(self.state,self.target)
+        # Product, packages, source commit and all other lab modules retain
+        # exact identities. Only this repair and its formal records may differ.
+        allowed={'upgrade/lab/next_session.py','upgrade/lab/next-control.sh','upgrade/lab/next-session.sh',
+                 'upgrade/tests/test_next_session.py',
+                 'upgrade/v1.36.6/acceptance-plan.yaml','upgrade/v1.36.6/test-matrix.yaml',
+                 'upgrade/v1.36.6/development-manual.md'}
+        for name in ['source-product','target-product']:
+            left=before['trees'][name];right=after['trees'][name]
+            for path in set(left)|set(right):
+                if left.get(path)==right.get(path):continue
+                if name=='target-product' and (path in allowed or path.startswith('upgrade/v1.36.6/evidence/')):continue
+                raise ValueError('completed Kubernetes dependency changed: '+name+'/'+path)
+        markers={'source':'SOURCE','control':'CONTROL','nodes':'NODES','source-clean':'SOURCE_CLEAN',
+                 'new-install':'INSTALL','ingress':None,'target-clean':'TARGET_CLEAN'}
+        if list(evidence.glob('*.failure-*.json')):
+            raise ValueError('a failed Kubernetes phase cannot be reused')
+        for phase in self.plan['phases']:
+            status=json.loads((evidence/(phase+'.status.json')).read_text())
+            if status.get('rc')!=0 or status.get('attempt')!=1:
+                raise ValueError('completed Kubernetes phase is incomplete or retried')
+            for suffix in ['exit','finalized']:
+                if (evidence/(phase+'.attempt-1.'+suffix)).read_text().strip()!='0':
+                    raise ValueError('completed Kubernetes phase lacks durable success')
+            log=(evidence/(phase+'.attempt-1.log')).read_text()
+            marker=('UPGRADE_NEXT_'+markers[phase]+'_PASS' if markers[phase]
+                    else 'UPGRADE_INGRESS_QUALIFICATION_PASS')
+            if (marker not in log or 'NEXT_SESSION_PHASE_SCOPE_VERIFY_PASS phase='+phase not in log or
+                    re.search(r'\[FAIL\]|^ERROR:|Traceback \(most recent call last\)|fatal:',log,re.M)):
+                raise ValueError('completed Kubernetes log lacks clean scope success')
+        if not record:
+            print('NEXT_SESSION_COMPLETED_HANDOFF_PREFLIGHT_PASS mutation=none',flush=True)
+            return SimpleNamespace(evidence=evidence,plan=old_plan,run_id=run_id)
+        self.evidence.mkdir(mode=0o700)
+        write(self.evidence/'plan.json',self.plan)
+        write(self.evidence/'kubernetes-reuse.json',{'run_id':run_id,'parent_original_rc':1,
+              'manifest_sha256':sha(original),'phases':self.plan['phases'],
+              'parent_log_sha256':sha(self.state/(run_id+'.log')),
+              'phase_files':{p.name:sha(p) for phase in self.plan['phases']
+                  for p in [evidence/(phase+'.status.json'),
+                            *[evidence/(phase+'.attempt-1.'+suffix) for suffix in ['log','exit','finalized']]]},
+              'claim':'seven independently clean Kubernetes phases; original combined parent remains failed'})
+        print('NEXT_SESSION_KUBERNETES_SCOPE_REUSED run_id='+run_id+' phases=7 parent_original_rc=1',flush=True)
+        return SimpleNamespace(evidence=evidence,plan=old_plan,run_id=run_id)
+
+    def finish_final(self):
+        """Run the admitted Harbor child under the same inherited pool locks.
+
+        Kubernetes cleanup/release completes before Harbor can claim nodes.
+        The overall final marker is emitted only after both scoped products
+        return, their exact phases succeed once and no failed attempt exists.
+        """
+        def verify(session):
+            expected=[p for p in session.plan['phases'] if p!='nodes-protection']
+            if list(session.evidence.glob('*.failure-*.json')):
+                raise ValueError('a final scope has a failed attempt; retain its real status')
+            for phase in expected:
+                status=json.loads((session.evidence/(phase+'.status.json')).read_text())
+                if status.get('rc')!=0 or status.get('attempt')!=1:
+                    raise ValueError('final scope is incomplete or retried')
+                for suffix in ['exit','finalized']:
+                    if (session.evidence/(phase+'.attempt-1.'+suffix)).read_text().strip()!='0':
+                        raise ValueError('final phase lacks durable success')
+        # Refuse the dependent child before it can claim a node when the
+        # previous product scope is incomplete, retried or still owned.
+        kubernetes=self.reused_kubernetes_scope() if self.plan.get('kubernetes_reuse') else self
+        verify(kubernetes)
+        if self.owner.exists() or self.owner.is_symlink():
+            raise ValueError('Kubernetes ownership must be released before Harbor')
+        if kubernetes is self:
+            restore_source_clients(self.state,self.run_id)
+        from upgrade.lab.harbor_session import HarborSession
+        child=HarborSession(self.plan['harbor']['run_id'],'final')
+        child.run()
+        verify(child)
+        if kubernetes is not self:
+            receipt=json.loads((self.evidence/'kubernetes-reuse.json').read_text())
+            if any(sha(kubernetes.evidence/name)!=digest for name,digest in receipt['phase_files'].items()):
+                raise ValueError('accepted Kubernetes evidence changed during Harbor execution')
+        if child.owner.exists() or child.owner.is_symlink():
+            raise ValueError('Harbor ownership must be released before final acceptance')
+        write(self.evidence/'combined-final.json',{'run_id':self.run_id,'harbor_run_id':child.run_id,
+            'kubernetes_run_id':kubernetes.run_id,
+            'kubernetes_phases':[p for p in self.plan['phases'] if p!='nodes-protection'],
+            'harbor_phases':child.plan['phases'],'builds':[],
+            'architecture':'native-x86; ARM64 official provenance/artifact/static checks only',
+            'marker':'UPGRADE_NEXT_FINAL_PASS','cleanup_marker':'LAB_CLEAN_VERIFY_PASS'})
+        print('LAB_CLEAN_VERIFY_PASS',flush=True)
+        print('UPGRADE_NEXT_FINAL_PASS',flush=True)
 
 
 def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('operation',choices=['plan','run'])
+    parser.add_argument('operation',choices=['plan','run','check-handoff'])
     parser.add_argument('--mode',choices=['qualify','final'],required=True)
     parser.add_argument('--run-id',required=True)
     args=parser.parse_args(argv)
     if args.operation=='plan':print(json.dumps(plan(args.mode,args.run_id),ensure_ascii=False,indent=2))
-    else:Session(args.mode,args.run_id).run()
+    elif args.operation=='check-handoff':Session(args.mode,args.run_id).reused_kubernetes_scope(record=False)
+    else:
+        session=Session(args.mode,args.run_id)
+        if not session.plan.get('kubernetes_reuse'):session.run()
+        if args.mode=='final':session.finish_final()
 
 
 if __name__=='__main__':

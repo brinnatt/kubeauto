@@ -22,6 +22,11 @@ with (root/'calls').open('a') as f: f.write(json.dumps(args)+'\\n')
 s=json.loads((root/'state').read_text())
 if args==['get','--raw=/apis']: result={'groups':[]}
 elif len(args)==2 and args[0]=='get' and args[1].startswith('--raw=/apis/rbac.authorization.k8s.io/'): result={'items':[]}
+elif len(args)==2 and args[0]=='get' and args[1] in [
+ '--raw=/api/v1/pods', '--raw=/api/v1/podtemplates', '--raw=/api/v1/replicationcontrollers',
+ '--raw=/apis/apps/v1/deployments', '--raw=/apis/apps/v1/replicasets',
+ '--raw=/apis/apps/v1/daemonsets', '--raw=/apis/apps/v1/statefulsets',
+ '--raw=/apis/batch/v1/jobs', '--raw=/apis/batch/v1/cronjobs']: result={'items':[]}
 elif args[:2]==['get','namespace']: result={'metadata':{'uid':s['namespace_uid']}}
 elif args[2:4]==['get','service']: result={'metadata':{'uid':s['service_uid']}}
 elif args[2:4]==['get','pvc']: result={'metadata':{'uid':s['pvc_uid']},'spec':{'volumeName':'volume'},'status':{'phase':'Bound'}}

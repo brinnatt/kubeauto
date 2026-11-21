@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "passed": true,
+  "claim": "目标健康交接处实际config+kubecli setup07、临时三字段配置原子恢复、真实Ansible读取、路由/TLS/准入与UID清理、durable失败后有界独立重试合同；不签现场成功。",
+  "inputs": {
+    "upgrade/lab/ingress_qualification.py": "a15c588c62222256f811a1118ffca205dc60e1c47b0f66eb328a01502f75589c",
+    "roles/cluster-addon/tasks/ingress-nginx.yml": "7394d7f034fe9a6d93c937b334e7dbecc8d5dcb917d94f004e2e5f8b9a0a57ed",
+    "roles/cluster-addon/templates/ingress-nginx/values.yaml.j2": "5057aa9b9a71f49821a1331ee29419a7f014bfb7331cc6add2797deb560857bd",
+    "roles/cluster-addon/files/ingress-nginx-4.15.1.tgz": "3eff0bd18151d6e6b1c441463410571443dda1ac78292cb189346628de784f0c",
+    "upgrade/tests/test_ingress_qualification.py": "0af1a4dd2c68b55e643144e9439a961b043ffaf0760b434693ccfa80fa812f9d"
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/local-qualification/ingress-focused-contracts.log",
+      "sha256": "885a0986ddf1c999f8d59ff17e31fc538daeda97187c87a68c47562d47ae3e13"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/ingress-registry-supply.json",
+      "sha256": "4ad9865700a8352a8d1fec7af707d940cf1f4ad3a27b9f558988813ff5de1915"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/local-qualification/ingress-config-handoff-contracts.log",
+      "sha256": "78658c19157ad5442e9e35fbdb3a054a6d1506ad518aa506b79c7e09b0f2b1fa"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/local-qualification/ingress-frontend-handoff-contracts.log",
+      "sha256": "719be55a2e2fd73ec4f90f1b3eee43d0596ca13289504f1be900c0c95b2fded7"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/local-qualification/combined-final-contracts.log",
+      "sha256": "aae6a7a2b05400d0946fb262f2ec440dadfb7d3745254f809c1410f3b54c0a16"
+    }
+  ]
+}

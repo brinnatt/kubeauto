@@ -1,0 +1,68 @@
+{
+  "calicoctl": {
+    "v3.32.4": {
+      "amd64": "4dd81052745b0358d29505d3759bf5e83b0cb0e606de70760072e3edb6084d4e",
+      "arm64": "d47a6cf375f59241ea8bc9691ebdc3d7b2e5b4288a391f1ef86021f9585ebec9"
+    },
+    "v3.31.7": {
+      "amd64": "1b91928adc39861ba5e04d8d15c4ce489731269b07a8e7444c0fdf677f041113",
+      "arm64": "d7adff41398cb77b97451bf238022376382725ff231228f78b3ebc35d9fb9fda"
+    }
+  },
+  "runtime": {
+    "amd64": {
+      "2.2.10": {
+        "directory": "upgrade/containerd-2.2.10",
+        "sha256": {
+          "containerd": "b704820e511ae18516eb126c14a9b37059007b744a76b0608c49866d77aeaa9f",
+          "containerd-shim-runc-v2": "b23e18665bf9fddc5699b5c2c5e5a22949a8cf2a33881c17a7aa0af546b97937",
+          "ctr": "7a4309768139235f824f602825abb5c63026bbdbf070aa5f369ee009d78b5af1",
+          "runc": "599f6f94ff8c5057241eff0d54c3c74f95c34935b6457b33fe545defc61e9488"
+        }
+      },
+      "2.3.7": {
+        "directory": "containerd-bin",
+        "sha256": {
+          "containerd": "2bef909678b2c232110a784a5c4b3733b661027cae4ea3e3cfea1d1d14cbe45b",
+          "containerd-shim-runc-v2": "f5021bbf46a123d8dfdcf6cbed6c64de5ab83ee9a6709e6e987c78148121a7d8",
+          "ctr": "125419a0b5788f6c020f4365c81ad97cc98af1979f19a432a73b4ea38da72b2a",
+          "runc": "599f6f94ff8c5057241eff0d54c3c74f95c34935b6457b33fe545defc61e9488"
+        }
+      }
+    },
+    "arm64": {
+      "2.2.10": {
+        "directory": "upgrade/containerd-2.2.10",
+        "sha256": {
+          "containerd": "838aa5f95d500758469b9d5cae753510d1e0919a27b8d3bc5b4c3ab764c26c90",
+          "containerd-shim-runc-v2": "59ada3af1b646787d89c6eae410aa714b2c3f938ea3d8f3c77985cb3c3d39455",
+          "ctr": "657fcd9e8037a26489f26bb86a0e7993cee27aa5b223874e8574e99df7ecc93f",
+          "runc": "d10ecae898361832a059be2089bab92d158aec54661b18ed7346ed79628b46b0"
+        }
+      },
+      "2.3.7": {
+        "directory": "containerd-bin",
+        "sha256": {
+          "containerd": "2e96fcb3c6ccff3d4ef900bfa177f843331c42fab10bce63f84c929726598400",
+          "containerd-shim-runc-v2": "216b968cc9bc75fc120ebe6769aa11fe9cc7f7907fa43303ee4fe319058b4653",
+          "ctr": "e7c8bf0a466f125e3807dcdef5684a4aa98d4315b6356cf1736bb9699e13d755",
+          "runc": "d10ecae898361832a059be2089bab92d158aec54661b18ed7346ed79628b46b0"
+        }
+      }
+    }
+  },
+  "etcd": {
+    "amd64": {
+      "etcd": "769222687e03cb2ee0c420193a5012d4ff2a35a47e8f27ae9540dd2acfa3ac49",
+      "etcdctl": "431ef5ff91a41001a5b72710242a1d426a3e1e3932424c2656a7cf66aeb93cbb",
+      "etcdutl": "bb9588ce698b91d516ddefba0804b69ef9eee7578e61d8c60669da28e66865eb"
+    },
+    "arm64": {
+      "etcd": "bd58946a8b3ba539106a7418b06219d2935eae5fbd705319ce2a6e81db7678cb",
+      "etcdctl": "f5d3b165f488b0d3d22e5116764e80ffebe6fa3314d9d85c26b39be80764f087",
+      "etcdutl": "790d897c7418826358663d35c3da0f515a354c5c6fadafbd37c4d08f751c8bbe"
+    }
+  },
+  "runtime_source": "2241c0a7014601150359c2ab075ccc4ee7536a9ba6685c9977007cd56c9ad667",
+  "runtime_unit": "c52990bb2f8c021cf41412674c1eb9f3a64cab3fbfb57765127190ca1824ca9c"
+}

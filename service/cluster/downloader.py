@@ -1,5 +1,8 @@
 import os
+import hashlib
 import shutil
+import tempfile
+import uuid
 from pathlib import Path
 from typing import Optional
 
@@ -18,6 +21,14 @@ from .docker import DockerManager
 from .registry import RegistryManager
 
 logger = setup_logger(__name__)
+
+# https://github.com/goharbor/harbor/releases/tag/v2.16.0
+_HARBOR_OFFICIAL_SHA256 = {
+    'x86_64': '643c137d8e829c857ef0ba45c46b5d6d8553077340bbd4929ded7e92808e77ff',
+    'amd64': '643c137d8e829c857ef0ba45c46b5d6d8553077340bbd4929ded7e92808e77ff',
+    'aarch64': '6525af9c26cc24e48ecf37d3f7d9d139895b39a037a3de697f995171ce65524a',
+    'arm64': '6525af9c26cc24e48ecf37d3f7d9d139895b39a037a3de697f995171ce65524a',
+}
 
 
 class DownloadManager:
@@ -162,6 +173,10 @@ class DownloadManager:
             )
         version = version or self.kube_constant.v_harbor
 
+        if version == 'v2.16.0':
+            self._get_official_harbor_package(version)
+            return
+
         if self.__check_file_exists(self.image_dir, f"harbor-offline-installer-{version}.tgz"):
             logger.warning("Harbor offline installer already exists; skipping.", extra=LOG_STDOUT)
             return
@@ -171,6 +186,44 @@ class DownloadManager:
         self.__handle_files(f"brinnatt/harbor-offline:{version}", "/harbor", self.image_dir)
 
         logger.info("Harbor offline package installed.", extra=LOG_STDOUT)
+
+    def _get_official_harbor_package(self, version: str) -> None:
+        """Accept only complete official bytes; never overwrite a cached package."""
+        expected = _HARBOR_OFFICIAL_SHA256.get(self.kube_constant.arch)
+        if expected is None:
+            raise DownloadError('Unsupported architecture for the official Harbor installer')
+        filename = f'harbor-offline-installer-{version}.tgz'
+        destination = self.image_dir / filename
+
+        def verify(path):
+            if path.is_symlink() or not path.is_file():
+                raise DownloadError('Harbor installer must be a regular file, not a symbolic link')
+            with path.open('rb') as stream:
+                digest = hashlib.file_digest(stream, 'sha256').hexdigest()
+            if digest != expected:
+                raise DownloadError('Harbor installer checksum differs from the official release; preserve and inspect the file')
+
+        self.image_dir.mkdir(parents=True, exist_ok=True)
+        if destination.exists() or destination.is_symlink():
+            verify(destination)
+            logger.info('Official Harbor installer verified; reusing cached package.', extra=LOG_STDOUT)
+            return
+        image = f'brinnatt/harbor-offline:{version}'
+        self.__handle_image(self.image_dir, f'harbor_{version}.tar', image)
+        name = 'kubeauto-harbor-download-' + uuid.uuid4().hex
+        try:
+            with tempfile.TemporaryDirectory(prefix='.harbor-download-', dir=self.image_dir) as directory:
+                self.docker.run_container(image, name)
+                package = Path(directory) / filename
+                self.docker.copy_from_container(name, '/harbor/' + filename, str(package))
+                verify(package)
+                # Same-filesystem exclusive publication also refuses a concurrent
+                # writer. No rmrf or replacement of an existing customer file.
+                os.chmod(package, 0o644)
+                os.link(package, destination)
+        finally:
+            self.docker.remove_container(name)
+        logger.info('Official Harbor installer verified and installed.', extra=LOG_STDOUT)
 
     def get_default_images(self) -> None:
         """Download default images and upload to local registry"""

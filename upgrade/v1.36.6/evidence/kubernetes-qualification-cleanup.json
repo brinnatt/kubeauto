@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "run_id": "v1366-qualify-20261121a",
+  "claim": "资格链目标集群按原CA/所有权限定清理完成，六节点runtime/数据目录复验与owner释放成功。阶段清理标志取阶段日志，LAB_CLEAN_VERIFY_PASS及最终durable0取父链原始日志；历史失败保留，不作为最终干净完整回归签署。",
+  "phase": "target-clean",
+  "durable_rc": 0,
+  "finalized_rc": 0,
+  "cleanup_marker": "UPGRADE_NEXT_TARGET_CLEAN_PASS",
+  "session_terminal_marker": "UPGRADE_NEXT_QUALIFICATION_PASS",
+  "session_cleanup_marker": "LAB_CLEAN_VERIFY_PASS",
+  "references": [
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/target-clean/plan.json",
+      "sha256": "3a9b583c67e5f1e2acce68b90e2f27a2f2d1a748fd49444c6e61685769b39309"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/target-clean/target-clean.attempt-1.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/target-clean/target-clean.attempt-1.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/target-clean/target-clean.attempt-1.log",
+      "sha256": "55b5c862e3f1cafe80f2d03d0c997f33ce951933efe87f127d71861b9c6d828e"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/target-clean/target-clean.status.json",
+      "sha256": "3ba4c9f4d50840d6a37ec718b3ff3d69e71d1a3598aec60567651f3120defb16"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/target-clean/v1366-qualify-20261121a.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/target-clean/v1366-qualify-20261121a.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/target-clean/v1366-qualify-20261121a.log",
+      "sha256": "aa1a2ce53e25f0a3f5eb399f85c7b1c016757c6d739d3ec0fbe8f90013650909"
+    }
+  ]
+}

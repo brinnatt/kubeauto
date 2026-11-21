@@ -3,7 +3,7 @@ kind: Namespace
 metadata:
   name: upgrade-ledger
   labels:
-    kubeauto-upgrade-owner: v13510-lab
+    kubeauto-upgrade-owner: v1366-lab
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -41,7 +41,7 @@ spec:
           image: registry.talkschool.cn:5000/brinnatt/busybox:1.37
           command: [sh, -ec]
           args:
-            - test -s /data/ledger || printf 'kubeauto-v13413-to-v13510-persistent-ledger\n' > /data/ledger
+            - test -s /data/ledger || printf 'kubeauto-v13510-to-v1366-persistent-ledger\n' > /data/ledger
           volumeMounts:
             - name: ledger
               mountPath: /data

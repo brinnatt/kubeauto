@@ -1,0 +1,1721 @@
+schema_version: 1
+recorded_on: '2026-11-21'
+quality_standard: docs/documentation-quality-standard.md 第1/10/11节
+source_research:
+  path: upgrade/v1.35.10/research.yaml
+  completion_claim: false
+  boundary: 保留原目录阅读缺口；源GA不等于完整文档已读。
+  sha256: bf7b9249d4dec563a402af1a1b6c68780abcbc27fa63ee2b23f585f1de82a4ce
+completion_claim: false
+compatibility_review_complete: true
+official_snapshot_manifest: upgrade/official-snapshots/2026-11-20-next-hop/manifest.json
+topics:
+- id: N-01
+  topic: Kubernetes1.36精确制品、API/配置与默认变化
+  status: understood
+  official_source_ids:
+  - K8S-1366-STABLE
+  - K8S-1366-RELEASE
+  - K8S-1366-FEATURES
+  acceptance_refs:
+  - UPG-02
+  - UPG-04
+  - UPG-06
+  - UPG-07
+  boundary: 官方资料及组合依据已核对；项目运行和文档验收仍分别取所属矩阵，不由阅读状态签PASS。
+  mechanism_and_constraints: Kubernetes发布说明、偏差政策和1.36默认gate/API/flag为增量入口；gitRepo、非空DRA、未知gate和旧streaming RBAC在变更前拒绝，实际HA/节点逐边与账本验证，不从旧版本推导新默认。
+  document_destination: upgrade/v1.36.6/operations-manual.md#准备kubernetes升级
+- id: N-02
+  topic: 已交付生态pin在1.36的兼容力度及最小集成差异
+  status: understood
+  official_source_ids:
+  - CONTAINERD-K8S136-COMPAT
+  - CALICO-332-K8S136-COMPAT
+  - CILIUM-1204-K8S136-COMPAT
+  - CEPH-CSI-3172-K8S136-COMPAT
+  acceptance_refs:
+  - UPG-02
+  - UPG-08
+  - UPG-09
+  - UPG-10
+  - UPG-11
+  boundary: 官方资料及组合依据已核对；项目运行和文档验收仍分别取所属矩阵，不由阅读状态签PASS。
+  mechanism_and_constraints: 保留组件的官方tested/supported/minimum/稳定API声明各按实际力度登记；未变角色、引擎和原GA深测复用，主链补DNS/Service/PVC/metrics，未安装的Operator不声称本轮协调实测。
+  document_destination: upgrade/v1.36.6/technical-whitepaper.md#控制面与节点
+- id: N-03
+  topic: Harbor官方双架构、支持的桥接及一致备份恢复
+  status: understood
+  official_source_ids:
+  - HARBOR-2160-RELEASE
+  - HARBOR-2160-UPGRADE
+  - HARBOR-214-UPGRADE
+  - HARBOR-2160-ROLLBACK
+  acceptance_refs:
+  - UPG-02
+  - UPG-03
+  - UPG-10
+  - UPG-12
+  - UPG-13
+  - UPG-14
+  boundary: 官方资料及组合依据已核对；项目运行和文档验收仍分别取所属矩阵，不由阅读状态签PASS。
+  mechanism_and_constraints: Harbor2.16官网96目录含四类对应入口逐项阅读/排除并转化；官方2.14桥接、PG15到18、队列RDB、原CA和原身份约束分别落实到源码、合同和真实资格，不把原生x86结果写成ARM实测。
+  document_destination: upgrade/v1.36.6/operations-manual.md#harbor
+harbor_directory:
+  version: v2.16.0
+  website_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+  coverage_boundary: 官方站点93个Markdown目录项及固定源码docs/官方wiki等价入口；官网旧版文字按2.16模板/API校正，阅读与正文转化/验收分别记录。
+  items:
+  - official_category: 官方用户手册
+    original_topic: docs/README.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/README.md
+    status: understood
+    mechanism_and_constraints: 原README自称2.1.x且含已移除ChartMuseum等旧目录；只作为历史导航。目标以同提交2.16索引、固定API/模板及实际存在页面校正，不照抄旧版构建或部署最低版本。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/operations-manual.md#私有制品使用
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方用户手册
+    original_topic: docs/_index.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/_index.md
+    status: understood
+    mechanism_and_constraints: 2.16总入口按安装、系统管理、项目使用及开发贡献分工；导航页本身不构成各子主题阅读或项目支持证明。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/operations-manual.md#私有制品使用
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/administration/_index.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/administration/_index.md
+    status: understood
+    mechanism_and_constraints: 全局管理覆盖认证、用户/角色、配额、复制、扫描、GC、审计、升级及P2P；管理员全局权限和项目权限分开，子主题映射其正文。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/operations-manual.md#私有制品使用
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/administration/audit-log/_index.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/administration/audit-log/_index.md
+    status: understood
+    mechanism_and_constraints: 审计日志记录用户操作，支持按用户/资源/时间筛选和清理。保留策略会删除记录；迁移验收需保留升级前后的对象身份，不能用新写日志掩盖旧记录丢失。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#配置权威与观测
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/administration/backup-restore/_index.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/administration/backup-restore/_index.md
+    status: understood
+    mechanism_and_constraints: 官方Velero示例仅用于Helm，排除Redis，属于crash-consistent，可能丢失pull计数/会话、挂起任务。项目为Compose，不能移植其PASS；采用停外部写入和后台任务、持久化Redis后全停快照。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#数据保护与架构迁移
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/administration/configure-authentication/_index.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/administration/configure-authentication/_index.md
+    status: understood
+    mechanism_and_constraints: DB/LDAP/OIDC是不同身份源；DB用户与项目授权仍由Harbor管理。已有本地用户会限制认证模式切换，不能在本跳顺带变更身份源。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#权限与信任
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/administration/configure-authentication/db-auth.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/administration/configure-authentication/db-auth.md
+    status: understood
+    mechanism_and_constraints: DB认证由Harbor保存本地用户，管理员初始密码只在首次初始化生效；迁移必须证明原用户密码和角色仍有效。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#权限与信任
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/administration/configure-authentication/ldap-auth.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/administration/configure-authentication/ldap-auth.md
+    status: understood
+    mechanism_and_constraints: LDAP服务搜索DN/过滤器/组匹配和TLS决定登录及组权限；外部目录可用性不由本地数据快照保证，已配置身份源需保持并单独核验。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#权限与信任
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/administration/configure-authentication/oidc-auth.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/administration/configure-authentication/oidc-auth.md
+    status: understood
+    mechanism_and_constraints: OIDC浏览器登录与CLI secret分离，CLI secret不是IdP密码；token刷新与映射组需依赖原IdP，复制数据库不等于验证外部认证。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#权限与信任
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/administration/configure-project-quotas/_index.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/administration/configure-project-quotas/_index.md
+    status: understood
+    mechanism_and_constraints: 配额按项目约束存储，超额push可被拒绝；共享blob计量及删除回收分离，不能把tag删除当磁盘立即释放。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/operations-manual.md#私有制品使用
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/administration/configure-proxy-cache/_index.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/administration/configure-proxy-cache/_index.md
+    status: understood
+    mechanism_and_constraints: Proxy cache项目在首次pull时代理上游并缓存，缓存可用性受上游认证/限流和保留策略影响；项目不是已发布私有仓制品的权威来源。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#复制缓存与预热
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/administration/configuring-replication/_index.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/administration/configuring-replication/_index.md
+    status: understood
+    mechanism_and_constraints: 复制以策略/触发/任务工作，源目标适配器和权限必须匹配；metadata与blob传输不等于所有审计/项目配置同步。升级保留规则不能直接声称对端复制已实测。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#复制缓存与预热
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/administration/configuring-replication/create-replication-endpoints.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/administration/configuring-replication/create-replication-endpoints.md
+    status: understood
+    mechanism_and_constraints: 复制端点含适配器、URL、访问身份及TLS校验；凭据属于敏感恢复材料，不可进入公开证据。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#复制缓存与预热
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/administration/configuring-replication/create-replication-rules.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/administration/configuring-replication/create-replication-rules.md
+    status: understood
+    mechanism_and_constraints: 复制规则定义资源过滤、目标namespace、触发方式和覆盖/删除语义；事件触发与定时/手动分工不同，迁移时需停后台执行避免快照跨状态。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#复制缓存与预热
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/administration/configuring-replication/manage-replications.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/administration/configuring-replication/manage-replications.md
+    status: understood
+    mechanism_and_constraints: 复制执行和子任务状态分别判断；retry不能消除对端已接受写入的不确定性，先检查任务及目标digest。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#复制缓存与预热
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/administration/custom-project-roles/_index.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/administration/custom-project-roles/_index.md
+    status: understood
+    mechanism_and_constraints: 定制项目角色表达更细操作权限；迁移须保留角色授权，不能只验证管理员登录。未封装的权限编辑按上游能力与项目边界说明。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#配置权威与观测
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/administration/distributed-tracing/_index.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/administration/distributed-tracing/_index.md
+    status: understood
+    mechanism_and_constraints: 分布式tracing需要后端和sampling配置，会携带请求上下文；本跳未增加tracing后端，不把上游配置项当作已验收集成。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#配置权威与观测
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/administration/garbage-collection/_index.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/administration/garbage-collection/_index.md
+    status: understood
+    mechanism_and_constraints: GC回收无引用blob，tag删除/保留策略与实际空间释放分离；生产前dry run检查候选，迁移快照期间停止GC与上传清理。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/operations-manual.md#日常运维
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/administration/general-settings/_index.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/administration/general-settings/_index.md
+    status: understood
+    mechanism_and_constraints: 通用设置含只读、认证、自注册、token/robot策略等；repository只读不停止全部后台DB写入，不能代替本项目停机一致备份。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#配置权威与观测
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/administration/jobservice-dashboard/_index.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/administration/jobservice-dashboard/_index.md
+    status: understood
+    mechanism_and_constraints: 暂停队列只停消费，不停止提交或改变任务状态；终止整体执行需停止排队并释放worker，再确认Stopped。worker池有心跳/并发度，Free可能耗时数分钟。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#配置权威与观测
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/administration/log-rotation/_index.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/administration/log-rotation/_index.md
+    status: understood
+    mechanism_and_constraints: 日志轮转与数据快照不同，容器日志、审计事件、数据库和registry分别管理；运维需保证容量与保留期限，不假定日志也会随tag删除。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#配置权威与观测
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/administration/managing-users/_index.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/administration/managing-users/_index.md
+    status: understood
+    mechanism_and_constraints: 系统管理员与普通用户不同；用户存在不等于具有项目权限，迁移需同时核验认证与授权。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#权限与信任
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/administration/managing-users/create-users-db.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/administration/managing-users/create-users-db.md
+    status: understood
+    mechanism_and_constraints: 本地创建用户依赖DB认证；LDAP/OIDC不使用同一创建流程。密码及个人信息不可写入交付日志。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#权限与信任
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/administration/managing-users/reset-user-password.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/administration/managing-users/reset-user-password.md
+    status: understood
+    mechanism_and_constraints: 重置用户密码会改变访问凭据，应通过原权限入口并复验；升级不自动重置已有密码。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#权限与信任
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/administration/managing-users/user-permissions-by-role.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/administration/managing-users/user-permissions-by-role.md
+    status: understood
+    mechanism_and_constraints: 项目Guest/Developer/Maintainer/ProjectAdmin的读写/删除/授权能力不同；最小业务验证应有pull成功和越权push拒绝两条路径。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#权限与信任
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/administration/metrics/_index.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/administration/metrics/_index.md
+    status: understood
+    mechanism_and_constraints: 指标分exporter/core/jobservice/registry，harbor_health/up为gauge，HTTP总量为counter，时延summary/histogram不能混用分位计算。仅公开端口不证明采集或告警；项目本跳不新增监控后端。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#配置权威与观测
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/administration/p2p-preheat/_index.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/administration/p2p-preheat/_index.md
+    status: understood
+    mechanism_and_constraints: P2P preheat把镜像分发到外部P2P系统，不改变registry权威；provider/任务/缓存状态分别验证，未启用不新增部署或回归。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#复制缓存与预热
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/administration/p2p-preheat/manage-preheat-providers.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/administration/p2p-preheat/manage-preheat-providers.md
+    status: understood
+    mechanism_and_constraints: Preheat provider需要端点/认证及连接测试，支持能力由provider定义；本地备份不恢复远端P2P缓存。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#复制缓存与预热
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/administration/robot-accounts/_index.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/administration/robot-accounts/_index.md
+    status: understood
+    mechanism_and_constraints: 系统robot可跨项目，项目robot限单项目；secret仅创建/刷新时可导出，默认过期30天，prefix默认robot$。push必须同时pull；UpdateProjectMember可提升管理员，retention权限可间接删除artifact；权限表已阅读全文，不能以没有DeleteArtifact判断无删除风险。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#权限与信任
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/administration/sbom-integration/_index.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/administration/sbom-integration/_index.md
+    status: understood
+    mechanism_and_constraints: SBOM是OCI关联物，与镜像主体区分；扫描器/生成时机和附件保留影响可用性，迁移需保留元数据与blob，不将字段存在当作生成已验证。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#名称附件与信任
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/administration/security-hub/_index.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/administration/security-hub/_index.md
+    status: understood
+    mechanism_and_constraints: Security Hub汇总漏洞与风险，依赖扫描结果和数据库更新时效；未部署Trivy时不能声称已完成漏洞扫描。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#扫描例外与安全视图
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/administration/upgrade/_index.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/administration/upgrade/_index.md
+    status: understood
+    mechanism_and_constraints: 2.16官方升级入口仅支持2.14及以后；prepare migrate迁移harbor.yml，core启动迁移schema。必须保存旧installer/数据/镜像，本项目增加完整停机恢复点。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#数据保护与架构迁移
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/administration/upgrade/helm-upgrade.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/administration/upgrade/helm-upgrade.md
+    status: understood
+    mechanism_and_constraints: Helm升级也需数据库备份与schema迁移，helm rollback不能降级schema；自动证书覆盖及0.3历史emptyDir日志风险属于Helm路径，不用于签Compose恢复。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#数据保护与架构迁移
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/administration/upgrade/roll-back-upgrade.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/administration/upgrade/roll-back-upgrade.md
+    status: understood
+    mechanism_and_constraints: 官方不支持降级；回退是停止新版本并恢复旧安装文件、数据库及配置后按旧版本启动。目标写入后的数据不能仅回退镜像保留。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#数据保护与架构迁移
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/administration/upgrade/upgrade-test.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/administration/upgrade/upgrade-test.md
+    status: understood
+    mechanism_and_constraints: 官方升级验收示例包括用户、角色、project、label、artifact、规则及配置保持；示例含旧db migrator/签名操作，不能逐字当作2.16产品入口。项目需最小真实业务账本并标明未启用功能的继承边界。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#数据保护与架构迁移
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/administration/user-defined-OCI-artifact/_index.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/administration/user-defined-OCI-artifact/_index.md
+    status: understood
+    mechanism_and_constraints: OCI artifact按media type与manifest/config分类；可扩展artifact展示不代表任意格式可执行/可扫描，项目按OCI身份保持验收。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#名称附件与信任
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/administration/vulnerability-scanning/_index.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/administration/vulnerability-scanning/_index.md
+    status: understood
+    mechanism_and_constraints: 扫描是扫描器适配器驱动的异步任务，漏洞数据时效和支持artifact类型决定报告含义；未扫描或报告陈旧不等于安全。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#扫描例外与安全视图
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/administration/vulnerability-scanning/configure-custom-certs.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/administration/vulnerability-scanning/configure-custom-certs.md
+    status: understood
+    mechanism_and_constraints: 扫描器访问带私有CA的目标需配置其信任链；关闭校验不能代替证书配置，额外CA属于恢复输入。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#扫描例外与安全视图
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/administration/vulnerability-scanning/configure-system-allowlist.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/administration/vulnerability-scanning/configure-system-allowlist.md
+    status: understood
+    mechanism_and_constraints: 全局CVE allowlist影响拉取策略，例外可过期；它是风险豁免而不是漏洞修复，项目可继承或覆盖。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#扫描例外与安全视图
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/administration/vulnerability-scanning/deployment-security.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/administration/vulnerability-scanning/deployment-security.md
+    status: understood
+    mechanism_and_constraints: 项目扫描/拉取防护基于严重级别与实际拉取的架构child；多架构index的汇总报告不表示各child均被同样阻断。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#扫描例外与安全视图
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/administration/vulnerability-scanning/import-vulnerability-data.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/administration/vulnerability-scanning/import-vulnerability-data.md
+    status: understood
+    mechanism_and_constraints: 页面离线导入针对旧Clair数据格式，不能用于2.16默认Trivy；离线漏洞库须按固定Trivy适配器版本处理，不冒称本次迁移已验证离线扫描。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#扫描例外与安全视图
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/administration/vulnerability-scanning/pluggable-scanners.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/administration/vulnerability-scanning/pluggable-scanners.md
+    status: understood
+    mechanism_and_constraints: 额外扫描器通过标准适配器元数据/健康/API连接，可设置默认或项目扫描器；认证、证书和能力声明是独立依赖。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#扫描例外与安全视图
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/administration/vulnerability-scanning/scan-all-artifacts.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/administration/vulnerability-scanning/scan-all-artifacts.md
+    status: understood
+    mechanism_and_constraints: scan-all按异步任务扫描artifact，任务成功与全库安全不同；索引与子artifact及不支持类型须分别判断。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#扫描例外与安全视图
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/administration/vulnerability-scanning/scan-individual-artifact.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/administration/vulnerability-scanning/scan-individual-artifact.md
+    status: understood
+    mechanism_and_constraints: 单artifact扫描记录scanner版本、报告和状态；索引聚合子manifest结果，不能用Pod健康代替扫描结果。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#扫描例外与安全视图
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/administration/vulnerability-scanning/schedule-scans.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/administration/vulnerability-scanning/schedule-scans.md
+    status: understood
+    mechanism_and_constraints: 扫描计划按时区/cron周期触发，修改频率需评估队列和漏洞库刷新成本；升级停写窗口应冻结后台任务。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#扫描例外与安全视图
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/administration/vulnerability-scanning/stop-scan.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/administration/vulnerability-scanning/stop-scan.md
+    status: understood
+    mechanism_and_constraints: 停止排队/运行中的扫描只停止任务，不撤销已有报告或修复漏洞；按任务终态确认，不能把请求接受当已完成。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#扫描例外与安全视图
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方开发手册
+    original_topic: docs/build-customize-contribute/_index.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/build-customize-contribute/_index.md
+    status: understood
+    mechanism_and_constraints: 开发入口指向源码构建、UI、国际化及贡献；项目消费官方离线制品，不从main随意自编替换发行包。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/development-manual.md#harbor-api与业务校验
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方开发手册
+    original_topic: docs/build-customize-contribute/compile-guide.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/build-customize-contribute/compile-guide.md
+    status: excluded
+    mechanism_and_constraints: 源码构建含prepare/compile/build/install/package及DEVFLAG；页面Go1.15/Python2等为陈旧示例，不作为2.16工具链要求，实际构建版本查固定Makefile和go.mod。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/development-manual.md#官方贡献与定制边界
+    exclusion_basis: 官方源码编译/开发安装入口；本项目交付签名官方离线包，不编译Harbor服务。共享配置、制品与启动契约保留；旧工具链示例不作为2.16构建依据。
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-exclusion-boundary
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方开发手册
+    original_topic: docs/build-customize-contribute/customize-look-feel.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/build-customize-contribute/customize-look-feel.md
+    status: understood
+    mechanism_and_constraints: Portal外观通过setting.json和images重新构建生效，涉及制品身份变化；本跳复用官方Portal，不承诺自定义UI交付。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/development-manual.md#官方贡献与定制边界
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方开发手册
+    original_topic: docs/build-customize-contribute/developer-guide-i18n.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/build-customize-contribute/developer-guide-i18n.md
+    status: excluded
+    mechanism_and_constraints: UI翻译UTF8、保留key，官方每次验证中英；其它语言需自行验证。语言扩展为上游贡献，不属于本次镜像升级。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/development-manual.md#官方贡献与定制边界
+    exclusion_basis: 新增翻译及贡献PR流程；本跳保留官方中英文资源，不增加语言构建。共享编码与版本验证限制在开发手册保留。
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-exclusion-boundary
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方开发手册
+    original_topic: docs/build-customize-contribute/e2e-api-python-based-scripting-guide.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/build-customize-contribute/e2e-api-python-based-scripting-guide.md
+    status: excluded
+    mechanism_and_constraints: 上游API e2e使用固定swagger生成client及测试library；日志样例含Authorization，不能照搬debug输出。项目用固定API最小业务验证，不执行上游全量e2e。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/development-manual.md#官方贡献与定制边界
+    exclusion_basis: draft页面为上游Swagger客户端、Robot及CI测试接入，不是本项目固定runner。共享API/认证/错误语义保留，打印认证头的旧示例不采用。
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-exclusion-boundary
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方开发手册
+    original_topic: docs/build-customize-contribute/registry-landscape.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/build-customize-contribute/registry-landscape.md
+    status: understood
+    mechanism_and_constraints: registry功能比较为社区维护的滚动表，不是2.16兼容认证或性能基准；采用Harbor的理由是OCI存储加项目权限/治理，不能以旧Chart项承诺已移除后端。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#运维与容量决策
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方开发手册
+    original_topic: docs/build-customize-contribute/style-guide.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/build-customize-contribute/style-guide.md
+    status: excluded
+    mechanism_and_constraints: 官方写作规范强调主动语态、可检索标题、命令输出分离及具体链接；六仓正文仍以统一documentation-quality-standard为唯一标准。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/development-manual.md#官方贡献与定制边界
+    exclusion_basis: Harbor上游Hugo文档贡献规范；六仓执行自身单一文档标准，不引入第二套写作验收。
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-exclusion-boundary
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方开发手册
+    original_topic: docs/build-customize-contribute/ui-contribution-get-started.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/build-customize-contribute/ui-contribution-get-started.md
+    status: excluded
+    mechanism_and_constraints: 前端开发代理连接既有backend，npm安装/启动仅供源码调试；secure=false示例不能用于生产TLS或本次官方制品发布。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/development-manual.md#官方贡献与定制边界
+    exclusion_basis: 上游Portal本地npm开发及代理入口；未对官方Portal做源码定制，不采用关闭后端TLS验证的开发配置。
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-exclusion-boundary
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方开发手册
+    original_topic: docs/build-customize-contribute/use-make.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/build-customize-contribute/use-make.md
+    status: excluded
+    mechanism_and_constraints: Make目标区分编译、构建、安装、打包和清理；cleanall影响多类构建输出，不能作为生产Harbor数据清理入口。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/development-manual.md#官方贡献与定制边界
+    exclusion_basis: 上游源码开发构建/打包/清理目标；项目仅封装官方包，交付构建由六仓build.yml负责，不能直接运行上游cleanall清理客户状态。
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-exclusion-boundary
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/install-config/_index.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/install-config/_index.md
+    status: understood
+    mechanism_and_constraints: 新建安装按主机前置→固定包→HTTPS/YML→安装→管理；升级必须走配置与schema迁移路径，不能在旧数据上重复初始化。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/operations-manual.md#干净新建
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/install-config/configure-https.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/install-config/configure-https.md
+    status: understood
+    mechanism_and_constraints: HTTPS需证书SAN、完整链、匹配私钥及客户端/daemon CA信任；自签与第三方CA路径不同，端口是registry身份一部分。生产不以insecure绕过验证。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/operations-manual.md#干净新建
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/install-config/configure-internal-tls.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/install-config/configure-internal-tls.md
+    status: understood
+    mechanism_and_constraints: internalTLS需要同一CA签发各组件专用CN/SAN证书；这与入口TLS不同，本次本地快照迁移明确拒绝未审计internalTLS。页面Go弃用版本文字需以Go1.15事实校正。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#权限与信任
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/install-config/configure-system-settings-cli.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/install-config/configure-system-settings-cli.md
+    status: understood
+    mechanism_and_constraints: CONFIG_OVERWRITE_JSON在启动时覆盖系统配置，同字段不能再由UI/API更新；必须修改该环境变量重启，恢复需保存真实配置来源。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#配置权威与观测
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/install-config/configure-yml-file.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/install-config/configure-yml-file.md
+    status: understood
+    mechanism_and_constraints: harbor.yml经prepare生成运行配置；初始admin密码只首次生效。data_volume、数据库、队列、TLS、日志、proxy、worker、扫描及webhook出站策略有独立状态/安全约束；外置服务不包含在本地备份中。滚动表残留Clair/UAA等陈旧信息，以2.16模板/API校正。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/operations-manual.md#干净新建
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/install-config/customize-token-service.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/install-config/customize-token-service.md
+    status: understood
+    mechanism_and_constraints: token签名私钥/core证书与外部HTTPS是不同身份；自定义token信任需core私钥与registry验证证书一致，不能只换入口证书。旧ui路径示例须用固定包核对。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#配置权威与观测
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/install-config/demo-server.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/install-config/demo-server.md
+    status: understood
+    mechanism_and_constraints: 官方demo每两天重置、非生产、限100MB且无系统管理员能力；不可承载客户镜像或作为项目验收环境。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#运维与容量决策
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/install-config/download-installer.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/install-config/download-installer.md
+    status: understood
+    mechanism_and_constraints: 离线包含预构建镜像，安装目录本身不代表持久化数据所在位置，应同时保留配置和data_volume。网页仍示范旧OpenPGP.asc；2.16必须按固定源码签名文档使用Sigstore
+      bundle及Cosign keyless identity/issuer核验，不将旧gpg流程冒用为新包认证。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/operations-manual.md#选择路径与准备恢复空间
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/install-config/harbor-compatibility-list.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/install-config/harbor-compatibility-list.md
+    status: understood
+    mechanism_and_constraints: 适配器表分别列pull/push/proxy、引入版本和自动流水线覆盖；OIDC官方验证/用户报告、scanner默认/已评估分开，不能把一列推广成所有组合认证。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/development-manual.md#harbor-api与业务校验
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/install-config/harbor-ha-helm.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/install-config/harbor-ha-helm.md
+    status: understood
+    mechanism_and_constraints: Helm HA依赖多副本无状态组件及外部HA PostgreSQL/Redis、共享RWX或对象存储；单机Compose不是HA。页面K8s1.10/Helm2等旧下限不替代2.16固定Chart要求。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/operations-manual.md#干净新建
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/install-config/installation-prereqs.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/install-config/installation-prereqs.md
+    status: understood
+    mechanism_and_constraints: Compose官方最低2CPU/4GB/40GB，推荐4CPU/8GB/160GB；Docker>20.10、Compose>2.3，HTTPS默认443可改。目标实验室容量需实读，不能以最低值承诺客户生产负载。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/operations-manual.md#干净新建
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/install-config/reconfigure-manage-lifecycle.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/install-config/reconfigure-manage-lifecycle.md
+    status: understood
+    mechanism_and_constraints: 改harbor.yml后需重新prepare并按生命周期重启；down不等于删除bind数据，但删除data_volume会丢数据；迁移只在备份和归属证明后做受控替换。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/operations-manual.md#干净新建
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/install-config/run-installer-script.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/install-config/run-installer-script.md
+    status: understood
+    mechanism_and_constraints: 官方install.sh默认不装Trivy，--with-trivy显式启用；HTTPS客户端须信任CA。项目使用config+kubecli setup11，不能将手工install.sh替代产品证据。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/operations-manual.md#干净新建
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/install-config/troubleshoot-installation.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/install-config/troubleshoot-installation.md
+    status: understood
+    mechanism_and_constraints: 先查compose服务与各组件日志，再分TLS链、信任、代理X-Forwarded-Proto和应用状态诊断；Up不等于API健康或真实push/pull成功。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/operations-manual.md#干净新建
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方用户手册
+    original_topic: docs/working-with-projects/_index.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/working-with-projects/_index.md
+    status: understood
+    mechanism_and_constraints: 系统管理员与项目成员的操作边界独立，2.16新增自定义项目角色；权限按实际授权判断，不能仅按显示角色名推断。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/operations-manual.md#私有制品使用
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方用户手册
+    original_topic: docs/working-with-projects/create-projects/_index.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/working-with-projects/create-projects/_index.md
+    status: understood
+    mechanism_and_constraints: project是仓库与RBAC边界，必须先创建后push；public允许匿名pull，private要求成员。初始library是public，本跳业务夹具必须用新private项目验证授权保持。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/operations-manual.md#私有制品使用
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方用户手册
+    original_topic: docs/working-with-projects/create-projects/add-users.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/working-with-projects/create-projects/add-users.md
+    status: understood
+    mechanism_and_constraints: 成员权限为个人与组授权并集；自定义角色赋权不得超过操作者持有权限，OIDC组名不做存在性校验；修改角色定义影响所有引用项目。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#权限与信任
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方用户手册
+    original_topic: docs/working-with-projects/project-configuration/_index.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/working-with-projects/project-configuration/_index.md
+    status: understood
+    mechanism_and_constraints: 项目可见性、扫描拉取门槛、扫描触发和build history分别管理；页面把未签名与漏洞checkbox混写，正文应按固定API区分签名与漏洞两个独立门禁。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/operations-manual.md#私有制品使用
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方用户手册
+    original_topic: docs/working-with-projects/project-configuration/access-project-logs.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/working-with-projects/project-configuration/access-project-logs.md
+    status: understood
+    mechanism_and_constraints: 项目审计记录支持操作、名称和时间过滤；审计保留与业务制品存储不同，备份恢复需保持现有账本而非恢复后重建。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#配置权威与观测
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方用户手册
+    original_topic: docs/working-with-projects/project-configuration/configure-project-allowlist.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/working-with-projects/project-configuration/configure-project-allowlist.md
+    status: understood
+    mechanism_and_constraints: 项目allowlist可覆盖全局策略并设有效期；Copy From System为复制，不自动同步后续删除，豁免须有维护责任。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#扫描例外与安全视图
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方用户手册
+    original_topic: docs/working-with-projects/project-configuration/configure-webhooks.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/working-with-projects/project-configuration/configure-webhooks.md
+    status: understood
+    mechanism_and_constraints: 逐类读取push/pull/delete/scan/quota/replication/retention事件及Default/CloudEvents/Slack
+      payload；消费者按digest和事件身份幂等。超时或非2xx触发max_retry重试，不保证只投一次；2.16需同时核对webhook_egress SSRF/私网访问约束。官方部分示例含注释或缺逗号，不复制成可执行JSON。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#复制缓存与预热
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方用户手册
+    original_topic: docs/working-with-projects/project-configuration/create-robot-accounts.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/working-with-projects/project-configuration/create-robot-accounts.md
+    status: understood
+    mechanism_and_constraints: 项目robot名字为prefix+project+account，secret仅创建/刷新可得；旧2.2以前JWT robot能力受限且无法迁移为新格式，需重建。本跳保留既有身份，不自动轮换或扩权。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#权限与信任
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方用户手册
+    original_topic: docs/working-with-projects/project-configuration/implementing-content-trust.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/working-with-projects/project-configuration/implementing-content-trust.md
+    status: understood
+    mechanism_and_constraints: Cosign与Notation内容信任可分别启用，同时启用时拉取须满足全部已启用要求；信任链/证书和签名附件必须随数据保护。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#名称附件与信任
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方用户手册
+    original_topic: docs/working-with-projects/using-api-explorer/_index.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/working-with-projects/using-api-explorer/_index.md
+    status: understood
+    mechanism_and_constraints: API Explorer以现有用户会话/认证执行真实API，写操作会改变状态；REST契约以固定2.16 swagger为准，不能把探索器当只读面板。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/development-manual.md#harbor-api与业务校验
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方用户手册
+    original_topic: docs/working-with-projects/working-with-images/_index.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/working-with-projects/working-with-images/_index.md
+    status: understood
+    mechanism_and_constraints: 镜像/标签目录为OCI artifact、index及其治理任务入口；标签、manifest与实际blob生命周期分开解释。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/operations-manual.md#私有制品使用
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方用户手册
+    original_topic: docs/working-with-projects/working-with-images/adding-tags.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/working-with-projects/working-with-images/adding-tags.md
+    status: understood
+    mechanism_and_constraints: 添加tag不改变artifact digest或额外复制blob；index父tag不自动继承到children。完整image:tag为交付身份，digest用于校验精确内容。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#名称附件与信任
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方用户手册
+    original_topic: docs/working-with-projects/working-with-images/create-labels.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/working-with-projects/working-with-images/create-labels.md
+    status: understood
+    mechanism_and_constraints: 全局label由系统管理员管理、项目label限定项目；label筛选不授予访问权限，复制/扫描等治理仍按各自权限执行。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#名称附件与信任
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方用户手册
+    original_topic: docs/working-with-projects/working-with-images/create-tag-immutability-rules.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/working-with-projects/working-with-images/create-tag-immutability-rules.md
+    status: understood
+    mechanism_and_constraints: tag不可变规则按OR合并且最多15条；匹配后阻止覆盖/删除相关tag，需先审查规则与保留计划，不依赖客户端自觉。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#名称附件与信任
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方用户手册
+    original_topic: docs/working-with-projects/working-with-images/create-tag-retention-rules.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/working-with-projects/working-with-images/create-tag-retention-rules.md
+    status: understood
+    mechanism_and_constraints: 保留规则按OR选取artifact，并处理同artifact多个tag和untagged；先dry-run确认，执行可能不可逆，删除元数据不保证立即回收磁盘。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#名称附件与信任
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方用户手册
+    original_topic: docs/working-with-projects/working-with-images/deleting-artifact.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/working-with-projects/working-with-images/deleting-artifact.md
+    status: understood
+    mechanism_and_constraints: 被OCI index引用的child不能直接删除，需先处理所有parent；删parent只删不再被其它parent引用的children，保护共享内容关系。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#名称附件与信任
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方用户手册
+    original_topic: docs/working-with-projects/working-with-images/deleting-tags.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/working-with-projects/working-with-images/deleting-tags.md
+    status: understood
+    mechanism_and_constraints: 移除tag保留manifest及其它tag，父index detag不递归去掉children的tag；untagged仍存在并受保留/GC策略管理。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#名称附件与信任
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方用户手册
+    original_topic: docs/working-with-projects/working-with-images/preheat-images.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/working-with-projects/working-with-images/preheat-images.md
+    status: understood
+    mechanism_and_constraints: P2P预热以项目policy、provider、repository/tag/label筛选及签名/漏洞条件计算候选；事件先评估后异步执行，Success也可能零候选。进行中policy不能盲删。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#复制缓存与预热
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方用户手册
+    original_topic: docs/working-with-projects/working-with-images/pulling-pushing-images.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/working-with-projects/working-with-images/pulling-pushing-images.md
+    status: understood
+    mechanism_and_constraints: Docker push/pull先认证再获repository scope token，私有项目需权限；TLS信任、tag与digest分别核对。多架构客户端选择适配的child，登录成功不是实际blob拉取证明。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/operations-manual.md#私有制品使用
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方用户手册
+    original_topic: docs/working-with-projects/working-with-images/repositories.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/working-with-projects/working-with-images/repositories.md
+    status: understood
+    mechanism_and_constraints: repository包含多种OCI artifact，artifact按digest列示；复制携带index引用和accessories且需目标push权限，被index引用的child受删除保护。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#名称附件与信任
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方用户手册
+    original_topic: docs/working-with-projects/working-with-images/retagging-images.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/working-with-projects/working-with-images/retagging-images.md
+    status: understood
+    mechanism_and_constraints: 复制artifact需源read/目标write权限，保留原tag及index children/accessories；添加新tag走独立tag操作，不将copy误写为重建。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#名称附件与信任
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方用户手册
+    original_topic: docs/working-with-projects/working-with-images/sign-images.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/working-with-projects/working-with-images/sign-images.md
+    status: understood
+    mechanism_and_constraints: Cosign/Notation签名为与主体关联的OCI附件，需按签名工具和信任策略验证；仅搬运镜像manifest不证明签名可用。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#名称附件与信任
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方用户手册
+    original_topic: docs/working-with-projects/working-with-oci/_index.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/working-with-projects/working-with-oci/_index.md
+    status: understood
+    mechanism_and_constraints: OCI目录将符合OCI规范的非镜像artifact与镜像统一存储，支持格式范围不等于都能扫描或执行。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#名称附件与信任
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方用户手册
+    original_topic: docs/working-with-projects/working-with-oci/working-with-helm-oci-charts.md
+    version_or_commit: f592bafad330584e5ddaaf0ba05ab44ac751e73e
+    url: https://raw.githubusercontent.com/goharbor/website/f592bafad330584e5ddaaf0ba05ab44ac751e73e/docs/working-with-projects/working-with-oci/working-with-helm-oci-charts.md
+    status: understood
+    mechanism_and_constraints: Helm3通过OCI registry login/package/push/pull使用Chart，Chart名称/版本决定仓库及tag；不恢复旧ChartMuseum接口。
+    project_mapping: roles/harbor 与 upgrade/v1.36.6
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#名称附件与信任
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-10
+    - UPG-12
+    - UPG-13
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方技术白皮书
+    original_topic: wiki/Architecture-Overview-of-Harbor.md
+    version_or_commit: f7c8973cf5b0f06d012d1b9aba164eaf4d6c4ba5
+    url: https://github.com/goharbor/harbor/wiki/Architecture-Overview-of-Harbor
+    status: understood
+    mechanism_and_constraints: OCI index/manifest分层、Core令牌/RBAC、Registry数据与PG元数据、异步队列均已阅读。架构页标2.0，后半仍含旧UI/MySQL/Notary等；只复用机制，按2.16固定Compose/API校正为Core/PostgreSQL/Valkey，不引用旧服务清单。
+    project_mapping: Harbor固定API/模板与独立升级入口
+    document_destination: upgrade/v1.36.6/technical-whitepaper.md#harbor请求与状态
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方运维手册
+    original_topic: docs/signature-verification.md
+    version_or_commit: e69b1bfab9c945cdbddf74d04d19200011108af0
+    url: https://github.com/goharbor/harbor/blob/v2.16.0/docs/signature-verification.md
+    status: understood
+    mechanism_and_constraints: 2.15起对installer提供Cosign keyless Sigstore bundle。2.16实际asset增加amd64/arm64后缀，校验issuer与publish_release工作流身份；两个完整包均已通过Sigstore官方Python4.5.1验证，错误发行身份被拒绝。证据为harbor-official-signatures.json；不是Cosign执行或ARM运行结果，SHA核对与签名验证分别记录。
+    project_mapping: Harbor固定API/模板与独立升级入口
+    document_destination: upgrade/v1.36.6/operations-manual.md#选择路径与准备恢复空间
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  - official_category: 官方开发手册
+    original_topic: docs/README.md@harbor-source
+    version_or_commit: e69b1bfab9c945cdbddf74d04d19200011108af0
+    url: https://github.com/goharbor/harbor/blob/v2.16.0/docs/README.md
+    status: understood
+    mechanism_and_constraints: 源码docs目录将文档贡献转交website，非另一套产品手册。固定源码docs其余为图像导航与签名校验，用户/运维/贡献目录由网站完整盘点覆盖，API使用固定swagger。
+    project_mapping: Harbor固定API/模板与独立升级入口
+    document_destination: upgrade/v1.36.6/development-manual.md#harbor-api与业务校验
+    exclusion_basis: null
+    acceptance_refs:
+    - UPG-02
+    - UPG-14
+    content_transfer_status: author-reviewed-content-and-reader-path
+    content_review_ref: upgrade/v1.36.6/evidence/document-review.json
+  reading_boundary: 96目录90项阅读理解并转化、6项有依据排除；正文内容/读者路径按document-review.json登记，实测与官方能力分开，不据此签整个本跳GA。
+  content_review_boundary: 96目录映射完成作者正文与读者路径复核（90项理解转化、6项有依据排除）；上游能力与项目已验证范围分别标注，不签原生ARM、最终GA或客户签收。总研究completion_claim保持false，不以Harbor内容评审替代整个本跳交付。
+dependency_review:
+- component: nerdctl
+  version: v2.4.2
+  observed_on: '2026-11-21'
+  boundary: Harbor CLI认证/CA的实际消费接口；不扩成nerdctl全产品审计，不改变节点CRI配置。
+  sources:
+  - url: https://raw.githubusercontent.com/containerd/nerdctl/v2.4.2/docs/registry.md
+    sha256: 84a741b759b6079e4c54229d30c7db1e0cdab8c38a362859eb9f6d66e1e4662e
+  - url: https://raw.githubusercontent.com/containerd/nerdctl/v2.4.2/pkg/config/config.go
+    sha256: 1b692f2f992fc1d2998ff094830c66b482f6c8be4a7f82eb1ea52992ddd696c0
+  understood: 显式hosts-dir绑定可信CA与TLS校验；认证保存在当前用户DOCKER_CONFIG/config.json。CLI用户凭据、CLI信任与Pod的CRI认证/信任独立。
+  document_destination: upgrade/v1.36.6/operations-manual.md#私有制品使用
+  validation: 官方固定版本接口、已验2.4.2二进制help及既有CA login probe合同；本文不声称Harbor现场nerdctl新实测。
+documentation_claim: 本跳增量升级操作与Harbor完整目录分别检查；保留源完整全站阅读缺口，不签全站完成、原生ARM运行或客户签收。
+directory_scope: upgrade/v1.36.6/evidence/official-directory-scope.json
+valkey_rdb_increment:
+  version: 9.0.3
+  official_source_record: upgrade/v1.36.6/evidence/valkey-rdb-format.json
+  status: understood
+  ambiguity: Harbor 2.16使用Valkey，备份文件头不能继续按旧Redis单一格式判定。
+  mechanism_and_constraints: 官方rdb.h将RDB_VERSION固定为80，rdb.c写入VALKEY080；Valkey读取器将Redis旧格式、外来格式及未来版本分别处理。本项目仅接受固定队列版本的格式，旧Redis1到11仍按原兼容范围保留，不声称Valkey快照可供Redis降级读取。
+  product_mapping: upgrade/product/library/harbor_migration.py save_queue/finish_backup
+  document_destination: upgrade/v1.36.6/development-manual.md#harbor维护接口
+  acceptance_refs:
+  - UPG-04
+  - UPG-12
+  runtime_boundary: 本次原生AMD64；格式源码及合同不等于ARM运行结果。

@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "claim": "仅final新增Harbor组合与ingress自动交接；原qualify产品阶段函数逐AST未变。原source/nodes证据保留实际执行helper，不冒签final现场结果。",
+  "original_helper": {
+    "path": "upgrade/v1.36.6/evidence/raw/local-qualification/kubernetes-qualified-next_session.py.txt",
+    "sha256": "542ea11c51f4109db9311858e636d017746966d72518bea7000ba10395fd053c"
+  },
+  "current_helper": {
+    "path": "upgrade/lab/next_session.py",
+    "sha256": "f37542bac2ebeb2c174c506363aef7d04fd70d12a27ff43a0b91fbe54cbb2932"
+  },
+  "unchanged_functions": [
+    "inventory",
+    "cluster_names",
+    "stage_upgrade_clients",
+    "Session.source_phase",
+    "Session.control_phase",
+    "Session.protection_phase",
+    "Session.nodes_phase",
+    "Session.clean_phase",
+    "Session.install_phase"
+  ],
+  "changed_functions": [
+    "plan",
+    "main",
+    "Session.run",
+    "Session.finish_final"
+  ],
+  "checks": [
+    {
+      "command": "AST comparison of exact qualification phase implementations",
+      "rc": 0
+    },
+    {
+      "command": "isolated next_session/ingress/harbor_session contracts",
+      "tests": 79,
+      "skipped": 0,
+      "rc": 0
+    }
+  ],
+  "references": [
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/local-qualification/combined-final-contracts.log",
+      "sha256": "aae6a7a2b05400d0946fb262f2ec440dadfb7d3745254f809c1410f3b54c0a16"
+    }
+  ]
+}

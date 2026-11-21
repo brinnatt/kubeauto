@@ -112,10 +112,11 @@ def observe_source(run_playbook, variables, *, kubectl, kubectl_sha256, kubeconf
     Output remains owned by the observer's caller; no file is written here.
     """
     if (not callable(run_playbook) or not isinstance(variables, dict) or
-            variables.get('K8S_VER') not in ('1.34.13', 'v1.34.13', '1.35.10', 'v1.35.10')):
+            variables.get('K8S_VER') not in ('1.34.13', 'v1.34.13', '1.35.10', 'v1.35.10',
+                                             '1.36.6', 'v1.36.6')):
         raise Refused('exact reviewed target config and actual product runner are required')
     target = 'v' + variables['K8S_VER'].removeprefix('v')
-    source = {'v1.34.13': 'v1.33.6', 'v1.35.10': 'v1.34.13'}[target]
+    source = {'v1.34.13': 'v1.33.6', 'v1.35.10': 'v1.34.13', 'v1.36.6': 'v1.35.10'}[target]
     if variables.get('UPGRADE_SOURCE_VERSION', source) != source:
         raise Refused('source configuration does not match the reviewed transition')
     before = hashlib.sha256(BOOK.read_bytes()).hexdigest()

@@ -1,0 +1,142 @@
+{
+  "schema_version": 1,
+  "recorded_on": "2026-11-20",
+  "scope": "Four exact newly required artifact tags; no product image or Harbor data migration acceptance",
+  "publications": [
+    {
+      "repository": "kubeauto-k8s-bin-dockerfile",
+      "run_id": 44752039815,
+      "url": "https://github.com/brinnatt/kubeauto-k8s-bin-dockerfile/actions/runs/44752039815",
+      "source_sha": "bc3dcf6527dcb81613445b1040f2da0caa75141d",
+      "mode": "selected",
+      "image": "brinnatt/kubeauto-k8s-bin:v1.36.6",
+      "identity": {
+        "digest": "sha256:edcdc1fd30e7e6b3adafa5400fcbe8c22603b77e2b12af229dd02c41f015b2da",
+        "platforms": {
+          "linux/amd64": "sha256:7e9c4d1b9802bd1d4d4f27596098b552570e0164def5f00bc4c82bd2065aafd1",
+          "linux/arm64": "sha256:f1d853ea9f3c3e6451a3e36d2a62f3af078b146f9923419a442c92783d40eb48"
+        }
+      },
+      "conclusion": "success"
+    },
+    {
+      "repository": "kubeauto-ext-images-dockerfile",
+      "run_id": 44751236698,
+      "url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/44751236698",
+      "source_sha": "b470cf0ee2feb4fa1d648b6f3c3b55dae3fbb748",
+      "mode": "selected",
+      "image": "brinnatt/openebs-kubectl:1.36.6",
+      "identity": {
+        "digest": "sha256:454eebcd76826752e42937833fb81e60a139085ba9cd0c410721e177122c740e",
+        "platforms": {
+          "linux/amd64": "sha256:889131fc5306f448e28aedb731d16955035309bc8b0a1d757b99b05436eb8874",
+          "linux/arm64": "sha256:cbe2b117e0a384de21f4ce08b1797c9ca7371a9141957030ad77ed361d8c32ae"
+        }
+      },
+      "conclusion": "success"
+    },
+    {
+      "repository": "kubeauto-ext-images-dockerfile",
+      "run_id": 44748605181,
+      "url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/44748605181",
+      "source_sha": "e0d38051c1efd1225e244ca722318106cd16f60e",
+      "mode": "selected",
+      "image": "brinnatt/harbor-offline:v2.16.0",
+      "identity": {
+        "digest": "sha256:0af86c1bd10bd790282cbc7ed69df2339aa10c31a3b61c6eec9906dc30458eae",
+        "platforms": {
+          "linux/amd64": "sha256:9c22c67a6d04bf4cd59ec3376047035b58dade0dc295de0fe31917e9736b94df",
+          "linux/arm64": "sha256:3361d0386cf37f35983681f01766deda5d8205e42b3a62de8204864e906f056e"
+        }
+      },
+      "conclusion": "success"
+    },
+    {
+      "repository": "kubeauto-ext-images-dockerfile",
+      "run_id": 44758078816,
+      "run_attempt": 2,
+      "url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/44758078816",
+      "source_sha": "42ec7a2f736165b638656d6a7c4af016bab2da56",
+      "mode": "selected",
+      "image": "brinnatt/harbor-upgrade-bridge-amd64:v2.14.6",
+      "identity": {
+        "digest": "sha256:5286c81be76027e96d5cd3f2c87732c7c04f1acc86c7e1bcedf453861294053e",
+        "platforms": {
+          "linux/amd64": "sha256:b977aa43269e1baef22ab0a4c3ad76184058f242a6570a665140bfe30797b7de",
+          "linux/arm64": "sha256:6cfb8a05ff1e10616b29f175a9a3817832fd5e55066e210283dfdc47436866b9"
+        }
+      },
+      "conclusion": "success",
+      "payload_boundary": "Official Harbor v2.14.6 AMD64 offline installer only; both wrapper platforms carry the same AMD64 payload.",
+      "prior_failure": {
+        "attempt": 1,
+        "classification": "registry-transfer",
+        "reason": "TLS handshake timeout copying built stage to TalkEdu",
+        "recovery": "same-run failed-job retry reused the staged build"
+      }
+    }
+  ],
+  "prior_failure": {
+    "run_id": 44745623195,
+    "classification": "registry-transfer",
+    "result": "cancelled after 38-minute silent push; unchanged-source selected retry succeeded",
+    "runtime_inputs_changed": false
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/publication/14635213392.zip",
+      "sha256": "b35cbea16f68d3dbaa6c92dcbcb732948f31fef465b80b5c5b490190a7bc8bde",
+      "bytes": 6098
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/publication/44752039815-plan.json",
+      "sha256": "5135fe09412c74bbfe804c4ee8916c5a2852cb3f30c73f2b735497e01d94ff94",
+      "bytes": 1422
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/publication/44752039815-release.log",
+      "sha256": "14b692ccabc24b27eb33b551d42dd402ed6f49c5b6351370e74fdf5c2dbf3216",
+      "bytes": 27385
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/publication/14635387005.zip",
+      "sha256": "ef5cd20de3bc574f296d8599763015b7ec6f69629e95609d897e74c102c8730b",
+      "bytes": 3878
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/publication/44751236698-2e2b2c8467564c769cdfcfac7ee1da2e44f87d1095491cc0edc98442c06964b4.json",
+      "sha256": "91867f1f55506229287f04fb154791ac4e76408ae9f0f4a0539078ec9a9c7755",
+      "bytes": 524
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/publication/44751236698-release-0.log",
+      "sha256": "19358b723644e3152b989100ecf0030d1cff11e364912c20a39c90f734c290b4",
+      "bytes": 11571
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/publication/14633419363.zip",
+      "sha256": "7d69d360d4e13fb648da743a7c20c4aeb789fea5b43af290dc3a2e7e4344823c",
+      "bytes": 3436
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/publication/harbor2160-release.log",
+      "sha256": "3fdbbf7f2ccfffc553aa957174b683a6cbe0f7f350218a0bc3aa83f771a5a7f1",
+      "bytes": 11200
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/publication/14639893938.zip",
+      "sha256": "8c00536a9cb52b49ac2c188bbf730cd964701b6c395440a259acb5f9798b3574",
+      "bytes": 2081
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/publication/14639646995.zip",
+      "sha256": "83da19ae985767784c95dfd881d0b60e46dc53d3b5e52368135f5fb4c1673fb9",
+      "bytes": 488
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/publication/14639113107.zip",
+      "sha256": "5ebbc0277189c9b7c2a5fd482a90256f01fb2761d89b8ee2a43b0dd62be04025",
+      "bytes": 2716
+    }
+  ]
+}

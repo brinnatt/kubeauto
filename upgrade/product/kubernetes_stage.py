@@ -13,7 +13,7 @@ from upgrade.product.kubernetes_preflight import NODE_NAME, Refused, endpoint, m
 
 
 SOURCE, TARGET = 'v1.33.6', 'v1.34.13'
-TRANSITIONS = {(SOURCE, TARGET), ('v1.34.13', 'v1.35.10')}
+TRANSITIONS = {(SOURCE, TARGET), ('v1.34.13', 'v1.35.10'), ('v1.35.10', 'v1.36.6')}
 CONTROL = 'kubernetes/control-plane'
 PRODUCT = Path(__file__).parent
 

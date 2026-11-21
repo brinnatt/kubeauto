@@ -1,0 +1,350 @@
+{
+  "schema_version": 1,
+  "source_commit": "de3fa136ac3737f036f1f03d1094ab5fbb5598d0",
+  "source_matrix_status": {
+    "pass": 15,
+    "total": 15,
+    "pending_or_fail": 0,
+    "fail": 0,
+    "completed_groups": 8,
+    "total_groups": 8,
+    "groups": [
+      {
+        "id": "U0",
+        "name": "源基线与官方组合"
+      },
+      {
+        "id": "U1",
+        "name": "制品与本地合同"
+      },
+      {
+        "id": "U2",
+        "name": "受控迁移"
+      },
+      {
+        "id": "U3",
+        "name": "目标平台集成"
+      },
+      {
+        "id": "U4",
+        "name": "恢复"
+      },
+      {
+        "id": "U5",
+        "name": "新建安装"
+      },
+      {
+        "id": "U6",
+        "name": "文档交付"
+      },
+      {
+        "id": "U7",
+        "name": "最终验收"
+      }
+    ],
+    "cases": [
+      {
+        "id": "UPG-01",
+        "group": "U0",
+        "desc": "已GA源基线的交付与证据身份关联",
+        "status": "pass"
+      },
+      {
+        "id": "UPG-02",
+        "group": "U0",
+        "desc": "官方版本搭配、过渡路径及维护边界",
+        "status": "pass"
+      },
+      {
+        "id": "UPG-03",
+        "group": "U1",
+        "desc": "最小制品集合与双端双架构准入",
+        "status": "pass"
+      },
+      {
+        "id": "UPG-04",
+        "group": "U1",
+        "desc": "升级门禁、产品与六仓静态合同",
+        "status": "pass"
+      },
+      {
+        "id": "UPG-05",
+        "group": "U2",
+        "desc": "源健康、恢复点、资源租约与变更前拒绝",
+        "status": "pass"
+      },
+      {
+        "id": "UPG-06",
+        "group": "U2",
+        "desc": "HA 控制面逐 minor 与混合阶段顺序",
+        "status": "pass"
+      },
+      {
+        "id": "UPG-07",
+        "group": "U2",
+        "desc": "逐节点 drain、运行时及调度恢复",
+        "status": "pass"
+      },
+      {
+        "id": "UPG-08",
+        "group": "U3",
+        "desc": "各支持网络、DNS 与 Service 连续性",
+        "status": "pass"
+      },
+      {
+        "id": "UPG-09",
+        "group": "U3",
+        "desc": "持久存储、CSI 与快照数据保持",
+        "status": "pass"
+      },
+      {
+        "id": "UPG-10",
+        "group": "U3",
+        "desc": "中间件与共享控制器的目标平台集成",
+        "status": "pass"
+      },
+      {
+        "id": "UPG-11",
+        "group": "U3",
+        "desc": "安全、入口、指标与日志目标接口",
+        "status": "pass"
+      },
+      {
+        "id": "UPG-12",
+        "group": "U4",
+        "desc": "升级中断、限定恢复与不可逆边界",
+        "status": "pass"
+      },
+      {
+        "id": "UPG-13",
+        "group": "U5",
+        "desc": "目标干净新建安装与幂等",
+        "status": "pass"
+      },
+      {
+        "id": "UPG-14",
+        "group": "U6",
+        "desc": "客户升级步骤、来源覆盖与交付身份",
+        "status": "pass"
+      },
+      {
+        "id": "UPG-15",
+        "group": "U7",
+        "desc": "下一跳最终干净完整范围验收",
+        "status": "pass"
+      }
+    ]
+  },
+  "source_validation": "frozen Git inputs plus unchanged raw archives checked using source matrix; current target checkout is not the historical validation root",
+  "copies": [
+    {
+      "source_path": "upgrade/v1.35.10/release.yaml",
+      "copy_path": "upgrade/v1.36.6/evidence/source/upgrade/v1.35.10/release.yaml",
+      "sha256": "f69e9e88afa6a7cdc333240d62873ed120c7db981e20a6bf3cd68bbc0bf77625",
+      "bytes": 88719,
+      "copy_verified": true
+    },
+    {
+      "source_path": "upgrade/v1.35.10/test-matrix.yaml",
+      "copy_path": "upgrade/v1.36.6/evidence/source/upgrade/v1.35.10/test-matrix.yaml",
+      "sha256": "a47ba8ec8e0afe70cf21febd34c681861840004830cae655bf2bd9bfd87f1d26",
+      "bytes": 25927,
+      "copy_verified": true
+    },
+    {
+      "source_path": "upgrade/v1.35.10/maintenance-baseline.yaml",
+      "copy_path": "upgrade/v1.36.6/evidence/source/upgrade/v1.35.10/maintenance-baseline.yaml",
+      "sha256": "af301c489a6a9f6ee7e9242bf18f115d74342b4b28720db5a4267ce58a3f92fc",
+      "bytes": 9674,
+      "copy_verified": true
+    },
+    {
+      "source_path": "upgrade/v1.35.10/artifact-pins.json",
+      "copy_path": "upgrade/v1.36.6/evidence/source/upgrade/v1.35.10/artifact-pins.json",
+      "sha256": "6ceaf94c0fb6657a66017ff1563b9743c754ff1c7282b36242ade029b9a25047",
+      "bytes": 3071,
+      "copy_verified": true
+    },
+    {
+      "source_path": "upgrade/v1.35.10/evidence/UPG-01.json",
+      "copy_path": "upgrade/v1.36.6/evidence/source/upgrade/v1.35.10/evidence/UPG-01.json",
+      "sha256": "25bcb7a5b86a751a33798898bfad2cf960d8363999460b376f7ed51dab396e55",
+      "bytes": 1965,
+      "copy_verified": true
+    },
+    {
+      "source_path": "upgrade/v1.35.10/evidence/UPG-02.json",
+      "copy_path": "upgrade/v1.36.6/evidence/source/upgrade/v1.35.10/evidence/UPG-02.json",
+      "sha256": "2822ef10928d0602ed0e263ef559d19e3bf62f3f536dad8df411afe7f3a3d771",
+      "bytes": 62594,
+      "copy_verified": true
+    },
+    {
+      "source_path": "upgrade/v1.35.10/evidence/maintenance/UPG-03.json",
+      "copy_path": "upgrade/v1.36.6/evidence/source/upgrade/v1.35.10/evidence/maintenance/UPG-03.json",
+      "sha256": "fe37b20caad2b38f72bb0d1f2f50f2391a35e4220f77dc28291c45347aa8fadd",
+      "bytes": 1859,
+      "copy_verified": true
+    },
+    {
+      "source_path": "upgrade/v1.35.10/evidence/maintenance/UPG-04.json",
+      "copy_path": "upgrade/v1.36.6/evidence/source/upgrade/v1.35.10/evidence/maintenance/UPG-04.json",
+      "sha256": "cce33dcdeef39b594ff797ff1536037e4c0519164d74b36bb9fbac71a7ff36a2",
+      "bytes": 8475,
+      "copy_verified": true
+    },
+    {
+      "source_path": "upgrade/v1.35.10/evidence/UPG-05.json",
+      "copy_path": "upgrade/v1.36.6/evidence/source/upgrade/v1.35.10/evidence/UPG-05.json",
+      "sha256": "142b0cea77d039c3f7c978042fbe51c9568e0a294a0cacfe7d5719ce74e2f708",
+      "bytes": 14658,
+      "copy_verified": true
+    },
+    {
+      "source_path": "upgrade/v1.35.10/evidence/UPG-06.json",
+      "copy_path": "upgrade/v1.36.6/evidence/source/upgrade/v1.35.10/evidence/UPG-06.json",
+      "sha256": "27e9215936f47d1e3ad0d33ceb4d1c0b2ca5ac2963541390d1f5996a9c486352",
+      "bytes": 10788,
+      "copy_verified": true
+    },
+    {
+      "source_path": "upgrade/v1.35.10/evidence/UPG-07.json",
+      "copy_path": "upgrade/v1.36.6/evidence/source/upgrade/v1.35.10/evidence/UPG-07.json",
+      "sha256": "1ebf1df4fa74408c03544174b811b7a213f209780256f2637d57ddf8fe632a3a",
+      "bytes": 11027,
+      "copy_verified": true
+    },
+    {
+      "source_path": "upgrade/v1.35.10/evidence/UPG-08.json",
+      "copy_path": "upgrade/v1.36.6/evidence/source/upgrade/v1.35.10/evidence/UPG-08.json",
+      "sha256": "3f5bc1e04000733c2de91c8b8c367f0cdbfbac91db1a854c6fb8251ecb7148af",
+      "bytes": 11310,
+      "copy_verified": true
+    },
+    {
+      "source_path": "upgrade/v1.35.10/evidence/UPG-09.json",
+      "copy_path": "upgrade/v1.36.6/evidence/source/upgrade/v1.35.10/evidence/UPG-09.json",
+      "sha256": "be616966a1aa7b86ec7d867162df5674d13ee70d718325efd75020bde8bb0fbe",
+      "bytes": 11488,
+      "copy_verified": true
+    },
+    {
+      "source_path": "upgrade/v1.35.10/evidence/UPG-10.json",
+      "copy_path": "upgrade/v1.36.6/evidence/source/upgrade/v1.35.10/evidence/UPG-10.json",
+      "sha256": "b0258b75fbd5a6ba1a99f427f714ad97f2d30e09fcab4d98e26d71f809b7840d",
+      "bytes": 11963,
+      "copy_verified": true
+    },
+    {
+      "source_path": "upgrade/v1.35.10/evidence/UPG-11.json",
+      "copy_path": "upgrade/v1.36.6/evidence/source/upgrade/v1.35.10/evidence/UPG-11.json",
+      "sha256": "73346a89268575ab7677ad2692c9abefc6c29e9b124145a355a503cdd8e1df91",
+      "bytes": 11235,
+      "copy_verified": true
+    },
+    {
+      "source_path": "upgrade/v1.35.10/evidence/UPG-12.json",
+      "copy_path": "upgrade/v1.36.6/evidence/source/upgrade/v1.35.10/evidence/UPG-12.json",
+      "sha256": "4522b1e7bdc0ba5edfdd2290184ac42fb291e4c7a92f41c19a06c077a60c5d81",
+      "bytes": 10948,
+      "copy_verified": true
+    },
+    {
+      "source_path": "upgrade/v1.35.10/evidence/UPG-13.json",
+      "copy_path": "upgrade/v1.36.6/evidence/source/upgrade/v1.35.10/evidence/UPG-13.json",
+      "sha256": "7a2e0de9ae4a2e349cc3addb4af5031cb1902a56e487cd135391c26ab37a7079",
+      "bytes": 7992,
+      "copy_verified": true
+    },
+    {
+      "source_path": "upgrade/v1.35.10/evidence/maintenance/UPG-14.json",
+      "copy_path": "upgrade/v1.36.6/evidence/source/upgrade/v1.35.10/evidence/maintenance/UPG-14.json",
+      "sha256": "817e41aee1623a004859bf0e184f8a4cb554964bb4788b9898d93f53efd39e94",
+      "bytes": 4149,
+      "copy_verified": true
+    },
+    {
+      "source_path": "upgrade/v1.35.10/evidence/UPG-15.json",
+      "copy_path": "upgrade/v1.36.6/evidence/source/upgrade/v1.35.10/evidence/UPG-15.json",
+      "sha256": "31cfdc196ab3ff30923819683ed5530a20fb346ebb11b7a85ba45b793caba8ac",
+      "bytes": 32896,
+      "copy_verified": true
+    }
+  ],
+  "repositories": [
+    {
+      "repository": "kubeauto",
+      "source_branch": "v1.35.10",
+      "source_commit": "de3fa136ac3737f036f1f03d1094ab5fbb5598d0",
+      "maintenance_source_commit": "048f5e9f6b20e98c3d7cf326c4ea4615365e9e96",
+      "record_only_delta": [
+        "upgrade/v1.35.10/evidence/maintenance/UPG-03.json",
+        "upgrade/v1.35.10/evidence/maintenance/UPG-04.json",
+        "upgrade/v1.35.10/evidence/maintenance/UPG-14.json",
+        "upgrade/v1.35.10/evidence/maintenance/consumer-snapshot.json",
+        "upgrade/v1.35.10/evidence/maintenance/publication-supervision-20261118.json",
+        "upgrade/v1.35.10/evidence/maintenance/qualification.json",
+        "upgrade/v1.35.10/evidence/maintenance/starrocks-compose-3.5.7-be.json",
+        "upgrade/v1.35.10/evidence/maintenance/starrocks-compose-3.5.7-cn.json",
+        "upgrade/v1.35.10/evidence/maintenance/starrocks-compose-3.5.7-full.json",
+        "upgrade/v1.35.10/evidence/maintenance/starrocks-compose-3.5.7-preflight.json",
+        "upgrade/v1.35.10/maintenance-baseline.yaml",
+        "upgrade/v1.35.10/test-matrix.yaml"
+      ],
+      "branch": "dev",
+      "remote": "de3fa136ac3737f036f1f03d1094ab5fbb5598d0\trefs/heads/dev\nde3fa136ac3737f036f1f03d1094ab5fbb5598d0\trefs/heads/v1.35.10",
+      "refs_before": "de3fa136ac3737f036f1f03d1094ab5fbb5598d0 refs/heads/dev\ndd13f79e0c86689a33fd708edf1b877d185a1eba refs/heads/master\n00a5ca0dccf47cb2f806fe8b108375d7ad60aa17 refs/heads/v1.34.13\nde3fa136ac3737f036f1f03d1094ab5fbb5598d0 refs/heads/v1.35.10\ndd13f79e0c86689a33fd708edf1b877d185a1eba refs/remotes/origin/HEAD\nde3fa136ac3737f036f1f03d1094ab5fbb5598d0 refs/remotes/origin/dev\n6ff65a822fc37e265464246746ecbc0d7403c145 refs/remotes/origin/kylinv10\ndd13f79e0c86689a33fd708edf1b877d185a1eba refs/remotes/origin/master\n00a5ca0dccf47cb2f806fe8b108375d7ad60aa17 refs/remotes/origin/v1.34.13\nde3fa136ac3737f036f1f03d1094ab5fbb5598d0 refs/remotes/origin/v1.35.10\n1bdd917ebf94457f43277332ddeebb26d6b9cee7 refs/tags/v0.1.1\naa2b2f968994ea65903f52564a6753ef47535a18 refs/tags/v0.1.2\nbca0b8c0c3f9ba68936b5a68d69d2e4631056df9 refs/tags/v0.1.3\nfcefb63720433a09086ca868a9624a9c4fbfa372 refs/tags/v0.1.4\ndba5cb128811b47c98672176c95220036494ceb8 refs/tags/v0.1.5\ndef9f379a25cd3bb96af25d463430952127488b9 refs/tags/v0.1.6\n0c3f23af2ab3d1ae571a031223f9d1f43b607653 refs/tags/v0.1.7\n940c9020144a88b370cba36793a4d7fad6a347ab refs/tags/v0.1.8"
+    },
+    {
+      "repository": "kubeauto-dockerfile",
+      "source_branch": "v1.35.10",
+      "source_commit": "3fc520628a8b94e9926133b32b5d19d592359078",
+      "maintenance_source_commit": "3fc520628a8b94e9926133b32b5d19d592359078",
+      "record_only_delta": [],
+      "branch": "dev",
+      "remote": "3fc520628a8b94e9926133b32b5d19d592359078\trefs/heads/dev\n3fc520628a8b94e9926133b32b5d19d592359078\trefs/heads/v1.35.10",
+      "refs_before": "3fc520628a8b94e9926133b32b5d19d592359078 refs/heads/dev\na77be14a4e3a04c65a024bd1eae64c6cfa650626 refs/heads/main\n13182a9db73362b81a5f9783df794f95954bb00c refs/heads/v1.34.13\n3fc520628a8b94e9926133b32b5d19d592359078 refs/heads/v1.35.10\na77be14a4e3a04c65a024bd1eae64c6cfa650626 refs/remotes/origin/HEAD\n3fc520628a8b94e9926133b32b5d19d592359078 refs/remotes/origin/dev\na77be14a4e3a04c65a024bd1eae64c6cfa650626 refs/remotes/origin/main\n13182a9db73362b81a5f9783df794f95954bb00c refs/remotes/origin/v1.34.13\n3fc520628a8b94e9926133b32b5d19d592359078 refs/remotes/origin/v1.35.10\n0118b5dba593d57af44669256b6152233b0c0cd7 refs/tags/verify-artifacts-modes-20261119-1"
+    },
+    {
+      "repository": "kubeauto-k8s-bin-dockerfile",
+      "source_branch": "v1.35.10",
+      "source_commit": "b2ef19130a32e75abf0bfef74e03483aa8aeed9e",
+      "maintenance_source_commit": "b2ef19130a32e75abf0bfef74e03483aa8aeed9e",
+      "record_only_delta": [],
+      "branch": "dev",
+      "remote": "b2ef19130a32e75abf0bfef74e03483aa8aeed9e\trefs/heads/dev\nb2ef19130a32e75abf0bfef74e03483aa8aeed9e\trefs/heads/v1.35.10",
+      "refs_before": "b2ef19130a32e75abf0bfef74e03483aa8aeed9e refs/heads/dev\n534bdc4c7517e1abbdde0731cf932e72892928f4 refs/heads/main\n221a5f86cd25f97404b854fdbdcd75653fb6e835 refs/heads/v1.34.13\nb2ef19130a32e75abf0bfef74e03483aa8aeed9e refs/heads/v1.35.10\n534bdc4c7517e1abbdde0731cf932e72892928f4 refs/remotes/origin/HEAD\nab8b561529b5569dd921417fffc38c185ad2dc71 refs/remotes/origin/dependabot/github_actions/actions/checkout-6\nb2ef19130a32e75abf0bfef74e03483aa8aeed9e refs/remotes/origin/dev\n534bdc4c7517e1abbdde0731cf932e72892928f4 refs/remotes/origin/main\n221a5f86cd25f97404b854fdbdcd75653fb6e835 refs/remotes/origin/v1.34.13\nb2ef19130a32e75abf0bfef74e03483aa8aeed9e refs/remotes/origin/v1.35.10\n3fdad974497cb5abd944283dc44436d0e0523b1e refs/tags/verify-artifacts-modes-20261119-1\n551046b8ee951567f9c17d4569c32811cadb2cf0 refs/tags/verify-k8s-generic-20261119-1\nb598154ff62876c7df1a25b9f17458f4ac213727 refs/tags/verify-k8s-generic-20261119-2"
+    },
+    {
+      "repository": "kubeauto-ext-bin-dockerfile",
+      "source_branch": "v1.35.10",
+      "source_commit": "312d41f7c4adba9a86647ad4bc586543ec5d1e9f",
+      "maintenance_source_commit": "312d41f7c4adba9a86647ad4bc586543ec5d1e9f",
+      "record_only_delta": [],
+      "branch": "dev",
+      "remote": "312d41f7c4adba9a86647ad4bc586543ec5d1e9f\trefs/heads/dev\n312d41f7c4adba9a86647ad4bc586543ec5d1e9f\trefs/heads/v1.35.10",
+      "refs_before": "312d41f7c4adba9a86647ad4bc586543ec5d1e9f refs/heads/dev\n74bd8707c844b3b5154ca31df94beb06788d1420 refs/heads/main\n958c034e29c35c5dd44241bdc70160e1ae4eed81 refs/heads/v1.34.13\n312d41f7c4adba9a86647ad4bc586543ec5d1e9f refs/heads/v1.35.10\n74bd8707c844b3b5154ca31df94beb06788d1420 refs/remotes/origin/HEAD\n57e6e5684a6bd003efdf20111c28daee7e24ae5c refs/remotes/origin/dependabot/github_actions/actions/checkout-6\n312d41f7c4adba9a86647ad4bc586543ec5d1e9f refs/remotes/origin/dev\n74bd8707c844b3b5154ca31df94beb06788d1420 refs/remotes/origin/main\n958c034e29c35c5dd44241bdc70160e1ae4eed81 refs/remotes/origin/v1.34.13\n312d41f7c4adba9a86647ad4bc586543ec5d1e9f refs/remotes/origin/v1.35.10\n6c02a19caa4bf6e318cfba082374704828f2cdaf refs/tags/1.13.1\n052363ad106b02008d6c9e53371c6fdf541cefec refs/tags/1.14.0\nb5dce31c253a7c54b104d3c477151890e6c804dc refs/tags/1.15.0\ndac3992b9130ce13b7bdc4562a4efab898392322 refs/tags/1.16.0\n276b6b73a2a45424cf6d10b4805b7fa5f2cb5c77 refs/tags/1.17.1\nc299df1b8ecbc47d38af462840aac6ca5c031db5 refs/tags/verify-artifacts-modes-20261119-1\n9de335ca1c40bddbdae858884cdc02994324ca2e refs/tags/verify-artifacts-modes-20261119-2\n696ac8e985068b496a241cba38f7b9c1b77ad18a refs/tags/verify-pack-generic-20261119-1\ne35a1e1d6381c17d027470893067b312ad4f6ac3 refs/tags/verify-pack-generic-20261119-2"
+    },
+    {
+      "repository": "kubeauto-ext-bin-sp1-dockerfile",
+      "source_branch": "v1.35.10",
+      "source_commit": "cd439d9cb0f6f0b8701b802ac3c37fd4ac420b79",
+      "maintenance_source_commit": "cd439d9cb0f6f0b8701b802ac3c37fd4ac420b79",
+      "record_only_delta": [],
+      "branch": "dev",
+      "remote": "cd439d9cb0f6f0b8701b802ac3c37fd4ac420b79\trefs/heads/dev\ncd439d9cb0f6f0b8701b802ac3c37fd4ac420b79\trefs/heads/v1.35.10",
+      "refs_before": "cd439d9cb0f6f0b8701b802ac3c37fd4ac420b79 refs/heads/dev\n340552fcc0c83eb4f980eb4c54dd90eb593483fd refs/heads/main\nabdda8cbcd23a2bae24acc6e226f83b56a348aad refs/heads/v1.34.13\ncd439d9cb0f6f0b8701b802ac3c37fd4ac420b79 refs/heads/v1.35.10\n340552fcc0c83eb4f980eb4c54dd90eb593483fd refs/remotes/origin/HEAD\n34b3bc88c73aebe28ac51097a40a877e1f9f22f0 refs/remotes/origin/dependabot/github_actions/actions/checkout-5\neea2f157ec49eeac4c1121a9072fc50380483828 refs/remotes/origin/dependabot/github_actions/docker/login-action-3\nca1a72986562deecc0df84540f8bc0dd393b41e2 refs/remotes/origin/dependabot/github_actions/docker/metadata-action-5\n2c5d1bda9d44483a981541b2d58fe4ddf64ebd74 refs/remotes/origin/dependabot/github_actions/docker/setup-buildx-action-3\n6ebb5d019aff72bb9b90a49869f4b548765f2596 refs/remotes/origin/dependabot/github_actions/docker/setup-qemu-action-3\ncd439d9cb0f6f0b8701b802ac3c37fd4ac420b79 refs/remotes/origin/dev\n340552fcc0c83eb4f980eb4c54dd90eb593483fd refs/remotes/origin/main\nabdda8cbcd23a2bae24acc6e226f83b56a348aad refs/remotes/origin/v1.34.13\ncd439d9cb0f6f0b8701b802ac3c37fd4ac420b79 refs/remotes/origin/v1.35.10\nedb9849edba949779ed4d1bde88ca99f371bc8c2 refs/tags/1.3.1\n3287f7a17b02e6ce5a65b9550075d7f727112053 refs/tags/verify-artifacts-modes-20261119-1\n20789f23b209a4d297f83fdaadcc1f2fcb3f6bc1 refs/tags/verify-artifacts-modes-20261119-2\n17b7ff1b1fde5ed4e517d090a01b8a8f98c0d645 refs/tags/verify-pack-generic-20261119-1\nd657231ddba947fd0076072ef79e2bb633445299 refs/tags/verify-pack-generic-20261119-2"
+    },
+    {
+      "repository": "kubeauto-ext-images-dockerfile",
+      "source_branch": "v1.35.10",
+      "source_commit": "b3b35856cbe6cdc8b9cf4ee4c766cbe75477e149",
+      "maintenance_source_commit": "b3b35856cbe6cdc8b9cf4ee4c766cbe75477e149",
+      "record_only_delta": [],
+      "branch": "dev",
+      "remote": "b3b35856cbe6cdc8b9cf4ee4c766cbe75477e149\trefs/heads/dev\nb3b35856cbe6cdc8b9cf4ee4c766cbe75477e149\trefs/heads/v1.35.10",
+      "refs_before": "b3b35856cbe6cdc8b9cf4ee4c766cbe75477e149 refs/heads/dev\n074c8010810302d7fa3346cff996cbfe7bc3f7a1 refs/heads/main\n0699643de5706182ac63263165706b5298b19c1b refs/heads/v1.34.13\nb3b35856cbe6cdc8b9cf4ee4c766cbe75477e149 refs/heads/v1.35.10\n074c8010810302d7fa3346cff996cbfe7bc3f7a1 refs/remotes/origin/HEAD\n33a447f681120f7029e6e6f2839e9cec6dd384ba refs/remotes/origin/dependabot/github_actions/actions/checkout-6\nb3b35856cbe6cdc8b9cf4ee4c766cbe75477e149 refs/remotes/origin/dev\n074c8010810302d7fa3346cff996cbfe7bc3f7a1 refs/remotes/origin/main\n0699643de5706182ac63263165706b5298b19c1b refs/remotes/origin/v1.34.13\nb3b35856cbe6cdc8b9cf4ee4c766cbe75477e149 refs/remotes/origin/v1.35.10\nb1e82fd2d5c1825abc37bd7e289dbfd9eadd227e refs/tags/images-starrocks-compose-20261118.1\neeb0b592afe3d6604d361e72cc868f81016ed8c9 refs/tags/images-starrocks-compose-20261118.2\nc0cfef8eface40423f4701656ace1c5f49322fae refs/tags/images-starrocks-compose-20261118.3\nc73f6341ca4c0de589bcc80f3517cc5bf47727ad refs/tags/images-starrocks-compose-20261118.4\n0f82b60c4faa64e1cc4e4f22fcbd9353eecf5dcd refs/tags/images-starrocks-compose-20261118.5\n511e11168fa481e5cd312b97f229feb79d996e8d refs/tags/images-supervision-20261118.1\ne8eb5db18106bcb148494c00f25b6a34894dc75e refs/tags/images-supervision-20261118.2"
+    }
+  ],
+  "raw_boundary": "本副本清单用于源身份；未复制全部原始运行目录，原日志保留正式身份。实际复用各目标断言另核依赖，不将源校验结果签为目标运行。"
+}

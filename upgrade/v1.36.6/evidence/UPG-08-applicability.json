@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "case_id": "UPG-08",
+  "component_boundaries": [
+    {
+      "component_id": "calico",
+      "target_pins": {
+        "v_calico": "v3.32.4",
+        "calicoctl": "v3.32.4",
+        "cniVersion": "1.0.0",
+        "datastore": "etcdv3",
+        "dataplane": "iptables"
+      },
+      "rationale": "固定3.32.4，3.32官方测试覆盖1.34/1.35/1.36且内核至少5.10；保留直接etcd/iptables、UID/Secret/Pool/BGP/策略，不重演3.28→3.31→3.32旧边，不切换数据面。",
+      "source_ids": [
+        "CALICO-332-K8S136-COMPAT",
+        "CALICO-332-HOST-PLATFORM"
+      ]
+    },
+    {
+      "component_id": "flannel",
+      "target_pins": {
+        "v_flannel": "v0.28.10",
+        "v_flannel_cni": "v1.9.1-flannel3",
+        "cniVersion": "1.0.0",
+        "healthz_address": "127.0.0.1:8081"
+      },
+      "rationale": "固定0.28.10及CNI1.9.1-flannel3，官方仅声明Kubernetes1.17+，非1.36逐版认证。已交付网络配置不变，按稳定API/CRI契约及最小目标接口验证覆盖平台差异，不重复原网络深测。",
+      "source_ids": [
+        "FLANNEL-02810-FIRST-HOP",
+        "FLANNEL-02810-MANIFEST",
+        "FLANNEL-CNI-191-MECHANISM"
+      ]
+    },
+    {
+      "component_id": "cilium",
+      "target_pins": {
+        "v_cilium": "v1.20.4",
+        "v_cilium_hubble_ui": "v0.13.6",
+        "upgradeCompatibility": "1.19",
+        "vendored_charts_sha256": {
+          "roles/cilium/files/cilium-1.19.10.tgz": "b7252afca3413a33e2b987c954e52441e96979e411e1495ecc6aefe8cd258863",
+          "roles/cilium/files/cilium-1.20.4.tgz": "505abff8385811df1a949776fc42e9f10697989a332acc86d6e8933efcb855ed"
+        }
+      },
+      "rationale": "精确1.20.4官方e2e列1.33–1.36，保留已交付Chart、CRD和内核/数据面前置，不为平台升级增加1.20.5或重复旧1.19桥接。",
+      "source_ids": [
+        "CILIUM-1204-K8S136-COMPAT",
+        "CILIUM-1204-REQUIRED",
+        "CILIUM-1204-VALUES"
+      ]
+    },
+    {
+      "component_id": "kube-router",
+      "target_pins": {
+        "v_kuberouter": "v2.12.0",
+        "cni_config": "v1",
+        "iptables_mode": "explicit-project-default"
+      },
+      "rationale": "保留2.12.0和项目固定安全/iptables配置；没有1.36逐版上游表，依据官方稳定Core/Networking API和最低要求，明确非上游认证；只补目标接口缺口，不重演旧组件升级。",
+      "source_ids": [
+        "KUBEROUTER-212-GUIDE",
+        "KUBEROUTER-212-MANIFEST",
+        "KUBEROUTER-212-INFORMERS",
+        "KUBEROUTER-212-CNI-CONFIG"
+      ]
+    },
+    {
+      "component_id": "kube-ovn",
+      "target_pins": {
+        "v_kubeovn": "v1.17.1",
+        "chart_app_version": "1.17.1",
+        "kube_minimum": "v1.29.0"
+      },
+      "rationale": "保留1.17.1；官方最低Kubernetes1.29，未提供1.36逐版表。保留原OVN数据、CRD与配置，按稳定API/实际网络契约最小验证，不能套用文档中的旧kubelet network-plugin flags。",
+      "source_ids": [
+        "KUBEOVN-117-REQUIREMENTS",
+        "KUBEOVN-1171-CHART",
+        "KUBEOVN-117-MAINTENANCE"
+      ]
+    },
+    {
+      "component_id": "dns",
+      "target_pins": {
+        "v_coredns": "1.15.0",
+        "v_dnsnodecache": "1.26.8",
+        "nodecache_embedded_coredns": "1.13.2"
+      },
+      "rationale": "CoreDNS1.15.0、nodecache1.26.8及嵌入CoreDNS1.13.2均不变；核对现有稳定Core/Discovery接口、Service和EndpointSlice、实际跨节点DNS及缓存，不因K8s minor重演DNS引擎升级。",
+      "source_ids": [
+        "COREDNS-115-KUBERNETES",
+        "COREDNS-115-CONTROLLER",
+        "DNS-1268-VERSION-POLICY",
+        "DNS-1268-DEPS"
+      ]
+    }
+  ],
+  "source_identity": "upgrade/v1.36.6/evidence/source/identity.json",
+  "input_review": "upgrade/v1.36.6/evidence/retained-network-storage-inputs.json",
+  "new_live": {
+    "run_id": "v1366-qualify-20261121a",
+    "phase": "nodes",
+    "evidence": "upgrade/v1.36.6/evidence/UPG-07.json"
+  },
+  "not_new_measurement": "未重跑Ceph/Longhorn/其它CNI的业务深测、性能/故障/灾备；原结果按原版本硬件场景保留，不外推1.36性能或SLA。"
+}

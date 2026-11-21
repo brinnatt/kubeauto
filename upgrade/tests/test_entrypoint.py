@@ -3,7 +3,8 @@ import importlib.util
 from pathlib import Path
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, Mock
+from types import SimpleNamespace
 
 import yaml
 
@@ -15,6 +16,57 @@ SPEC.loader.exec_module(entrypoint)
 
 
 class EntryPointContracts(unittest.TestCase):
+    def test_harbor_static_refusal_precedes_all_remote_or_setup_callbacks(self):
+        manager=Mock()
+        with patch.object(entrypoint,'_admit',side_effect=ValueError('pending prerequisites')):
+            with self.assertRaisesRegex(ValueError,'pending prerequisites'):
+                entrypoint.run_harbor_operation(manager,'customer',operation='backup',
+                    backup_directory='/recovery/harbor',ca_file='/etc/harbor/ca.pem')
+        manager._validate_for_setup.assert_not_called()
+        manager._run_playbook.assert_not_called()
+
+    def test_harbor_recovery_uses_original_config_entry_without_kubernetes_admission(self):
+        manager=Mock();manager.clusters_dir=Path('/fixture/clusters')
+        manager._yaml_to_dict.return_value={'HARBOR_PATH':'/data/harbor','unrelated':'preserved'}
+        with patch.object(entrypoint,'_admit',side_effect=AssertionError('must not block recovery')):
+            entrypoint.run_harbor_operation(manager,'customer',operation='restore',
+                backup_directory='/recovery/original')
+        manager._validate_for_setup.assert_called_once_with('customer')
+        args=manager._run_playbook.call_args
+        self.assertEqual(args.args,('customer','upgrade/product/harbor.yml'))
+        self.assertEqual(args.kwargs['extra_vars']['UPGRADE_HARBOR_OPERATION'],'restore')
+        self.assertEqual(args.kwargs['extra_vars']['unrelated'],'preserved')
+        self.assertNotIn('93',str(args))
+
+    def test_harbor_cli_rejects_ambiguous_kubernetes_or_path_arguments(self):
+        from controller.cluster.cli import KubeautoCLI
+        for values in [dict(harbor='backup',prepare=True,continuity='ledger.json'),
+                       dict(harbor=None,harbor_backup_dir='/recovery/harbor')]:
+            with patch('controller.cluster.cli.ClusterManager') as manager:
+                with self.assertRaises(ValueError):
+                    KubeautoCLI._handle_upgrade(object(),SimpleNamespace(cluster='customer',**values))
+                manager.assert_not_called()
+        with patch('controller.cluster.cli.ClusterManager') as manager, \
+             patch('upgrade.product.entrypoint.run_harbor_operation') as operation:
+            KubeautoCLI._handle_upgrade(object(),SimpleNamespace(cluster='customer',harbor='restore',
+                harbor_backup_dir='/recovery/original'))
+            operation.assert_called_once_with(manager.return_value,'customer',operation='restore',
+                backup_directory='/recovery/original',ca_file=None,bridge_package=None,target_package=None,
+                transfer_directory=None)
+
+    def test_harbor_import_requires_an_explicit_transfer_and_cleanup_remains_independent(self):
+        manager=Mock();manager.clusters_dir=Path('/fixture/clusters')
+        manager._yaml_to_dict.return_value={'HARBOR_PATH':'/var/data'}
+        with self.assertRaisesRegex(ValueError,'transfer-dir'):
+            entrypoint.run_harbor_operation(manager,'target',operation='import',
+                backup_directory='/recovery/target',target_package='/input/216.tgz')
+        manager._run_playbook.assert_not_called()
+        with patch.object(entrypoint,'_admit',side_effect=AssertionError('must not block cleanup')):
+            entrypoint.run_harbor_operation(manager,'target',operation='abort-import',
+                backup_directory='/recovery/target')
+        self.assertEqual(manager._run_playbook.call_args.kwargs['extra_vars']['UPGRADE_HARBOR_OPERATION'],
+                         'abort-import')
+
     def test_pending_prerequisites_refuse_before_stage_callback(self):
         data = yaml.safe_load(entrypoint.DEFAULT_MATRIX.read_text())
         for case in data['cases']:
@@ -26,6 +78,7 @@ class EntryPointContracts(unittest.TestCase):
             yaml.safe_dump(data, matrix)
             matrix.flush()
             with patch.object(entrypoint, 'DEFAULT_MATRIX', Path(matrix.name)), \
+                 patch('upgrade.product.launcher.validate.combination_errors', return_value=[]), \
                  patch.object(entrypoint, 'run_next_hop') as coordinator:
                 with self.assertRaisesRegex(ValueError, 'required matrix prerequisites are not pass: UPG-01'):
                     entrypoint.run_minor_upgrade(object(), 'dev')

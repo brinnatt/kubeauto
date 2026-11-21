@@ -20,6 +20,8 @@ class RecordIntegrityContracts(unittest.TestCase):
         # Reject that exact mistake: obtained observations belong in sources.
         for gap in data.get('access_gaps', []):
             self.assertNotIn('obtained_content', gap)
+            self.assertNotIn('obtained_contents', gap)
+            self.assertNotIn('id', gap, 'captured source records belong in sources')
         for source in data['sources']:
             if 'obtained_content' in source or 'obtained_contents' in source:
                 copies = records.official_copies(source)

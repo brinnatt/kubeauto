@@ -1,0 +1,241 @@
+{
+  "schema_version": 1,
+  "claim": "目标干净安装实际Pod与initContainer的28项imageID，全部等于已准入AMD64子manifest digest；只读原始API快照核对，无现场重跑。",
+  "run_id": "v1366-qualify-20261121a/new-install.attempt-1",
+  "observed": [
+    {
+      "namespace": "kube-system",
+      "pod": "calico-kube-controllers-7b79b9f7d5-87z92",
+      "container": "calico-kube-controllers",
+      "image": "brinnatt/calico-kube-controllers:v3.32.4",
+      "image_id": "registry.talkschool.cn:5000/brinnatt/calico-kube-controllers@sha256:27dc7c6e418aa96a79fe4ae3e542002d4a90525b6d67aa811a356f4cbdda1fd3",
+      "expected_source_child": "sha256:27dc7c6e418aa96a79fe4ae3e542002d4a90525b6d67aa811a356f4cbdda1fd3"
+    },
+    {
+      "namespace": "kube-system",
+      "pod": "calico-node-gdj2h",
+      "container": "install-cni",
+      "image": "brinnatt/calico-cni:v3.32.4",
+      "image_id": "registry.talkschool.cn:5000/brinnatt/calico-cni@sha256:3c288beff038cd960bb685cd7240faa4c310aecbc8936d318fa664650d2485c2",
+      "expected_source_child": "sha256:3c288beff038cd960bb685cd7240faa4c310aecbc8936d318fa664650d2485c2"
+    },
+    {
+      "namespace": "kube-system",
+      "pod": "calico-node-gdj2h",
+      "container": "ebpf-bootstrap",
+      "image": "brinnatt/calico-node:v3.32.4",
+      "image_id": "registry.talkschool.cn:5000/brinnatt/calico-node@sha256:de0253a3a3eeb5d3179e0d55dd1b590efd8e51b3c5231dfd7e2bdeb1f6d498bf",
+      "expected_source_child": "sha256:de0253a3a3eeb5d3179e0d55dd1b590efd8e51b3c5231dfd7e2bdeb1f6d498bf"
+    },
+    {
+      "namespace": "kube-system",
+      "pod": "calico-node-gdj2h",
+      "container": "calico-node",
+      "image": "brinnatt/calico-node:v3.32.4",
+      "image_id": "registry.talkschool.cn:5000/brinnatt/calico-node@sha256:de0253a3a3eeb5d3179e0d55dd1b590efd8e51b3c5231dfd7e2bdeb1f6d498bf",
+      "expected_source_child": "sha256:de0253a3a3eeb5d3179e0d55dd1b590efd8e51b3c5231dfd7e2bdeb1f6d498bf"
+    },
+    {
+      "namespace": "kube-system",
+      "pod": "calico-node-kp6b6",
+      "container": "install-cni",
+      "image": "brinnatt/calico-cni:v3.32.4",
+      "image_id": "registry.talkschool.cn:5000/brinnatt/calico-cni@sha256:3c288beff038cd960bb685cd7240faa4c310aecbc8936d318fa664650d2485c2",
+      "expected_source_child": "sha256:3c288beff038cd960bb685cd7240faa4c310aecbc8936d318fa664650d2485c2"
+    },
+    {
+      "namespace": "kube-system",
+      "pod": "calico-node-kp6b6",
+      "container": "ebpf-bootstrap",
+      "image": "brinnatt/calico-node:v3.32.4",
+      "image_id": "registry.talkschool.cn:5000/brinnatt/calico-node@sha256:de0253a3a3eeb5d3179e0d55dd1b590efd8e51b3c5231dfd7e2bdeb1f6d498bf",
+      "expected_source_child": "sha256:de0253a3a3eeb5d3179e0d55dd1b590efd8e51b3c5231dfd7e2bdeb1f6d498bf"
+    },
+    {
+      "namespace": "kube-system",
+      "pod": "calico-node-kp6b6",
+      "container": "calico-node",
+      "image": "brinnatt/calico-node:v3.32.4",
+      "image_id": "registry.talkschool.cn:5000/brinnatt/calico-node@sha256:de0253a3a3eeb5d3179e0d55dd1b590efd8e51b3c5231dfd7e2bdeb1f6d498bf",
+      "expected_source_child": "sha256:de0253a3a3eeb5d3179e0d55dd1b590efd8e51b3c5231dfd7e2bdeb1f6d498bf"
+    },
+    {
+      "namespace": "kube-system",
+      "pod": "calico-node-n2klc",
+      "container": "install-cni",
+      "image": "brinnatt/calico-cni:v3.32.4",
+      "image_id": "registry.talkschool.cn:5000/brinnatt/calico-cni@sha256:3c288beff038cd960bb685cd7240faa4c310aecbc8936d318fa664650d2485c2",
+      "expected_source_child": "sha256:3c288beff038cd960bb685cd7240faa4c310aecbc8936d318fa664650d2485c2"
+    },
+    {
+      "namespace": "kube-system",
+      "pod": "calico-node-n2klc",
+      "container": "ebpf-bootstrap",
+      "image": "brinnatt/calico-node:v3.32.4",
+      "image_id": "registry.talkschool.cn:5000/brinnatt/calico-node@sha256:de0253a3a3eeb5d3179e0d55dd1b590efd8e51b3c5231dfd7e2bdeb1f6d498bf",
+      "expected_source_child": "sha256:de0253a3a3eeb5d3179e0d55dd1b590efd8e51b3c5231dfd7e2bdeb1f6d498bf"
+    },
+    {
+      "namespace": "kube-system",
+      "pod": "calico-node-n2klc",
+      "container": "calico-node",
+      "image": "brinnatt/calico-node:v3.32.4",
+      "image_id": "registry.talkschool.cn:5000/brinnatt/calico-node@sha256:de0253a3a3eeb5d3179e0d55dd1b590efd8e51b3c5231dfd7e2bdeb1f6d498bf",
+      "expected_source_child": "sha256:de0253a3a3eeb5d3179e0d55dd1b590efd8e51b3c5231dfd7e2bdeb1f6d498bf"
+    },
+    {
+      "namespace": "kube-system",
+      "pod": "calico-node-nckhv",
+      "container": "install-cni",
+      "image": "brinnatt/calico-cni:v3.32.4",
+      "image_id": "registry.talkschool.cn:5000/brinnatt/calico-cni@sha256:3c288beff038cd960bb685cd7240faa4c310aecbc8936d318fa664650d2485c2",
+      "expected_source_child": "sha256:3c288beff038cd960bb685cd7240faa4c310aecbc8936d318fa664650d2485c2"
+    },
+    {
+      "namespace": "kube-system",
+      "pod": "calico-node-nckhv",
+      "container": "ebpf-bootstrap",
+      "image": "brinnatt/calico-node:v3.32.4",
+      "image_id": "registry.talkschool.cn:5000/brinnatt/calico-node@sha256:de0253a3a3eeb5d3179e0d55dd1b590efd8e51b3c5231dfd7e2bdeb1f6d498bf",
+      "expected_source_child": "sha256:de0253a3a3eeb5d3179e0d55dd1b590efd8e51b3c5231dfd7e2bdeb1f6d498bf"
+    },
+    {
+      "namespace": "kube-system",
+      "pod": "calico-node-nckhv",
+      "container": "calico-node",
+      "image": "brinnatt/calico-node:v3.32.4",
+      "image_id": "registry.talkschool.cn:5000/brinnatt/calico-node@sha256:de0253a3a3eeb5d3179e0d55dd1b590efd8e51b3c5231dfd7e2bdeb1f6d498bf",
+      "expected_source_child": "sha256:de0253a3a3eeb5d3179e0d55dd1b590efd8e51b3c5231dfd7e2bdeb1f6d498bf"
+    },
+    {
+      "namespace": "kube-system",
+      "pod": "calico-node-qn8h8",
+      "container": "install-cni",
+      "image": "brinnatt/calico-cni:v3.32.4",
+      "image_id": "registry.talkschool.cn:5000/brinnatt/calico-cni@sha256:3c288beff038cd960bb685cd7240faa4c310aecbc8936d318fa664650d2485c2",
+      "expected_source_child": "sha256:3c288beff038cd960bb685cd7240faa4c310aecbc8936d318fa664650d2485c2"
+    },
+    {
+      "namespace": "kube-system",
+      "pod": "calico-node-qn8h8",
+      "container": "ebpf-bootstrap",
+      "image": "brinnatt/calico-node:v3.32.4",
+      "image_id": "registry.talkschool.cn:5000/brinnatt/calico-node@sha256:de0253a3a3eeb5d3179e0d55dd1b590efd8e51b3c5231dfd7e2bdeb1f6d498bf",
+      "expected_source_child": "sha256:de0253a3a3eeb5d3179e0d55dd1b590efd8e51b3c5231dfd7e2bdeb1f6d498bf"
+    },
+    {
+      "namespace": "kube-system",
+      "pod": "calico-node-qn8h8",
+      "container": "calico-node",
+      "image": "brinnatt/calico-node:v3.32.4",
+      "image_id": "registry.talkschool.cn:5000/brinnatt/calico-node@sha256:de0253a3a3eeb5d3179e0d55dd1b590efd8e51b3c5231dfd7e2bdeb1f6d498bf",
+      "expected_source_child": "sha256:de0253a3a3eeb5d3179e0d55dd1b590efd8e51b3c5231dfd7e2bdeb1f6d498bf"
+    },
+    {
+      "namespace": "kube-system",
+      "pod": "calico-node-wx6tb",
+      "container": "install-cni",
+      "image": "brinnatt/calico-cni:v3.32.4",
+      "image_id": "registry.talkschool.cn:5000/brinnatt/calico-cni@sha256:3c288beff038cd960bb685cd7240faa4c310aecbc8936d318fa664650d2485c2",
+      "expected_source_child": "sha256:3c288beff038cd960bb685cd7240faa4c310aecbc8936d318fa664650d2485c2"
+    },
+    {
+      "namespace": "kube-system",
+      "pod": "calico-node-wx6tb",
+      "container": "ebpf-bootstrap",
+      "image": "brinnatt/calico-node:v3.32.4",
+      "image_id": "registry.talkschool.cn:5000/brinnatt/calico-node@sha256:de0253a3a3eeb5d3179e0d55dd1b590efd8e51b3c5231dfd7e2bdeb1f6d498bf",
+      "expected_source_child": "sha256:de0253a3a3eeb5d3179e0d55dd1b590efd8e51b3c5231dfd7e2bdeb1f6d498bf"
+    },
+    {
+      "namespace": "kube-system",
+      "pod": "calico-node-wx6tb",
+      "container": "calico-node",
+      "image": "brinnatt/calico-node:v3.32.4",
+      "image_id": "registry.talkschool.cn:5000/brinnatt/calico-node@sha256:de0253a3a3eeb5d3179e0d55dd1b590efd8e51b3c5231dfd7e2bdeb1f6d498bf",
+      "expected_source_child": "sha256:de0253a3a3eeb5d3179e0d55dd1b590efd8e51b3c5231dfd7e2bdeb1f6d498bf"
+    },
+    {
+      "namespace": "kube-system",
+      "pod": "coredns-65f4c5b984-b6nf8",
+      "container": "coredns",
+      "image": "brinnatt/coredns:1.15.0",
+      "image_id": "registry.talkschool.cn:5000/brinnatt/coredns@sha256:418bea67884ddd0ecbca0b4a9dbbbb62538320afa49f52373923ab02ffb1623f",
+      "expected_source_child": "sha256:418bea67884ddd0ecbca0b4a9dbbbb62538320afa49f52373923ab02ffb1623f"
+    },
+    {
+      "namespace": "kube-system",
+      "pod": "local-path-provisioner-849f8c955d-ppgcs",
+      "container": "local-path-provisioner",
+      "image": "brinnatt/local-path-provisioner:v0.0.37",
+      "image_id": "registry.talkschool.cn:5000/brinnatt/local-path-provisioner@sha256:13612ca9ffb4d1cccde1585fc0548642cbbce68547883a846775e95c44a505b3",
+      "expected_source_child": "sha256:13612ca9ffb4d1cccde1585fc0548642cbbce68547883a846775e95c44a505b3"
+    },
+    {
+      "namespace": "kube-system",
+      "pod": "metrics-server-7688f9b694-wtrrz",
+      "container": "metrics-server",
+      "image": "brinnatt/metrics-server:v0.9.1",
+      "image_id": "registry.talkschool.cn:5000/brinnatt/metrics-server@sha256:85668af2a63a90a493f8f83e6281367c075a2d5e9a575c818e92af554d7e40d7",
+      "expected_source_child": "sha256:85668af2a63a90a493f8f83e6281367c075a2d5e9a575c818e92af554d7e40d7"
+    },
+    {
+      "namespace": "kube-system",
+      "pod": "node-local-dns-5gwbn",
+      "container": "node-cache",
+      "image": "brinnatt/k8s-dns-node-cache:1.26.8",
+      "image_id": "registry.talkschool.cn:5000/brinnatt/k8s-dns-node-cache@sha256:c392f1f91987742c2479270e91e8bccf3e90986d1b5da13b96465b9628cf39a9",
+      "expected_source_child": "sha256:c392f1f91987742c2479270e91e8bccf3e90986d1b5da13b96465b9628cf39a9"
+    },
+    {
+      "namespace": "kube-system",
+      "pod": "node-local-dns-5h88l",
+      "container": "node-cache",
+      "image": "brinnatt/k8s-dns-node-cache:1.26.8",
+      "image_id": "registry.talkschool.cn:5000/brinnatt/k8s-dns-node-cache@sha256:c392f1f91987742c2479270e91e8bccf3e90986d1b5da13b96465b9628cf39a9",
+      "expected_source_child": "sha256:c392f1f91987742c2479270e91e8bccf3e90986d1b5da13b96465b9628cf39a9"
+    },
+    {
+      "namespace": "kube-system",
+      "pod": "node-local-dns-cgmbc",
+      "container": "node-cache",
+      "image": "brinnatt/k8s-dns-node-cache:1.26.8",
+      "image_id": "registry.talkschool.cn:5000/brinnatt/k8s-dns-node-cache@sha256:c392f1f91987742c2479270e91e8bccf3e90986d1b5da13b96465b9628cf39a9",
+      "expected_source_child": "sha256:c392f1f91987742c2479270e91e8bccf3e90986d1b5da13b96465b9628cf39a9"
+    },
+    {
+      "namespace": "kube-system",
+      "pod": "node-local-dns-jjqwm",
+      "container": "node-cache",
+      "image": "brinnatt/k8s-dns-node-cache:1.26.8",
+      "image_id": "registry.talkschool.cn:5000/brinnatt/k8s-dns-node-cache@sha256:c392f1f91987742c2479270e91e8bccf3e90986d1b5da13b96465b9628cf39a9",
+      "expected_source_child": "sha256:c392f1f91987742c2479270e91e8bccf3e90986d1b5da13b96465b9628cf39a9"
+    },
+    {
+      "namespace": "kube-system",
+      "pod": "node-local-dns-qjrk7",
+      "container": "node-cache",
+      "image": "brinnatt/k8s-dns-node-cache:1.26.8",
+      "image_id": "registry.talkschool.cn:5000/brinnatt/k8s-dns-node-cache@sha256:c392f1f91987742c2479270e91e8bccf3e90986d1b5da13b96465b9628cf39a9",
+      "expected_source_child": "sha256:c392f1f91987742c2479270e91e8bccf3e90986d1b5da13b96465b9628cf39a9"
+    },
+    {
+      "namespace": "kube-system",
+      "pod": "node-local-dns-rxpxr",
+      "container": "node-cache",
+      "image": "brinnatt/k8s-dns-node-cache:1.26.8",
+      "image_id": "registry.talkschool.cn:5000/brinnatt/k8s-dns-node-cache@sha256:c392f1f91987742c2479270e91e8bccf3e90986d1b5da13b96465b9628cf39a9",
+      "expected_source_child": "sha256:c392f1f91987742c2479270e91e8bccf3e90986d1b5da13b96465b9628cf39a9"
+    }
+  ],
+  "references": [
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/new-install/target-install.json",
+      "sha256": "a2dc5f893f758b093dbe7dafb6fd953a56c532d11def37cdfc5ac73256ae594d"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/lab-registry-supply.json",
+      "sha256": "a8ed369c44c3d4edf77375e6ebe195f6d731e62eea6ca6153c8a7655ff737e44"
+    }
+  ]
+}

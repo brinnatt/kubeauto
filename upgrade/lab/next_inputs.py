@@ -10,36 +10,41 @@ import subprocess
 import tarfile
 
 from upgrade.lab.next_session import ROOT, SOURCE_COMMIT, sha, verify_inputs, write
+from upgrade.product.hop import SOURCE, TARGET, DIRECTORY
 
 
 def check_files(directory, files):
     for name, digest in files.items():
         path = directory/name
-        if path.is_symlink() or sha(path) != digest:
+        if (Path(name).is_absolute() or '..' in Path(name).parts or
+                path.is_symlink() or not path.is_file() or sha(path) != digest):
             raise ValueError('qualified input content differs: '+str(path))
 
 
-def stage(output):
+def stage(output, *, source_extra, source_k8s, target_k8s):
     output = Path(output)
     if output.exists() or output.is_symlink():
         raise ValueError('use a new private staging directory; existing inputs are never overwritten')
-    records = ROOT/'upgrade/v1.35.10/evidence'
-    source_extra = Path('/tmp/kubeauto-extbin-source-qualified/amd64/extra')
-    overlay = Path('/tmp/kubeauto-extbin-overlay-qualified/amd64/extra')
-    binaries = {'source-product': (Path('/tmp/kubeauto-upgrade-k8s13413-native'),
-                    ROOT/'upgrade/v1.34.13/evidence/k8s-binary-content.json'),
-                'target-product': (Path('/tmp/kubeauto-k8s13510-qualified/amd64/k8s'),
+    records = DIRECTORY/'evidence'
+    source_extra = Path(source_extra)
+    binaries = {'source-product': (Path(source_k8s),
+                    ROOT/'upgrade'/SOURCE/'evidence/k8s-binary-content.json'),
+                'target-product': (Path(target_k8s),
                     records/'k8s-binary-content.json')}
-    check_files(source_extra, json.loads((records/'source-pack-content.json').read_text())['files'])
-    pins = json.loads((ROOT/'upgrade/v1.35.10/artifact-pins.json').read_text())
-    for item in pins['runtime']['amd64'].values():
-        check_files(overlay/item['directory'], item['sha256'])
-    check_files(overlay, pins['etcd']['amd64'])
-    check_files(overlay, {'calicoctl': pins['calicoctl']['v3.32.4']['amd64'],
-                        'upgrade/calicoctl-v3.31.7': pins['calicoctl']['v3.31.7']['amd64']})
+    pack=json.loads((records/'source-pack-content.json').read_text())
+    if pack['image'] != 'hub.talkedu.cn/kubeauto/kubeauto-ext-bin:1.17.1':
+        raise ValueError('source must use the accepted maintenance pack, not the historical migration pack')
+    if source_extra.is_symlink() or {str(p.relative_to(source_extra)) for p in source_extra.rglob('*')
+            if not p.is_dir() or p.is_symlink()} != set(pack['files']):
+        raise ValueError('source pack contains missing, extra or symbolic-link inputs')
+    check_files(source_extra, pack['files'])
     binary_files = {}
     for name, (directory, record) in binaries.items():
-        info = next(a for a in json.loads(record.read_text())['architectures'] if a['architecture']=='amd64')
+        binary_record=json.loads(record.read_text())
+        version=SOURCE if name=='source-product' else TARGET
+        if binary_record['image'] != 'hub.talkedu.cn/kubeauto/kubeauto-k8s-bin:'+version:
+            raise ValueError('Kubernetes package version differs from the active adjacent hop')
+        info = next(a for a in binary_record['architectures'] if a['architecture']=='amd64')
         binary_files[name] = {n: v['sha256'] for n,v in info['files'].items() if n!='official.sha256'}
         check_files(directory, binary_files[name])
     output.mkdir(mode=0o700, parents=True)
@@ -60,10 +65,9 @@ def stage(output):
     # Current acceptance may reference ignored raw evidence. Copy that narrow
     # evidence tree privately; never collect arbitrary HOME or registry state.
     raw = records/'raw'
-    if raw.is_dir():shutil.copytree(raw, target/'upgrade/v1.35.10/evidence/raw', dirs_exist_ok=True)
+    if raw.is_dir():shutil.copytree(raw, target/'upgrade'/TARGET/'evidence/raw', dirs_exist_ok=True)
     for product in [source, target]:
         shutil.copytree(source_extra, product/'extra-bin')
-    shutil.copytree(overlay, target/'extra-bin', dirs_exist_ok=True)
     for name, (directory, _) in binaries.items():
         destination=output/name/'kube-bin';destination.mkdir()
         for filename in binary_files[name]:
@@ -79,4 +83,11 @@ def stage(output):
 if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('output',type=Path)
-    stage(parser.parse_args().output)
+    parser.add_argument('--source-extra',type=Path,required=True,
+                        help='Verified ext-bin 1.17.1 /extra directory; reused by both products')
+    parser.add_argument('--source-k8s',type=Path,required=True,
+                        help='Verified v1.35.10 six-binary directory')
+    parser.add_argument('--target-k8s',type=Path,required=True,
+                        help='Verified v1.36.6 six-binary directory')
+    args=parser.parse_args()
+    stage(args.output,source_extra=args.source_extra,source_k8s=args.source_k8s,target_k8s=args.target_k8s)

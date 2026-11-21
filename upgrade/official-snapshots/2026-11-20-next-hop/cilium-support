@@ -1,0 +1,623 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta name="readthedocs-addons-api-version" content="1" />
+  <meta charset="utf-8" />
+  <meta name="readthedocs-addons-api-version" content="1"><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-V9SYWYG92Y"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-V9SYWYG92Y');
+    </script>
+    
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kubernetes Compatibility &mdash; Cilium 1.20.5 documentation</title>
+  <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=03e43079" />
+      <link id="pygments_dark_css" media="(prefers-color-scheme: dark)" rel="stylesheet" type="text/css" href="../../../_static/pygments_dark.css?v=0fc419ee" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/parsed-literal.css?v=519ac8c2" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=378031d3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/editbutton.css?v=d53c7333" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/helm-reference.css?v=2d9e6831" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/wrapped-table.css?v=bc1f8164" />
+
+  
+    <link rel="canonical" href="https://docs.cilium.io/en/stable/network/kubernetes/compatibility/" />
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=431e354b"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../../../_static/js/versionwarning.js?v=d4224a34"></script>
+      <script src="../../../_static/clipboardjs.min.js?v=bf393c17"></script>
+      <script src="../../../_static/copybutton.js?v=7c37f673"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <!-- CSS: For Dark mode -->
+    <link rel="stylesheet" href="../../../_static/css/theme-overrides.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/dark_mode_css/dark.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/dark_mode_css/general.css" type="text/css" />
+
+    <link rel="stylesheet" href="../../../_static/css/github-button.css" type="text/css" />
+    <script type="text/javascript" src="../../../_static/js/github-button.js"></script>
+    <script src="../../../_static/js/versions.js"></script>
+    <link rel="index" title="Index" href="../../../genindex/" />
+    <link rel="search" title="Search" href="../../../search/" />
+    <link rel="next" title="Troubleshooting" href="../troubleshooting/" />
+    <link rel="prev" title="CiliumEndpointSlice" href="../ciliumendpointslice/" /> 
+
+  <meta name="twitter:card" content="summary"/>
+  <meta name="twitter:site" content="@ciliumproject"/>
+  <meta name="twitter:title" content="Kubernetes Compatibility &mdash; Cilium 1.20.5 documentation"/>
+  <meta name="twitter:image" content="../../../_static/../../../_static/logo.svg"/>
+<script async type="text/javascript" src="/_/static/javascript/readthedocs-addons.js"></script><meta name="readthedocs-project-slug" content="cilium" /><meta name="readthedocs-version-slug" content="stable" /><meta name="readthedocs-resolver-filename" content="/network/kubernetes/compatibility/" /><meta name="readthedocs-http-status" content="200" /></head>
+
+<body class="wy-body-for-nav">
+  <!-- JS: For Dark mode -->
+  <script type="text/javascript" src="../../../_static/dark_mode_js/pygments_switcher.js"></script>
+  <!-- Default Light Theme -->
+  <script type="text/javascript" src="../../../_static/dark_mode_js/default_light.js"></script>
+  <script type="text/javascript" src="../../../_static/dark_mode_js/theme_switcher.js"></script>
+
+  <header class="wy-header">
+      <div class="wy-header-left">
+          
+          
+          <a href="https://www.cilium.io" class="wy-header-logo-wrapper">
+            
+              <img src="../../../_static/logo.svg" class="logo" alt="Logo"/>
+          </a><span class="wy-github-stars">
+            <span class="github-btn github-stargazers github-btn-large">
+              <a
+                class="gh-btn"
+                href="https://github.com/cilium/cilium"
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                <span class="gh-ico" aria-hidden="true"></span>
+                <span class="gh-text">GitHub Stars</span>
+              </a>
+              <a
+                class="gh-count"
+                href="https://github.com/cilium/cilium/stargazers"
+                rel="noopener noreferrer"
+                target="_blank"
+                aria-label={`${this.state.stars} stargazers on GitHub`}
+                style="margin-left: 0px;"
+              >
+              </a>
+
+              <a
+                class="gh-btn"
+                href="https://slack.cilium.io/"
+                rel="noopener noreferrer"
+                target="_blank"
+                style="margin-left: 15px;"
+              >
+                <img style="height: 1em;" src="../../../_static/icons/slack.inline.svg" alt="slack_icon">
+                <span class="gh-text">Join Slack</span>
+            </a>
+            </span>
+        </span>
+    </div>
+
+    <nav class="wy-main-nav">
+      <input name="wy-main-nav-checkbox" id="wy-main-nav-checkbox" class="wy-main-nav-checkbox" type="checkbox">
+      <label for="wy-main-nav-checkbox" class="wy-main-nav-toggle">Menu</label>
+      <ul id="#wy-main-nav-menu" class="wy-main-nav-menu">
+        <li><a class="w3-hover-text-blue" href="https://cilium.io/enterprise/">Enterprise</a></li>
+        <li>
+          <div style="background-color: white; font-size: 16px; font-weight: 600; margin-left: 40px" class="w3-dropdown-hover">
+            <button class="w3-button w3-white w3-hover-white w3-hover-text-blue">Learn <span class="triangle">▾</span></button>
+            <div class="w3-dropdown-content w3-bar-block w3-card-4">
+              <a style = "margin-left: 0px; display: inline-flex;" href="https://cilium.io/labs/categories/getting-started" class="w3-bar-item w3-button w3-hover-white w3-hover-text-blue">
+                <img style="height: 1.5em; margin-right: .5em" src="../../../_static/icons/labs.inline.svg" alt="labs-icon">
+                Labs
+              </a>
+              <a style = "margin-left: 0px; display: inline-flex;" href="https://cilium.io/get-started" class="w3-bar-item w3-button w3-hover-white w3-hover-text-blue">
+                <img style="height: 1.5em; margin-right: .5em" src="../../../_static/icons/get-started.inline.svg" alt="get-started-icon">
+                Get Started
+              </a>
+              <a style = "margin-left: 0px; display: inline-flex; padding-right: 10px;" href="https://cilium.io/get-involved" class="w3-bar-item w3-button w3-hover-white w3-hover-text-blue">
+                <img style="height: 1.5em; margin-right: .5em" src="../../../_static/icons/get-involved.inline.svg" alt="get-involved-icon">
+                Get Involved
+              </a>
+              <a style = "margin-left: 0px; display: inline-flex;" href="https://cilium.io/get-help" class="w3-bar-item w3-button w3-hover-white w3-hover-text-blue">
+                <img style="height: 1.5em; margin-right: .5em" src="../../../_static/icons/get-help.inline.svg" alt="get-help-icon">
+                Get Help
+              </a>
+            </div>
+          </div>
+
+        </li>
+        <li>
+          <div style="background-color: white; font-size: 16px;font-weight: 600; margin-left: 40px" class="w3-dropdown-hover">
+            <button class="w3-button w3-white w3-hover-white w3-hover-text-blue">News and media <span class="triangle">▾</span></i></button>
+            <div class="w3-dropdown-content w3-bar-block w3-card-4">
+              <a style = "margin-left: 0px; display: inline-flex;" href="https://cilium.io/adopters" class="w3-bar-item w3-button w3-hover-white w3-hover-text-blue">
+                <img style="height: 1.5em; margin-right: .5em" src="../../../_static/icons/adopters.inline.svg" alt="adopters-icon">
+                Adopters
+              </a>
+              <a style = "margin-left: 0px; display: inline-flex;" href="https://cilium.io/blog" class="w3-bar-item w3-button w3-hover-white w3-hover-text-blue">
+                <img style="height: 1.5em; margin-right: .5em" src="../../../_static/icons/blog.inline.svg" alt="blog-icon">
+                Blog
+              </a>
+              <a style = "margin-left: 0px; display: inline-flex;" href="https://github.com/cncf/artwork/blob/master/examples/incubating.md#cilium-logos" class="w3-bar-item w3-button w3-hover-white w3-hover-text-blue">
+                <img style="height: 1.5em; margin-right: .5em" src="../../../_static/icons/branding.inline.svg" alt="branding-icon">
+                Branding
+              </a>
+              <a style = "margin-left: 0px; display: inline-flex;" href="https://cilium.io/newsletter" class="w3-bar-item w3-button w3-hover-white w3-hover-text-blue">
+                <img style="height: 1.5em; margin-right: .5em" src="../../../_static/icons/newsletter.inline.svg" alt="newsletter-icon">
+                Newsletter
+              </a>
+            </div>
+          </div>
+
+        </li>
+        <li><a class="w3-hover-text-blue" href="https://docs.cilium.io/en/stable/">Documentation</a></li>
+      </ul>
+    </nav>
+  </header> 
+  <div class="wy-grid-for-nav">
+    <div class="wy-nav-wrapper" data-toggle="wy-nav-shift" >
+        <div class="wy-side-nav-search" >
+
+          <!--
+              <div class="switch-menus">
+                <div class="version-switch"></div>
+                <div class="language-switch"></div>
+              </div>
+          -->
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search/" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div>
+
+      <nav class="wy-nav-side">
+      <div class="wy-side-scroll"><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Overview</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../overview/intro/">Introduction to Cilium &amp; Hubble</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../overview/component-overview/">Component Overview</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../gettingstarted/k8s-install-default/">Cilium Quick Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../gettingstarted/demo/">Getting Started with the Star Wars Demo</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../gettingstarted/terminology/">Terminology</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../gettingstarted/gettinghelp/">Getting Help</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Advanced Installation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../installation/taints/">Considerations on Node Pool Taints and Unmanaged Pods</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../installation/k8s-install-helm/">Installation using Helm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../installation/k8s-install-migration/">Migrating a cluster to Cilium</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../installation/k8s-toc/">Installation with K8s distributions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../installation/external-toc/">External Installers</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Networking</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../concepts/">Networking Concepts</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../">Kubernetes Networking</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../intro/">Introduction</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/">Concepts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../requirements/">Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../configuration/">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../policy/">Network Policy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../kubeproxy-free/">Kubernetes Without kube-proxy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ciliumcidrgroup/">CiliumCIDRGroup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ciliumendpoint/">Endpoint CRD</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ciliumendpointslice/">CiliumEndpointSlice</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Kubernetes Compatibility</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#cilium-crd-schema-validation">Cilium CRD schema validation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../troubleshooting/">Troubleshooting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../bandwidth-manager/">Bandwidth Manager</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../kata/">Kata Containers with Cilium</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../ipam/">Configuring IPAM Modes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../local-redirect-policy/">Local Redirect Policy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../identity-management-mode/">Identity Management Mode</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../bgp-toc/">BGP</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ebpf/">eBPF Datapath</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../clustermesh/">Multi-cluster Networking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../egress-gateway-toc/">Egress Gateway</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../servicemesh/">Service Mesh</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../vtep/">VXLAN Tunnel Endpoint (VTEP) Integration (beta)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../l2-announcements/">L2 Announcements / L2 Aware LB (Beta)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../node-ipam/">Node IPAM LB</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../pod-annotations/">Pod Annotations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../multicast/">Multicast Support in Cilium (Beta)</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Security</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../security/">Securing Networks with Cilium</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../security/network/">Overview of Network Security</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../security/policy/">Overview of Network Policy</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../security/restrict-pod-access/">Restricting privileged Cilium pod access</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../security/threat-model/">Threat Model</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Observability</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../observability/hubble/">Network Observability with Hubble</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../observability/grafana/">Running Prometheus &amp; Grafana</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../observability/metrics/">Monitoring &amp; Metrics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../observability/visibility/">Layer 7 Protocol Visibility</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Operations</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../operations/system_requirements/">System Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../operations/upgrade/">Upgrade Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../configuration/">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../operations/performance/">Performance &amp; Scalability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../operations/troubleshooting/">Troubleshooting</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Community</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../community/governance/">Governance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../community/community/">Community Meetings</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../community/community/#slack">Slack</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../community/community/#special-interest-groups">Special Interest Groups</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../community/roadmap/">Roadmap</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Contributor Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing/development/">Development</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing/release/">Release Management</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing/testing/">Testing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../contributing/docs/">Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../grpcapi/">gRPC API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../sdpapi/">SDP gRPC API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../internals/">Internals</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../cheatsheet/">Command Cheatsheet</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../cmdref/">Command Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../helm-reference/">Helm Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../kvstore/">Key-Value Store</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../further_reading/">Further Reading</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../glossary/">Glossary</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Reference Guides</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../reference-guides/bpf/">BPF and XDP Reference Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../reference-guides/xfrm/">XFRM Reference Guide</a></li>
+</ul>
+
+        </div>
+      </div>
+      </nav>
+    </div>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../">Cilium</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../">Kubernetes Networking</a></li>
+      <li class="breadcrumb-item active">Kubernetes Compatibility</li>
+
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="kubernetes-compatibility">
+<span id="k8scompatibility"></span><h1>Kubernetes Compatibility<a class="headerlink" href="#kubernetes-compatibility" title="Link to this heading"></a></h1>
+<p>Cilium is compatible with multiple Kubernetes API Groups. Some are deprecated
+or beta, and may only be available in specific versions of Kubernetes.</p>
+<p>All Kubernetes versions listed are e2e tested and guaranteed to be compatible
+with Cilium. Older and newer Kubernetes versions, while not listed, will depend
+on the forward / backward compatibility offered by Kubernetes.</p>
+<table class="docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p>k8s Version</p></td>
+<td><p>k8s NetworkPolicy API</p></td>
+<td><p>CiliumNetworkPolicy</p></td>
+</tr>
+<tr class="row-even"><td><p>1.33, 1.34, 1.35, 1.36</p></td>
+<td><ul class="simple">
+<li><p><a class="reference external" href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.25/#networkpolicy-v1-networking-k8s-io">networking.k8s.io/v1</a></p></li>
+</ul>
+</td>
+<td><p><code class="docutils literal notranslate"><span class="pre">cilium.io/v2</span></code> has a
+<a class="reference internal" href="../../../glossary/#term-CustomResourceDefinition"><span class="xref std std-term">CustomResourceDefinition</span></a></p></td>
+</tr>
+</tbody>
+</table>
+<p>As a general rule, Cilium aims to run e2e tests using the latest build from the
+development branch against currently supported Kubernetes versions defined in
+<a class="reference external" href="https://kubernetes.io/releases/patch-releases/">Kubernetes Patch Releases</a>
+page.</p>
+<p>Once a release branch gets created from the development branch, Cilium typically
+does not change the Kubernetes versions it uses to run e2e tests for the entire
+maintenance period of that particular release.</p>
+<p>Additionally, Cilium runs e2e tests against various cloud providers’ managed
+Kubernetes offerings using multiple Kubernetes versions. See the following links
+for the current test matrix for each cloud provider:</p>
+<ul class="simple">
+<li><p><a class="extlink-git-tree reference external" href="https://raw.githubusercontent.com/cilium/cilium/1.20.5/.github/actions/azure/k8s-versions.yaml">AKS</a></p></li>
+<li><p><a class="extlink-git-tree reference external" href="https://raw.githubusercontent.com/cilium/cilium/1.20.5/.github/actions/eks/k8s-versions.yaml">EKS</a></p></li>
+<li><p><a class="extlink-git-tree reference external" href="https://raw.githubusercontent.com/cilium/cilium/1.20.5/.github/actions/gke/k8s-versions.yaml">GKE</a></p></li>
+</ul>
+<section id="cilium-crd-schema-validation">
+<h2>Cilium CRD schema validation<a class="headerlink" href="#cilium-crd-schema-validation" title="Link to this heading"></a></h2>
+<p>Cilium uses a CRD for its Network Policies in Kubernetes. This CRD might have
+changes in its schema validation, which allows it to verify the correctness of
+a Cilium Clusterwide Network Policy (CCNP) or a Cilium Network Policy (CNP).</p>
+<p>The CRD itself has an annotation, <code class="docutils literal notranslate"><span class="pre">io.cilium.k8s.crd.schema.version</span></code>, with the
+schema definition version. By default, Cilium automatically updates the CRD, and
+its validation, with a newer one.</p>
+<p>The following table lists all Cilium versions and their expected schema
+validation version:</p>
+<table class="docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p>Cilium
+Version</p></td>
+<td><p>CNP and CCNP
+Schema Version</p></td>
+</tr>
+<tr class="row-even"><td><p>v1.18.0-pre.0</p></td>
+<td><p>1.31.2</p></td>
+</tr>
+<tr class="row-odd"><td><p>v1.18.0-pre.1</p></td>
+<td><p>1.31.7</p></td>
+</tr>
+<tr class="row-even"><td><p>v1.18.0-pre.2</p></td>
+<td><p>1.31.9</p></td>
+</tr>
+<tr class="row-odd"><td><p>v1.18.0-pre.3</p></td>
+<td><p>1.31.10</p></td>
+</tr>
+<tr class="row-even"><td><p>v1.18.0-rc.0</p></td>
+<td><p>1.31.11</p></td>
+</tr>
+<tr class="row-odd"><td><p>v1.18.0-rc.1</p></td>
+<td><p>1.31.11</p></td>
+</tr>
+<tr class="row-even"><td><p>v1.18.0</p></td>
+<td><p>1.31.11</p></td>
+</tr>
+<tr class="row-odd"><td><p>v1.18.1</p></td>
+<td><p>1.31.11</p></td>
+</tr>
+<tr class="row-even"><td><p>v1.18.2</p></td>
+<td><p>1.31.11</p></td>
+</tr>
+<tr class="row-odd"><td><p>v1.18.3</p></td>
+<td><p>1.31.11</p></td>
+</tr>
+<tr class="row-even"><td><p>v1.18.4</p></td>
+<td><p>1.31.11</p></td>
+</tr>
+<tr class="row-odd"><td><p>v1.18.5</p></td>
+<td><p>1.31.11</p></td>
+</tr>
+<tr class="row-even"><td><p>v1.18.6</p></td>
+<td><p>1.31.11</p></td>
+</tr>
+<tr class="row-odd"><td><p>v1.18.7</p></td>
+<td><p>1.31.11</p></td>
+</tr>
+<tr class="row-even"><td><p>v1.18.8</p></td>
+<td><p>1.31.11</p></td>
+</tr>
+<tr class="row-odd"><td><p>v1.18.9</p></td>
+<td><p>1.31.11</p></td>
+</tr>
+<tr class="row-even"><td><p>v1.18.10</p></td>
+<td><p>1.31.11</p></td>
+</tr>
+<tr class="row-odd"><td><p>v1.18.11</p></td>
+<td><p>1.31.11</p></td>
+</tr>
+<tr class="row-even"><td><p>v1.18.12</p></td>
+<td><p>1.31.12</p></td>
+</tr>
+<tr class="row-odd"><td><p>v1.18.13</p></td>
+<td><p>1.31.12</p></td>
+</tr>
+<tr class="row-even"><td><p>v1.18.14</p></td>
+<td><p>1.31.12</p></td>
+</tr>
+<tr class="row-odd"><td><p>v1.18.15</p></td>
+<td><p>1.31.12</p></td>
+</tr>
+<tr class="row-even"><td><p>v1.18.16</p></td>
+<td><p>1.31.12</p></td>
+</tr>
+<tr class="row-odd"><td><p>v1.18</p></td>
+<td><p>1.31.12</p></td>
+</tr>
+<tr class="row-even"><td><p>v1.19.0-pre.0</p></td>
+<td><p>1.32.1</p></td>
+</tr>
+<tr class="row-odd"><td><p>v1.19.0-pre.1</p></td>
+<td><p>1.32.2</p></td>
+</tr>
+<tr class="row-even"><td><p>v1.19.0-pre.2</p></td>
+<td><p>1.32.3</p></td>
+</tr>
+<tr class="row-odd"><td><p>v1.19.0-pre.3</p></td>
+<td><p>1.32.4</p></td>
+</tr>
+<tr class="row-even"><td><p>v1.19.0-pre.4</p></td>
+<td><p>1.32.5</p></td>
+</tr>
+<tr class="row-odd"><td><p>v1.19.0-rc.0</p></td>
+<td><p>1.32.6</p></td>
+</tr>
+<tr class="row-even"><td><p>v1.19.0-rc.1</p></td>
+<td><p>1.32.6</p></td>
+</tr>
+<tr class="row-odd"><td><p>v1.19.0</p></td>
+<td><p>1.32.6</p></td>
+</tr>
+<tr class="row-even"><td><p>v1.19.1</p></td>
+<td><p>1.32.6</p></td>
+</tr>
+<tr class="row-odd"><td><p>v1.19.2</p></td>
+<td><p>1.32.6</p></td>
+</tr>
+<tr class="row-even"><td><p>v1.19.3</p></td>
+<td><p>1.32.6</p></td>
+</tr>
+<tr class="row-odd"><td><p>v1.19.4</p></td>
+<td><p>1.32.6</p></td>
+</tr>
+<tr class="row-even"><td><p>v1.19.5</p></td>
+<td><p>1.32.6</p></td>
+</tr>
+<tr class="row-odd"><td><p>v1.19.6</p></td>
+<td><p>1.32.7</p></td>
+</tr>
+<tr class="row-even"><td><p>v1.19.7</p></td>
+<td><p>1.32.7</p></td>
+</tr>
+<tr class="row-odd"><td><p>v1.19.8</p></td>
+<td><p>1.32.7</p></td>
+</tr>
+<tr class="row-even"><td><p>v1.19.9</p></td>
+<td><p>1.32.7</p></td>
+</tr>
+<tr class="row-odd"><td><p>v1.19.10</p></td>
+<td><p>1.32.7</p></td>
+</tr>
+<tr class="row-even"><td><p>v1.19</p></td>
+<td><p>1.32.7</p></td>
+</tr>
+<tr class="row-odd"><td><p>v1.20.0-pre.0</p></td>
+<td><p>1.33.1</p></td>
+</tr>
+<tr class="row-even"><td><p>v1.20.0-pre.1</p></td>
+<td><p>1.33.2</p></td>
+</tr>
+<tr class="row-odd"><td><p>v1.20.0-pre.2</p></td>
+<td><p>1.33.3</p></td>
+</tr>
+<tr class="row-even"><td><p>v1.20.0-pre.3</p></td>
+<td><p>1.33.8</p></td>
+</tr>
+<tr class="row-odd"><td><p>v1.20.0-pre.4</p></td>
+<td><p>1.33.9</p></td>
+</tr>
+<tr class="row-even"><td><p>v1.20.0-rc.0</p></td>
+<td><p>1.33.9</p></td>
+</tr>
+<tr class="row-odd"><td><p>v1.20.0-rc.1</p></td>
+<td><p>1.33.10</p></td>
+</tr>
+<tr class="row-even"><td><p>v1.20.0</p></td>
+<td><p>1.33.11</p></td>
+</tr>
+<tr class="row-odd"><td><p>v1.20.1</p></td>
+<td><p>1.33.11</p></td>
+</tr>
+<tr class="row-even"><td><p>v1.20.2</p></td>
+<td><p>1.33.12</p></td>
+</tr>
+<tr class="row-odd"><td><p>v1.20.3</p></td>
+<td><p>1.33.13</p></td>
+</tr>
+<tr class="row-even"><td><p>v1.20.4</p></td>
+<td><p>1.33.13</p></td>
+</tr>
+<tr class="row-odd"><td><p>v1.20</p></td>
+<td><p>1.33.13</p></td>
+</tr>
+<tr class="row-even"><td><p>latest / main</p></td>
+<td><p>1.34.7</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../ciliumendpointslice/" class="btn btn-neutral float-left" title="CiliumEndpointSlice" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../troubleshooting/" class="btn btn-neutral float-right" title="Troubleshooting" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright Cilium Authors.
+      <span class="lastupdated">Last updated on Nov 17, 2026.
+      </span></p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+  <script>
+    document.addEventListener(
+      "readthedocs-addons-data-ready",
+      function (event) {
+        const config = event.detail.data();
+    
+        // Create the version selector HTML
+        const versionSelector = `
+          <div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="Versions">
+            <span class="rst-current-version" data-toggle="rst-current-version">
+              <span class="rst-current-version-label">Read the Docs</span>
+              version: ${config.versions.current.slug}
+              <span class="fa fa-caret-down"></span>
+            </span>
+            <div class="rst-other-versions">
+              <dl>
+                <dt>Versions</dt>
+                ${config.versions.active
+                  .map(version => `
+                    <dd><a href="${version.urls.documentation}">${version.slug}</a></dd>
+                  `).join('')}
+              </dl>
+            </div>
+          </div>
+        `;
+    
+        // Insert the version selector into your page
+        document.querySelector('.wy-nav-wrapper')
+          .insertAdjacentHTML('beforeend', versionSelector);
+      }
+    );
+  </script>
+  
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

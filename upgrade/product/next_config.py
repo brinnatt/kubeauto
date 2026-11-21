@@ -7,13 +7,14 @@ import yaml
 
 from upgrade.product.next_platform import snapshot
 from upgrade.product.kubernetes_preflight import Refused
+from upgrade.product.hop import TARGET
 
 
 def configuration(path, state):
     saved=snapshot(state/'product-config.json',lambda:{'text':path.read_text()})
     original=yaml.safe_load(saved['text'])
     if not isinstance(original,dict):raise Refused('source product config must be a mapping')
-    updates={'K8S_VER':'1.35.10','calico_ver':'v3.32.4'}
+    updates={'K8S_VER':TARGET.removeprefix('v'),'calico_ver':'v3.32.4'}
     if original.get('CONTAINER_RUNTIME')=='containerd':updates['CONTAINERD_CONFIG_VERSION']=3
     if original.get('dns_install')=='yes':
         updates['corednsVer']='1.15.0'

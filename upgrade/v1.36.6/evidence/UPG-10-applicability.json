@@ -1,0 +1,184 @@
+{
+  "schema_version": 1,
+  "case_id": "UPG-10",
+  "claim": "官方依据的实际力度、未变源码与原GA证据复用范围；不是全部中间件目标现场或完整父项验收。",
+  "component_boundaries": [
+    {
+      "component_id": "logging",
+      "target_pins": {
+        "eck_operator": "3.5.0",
+        "elasticsearch": "9.5.1",
+        "kibana": "9.5.1",
+        "fluent_bit": "5.1.1",
+        "loki": "3.7.6",
+        "loki_chart": "18.9.0",
+        "alloy": "1.18.1",
+        "alloy_chart": "1.11.1"
+      },
+      "rationale": "ECK3.5.0明确支持Kubernetes1.32–1.36；保留日志ES/Kibana9.5.1及FluentBit/Loki/Alloy组合，核稳定发现/日志接口和共享CRD身份，不顺带统一业务ES引擎。",
+      "source_ids": [
+        "ECK-350-SUPPORTED",
+        "ALLOY1181-KUBERNETES-DISCOVERY",
+        "ALLOY1181-KUBERNETES-LOGS",
+        "LOKI1890-CHART",
+        "ALLOY1111-CHART"
+      ]
+    },
+    {
+      "component_id": "elasticsearch",
+      "target_pins": {
+        "v_eck_operator": "3.5.0",
+        "v_elasticsearch": "9.5.1",
+        "v_business_elasticsearch": "9.5.6",
+        "v_elasticsearch_upgrade_source": "9.5.5",
+        "v_elasticsearch_exporter": "v1.11.0",
+        "v_elasticsearch_client": "9.5.1-kubeauto.1",
+        "v_elasticsearch_rally": "2.13.0-kubeauto.1"
+      },
+      "rationale": "ECK3.5.0明确支持1.32–1.36；业务ES9.5.6与日志ES9.5.1分别保持实际GA组合和补丁，不变更schema/索引格式。只补受目标平台影响的协调/共享所有权接口。",
+      "source_ids": [
+        "ECK-350-SUPPORTED"
+      ]
+    },
+    {
+      "component_id": "mysql",
+      "target_pins": {
+        "v_pxc_operator": "1.20.0",
+        "v_pxc": "8.4.8-8.1",
+        "v_pxc_xtrabackup": "8.4.0-5.1",
+        "v_pxc_haproxy": "2.8.18-1",
+        "v_pxc_fluentbit": "5.0.6-1",
+        "v_pxc_operator_chart_sha256": "b8bff81d0f9691b1e495f958fba1bb268e48838cf548adf6ae6570ea0e0059cf"
+      },
+      "rationale": "PXC Operator1.20.0的官方AKS测试包含1.36，PXC8.4.8-8.1及xtrabackup配套不变；kubeauto不是上游实际认证发行版，按其CNCF/向后兼容声明与项目最小集成划界，不重跑全套数据库故障/性能。",
+      "source_ids": [
+        "PXC-120-FIRST-HOP"
+      ]
+    },
+    {
+      "component_id": "kafka",
+      "target_pins": {
+        "v_strimzi_operator": "1.2.0",
+        "v_kafka": "4.3.1",
+        "v_kafka_metadata": "4.3-IV0",
+        "v_strimzi_drain_cleaner": "1.6.1",
+        "v_strimzi_operator_chart_sha256": "0f8a50b2f19bd99482f9fd6e17cf42902f72f9e594a136813ac3f0b7af422efd",
+        "v_strimzi_drain_cleaner_chart_sha256": "ce84b8ddcd105f1b10d085fe69ed0d9185f798d009de3fba967386af2b8f6fdd"
+      },
+      "rationale": "实际维护源为Strimzi1.2.0/Kafka4.3.1；官方表覆盖Kubernetes1.30–1.36并包含Kafka4.3.1。保留metadata4.3-IV0、Chart及DrainCleaner1.6.1，不将旧研究中的1.3.1/4.3.2当本跳输入。",
+      "source_ids": [
+        "STRIMZI-120",
+        "STRIMZI-DRAIN-161-BEHAVIOR"
+      ]
+    },
+    {
+      "component_id": "mongodb",
+      "target_pins": {
+        "v_mongodb_operator": "1.23.1",
+        "v_mongodb_operator_chart": "1.23.2",
+        "v_mongodb_operator_chart_sha256": "80e629dc31f8cfe2615a5efb8b0d1d2ed418f25e8c0b168f981412c8594a07e9",
+        "v_mongodb": "8.0.32-14",
+        "v_mongodb_backup": "2.15.0",
+        "v_mongodb_fluentbit": "5.1.2-1",
+        "v_mongodb_exporter": "0.53.0"
+      },
+      "rationale": "Operator1.23.1官方EKS/AKS/RKE2表包含1.36；保留Mongo8.0.32-14/PBM2.15.0和AMD64 x86-64-v3主机前置，不把flavor测试冒称kubeauto发行认证，最小核对协调/重连。",
+      "source_ids": [
+        "MONGODB-1231-FIRST-HOP",
+        "MONGODB-REQUIREMENTS-FIRST-HOP"
+      ]
+    },
+    {
+      "component_id": "redis",
+      "target_pins": {
+        "v_redis_operator": "0.27.0",
+        "v_redis_operator_image": "0.27.0-kubeauto.2",
+        "v_redis": "8.10.2",
+        "v_redis_cluster_image": "8.10.2-kubeauto.1",
+        "v_redis_exporter": "v1.93.0",
+        "v_redis_operator_chart_sha256": "4eabe2cde88657f8b7b21c2ec5ddafa3a305d35c9877021f9be89ac3beeb0f7f"
+      },
+      "rationale": "保留0.27.0-kubeauto.2和8.10.2-kubeauto.1保护修订。上游CI未固定kind服务端版本，不能称1.36认证；按稳定Core/RBAC与现有CRD契约做最小目标协调，不替换原补丁。",
+      "source_ids": [
+        "REDIS-027-CI-SCOPE",
+        "REDIS-027-CLIENT-DEPENDENCIES",
+        "REDIS-027-RBAC-API"
+      ]
+    },
+    {
+      "component_id": "minio",
+      "target_pins": {
+        "operator_chart": "7.1.1",
+        "tenant_chart": "7.1.1",
+        "v_miniooperator": "7.1.1",
+        "minio_server": "RELEASE.2025-04-08T15-41-24Z"
+      },
+      "rationale": "Operator7.1.1要求Kubernetes>=1.30，非1.36逐版表；保留原Server/租户CA与PVC节点身份，不推进S3数据格式；最小核CSR/租户协调及原对象读取。",
+      "source_ids": [
+        "MINIO-711-REQUIREMENTS",
+        "MINIO-711-CI-SCOPE"
+      ]
+    },
+    {
+      "component_id": "nacos",
+      "target_pins": {
+        "nacos_server": "2.4.3",
+        "peer_finder_plugin": "1.1",
+        "mysql": "8.0.46",
+        "connector_j": "8.2.0"
+      },
+      "rationale": "保留Nacos2.4.3/MySQL8.0.46及原peer-finder配套；Nacos服务不是逐K8s版本认证组件，平台依赖为稳定Pod/Service发现与PVC/RBAC接口。不迁移业务schema，原业务/恢复深测按同输入复用。",
+      "source_ids": [
+        "NACOS-DOCKER-243-README",
+        "NACOS-243-COMPATIBLE",
+        "NACOS-PEERFINDER-130-MAIN",
+        "NACOS-243-SCHEMA"
+      ]
+    },
+    {
+      "component_id": "rocketmq",
+      "target_pins": {
+        "operator_chart": "0.1.0",
+        "operator_image_index_digest": "sha256:66516b068aa9b73bee2b218556f551111fc75721a32aa183f655106ef10bcfdf",
+        "broker": "4.5.0-alpine-operator-0.3.0",
+        "nameserver": "4.5.0-alpine-operator-0.3.0",
+        "console": "2.0.0"
+      },
+      "rationale": "保留原GA Operator不可变digest和Broker/NameServer4.5.0配套；无1.36逐版表，旧client-go0.22.1仅按实际共享稳定API和已接受来源边界使用，最小补协调/业务验证，不冒称可核实源码构建。",
+      "source_ids": [
+        "ROCKETMQ-030-GO-DEPS",
+        "CLIENTGO-0221-SHARED-API",
+        "ROCKETMQ-030-API-AND-EXEC-BOUNDARY"
+      ]
+    }
+  ],
+  "references": [
+    {
+      "path": "upgrade/v1.36.6/evidence/retained-middleware-observability-inputs.json",
+      "sha256": "6bc36b6b5b7a5d2c7f2d56d740be8a2feca14dc2cefeb30bd6d04d43c27d40c8"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/source/upgrade/v1.35.10/evidence/UPG-10.json",
+      "sha256": "b0258b75fbd5a6ba1a99f427f714ad97f2d30e09fcab4d98e26d71f809b7840d"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/UPG-02.json",
+      "sha256": "b3d0d99f4852a61bcdd33ed9b4329e6ad911e46314460426fa29b152c83c4718"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/kubernetes-clean-install-qualification.json",
+      "sha256": "9e97ef49c68c3fa47767462be4ef2c3b5441328dffa5595a704d66fe19e4c389"
+    }
+  ],
+  "target_observation": {
+    "run_id": "v1366-qualify-20261121a",
+    "path": "evidence/raw/v1366-qualify-20261121a/new-install/target-readonly-interfaces.json",
+    "middleware_crd_count": 0,
+    "boundary": "读回时无中间件CRD；Kubernetes升级与目标setup90未安装或重放中间件，原业务深测按其实际输入保留，不冒签目标协调实测。"
+  },
+  "new_live": [
+    "Harbor原生AMD64迁移/原点恢复/独立新建已完成，各自子资格及限定清理已收证；原失败如实保留。"
+  ],
+  "not_new_measurement": "未重跑各数据库、消息系统、监控/日志的性能、长稳、故障、灾备或尚未部署的业务；不外推1.36性能及SLA。",
+  "architecture_acceptance": "用户明确本次仅x86真实验收；ARM64采用官方包签名、双端双架构制品及静态检查，不声称项目原生运行，且不作为本次GA阻断。"
+}

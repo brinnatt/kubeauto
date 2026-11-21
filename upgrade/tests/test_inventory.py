@@ -140,7 +140,7 @@ CLUSTER_NETWORK=calico
         with self.assertRaisesRegex(Refused, 'observation failed'):
             self.observed()
         with self.assertRaisesRegex(Refused, 'exact reviewed'):
-            observe_source(self.runner, {'K8S_VER': '1.36.6'}, kubectl=self.binary,
+            observe_source(self.runner, {'K8S_VER': '1.37.2'}, kubectl=self.binary,
                 kubectl_sha256='', kubeconfig=self.kubeconfig, output=self.root/'receipt.json')
 
     def test_unreviewed_source_pair_refuses_before_inventory_callback(self):

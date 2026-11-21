@@ -3,6 +3,9 @@ from copy import deepcopy
 import hashlib
 import io
 import json
+import re
+import threading
+from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from types import SimpleNamespace
 import unittest
 from unittest.mock import Mock,patch
@@ -11,13 +14,60 @@ from upgrade.lab import next_registry as registry
 
 
 class RegistryContracts(unittest.TestCase):
-    def test_exact_lab_scope_contains_only_source_bridge_target_and_ledger_images(self):
+    def test_ingress_scope_is_only_the_two_currently_verified_frozen_images(self):
+        self.assertEqual(set(registry.scope(ingress=True)),{
+            'brinnatt/ingress-nginx-controller:v1.15.1','brinnatt/kube-webhook-certgen:v1.6.9'})
+        for value in registry.scope(ingress=True).values():
+            self.assertRegex(value['platforms']['linux/amd64'],r'^sha256:[a-f0-9]{64}$')
+
+    def test_fixed_tunnel_routes_real_http_without_private_headers_and_closes_on_failure(self):
+        requests=[]
+        class Handler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                requests.append((self.path,dict(self.headers)))
+                self.send_response(200);self.end_headers();self.wfile.write(b'{}')
+            def log_message(self,*args):pass
+        servers=[]
+        process=Mock();process.poll.return_value=None
+        def launch(command,**kwargs):
+            self.assertIn('root@192.168.47.130',command)
+            self.assertEqual(command[-1],'root@192.168.122.2')
+            forward=command[command.index('-L')+1].split(':')
+            self.assertEqual(forward[0::2],['127.0.0.1','127.0.0.1'])
+            self.assertEqual(forward[3],'5000')
+            server=ThreadingHTTPServer(('127.0.0.1',int(forward[1])),Handler)
+            servers.append(server)
+            threading.Thread(target=server.serve_forever,daemon=True).start()
+            return process
+        try:
+            with patch.object(registry.subprocess,'Popen',side_effect=launch):
+                with self.assertRaisesRegex(RuntimeError,'intentional'):
+                    with registry.lab_tunnel() as opener:
+                        client=object.__new__(registry.Registry)
+                        client.local_opener=opener;client.opener=Mock();client.tokens={}
+                        client.basic='private-must-stay-local'
+                        self.assertEqual(client.document('brinnatt/test','manifests','v1',local=True)[0],{})
+                        client.opener.open.assert_not_called()
+                        with self.assertRaisesRegex(ValueError,'escaped'):
+                            opener.open('http://192.168.122.1:5000/v2/')
+                        raise RuntimeError('intentional')
+            self.assertEqual(requests[0][0],'/v2/brinnatt/test/manifests/v1')
+            self.assertEqual(requests[0][1]['Host'],'192.168.122.2:5000')
+            self.assertNotIn('Authorization',requests[0][1])
+            process.terminate.assert_called_once();process.wait.assert_called_once()
+        finally:
+            for server in servers:server.shutdown();server.server_close()
+
+    def test_exact_lab_scope_contains_only_current_retained_components_and_ledger_images(self):
         scope=registry.scope()
-        self.assertEqual(len(scope),18)
-        self.assertIn('brinnatt/calico-node:v3.28.4',scope)
-        self.assertIn('brinnatt/calico-node:v3.31.7',scope)
-        self.assertIn('brinnatt/calico-node:v3.32.4',scope)
-        self.assertFalse(any('longhorn' in name or 'mysql' in name for name in scope))
+        self.assertEqual(set(scope),{
+            'brinnatt/pause:3.10','brinnatt/busybox:1.37',
+            'brinnatt/local-path-provisioner:v0.0.37',
+            'brinnatt/calico-node:v3.32.4','brinnatt/calico-cni:v3.32.4',
+            'brinnatt/calico-kube-controllers:v3.32.4','brinnatt/coredns:1.15.0',
+            'brinnatt/k8s-dns-node-cache:1.26.8','brinnatt/metrics-server:v0.9.1'})
+        self.assertTrue(all(re.fullmatch('sha256:[a-f0-9]{64}',
+            item['platforms']['linux/amd64']) for item in scope.values()))
 
     def test_build_metadata_equivalence_keeps_all_runtime_and_rootfs_constraints(self):
         base={'architecture':'amd64','os':'linux','rootfs':{'type':'layers','diff_ids':['sha256:'+'a'*64]},

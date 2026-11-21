@@ -110,15 +110,16 @@ def prepare_next_hop(manager, cluster, continuity_path, *, state_root=Path('/var
     accepted = False
     try:
         fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        os.write(descriptor, b'k8s-v13413-to-v13510\n')
+        from upgrade.product.hop import SOURCE, TARGET, RUN_ID
+        os.write(descriptor, (RUN_ID+'\n').encode())
         os.fsync(descriptor)
         state.mkdir(mode=0o700)
         owns_state = True
         config = manager.clusters_dir / cluster / 'config.yml'
         variables = manager._yaml_to_dict(config)
-        if str(variables.get('K8S_VER', '')).removeprefix('v') != '1.34.13':
-            raise Refused('preparation requires the exact source configuration 1.34.13')
-        variables.update(K8S_VER='1.35.10', UPGRADE_SOURCE_VERSION='v1.34.13',
+        if str(variables.get('K8S_VER', '')).removeprefix('v') != SOURCE.removeprefix('v'):
+            raise Refused('preparation requires the exact source configuration '+SOURCE)
+        variables.update(K8S_VER=TARGET.removeprefix('v'), UPGRADE_SOURCE_VERSION=SOURCE,
             UPGRADE_EXPECT_MASTER_UNSCHEDULABLE=True, UPGRADE_STATE_DIRECTORY=str(state))
         binary = manager.kube_bin_dir / 'kubectl'
         kubeconfig = manager.clusters_dir / cluster / 'kubectl.kubeconfig'
@@ -134,7 +135,7 @@ def prepare_next_hop(manager, cluster, continuity_path, *, state_root=Path('/var
             raise Refused('API authentication preparation refused before cluster mutation')
         from upgrade.product.next_api import admit as admit_api
         for backend in observed['api_backends']:
-            admit_api(binary, kubeconfig, backend['server'])
+            admit_api(binary, kubeconfig, backend['server'], target=TARGET)
         contract = continuity_contract(binary, kubeconfig, observed['api_backends'][0]['server'], request)
         recovery = recovery_point(manager, cluster, variables, observed, state)
         Continuity(binary, kubeconfig, observed['api_backends'][0]['server'], contract)()
@@ -142,7 +143,7 @@ def prepare_next_hop(manager, cluster, continuity_path, *, state_root=Path('/var
         from upgrade.product.next_config import configuration
         configuration(config, state)
         write_receipt(state / 'source-observation.json', observed)
-        receipt = {'schema_version': 1, 'source': 'v1.34.13', 'target': 'v1.35.10',
+        receipt = {'schema_version': 1, 'source': SOURCE, 'target': TARGET,
             'cluster': cluster, 'mutation': 'none-after-setup',
             'cluster_identity': observed['cluster_identity'], 'nodes': observed['nodes'],
             'continuity': contract, 'recovery_point': recovery,

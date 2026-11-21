@@ -9,8 +9,7 @@ import subprocess
 
 from upgrade.product.next_platform import snapshot
 from upgrade.product.kubernetes_preflight import Refused
-
-PINS_PATH = Path(__file__).parent.parent / 'v1.35.10/artifact-pins.json'
+from upgrade.product.hop import PINS_PATH
 
 
 class EtcdPatch:
@@ -18,6 +17,7 @@ class EtcdPatch:
 
     def __init__(self, manager, cluster, variables, source, state):
         self.manager, self.cluster, self.state = manager, cluster, state
+        self.retained = (source.get('source'), source.get('target')) == ('v1.35.10', 'v1.36.6')
         self.variables = dict(variables)
         inventory = source['effective_inventory']
         self.hosts = inventory['groups']['etcd']
@@ -74,7 +74,7 @@ class EtcdPatch:
         for row in statuses:
             status = row['Status']
             member = next(member for member in members if row['Endpoint'] in member['clientURLs'])
-            if (status['version'] not in ['3.6.4', '3.6.16'] or
+            if (status['version'] not in (['3.6.16'] if self.retained else ['3.6.4', '3.6.16']) or
                     status['header']['member_id'] != member['ID'] or
                     type(status['header']['cluster_id']) is not int or status['header']['cluster_id'] <= 0 or
                     type(status['header']['revision']) is not int or status['header']['revision'] <= 0 or
@@ -100,7 +100,7 @@ class EtcdPatch:
         values = {**self.variables, 'UPGRADE_ETCD_RECOVERY_VERIFIED': True,
             'UPGRADE_ETCD_RESUME': resume or all(row['Status']['version'] == '3.6.16'
                 for row in self.read('endpoint', 'status')),
-            'UPGRADE_ETCD_VERIFY_ONLY': completed,
+            'UPGRADE_ETCD_VERIFY_ONLY': completed or self.retained,
             'UPGRADE_ETCD_CLUSTER_ID': self.boundary['cluster_id'],
             'UPGRADE_ETCD_SOURCE_REVISION': self.boundary['revision'],
             'UPGRADE_ETCD_MEMBERS': self.boundary['members'],

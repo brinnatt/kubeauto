@@ -3,6 +3,36 @@
   hosts: kube_master:kube_node
   gather_facts: false
   any_errors_fatal: true
+  vars:
+    # Fixed v1.35.10/v1.36.6 pkg/features/kube_features.go comparison.
+    # Preserve the already-delivered 1.35 admission for historical contracts.
+    upgrade_is_136: "{{ K8S_VER | default('1.35.10') | regex_replace('^v', '') == '1.36.6' }}"
+    upgrade_136_removed:
+      - CSIMigrationPortworx
+      - HonorPVReclaimPolicy
+      - InPlacePodVerticalScalingAllocatedStatus
+      - InTreePluginPortworxUnregister
+      - MemoryManager
+      - ServiceTrafficDistribution
+      - TopologyAwareHints
+    upgrade_136_locked_true:
+      - CSIServiceAccountTokenSecrets
+      - DRAAdminAccess
+      - DisableNodeKubeProxyVersion
+      - ExternalServiceAccountTokenSigner
+      - ImageVolume
+      - KubeletFineGrainedAuthz
+      - KubeletPSI
+      - KubeletPodResourcesDynamicResources
+      - KubeletPodResourcesGet
+      - MutableCSINodeAllocatableCount
+      - NodeLogQuery
+      - ProcMountType
+      - SELinuxChangePolicy
+      - SELinuxMountReadWriteOncePod
+      - TopologyManagerPolicyOptions
+      - UserNamespacesSupport
+      - VolumeAttributesClass
   tasks:
     - name: Read actual kernel release
       ansible.builtin.command:
@@ -45,6 +75,9 @@
           - item.stdout is not regex(upgrade_locked_gates)
           - item.stdout is not regex(upgrade_alpha_gates)
           - "'storagemigration.k8s.io/v1alpha1=true' not in item.stdout"
+          - not upgrade_is_136 or item.stdout is not regex('(' ~ (upgrade_136_removed | join('|')) ~ ')\s*=')
+          - not upgrade_is_136 or item.stdout is not regex('(' ~ (upgrade_136_locked_true | join('|')) ~ ')\s*=\s*false')
+          - not upgrade_is_136 or item.stdout is not regex('GitRepoVolumeDriver\s*=\s*true')
       loop: '{{ upgrade_existing_units.results }}'
       no_log: true
     - name: Read the actual kubelet typed configuration before maintenance
@@ -69,6 +102,18 @@
           - upgrade_admission_gates.AggregatedDiscoveryRemoveBetaType | default(true) == true
           - upgrade_admission_gates.SystemdWatchdog | default(true) == true
           - upgrade_admission_gates.DRAPartitionableDevices | default(false) == false
+      no_log: true
+
+    - name: Refuse removed 1.36 typed gates and changed locked defaults
+      vars:
+        upgrade_admission_yaml: '{{ upgrade_admission_kubelet_config.content | b64decode | from_yaml }}'
+        upgrade_admission_gates: '{{ upgrade_admission_yaml.featureGates | default({}) }}'
+      ansible.builtin.assert:
+        that:
+          - upgrade_admission_gates.keys() | list | intersect(upgrade_136_removed) | length == 0
+          - upgrade_admission_gates.GitRepoVolumeDriver | default(false) == false
+          - upgrade_admission_gates | dict2items | selectattr('key', 'in', upgrade_136_locked_true) | rejectattr('value', 'equalto', true) | list | length == 0
+      when: upgrade_is_136
       no_log: true
 
 - name: Retain private etcd service identities for the admitted patch stage

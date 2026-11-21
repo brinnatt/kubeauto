@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "run_id": "v1366-harbor-qualify-20261121a",
+  "phase": "harbor-source",
+  "architecture": "native-amd64",
+  "host": "192.168.122.217",
+  "durable_rc": 0,
+  "finalized_rc": 0,
+  "failure_markers": 0,
+  "success_marker": "HARBOR_SOURCE_213_BUSINESS_PASS",
+  "scope_marker": "HARBOR_PHASE_SCOPE_VERIFY_PASS phase=harbor-source lease=held",
+  "claim": "实际原GA源config+kubecli setup01/03/11安装2.13.0，建一次业务身份与确认制品，清精确本地引用后原digest拉取、层内容读回、原用户与只拉机器人允许pull/拒绝push、匿名拒绝。仅源资格，未签迁移或双架构GA。",
+  "references": [
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/harbor-source.status.json",
+      "sha256": "d87440a55928f1047e6b7e4a577b077ba920a301b7aa6dc664e948b50dfc5306"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/harbor-source.attempt-1.log",
+      "sha256": "2c455130049908dafecb0e7e0e848e10f4bf5bedb40fa64eb73465e5152821fd"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/harbor-source.attempt-1.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/harbor-source.attempt-1.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/created-business.json",
+      "sha256": "23117d1f15e2f46a3a4ddd2044d4c8df4fd505e89328bee49d1df8dac9a04e04"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/source-business.json",
+      "sha256": "23117d1f15e2f46a3a4ddd2044d4c8df4fd505e89328bee49d1df8dac9a04e04"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/harbor-source.attempt-1.node-state.manifest.json",
+      "sha256": "e97f61cb2f320d874ccf30a78f228581b1403bf1769e665790d0279624a2890f"
+    }
+  ],
+  "private_evidence": "原日志可能含旧版安装角色的凭据输出；所有原始文件留在受控private目录，不提交或公开。",
+  "parent_acceptance": false
+}

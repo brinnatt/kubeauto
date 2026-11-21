@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "run_id": 44775670366,
+  "url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/44775670366",
+  "source_sha": "c743f7b8be4ddae0e5693c602c6d641207b45f04",
+  "conclusion": "success",
+  "count": 168,
+  "mode": "readback",
+  "mutation": "none",
+  "builds": [],
+  "publication_jobs": "skipped",
+  "claim": "当前双端同index及AMD64/ARM64子manifest身份；不是源码构建、镜像启动、Harbor业务或GA证明。"
+}

@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "run_id": "v1366-harbor-qualify-20261121a",
+  "phase": "harbor-migration",
+  "attempt": 2,
+  "architecture": "native-amd64",
+  "durable_rc": 0,
+  "finalized_rc": 0,
+  "failure_markers": 0,
+  "claim": "原生AMD64通过config+kubecli stopped backup→官方2.14.6→官方2.16.0。原project/artifact身份、digest与层内容、原用户及只拉机器人权限均保持，第二次upgrade幂等并再次读回；第一次认证字段误判失败独立保留，不签从未失败或双架构GA。",
+  "business": {
+    "marker": "HARBOR_BUSINESS_LEDGER_PASS",
+    "project_id": 2,
+    "artifact_id": 1,
+    "digest": "sha256:b275dfd6095cc0f31b218328434626c77328d982ae578f44ed886691c3899134",
+    "payload_sha256": "517aef10289ebf4fbc9de74573596fc84f03d8d668d0d7075b8a5086dcfcd1a0",
+    "assertions": [
+      "private-project-and-membership-preserved",
+      "original-robot-secret-usable",
+      "reader-and-robot-pull-allowed-push-denied",
+      "original-manifest-and-payload-preserved"
+    ]
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/harbor-migration.status.json",
+      "sha256": "1cf301bdfc1bb95d414b9378cbd6fc73274921671a8083c063fccf9fc78ef582"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/harbor-migration.attempt-2.log",
+      "sha256": "5fb1cf302a09fc4dbf50cbdd069127fd6cdba6fa669d4c993d19dbb73d909e29"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/harbor-migration.attempt-2.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/harbor-migration.attempt-2.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/harbor-migration.attempt-2.node-state.manifest.json",
+      "sha256": "9193379e220d04cfefd12b3b2f0e5e6a4fcc5ff35eb255152e1f06925c4215c8"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/created-business.json",
+      "sha256": "23117d1f15e2f46a3a4ddd2044d4c8df4fd505e89328bee49d1df8dac9a04e04"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/migrated-business.json",
+      "sha256": "23117d1f15e2f46a3a4ddd2044d4c8df4fd505e89328bee49d1df8dac9a04e04"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/idempotent-business.json",
+      "sha256": "23117d1f15e2f46a3a4ddd2044d4c8df4fd505e89328bee49d1df8dac9a04e04"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-qualify-20261121a/harbor-auth-repair-inputs.json",
+      "sha256": "ca9aaaea0fe124cd955e043e089ff40f93bb7164398c2663466163c905295fb9"
+    }
+  ],
+  "parent_acceptance": false,
+  "next": "same-original-point restore"
+}

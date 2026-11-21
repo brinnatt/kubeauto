@@ -1,0 +1,226 @@
+schema_version: 1
+recorded_on: '2026-11-20'
+source_release: upgrade/v1.35.10/release.yaml
+source_identity: upgrade/v1.36.6/source-baseline.yaml
+target_release: upgrade/v1.36.6/release.yaml
+owning_matrix: upgrade/v1.36.6/test-matrix.yaml
+scope_frozen: true
+authorization: 已授权下一相邻minor升级及Harbor最新GA官方双架构迁移；不授权客户生产操作或无关全量重建。
+evidence_policy: upgrade/acceptance.md
+claim_boundary:
+  inherited: 旧GA业务、性能、灾备与故障机制按实际依赖核对后复用；副本字节不改签。
+  new: 1.35.10→1.36.6迁移、目标接口/新建；Harbor官方制品、新建、迁移和备份恢复。
+  excluded: 无关中间件引擎升级、数据面切换、未启用新功能。
+artifact_scope:
+  scope_frozen: true
+  allowed_new_builds:
+    kubeauto-k8s-bin-dockerfile:
+      mode: selected
+      images:
+      - brinnatt/kubeauto-k8s-bin:v1.36.6
+      source_sha: bc3dcf6527dcb81613445b1040f2da0caa75141d
+      run_id: 44752039815
+    kubeauto-ext-images-dockerfile:
+      mode: selected
+      images:
+      - brinnatt/harbor-offline:v2.16.0
+      - brinnatt/openebs-kubectl:1.36.6
+      - brinnatt/harbor-upgrade-bridge-amd64:v2.14.6
+      batches:
+      - source_sha: 42ec7a2f736165b638656d6a7c4af016bab2da56
+        images:
+        - brinnatt/harbor-upgrade-bridge-amd64:v2.14.6
+        reason: 官方仅支持经2.14进入2.16；仅AMD64桥接载荷，不冒称ARM64运行时。
+  unchanged_tags: 双端双架构当前核验；网络/认证失败不推断缺失。
+  consumer_inventory: upgrade/v1.36.6/evidence/consumer-image-scope.json
+  consumer_tags: 168
+  reused_binary_pack: kubeauto-ext-bin:1.17.1
+  readback_run_id: 44775670366
+live_scope_frozen: true
+new_live_steps:
+- id: source
+  acceptance:
+  - UPG-05
+  gap: 本跳无实际13510维护组合源身份、恢复点、PVC业务及时间/租约证明。
+  cannot_reuse: 旧135现场使用ext-bin1.17.0；本次从已接受维护提交建立1.17.1源，不能用源码审查冒签运行。
+  completion: 干净自有源安装、健康和时间资格、prepare成功、独立快照校验及业务账本；准入拒绝不改变集群。
+  cost_bound: 一次六节点源新建，保留健康自有边界供后续模块复用；不做全部中间件长链。
+- id: control
+  acceptance:
+  - UPG-06
+  - UPG-08
+  - UPG-12
+  gap: Kubernetes1.36认证/默认gate/API变化及HA混合阶段接口。
+  cannot_reuse: 旧终态不是1.35→1.36迁移。etcd/Calico保留已接受版本，不重新走旧桥接。
+  completion: 所有API逐台1.36.6且ready后才更新控制器；etcd成员、Calico对象、PVC/Service账本保持，源kubelet仍1.35.10。
+  cost_bound: 复用source，逐成员/逐API更新；首失败只修所属边界。
+- id: nodes-protection
+  acceptance:
+  - UPG-07
+  - UPG-12
+  gap: 本跳真实Eviction/PDB拒绝与同UID解除后续跑。
+  cannot_reuse: 旧保护机制证据可复用，但不能证明新kubelet迁移在本项目边界停步。
+  completion: 预期拒绝原始日志独立保存；journal停在worker193、kubelet仍源版本且保持cordon，账本一致。
+  cost_bound: 只在资格链执行一次PDB负例；最终正向链不注入该故障。
+- id: nodes
+  acceptance:
+  - UPG-07
+  - UPG-08
+  - UPG-09
+  - UPG-11
+  - UPG-12
+  gap: 1.36 kubelet/API与现有DNS/metrics、containerd2.3.7的实际集成。
+  cannot_reuse: 未改变runtime/CSI/数据库引擎；只补变更基座下账本和受影响接口，不全量回归。
+  completion: 逐节点drain、PDB拒绝恢复和调度状态保持；六节点1.36.6 Ready、原PVC/Service/DNS账本及metrics样本。
+  cost_bound: 复用control边界；只执行已安装DNS/metrics，不重建数据库或卷。
+- id: new-install
+  acceptance:
+  - UPG-13
+  gap: 目标1.36.6默认组合干净安装及幂等。
+  cannot_reuse: 旧1.35.10安装不能证明新二进制和当前默认gate。
+  completion: 独立干净目标安装、真实接口及第二次setup幂等；不得借源集群隐式资源。
+  cost_bound: 同一独占池串行复用，源阶段证据和清理确认后才新建。
+- id: source-clean/target-clean
+  acceptance:
+  - UPG-05
+  - UPG-13
+  gap: 源和目标自有资源的限定回收与六节点清理复验。
+  cannot_reuse: 本次新建资源身份不同，必须当前回收；不能借清理接管原控制机集群。
+  completion: namespace UID/CA/owner核验；无遗留PV后destroy及固定wipe复验，release后LAB_CLEAN_VERIFY_PASS。
+  cost_bound: 只在本轮租约六节点回收，不格式化附加盘、不动控制机已有服务。
+- id: ingress-focused
+  acceptance:
+  - UPG-11
+  gap: 官方ingress-nginx测试范围止于1.35，1.36需真实路由/准入最小集成。
+  cannot_reuse: 旧基座入口成功及Chart渲染不能证明1.36实际webhook和数据面；不重复其他中间件。
+  completion: 健康new-install边界经config+kubecli setup07安装；只临时设置三个入口字段，调用结束原子恢复原配置字节；真实HTTP/验证CA的HTTPS、错误CA rc60、真实Webhook拒绝、UID清理/标签恢复；先前失败双终态和限定清理通过后以独立attempt重试，原失败不覆盖。
+  cost_bound: 复用已新建目标与租约，仅两个入口镜像和既有busybox；不重新setup90或构建镜像。
+cost_control:
+  rule: 每个新增现场步骤必须有依赖变化、最小反证、不可复用理由与成本上界；先合同再最窄现场，最后一次干净范围验收。
+  budget:
+    qualification: 一次六节点源setup90→受控升级→清理→一次目标setup90及幂等；不做中间件故障/灾备/性能长链。
+    command_timeout_seconds: 3600
+    heartbeat_seconds: 20
+    stop_rule: 首失败停止依赖链并持租约；先诊断再最小修复，不默认重建源。
+    harbor: 一次AMD64源安装→桥接/目标迁移→原点恢复；独立243新建2.16与幂等；随后目标/源按归属清理。
+    final: 前置通过后一次冻结范围干净链，当前不启动。
+freeze_boundary: 冻结既有Kubernetes资格链、目标边界入口最小集成，以及独立AMD64 Harbor五phase资格；Harbor仅在Kubernetes清理释放后stage/launch。原生ARM运行不属于本次验收范围；逻辑迁移和最终链仍须完成准入与真实验证。
+local_admission:
+  evidence: upgrade/v1.36.6/evidence/UPG-04.json
+  narrow_gate: 当前438项合同、14项原生渲染、40个service参数组合及真实控制机隔离合同；后续变化只补所属合同，未验证变更不得入场。
+  source_command: kubecli upgrade CLUSTER --prepare --continuity CONTINUITY.json
+  prepare_marker: UPGRADE_PREPARE_PASS
+  complete_marker: UPGRADE_NEXT_HOP_STAGE_PASS
+lab_scope:
+  control: 192.168.122.2
+  control_rule: 只用独立路径，不接管控制机已有集群或现存中间件。
+  masters:
+  - 192.168.122.217
+  - 192.168.122.243
+  - 192.168.122.246
+  workers:
+  - 192.168.122.193
+  - 192.168.122.210
+  - 192.168.122.216
+  os: Rocky9.8，实际内核5.14满足Calico3.32的5.10下限；运行前重新读取。
+  lease: 先取得固定共享池租约及控制端排他权，再做任何集群变更；只读盘点不算租约。
+  source_cluster: upgrade-v13510-source-<sha256(run_id)[:8]>
+  target_cluster: upgrade-v1366-clean-<sha256(run_id)[:8]>
+  storage_fixture: 原项目local-path产品入口创建PVC，固定初始卷和数据；通过Service读回，升级后保留UID/绑定/账本。
+  cleanup: 只清理本runner创建且库存/集群UID已验证的集群与数据目录，保留证据及首失败；不碰控制机原集群、外来配置、原始GA归档和其它存储设备。
+  control_state: /var/tmp/kubeauto-v1366-lab
+  control_home: 每次kubecli命令使用私有mount namespace，原/root/.ssh只读挂载；原kubeconfig不变
+  fixed_runner: upgrade/lab/next-session.sh
+  frontend: bash upgrade/lab/next-control.sh
+  cluster_identity: 固定source/target名称前缀加run_id的SHA256前8位，资格与最终验收各自独立配置、receipt和journal
+  readback: 每阶段独立不可覆盖attempt日志、durable exit/finalized，product-state私有快照；fetch收取，acceptance仅同步矩阵和证据
+  ledger_availability: 单副本local-path PVC固定worker193。drain可短暂不可用，等待原数据重挂；不承诺零停机或localPV高可用。
+  source_code_commit: 048f5e9f6b20e98c3d7cf326c4ea4615365e9e96
+  source_runtime: containerd2.3.7 / etcd3.6.16 / ext-bin1.17.1 / nerdctl2.4.2；不是旧135现场的1.17.0制品
+  harbor: Kubernetes阶段不安装Harbor；目标清理并释放节点标记后，在同组共享锁内由独立Harbor子session完成迁移/恢复/新建/逻辑导入和清理。
+blocked_live_paths: []
+execution_commands:
+  qualify: bash upgrade/lab/next-control.sh launch qualify v1366-qualify-20261121a
+  final: bash upgrade/lab/next-control.sh launch final v1366-final-20261121c
+  status: bash upgrade/lab/next-control.sh status RUN_ID
+  fetch: bash upgrade/lab/next-control.sh fetch RUN_ID
+  handoff: bash upgrade/lab/next-control.sh acceptance RUN_ID; bash upgrade/lab/next-control.sh signal RUN_ID PHASE
+    advance
+  repair: 保留首失败与租约；仅修所属因果层，通过最窄合同后才重试。产品代码变化时先收证据并分析journal绑定，禁止静默续用。
+remaining_before_execution:
+- 最终stage/launch前重新核验空间、时间、实际输入与共享租约，01至14全部有效后运行一次冻结干净组合链。
+- ARM64按交付负责人决定仅签官方来源/签名/双架构制品及静态依据，未经项目原生运行实测。
+- 最终组合成功后导出发行policy，发布精确产品修订并核验正式制品；不覆盖旧tag。
+harbor_native_amd64_qualification:
+  enabled: true
+  runner: upgrade/lab/harbor-session.sh
+  phases:
+  - harbor-source
+  - harbor-migration
+  - harbor-restore
+  - harbor-new-install
+  - harbor-clean
+  active_hosts:
+  - 192.168.122.217
+  - 192.168.122.243
+  acceptance:
+  - UPG-10
+  - UPG-12
+  - UPG-13
+  claim_boundary: 原生AMD64的源迁移/原点恢复，以及243独立干净2.16.0新建和二次setup11幂等；不签完整父项、ARM运行或逻辑跨架构。
+  gap: AMD64源、迁移、原点恢复及独立新建已有子资格；原父链存在真实失败，尚未执行最终干净完整范围验收，不据子资格签父项或ARM。
+  completion: 各phase独立日志和durable双0，原确认制品清缓存后读回，原用户/机器人pull及push拒绝，最终限定清理与LAB_CLEAN_VERIFY_PASS。
+  cost_bound: 复用已清理六节点租约，仅217源/243新建；不新建Kubernetes、不构建镜像；源与目标分别保存私有账本和清理归属。
+  failure_rule: 首失败停止依赖链、保留恢复资料和租约；完成定位/合同后重试所属边界，或请求runner限定清理。
+ingress_qualification:
+  enabled: true
+  runner: upgrade/lab/ingress_qualification.py
+  phase: new-install
+  images:
+  - brinnatt/ingress-nginx-controller:v1.15.1
+  - brinnatt/kube-webhook-certgen:v1.6.9
+architecture_acceptance:
+  decision: 交付负责人明确无ARM测试机，本次使用x86回归，不等待原生ARM环境。
+  runtime: 原生x86_64完成新建、升级、恢复及逻辑迁移集成验证。
+  arm64: 核验官方完整包、签名、双架构制品及静态兼容依据；未经项目原生运行实测。
+  claim_boundary: x86结果不改称ARM运行或跨CPU迁移实测；上述边界不是本次GA阻断，但不豁免数据保护、身份权限和最终干净验收。
+harbor_logical_qualification:
+  enabled: true
+  runner: upgrade/lab/harbor-session.sh
+  phases:
+  - harbor-source
+  - harbor-portable
+  - harbor-clean
+  active_hosts:
+  - 192.168.122.217
+  - 192.168.122.243
+  acceptance:
+  - UPG-10
+  - UPG-12
+  - UPG-13
+  product_entry: config.yml + kubecli setup 01/03/11; upgrade --harbor backup/export/import/abort-import/restore
+  claim_boundary: 两端均为x86；验证2.13逻辑导入2146再升216、216同版逻辑导入；不称跨CPU实测。
+  completion: 原用户/机器人权限、项目/制品ID及清缓存后层内容保持；源停写、目标隔离退出、原机恢复；独立日志与双0、限定清理。
+  cost_bound: 一次213干净源；目标仅01/03运行时前置，两个逻辑目标串行，既有制品零构建；恢复档案置控制机独立home文件系统，至少12GiB空闲。
+harbor_final_acceptance:
+  enabled: true
+  runner: upgrade/lab/harbor-session.sh
+  phases:
+  - harbor-source
+  - harbor-migration
+  - harbor-restore
+  - harbor-new-install
+  - harbor-portable
+  - harbor-clean
+  active_hosts:
+  - 192.168.122.217
+  - 192.168.122.243
+  admission: UPG-01至14全部有效PASS；最窄逻辑资格通过后才启用。
+
+final_kubernetes_reuse:
+  run_id: v1366-final-20261121b
+  manifest_sha256: 9f94565aad86ad89cec64592b12f635d11d974f662e9e00d820881c8f88fefb8
+  boundary: 七个Kubernetes阶段首次成功且完成清理；原组合父在Harbor输入准入前失败、rc1/1保留。
+  unchanged: 产品、二进制与其余门禁输入逐项不变；仅源客户端恢复/续接门禁、精确合同及正式记录变化。
+  actual_execution: 复用原七步当前证据；本完成run只新执行Harbor六个干净阶段，不构建镜像。
+  refusal: 原阶段失败或重试、缺日志/标志/双0、输入漂移、活动owner或Harbor已启动均拒绝。

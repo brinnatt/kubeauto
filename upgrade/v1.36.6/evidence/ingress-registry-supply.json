@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "registry": "http://192.168.122.2:5000",
+  "builds": [],
+  "existing_tags_overwritten": [],
+  "records": [
+    {
+      "image": "brinnatt/ingress-nginx-controller:v1.15.1",
+      "source_child": "sha256:6eda25f012aced8450fa9a081c1a316f8d9c9780a9ac69fcb9d078d2770ec212",
+      "action": "copied-missing-amd64-manifest"
+    },
+    {
+      "image": "brinnatt/kube-webhook-certgen:v1.6.9",
+      "source_child": "sha256:ff31947ffcac13fbf2c1b1749cfc9dfc92b3ac94f46ee7dd598aeaf5e82a79ff",
+      "action": "copied-missing-amd64-manifest"
+    }
+  ],
+  "ready": true
+}

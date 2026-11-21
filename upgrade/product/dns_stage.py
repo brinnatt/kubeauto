@@ -66,7 +66,7 @@ def healthy(obj):
 class DNSStage:
     def __init__(self, kubectl, kubeconfig, api_backends, nodes, *, timeout=600, progress=None,
                  target_version='v1.34.13', originally_schedulable=None):
-        if target_version not in ['v1.34.13', 'v1.35.10']:
+        if target_version not in ['v1.34.13', 'v1.35.10', 'v1.36.6']:
             raise DNSRefused('exact reviewed platform target required')
         self.target_version = target_version
         self.schedulable = ({name: True for name in nodes} if originally_schedulable is None

@@ -1,0 +1,269 @@
+{
+  "schema_version": 1,
+  "accepted": true,
+  "source": "v1.35.10",
+  "target": "v1.36.6",
+  "case_ids": [
+    "UPG-07"
+  ],
+  "method": "live",
+  "claim": "六节点由产品入口逐节点迁移至1.36.6，原节点UID及三主cordon/三从调度状态保持；containerd2.3.7身份及CRI复验、DNS/metrics、原PVC/Service确认账本及第二次完整幂等调用均通过。PDB独立负例先真实阻止worker193，再按同UID解除测试PDB并从原journal续跑；原预期失败保留，不改签为从未失败。",
+  "covered_subcases": [
+    "all-six-nodes-exact-target-and-ready",
+    "retained-containerd-237-cri-health-and-sandbox-retention",
+    "master-cordon-and-worker-uncordon-original-state",
+    "eviction-pdb-and-local-data-protection-stop",
+    "journal-ordered-resume-and-first-failure-preservation"
+  ],
+  "inputs": {
+    "upgrade/product/node.yml": "0112a7d7eb7b528575f7e4da5f7147108f3820f6f819e0904a839da936d6627c",
+    "upgrade/product/next_platform.py": "78c0631680e65b189f44ae7e5efe572d9f1443830d676ad542230a05474ce2bf",
+    "upgrade/product/kubernetes_stage.py": "312129f61989e75954e3aab446577e2e0cf537c21df6653ce98c4b2b96e2d586",
+    "upgrade/product/next_config.py": "11cdfb5615b2b4e60bbc5ee8901db652aca6729ed6f1bc506b3e9eba88f3fb28",
+    "upgrade/product/continuity.py": "c5834306448f21dd167e4909cfe6380a1d29f10f908cefc2ded450aed65a6538",
+    "upgrade/lab/next-ledger.yaml": "c909a62d53cf7bd6c1f26b16f761062f3ee70c0f482277b7c7fd2dade0aa62ae",
+    "upgrade/v1.36.6/artifact-pins.json": "6ceaf94c0fb6657a66017ff1563b9743c754ff1c7282b36242ade029b9a25047",
+    "upgrade/v1.36.6/evidence/raw/local-qualification/kubernetes-qualified-next_session.py.txt": "542ea11c51f4109db9311858e636d017746966d72518bea7000ba10395fd053c"
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes/continuity.json",
+      "sha256": "ac5a5d3d3fbe923ac9c89984cfad76ca2677c4770cbd408e9604d37b03149abe"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes/nodes-boundary.json",
+      "sha256": "b1ce1f365281455a5c9b7d533824295e077fab0c68a20804fdc0383f0b6f86ae"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes/nodes-health.json",
+      "sha256": "6e36e5c0656a4a319903b1f6f16ab86baa2a01fb5250320da070c37656cf8da9"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes/nodes.attempt-1.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes/nodes.attempt-1.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes/nodes.attempt-1.log",
+      "sha256": "69ef1bd674719a01bc431818fe2be04ec28fe46ea743cdebb30033a534ed0859"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes/nodes.status.json",
+      "sha256": "7a1456c073f3c75b4a6e9b38caa9d03a462fe1ff664c327038a7334befd54d64"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes/plan.json",
+      "sha256": "3a9b583c67e5f1e2acce68b90e2f27a2f2d1a748fd49444c6e61685769b39309"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes/product-state/calico-datastore.json",
+      "sha256": "a921a1be3443c74d5832576594a7ec2ae0467571207f43bd37e033fac365f186"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes/product-state/calico-edges.json",
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes/product-state/calico-retained-objects.json",
+      "sha256": "a606567a828d31bb0bf8a0173f2f29d7a1ea52dc259db67a344ca900341caa26"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes/product-state/dns-source.json",
+      "sha256": "850a6b8c9e167fca61ba4edd9ac007fe0a04f24928adc7a7f8695df99cb4f983"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes/product-state/etcd-source.json",
+      "sha256": "20f3254a383fd9fe3c0c666325aed60e9a119f2a8006bc14068e2956a09533c2"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes/product-state/etcd-unit-192.168.122.217.json",
+      "sha256": "6b794c77f65f5ff12d0818153a5a7da7769ae5c01781729a82987b353c92104a"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes/product-state/etcd-unit-192.168.122.243.json",
+      "sha256": "b43d55049ac3f0042033ddb45aa0a292f07fa84de9dfc3ab735769b9b27f1277"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes/product-state/etcd-unit-192.168.122.246.json",
+      "sha256": "46ef0315176300826db54abd2d3bea3ac4b54b35cde0f5c71a422f0c8f10dbbe"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes/product-state/first-hop-result.json",
+      "sha256": "d945ceb2b2caae63d1f8b263f0c5a303a22aa4b5d41bc799e3beec881e779eba"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes/product-state/journal/journal.json",
+      "sha256": "a1c88bfd40f0924314439c340ec3792b08a4395800d1ecfe2b8f1fd805d2740e"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes/product-state/journal/owner.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes/product-state/metrics-business-pods.json",
+      "sha256": "8e61c6faee3f27a8fdf26842f7816e28e1e8ae8c8aba946c506138a64ddfc716"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes/product-state/metrics-source.json",
+      "sha256": "a4ccdd956893bd9d0c5a626a19c32f6c42f6db3f8e9a36a928e5e065c779990d"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes/product-state/prepared-receipt.json",
+      "sha256": "f1e85d8772272d2e3d605b9aaae7f5687c18609886783d6da30384d98beaa2bc"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes/product-state/product-config.json",
+      "sha256": "2aa1e74744fb3ce8134734d5177fbb33974410cc1aec01e43184d6363bdb6255"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes/product-state/snapshot.db",
+      "sha256": "7841100d22a3d89c655df5e570e241649b34814a7dcbc42eadc06db1ae3b90b9"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes/product-state/source-observation.json",
+      "sha256": "b7340cb534525a5fa9b1a1936f9f0878fe3a19984d3d8e438deac35561b60e27"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes/protection-released.json",
+      "sha256": "00d09b8d055ba2257a0648181fb279238b82ec34216d1286673bc4990d408689"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes/source-health.json",
+      "sha256": "f4fc034d15510a4877950e56d58274729decd41451f8affbcf203e8878e19ca7"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes-protection/archive-sha256.json",
+      "sha256": "4a67fc7dbd54a91ef45a7e632bae35e6147720b4f97c396e28544818eeee09bf"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes-protection/expected-pdb-refusal-1.log",
+      "sha256": "9de4c2aa491fceb01bfd36b235380a9d6a3dbf1bd9923b9401cc46e0daeb98f4"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes-protection/nodes-protection.attempt-1.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes-protection/nodes-protection.attempt-1.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes-protection/nodes-protection.attempt-1.log",
+      "sha256": "aed87ce7b224d2f0cdacd45a5da584cce385051233931b50e1cf4ee53474bbfd"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes-protection/nodes-protection.status.json",
+      "sha256": "d35b351971f38db386413f34b33799ad6ffa1d8806b9bc29950d97456b2e4561"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes-protection/product-state/calico-datastore.json",
+      "sha256": "a921a1be3443c74d5832576594a7ec2ae0467571207f43bd37e033fac365f186"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes-protection/product-state/calico-edges.json",
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes-protection/product-state/calico-retained-objects.json",
+      "sha256": "a606567a828d31bb0bf8a0173f2f29d7a1ea52dc259db67a344ca900341caa26"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes-protection/product-state/dns-source.json",
+      "sha256": "850a6b8c9e167fca61ba4edd9ac007fe0a04f24928adc7a7f8695df99cb4f983"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes-protection/product-state/etcd-source.json",
+      "sha256": "20f3254a383fd9fe3c0c666325aed60e9a119f2a8006bc14068e2956a09533c2"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes-protection/product-state/etcd-unit-192.168.122.217.json",
+      "sha256": "6b794c77f65f5ff12d0818153a5a7da7769ae5c01781729a82987b353c92104a"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes-protection/product-state/etcd-unit-192.168.122.243.json",
+      "sha256": "b43d55049ac3f0042033ddb45aa0a292f07fa84de9dfc3ab735769b9b27f1277"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes-protection/product-state/etcd-unit-192.168.122.246.json",
+      "sha256": "46ef0315176300826db54abd2d3bea3ac4b54b35cde0f5c71a422f0c8f10dbbe"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes-protection/product-state/first-hop-result.json",
+      "sha256": "4e80ccb45c04bdcb07e87d3aba93de99e6b56f3c2d245978ea7d3a2b1c525b05"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes-protection/product-state/journal/journal.json",
+      "sha256": "b885e8e10940f8c71a1ee45d7fcd9a4c6649a9084565e8b500ac8c3e7366c7a6"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes-protection/product-state/journal/owner.lock",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes-protection/product-state/metrics-source.json",
+      "sha256": "a4ccdd956893bd9d0c5a626a19c32f6c42f6db3f8e9a36a928e5e065c779990d"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes-protection/product-state/prepared-receipt.json",
+      "sha256": "f1e85d8772272d2e3d605b9aaae7f5687c18609886783d6da30384d98beaa2bc"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes-protection/product-state/product-config.json",
+      "sha256": "2aa1e74744fb3ce8134734d5177fbb33974410cc1aec01e43184d6363bdb6255"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes-protection/product-state/snapshot.db",
+      "sha256": "7841100d22a3d89c655df5e570e241649b34814a7dcbc42eadc06db1ae3b90b9"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes-protection/product-state/source-observation.json",
+      "sha256": "b7340cb534525a5fa9b1a1936f9f0878fe3a19984d3d8e438deac35561b60e27"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes-protection/protection-journal.json",
+      "sha256": "b885e8e10940f8c71a1ee45d7fcd9a4c6649a9084565e8b500ac8c3e7366c7a6"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes-protection/protection-pdb.json",
+      "sha256": "20caf4814cdea41bead3ca10d9a2861a7b20245d5b8ea1463dc3d0eaa2a456e0"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/local-qualification/UPG-07-before-final-runner.json",
+      "sha256": "e5c73f1db54fecd6e89b9532c17d743db89719de6f79c9a1ac0fef4cfd871caa"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/kubernetes-runner-final-applicability.json",
+      "sha256": "b6fcf1c2d14c3d0662aed352578e246c95d658d219807c3191116c9412c2dfe2"
+    }
+  ],
+  "run_id": "v1366-qualify-20261121a/nodes.attempt-1",
+  "business_assertions": [
+    "原六Node UID保持，kubelet精确1.36.6且Ready，master仍cordon、worker恢复调度。",
+    "容器运行时保持2.3.7，实际CRI及已有Ready sandbox逐边复验；节点升级前正常drain。",
+    "原namespace/PVC/PV/Service绑定及HTTP确认账本经产品连续性检查保持；DNS工作负载及metrics六节点样本通过。",
+    "原journal从受PDB保护的worker193续跑至全部11步完成，active=null；预期负例rc=1、journal保留rc=2失败项与独立原始日志；正向阶段零非预期失败且两次终态成功。"
+  ],
+  "completed_ladder": 3,
+  "durable_rc": 0,
+  "finalized_rc": 0,
+  "failure_markers": 0,
+  "success_marker": "UPGRADE_NEXT_NODES_PASS",
+  "cleanup_marker": "NEXT_SESSION_PHASE_SCOPE_VERIFY_PASS phase=nodes ownership=retained",
+  "log": {
+    "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes/nodes.attempt-1.log",
+    "sha256": "69ef1bd674719a01bc431818fe2be04ec28fe46ea743cdebb30033a534ed0859"
+  },
+  "durable_exit": {
+    "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes/nodes.attempt-1.exit",
+    "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+  },
+  "durable_finalized": {
+    "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/nodes/nodes.attempt-1.finalized",
+    "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+  },
+  "customer_signoff": null,
+  "runner_applicability": "原现场helper已保留原字节；当前final扩展适用性见kubernetes-runner-final-applicability.json。原现场run/durable/log/业务断言未修改。"
+}

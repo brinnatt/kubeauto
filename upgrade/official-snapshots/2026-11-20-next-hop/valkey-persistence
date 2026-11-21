@@ -1,0 +1,1805 @@
+
+
+
+
+
+
+    
+    
+    
+    
+        
+     
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="ROBOTS" content="ALL" />
+    <meta name="MSSmartTagsPreventParsing" content="true" />
+    <meta name="Copyright" content="" />
+    <meta name="keywords" content="open-source, valkey" />
+    <meta property="og:image" content="https://valkey.io/img/valkey-logo-og.png" />
+    
+    
+
+    
+
+    <!-- Favicons -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/img/favicon/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/img/favicon/favicon-16x16.png">
+    <link rel="manifest" href="/img/favicon/site.webmanifest">
+    <link rel="mask-icon" href="/img/favicon/safari-pinned-tab.svg" color="#5bbad5">
+    <link rel="shortcut icon" href="/img/favicon/favicon.ico">
+    <meta name="msapplication-TileColor" content="#2d89ef">
+    <meta name="msapplication-TileImage" content="/img/favicon/mstile-144x144.png">
+    <meta name="msapplication-config" content="/img/favicon/browserconfig.xml">
+    <meta name="theme-color" content="#ffffff">
+
+    <title>Valkey Documentation &middot; Persistence</title>
+    <meta name="title" property="og:title" content="Valkey Documentation: Persistence">
+
+    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="alternate" type="application/atom+xml" title="Atom feed" href="https://valkey.io/atom.xml" />
+
+    <!-- Nav JS -->
+    <script src="/assets/js/nav.js"></script>
+
+    <!-- Carousel JS -->
+    <script src="/assets/js/carousel.js"></script>
+
+    <!-- Copy-to-clipboard for .copy-code blocks -->
+    <script src="/assets/js/copy-code.js"></script>
+
+    <!-- cookie banner, LF standard -->
+    <script
+      src="https://transcend-cdn.com/cm/f484e2d0-ad2e-43a9-9d64-d07f6fa20966/airgap.js"
+      data-cfasync="false"
+      data-prompt="auto"
+    ></script>
+
+    <!-- google analytics, LF standard -->
+    <!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-MFFCB7SR');</script>
+    <!-- End Google Tag Manager -->
+
+    
+</head>
+<script>
+// Banner state management: Check localStorage before DOM renders to prevent layout shift
+// and ensure banner visibility state is consistent with user's previous interactions.
+(function() {
+  const bannerClosedTime = localStorage.getItem('bannerClosedTime');
+  if (bannerClosedTime) {
+    const closedTime = parseInt(bannerClosedTime, 10);
+    const twentyFourHours = 24 * 60 * 60 * 1000; // 24 hours in ms
+    if (Date.now() - closedTime < twentyFourHours) {
+      document.documentElement.classList.add('banner-hidden');
+    } else {
+      // Clear expired timestamp
+      localStorage.removeItem('bannerClosedTime');
+    }
+  }
+})();
+</script>
+<body
+  
+  ><div class="header">
+    <div class="width-limiter">
+      <a href="/" class="logo">
+        <img src="/img/valkey-horizontal.svg" alt="Valkey Logo" width="130" height="46"/>
+      </a>
+      <div role="button" 
+        class="btn-menu"
+        onclick="window.toggleHeaderMenu();"
+      ></div>
+      <nav role="navigation" aria-label="Main">
+        <a role="menuitem" href="/download/">Download</a>
+
+        <div class="has-submenu">
+          <a role="menuitem" href="/docs/">Documentation</a>
+          <div class="submenu">
+            <a role="menuitem" href="/commands/">Command Reference</a>
+            <a role="menuitem" href="/topics/">Documentation by Topic</a>
+            <a role="menuitem" href="/clients/">Clients</a>
+            <a role="menuitem" href="/integrations/">Integrations</a>
+          </div>
+        </div>
+        <a role="menuitem" href="/blog/">Blog</a>
+        <div class="has-submenu">
+          <a role="menuitem" href="/community/">Community</a>
+          <div class="submenu">
+            <a role="menuitem" href="/events/">Events</a>
+            <a role="menuitem" href="https://planet.valkey.io/" target="_blank">Planet</a>
+          </div>
+        </div>
+        <a role="menuitem" href="/participants/">Participants</a>
+        <a role="menuitem" href="/try-valkey/">Try Valkey</a>
+        <a role="menuitem" href="https://github.com/valkey-io" target="_blank" class="github-button">
+          <img src="/img/IconGithub.svg" alt="GitHub Icon" width="16" height="16" />
+          GitHub
+          <!-- Star count will be injected here by JS -->
+        </a>
+        
+      </nav>
+    </div>
+  </div>
+  <div class="body">
+      
+
+<div class="left-aside-bg">
+    <div class="left-aside">
+        <main>
+            
+
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+    <ul class="breadcrumb-list">
+        <li class="breadcrumb-item">
+            <a href="/topics/" class="breadcrumb-link">Topics</a>
+        </li>
+        
+        <li class="breadcrumb-item">
+            <img src="/img/caret-right.svg" alt="" width="8" height="10"/>
+            
+            Administration
+            
+        </li>
+        
+        <li class="breadcrumb-item breadcrumb-current" aria-current="page">
+            <img src="/img/caret-right.svg" alt="Caret Right Icon" width="8" height="10"/>
+            Persistence
+        </li>
+    </ul>
+</nav>
+
+            <div class="main-inner">
+                
+
+
+
+<h1 class="docs-page-title">Persistence</h1>
+
+<p>Persistence refers to the writing of data to durable storage, such as a solid-state disk (SSD). Valkey provides a range of persistence options. These include:</p>
+<ul>
+<li><strong>RDB</strong> (Valkey Database): RDB persistence performs point-in-time snapshots of your dataset at specified intervals.</li>
+<li><strong>AOF</strong> (Append Only File): AOF persistence logs every write operation received by the server. These operations can then be replayed again at server startup, reconstructing the original dataset. Commands are logged using the same format as the Valkey protocol itself.</li>
+<li><strong>No persistence</strong>: You can disable persistence completely. This is sometimes used when caching.</li>
+<li><strong>RDB + AOF</strong>: You can also combine both AOF and RDB in the same instance.</li>
+</ul>
+<p>To learn more about how to evaluate your Valkey persistence strategy, read on.</p>
+<h2 id="rdb-advantages">RDB advantages</h2>
+<ul>
+<li>RDB is a very compact single-file point-in-time representation of your Valkey data. RDB files are perfect for backups. For instance you may want to archive your RDB files every hour for the latest 24 hours, and to save an RDB snapshot every day for 30 days. This allows you to easily restore different versions of the data set in case of disasters.</li>
+<li>RDB is very good for disaster recovery, being a single compact file that can be transferred to far data centers, or onto Amazon S3 (possibly encrypted).</li>
+<li>RDB maximizes Valkey performances since the only work the Valkey parent process needs to do in order to persist is forking a child that will do all the rest. The parent process will never perform disk I/O or alike.</li>
+<li>RDB allows faster restarts with big datasets compared to AOF.</li>
+<li>On replicas, RDB supports <a href="/topics/replication#partial-sync-after-restarts-and-failovers">partial resynchronizations after restarts and failovers</a>.</li>
+</ul>
+<h2 id="rdb-disadvantages">RDB disadvantages</h2>
+<ul>
+<li>RDB is NOT good if you need to minimize the chance of data loss in case Valkey stops working (for example after a power outage). You can configure different <em>save points</em> where an RDB is produced (for instance after at least five minutes and 100 writes against the data set, you can have multiple save points). However you'll usually create an RDB snapshot every five minutes or more, so in case of Valkey stopping working without a correct shutdown for any reason you should be prepared to lose the latest minutes of data.</li>
+<li>RDB needs to fork() often in order to persist on disk using a child process. fork() can be time consuming if the dataset is big, and may result in Valkey stopping serving clients for some milliseconds or even for one second if the dataset is very big and the CPU performance is not great. AOF also needs to fork() but less frequently and you can tune how often you want to rewrite your logs without any trade-off on durability.</li>
+</ul>
+<h2 id="aof-advantages">AOF advantages</h2>
+<ul>
+<li>Using AOF Valkey is much more durable: you can have different fsync policies: no fsync at all, fsync every second, fsync at every query. With the default policy of fsync every second, write performance is still great. fsync is performed using a background thread and the main thread will try hard to perform writes when no fsync is in progress, so you can only lose one second worth of writes.</li>
+<li>The AOF log is an append-only log, so there are no seeks, nor corruption problems if there is a power outage. Even if the log ends with a half-written command for some reason (disk full or other reasons) the valkey-check-aof tool is able to fix it easily.</li>
+<li>Valkey is able to automatically rewrite the AOF in background when it gets too big. The rewrite is completely safe as while Valkey continues appending to the old file, a completely new one is produced with the minimal set of operations needed to create the current data set, and once this second file is ready Valkey switches the two and starts appending to the new one.</li>
+<li>AOF contains a log of all the operations one after the other in an easy to understand and parse format. You can even easily export an AOF file. For instance even if you've accidentally flushed everything using the <code>FLUSHALL</code> command, as long as no rewrite of the log was performed in the meantime, you can still save your data set just by stopping the server, removing the latest command, and restarting Valkey again.</li>
+</ul>
+<h2 id="aof-disadvantages">AOF disadvantages</h2>
+<ul>
+<li>AOF files are usually bigger than the equivalent RDB files for the same dataset.</li>
+<li>AOF can be slower than RDB depending on the exact fsync policy. In general with fsync set to <em>every second</em> performance is still very high, and with fsync disabled it should be exactly as fast as RDB even under high load. Still RDB is able to provide more guarantees about the maximum latency even in the case of a huge write load.</li>
+</ul>
+<h2 id="ok-so-what-should-i-use">Ok, so what should I use?</h2>
+<p>The general indication you should use both persistence methods is if
+you want a degree of data safety comparable to what PostgreSQL can provide you.</p>
+<p>If you care a lot about your data, but still can live with a few minutes of
+data loss in case of disasters, you can simply use RDB alone.</p>
+<p>There are many users using AOF alone, but we discourage it since to have an
+RDB snapshot from time to time is a great idea for doing database backups,
+for faster restarts, and in the event of bugs in the AOF engine.</p>
+<p>The following sections will illustrate a few more details about the two persistence models.</p>
+<h2 id="snapshotting">Snapshotting</h2>
+<p>By default Valkey saves snapshots of the dataset on disk, in a binary
+file called <code>dump.rdb</code>. You can configure Valkey to have it save the
+dataset every N seconds if there are at least M changes in the dataset,
+or you can manually call the <code>SAVE</code> or <code>BGSAVE</code> commands.</p>
+<p>For example, this configuration will make Valkey automatically dump the
+dataset to disk every 60 seconds if at least 1000 keys changed:</p>
+<pre class="giallo" style="color: #E6EDF3; background-color: #0D1117;" ><code data-lang="plain"><span class="giallo-l"><span>save 60 1000</span></span></code></pre>
+<p>This strategy is known as <em>snapshotting</em>.</p>
+<h2 id="no-persistence">No persistence</h2>
+<p>If you prefer <strong>not</strong> to have persistence (for example when using a Valkey instance solely as a cache) that is also a possibility.</p>
+<p>RDB snapshotting is enabled by default. To disable it, set the <code>save</code> configuration parameter to the empty string <code>""</code> and remove any excess <code>save</code> lines that are present in the current configuration file.</p>
+<pre class="giallo" style="color: #E6EDF3; background-color: #0D1117;" ><code data-lang="plain"><span class="giallo-l"><span>save &quot;&quot;</span></span></code></pre>
+<p>Alternatively, you can also use the <code>--save ""</code> argument on the <code>valkey-server</code> binary.</p>
+<h3 id="how-it-works">How it works</h3>
+<p>Whenever Valkey needs to dump the dataset to disk, this is what happens:</p>
+<ul>
+<li>
+<p>Valkey <a rel="external" href="https://linux.die.net/man/2/fork">forks</a>. We now have a child
+and a parent process.</p>
+</li>
+<li>
+<p>The child starts to write the dataset to a temporary RDB file.</p>
+</li>
+<li>
+<p>When the child is done writing the new RDB file, it replaces the old
+one.</p>
+</li>
+</ul>
+<p>This method allows Valkey to benefit from copy-on-write semantics.</p>
+<h2 id="append-only-file">Append-only file</h2>
+<p>Snapshotting is not very durable. If your computer running Valkey stops,
+your power line fails, or you accidentally <code>kill -9</code> your instance, the
+latest data written to Valkey will be lost.  While this may not be a big
+deal for some applications, there are use cases for full durability, and
+in these cases Valkey snapshotting alone is not a viable option.</p>
+<p>The <em>append-only file</em> is an alternative, fully-durable strategy for
+Valkey.</p>
+<p>You can turn on the AOF in your configuration file:</p>
+<pre class="giallo" style="color: #E6EDF3; background-color: #0D1117;" ><code data-lang="plain"><span class="giallo-l"><span>appendonly yes</span></span></code></pre>
+<p>From now on, every time Valkey receives a command that changes the
+dataset (e.g. <code>SET</code>) it will append it to the AOF.  When you restart
+Valkey it will re-play the AOF to rebuild the state.</p>
+<p>Valkey uses a multi part AOF mechanism.
+That is, the original single AOF file is split into base file (at most one) and incremental files (there may be more than one).
+The base file represents an initial (RDB or AOF format) snapshot of the data present when the AOF is <a href="https://valkey.io/topics/persistence/#log-rewriting">rewritten</a>.
+The incremental files contains incremental changes since the last base AOF file was created. All these files are put in a separate directory and are tracked by a manifest file.</p>
+<h3 id="log-rewriting">Log rewriting</h3>
+<p>The AOF gets bigger and bigger as write operations are
+performed.  For example, if you are incrementing a counter 100 times,
+you'll end up with a single key in your dataset containing the final
+value, but 100 entries in your AOF. 99 of those entries are not needed
+to rebuild the current state.</p>
+<p>The rewrite is completely safe.
+While Valkey continues appending to the old file,
+a completely new one is produced with the minimal set of operations needed to create the current data set,
+and once this second file is ready Valkey switches the two and starts appending to the new one.</p>
+<p>Valkey supports an interesting feature: it is able to rebuild the AOF in the background without interrupting service to clients.
+Whenever you issue a <code>BGREWRITEAOF</code>, Valkey will write the shortest sequence of commands needed to rebuild the current dataset in memory.
+Valkey will automatically trigger log rewriting automatically (see the example configuration file for more information).</p>
+<p>When an AOF rewrite is scheduled, the Valkey parent process opens a new incremental AOF file to continue writing.
+The child process executes the rewrite logic and generates a new base AOF.
+Valkey will use a temporary manifest file to track the newly generated base file and incremental file.
+When they are ready, Valkey will perform an atomic replacement operation to make this temporary manifest file take effect.
+In order to avoid the problem of creating many incremental files in case of repeated failures and retries of an AOF rewrite,
+Valkey introduces an AOF rewrite limiting mechanism to ensure that failed AOF rewrites are retried at a slower and slower rate.</p>
+<h3 id="how-durable-is-the-append-only-file">How durable is the append only file?</h3>
+<p>You can configure how many times Valkey will
+<a rel="external" href="https://linux.die.net/man/2/fsync"><code>fsync</code></a> data on disk. There are
+three options:</p>
+<ul>
+<li><code>appendfsync always</code>: <code>fsync</code> every time new commands are appended to the AOF. Very very slow, very safe. Note that the commands are appended to the AOF after a batch of commands from multiple clients or a pipeline are executed, so it means a single write and a single fsync (before sending the replies).</li>
+<li><code>appendfsync everysec</code>: <code>fsync</code> every second. Fast enough and you may lose 1 second of data if there is a disaster.</li>
+<li><code>appendfsync no</code>: Never <code>fsync</code>, just put your data in the hands of the Operating System. The faster and less safe method. Normally Linux will flush data every 30 seconds with this configuration, but it's up to the kernel's exact tuning.</li>
+</ul>
+<p>The suggested (and default) policy is to <code>fsync</code> every second. It is
+both fast and relatively safe. The <code>always</code> policy is very slow in
+practice, but it supports group commit, so if there are multiple parallel
+writes Valkey will try to perform a single <code>fsync</code> operation.</p>
+<h3 id="what-should-i-do-if-my-aof-gets-truncated">What should I do if my AOF gets truncated?</h3>
+<p>It is possible the server crashed while writing the AOF file, or the
+volume where the AOF file is stored was full at the time of writing. When this happens the
+AOF still contains consistent data representing a given point-in-time version
+of the dataset (that may be old up to one second with the default AOF fsync
+policy), but the last command in the AOF could be truncated.
+The latest major versions of Valkey will be able to load the AOF anyway, just
+discarding the last non well formed command in the file. In this case the
+server will emit a log like the following:</p>
+<pre class="giallo" style="color: #E6EDF3; background-color: #0D1117;" ><code data-lang="plain"><span class="giallo-l"><span>* Reading RDB preamble from AOF file...</span></span>
+<span class="giallo-l"><span>* Reading the remaining AOF tail...</span></span>
+<span class="giallo-l"><span># !!! Warning: short read while loading the AOF file !!!</span></span>
+<span class="giallo-l"><span># !!! Truncating the AOF at offset 439 !!!</span></span>
+<span class="giallo-l"><span># AOF loaded anyway because aof-load-truncated is enabled</span></span></code></pre>
+<p>You can change the default configuration to force Valkey to stop in such
+cases if you want, but the default configuration is to continue regardless of
+the fact the last command in the file is not well-formed, in order to guarantee
+availability after a restart.</p>
+<p>Older versions of Valkey may not recover, and may require the following steps:</p>
+<ul>
+<li>
+<p>Make a backup copy of your AOF file.</p>
+</li>
+<li>
+<p>Fix the original file using the <code>valkey-check-aof</code> tool that ships with Valkey:</p>
+<pre class="giallo" style="color: #E6EDF3; background-color: #0D1117;" ><code data-lang="plain"><span class="giallo-l"><span>$ valkey-check-aof --fix &lt;filename&gt;</span></span></code></pre></li>
+<li>
+<p>Optionally use <code>diff -u</code> to check what is the difference between two files.</p>
+</li>
+<li>
+<p>Restart the server with the fixed file.</p>
+</li>
+</ul>
+<h3 id="what-should-i-do-if-my-aof-gets-corrupted">What should I do if my AOF gets corrupted?</h3>
+<p>If the AOF file is not just truncated, but corrupted with invalid byte
+sequences in the middle, things are more complex. Valkey will complain
+at startup and will abort:</p>
+<pre class="giallo" style="color: #E6EDF3; background-color: #0D1117;" ><code data-lang="plain"><span class="giallo-l"><span>* Reading the remaining AOF tail...</span></span>
+<span class="giallo-l"><span># Bad file format reading the append only file: make a backup of your AOF file, then use ./valkey-check-aof --fix &lt;filename&gt;</span></span></code></pre>
+<p>The best thing to do is to run the <code>valkey-check-aof</code> utility, initially without
+the <code>--fix</code> option, then understand the problem, jump to the given
+offset in the file, and see if it is possible to manually repair the file:
+The AOF uses the same format of the Valkey protocol and is quite simple to fix
+manually. Otherwise it is possible to let the utility fix the file for us, but
+in that case all the AOF portion from the invalid part to the end of the
+file may be discarded, leading to a massive amount of data loss if the
+corruption happened to be in the initial part of the file.</p>
+<h3 id="how-it-works-1">How it works</h3>
+<p>Log rewriting uses the same copy-on-write trick already in use for
+snapshotting.  This is how it works:</p>
+<p><strong>Valkey multi-part AOF</strong></p>
+<ul>
+<li>
+<p>Valkey <a rel="external" href="https://linux.die.net/man/2/fork">forks</a>, so now we have a child
+and a parent process.</p>
+</li>
+<li>
+<p>The child starts writing the new base AOF in a temporary file.</p>
+</li>
+<li>
+<p>The parent opens a new increments AOF file to continue writing updates.
+If the rewriting fails, the old base and increment files (if there are any) plus this newly opened increment file represent the complete updated dataset,
+so we are safe.</p>
+</li>
+<li>
+<p>When the child is done rewriting the base file, the parent gets a signal,
+and uses the newly opened increment file and child generated base file to build a temp manifest,
+and persist it.</p>
+</li>
+<li>
+<p>Profit! Now Valkey does an atomic exchange of the manifest files so that the result of this AOF rewrite takes effect. Valkey also cleans up the old base file and any unused increment files.</p>
+</li>
+</ul>
+<h3 id="how-i-can-switch-to-aof-if-i-m-currently-using-dump-rdb-snapshots">How I can switch to AOF, if I'm currently using dump.rdb snapshots?</h3>
+<p>If you want to enable AOF in a server that is currently using RDB snapshots, you need to convert the data by enabling AOF via CONFIG command on the live server first.</p>
+<p><strong>IMPORTANT:</strong> not following this procedure (e.g. just changing the config and restarting the server) can result in data loss!</p>
+<p>Preparations:</p>
+<ul>
+<li>Make a backup of your latest dump.rdb file.</li>
+<li>Transfer this backup to a safe place.</li>
+</ul>
+<p>Switch to AOF on live database:</p>
+<ul>
+<li>Enable AOF: <code>valkey-cli config set appendonly yes</code></li>
+<li>Optionally disable RDB: <code>valkey-cli config set save ""</code></li>
+<li>Make sure writes are appended to the append only file correctly.</li>
+<li><strong>IMPORTANT:</strong> Update your <code>valkey.conf</code> (potentially through <code>CONFIG REWRITE</code>) and ensure that it matches the configuration above.
+If you forget this step, when you restart the server, the configuration changes will be lost and the server will start again with the old configuration, resulting in a loss of your data.</li>
+</ul>
+<p>Next time you restart the server:</p>
+<ul>
+<li>Before restarting the server, wait for AOF rewrite to finish persisting the data.
+You can do that by watching <code>INFO persistence</code>, waiting for <code>aof_rewrite_in_progress</code> and <code>aof_rewrite_scheduled</code> to be <code>0</code>, and validating that <code>aof_last_bgrewrite_status</code> is <code>ok</code>.</li>
+<li>After restarting the server, check that your database contains the same number of keys it contained previously.</li>
+</ul>
+<h2 id="interactions-between-aof-and-rdb-persistence">Interactions between AOF and RDB persistence</h2>
+<p>Valkey makes sure to avoid triggering an AOF rewrite when an RDB
+snapshotting operation is already in progress, or allowing a <code>BGSAVE</code> while the
+AOF rewrite is in progress. This prevents two Valkey background processes
+from doing heavy disk I/O at the same time.</p>
+<p>When snapshotting is in progress and the user explicitly requests a log
+rewrite operation using <code>BGREWRITEAOF</code> the server will reply with an OK
+status code telling the user the operation is scheduled, and the rewrite
+will start once the snapshotting is completed.</p>
+<p>In the case both AOF and RDB persistence are enabled and Valkey restarts the
+AOF file will be used to reconstruct the original dataset since it is
+guaranteed to be the most complete.</p>
+<h2 id="backing-up-valkey-data">Backing up Valkey data</h2>
+<p>Before starting this section, make sure to read the following sentence: <strong>Make Sure to Backup Your Database</strong>. Disks break, instances in the cloud disappear, and so forth: no backups means huge risk of data disappearing into /dev/null.</p>
+<p>Valkey is very data backup friendly since you can copy RDB files while the
+database is running: the RDB is never modified once produced, and while it
+gets produced it uses a temporary name and is renamed into its final destination
+atomically using rename(2) only when the new snapshot is complete.</p>
+<p>This means that copying the RDB file is completely safe while the server is
+running. This is what we suggest:</p>
+<ul>
+<li>Create a cron job in your server creating hourly snapshots of the RDB file in one directory, and daily snapshots in a different directory.</li>
+<li>Every time the cron script runs, make sure to call the <code>find</code> command to make sure too old snapshots are deleted: for instance you can take hourly snapshots for the latest 48 hours, and daily snapshots for one or two months. Make sure to name the snapshots with date and time information.</li>
+<li>At least one time every day make sure to transfer an RDB snapshot <em>outside your data center</em> or at least <em>outside the physical machine</em> running your Valkey instance.</li>
+</ul>
+<h3 id="backing-up-aof-persistence">Backing up AOF persistence</h3>
+<p>If you run a Valkey instance with only AOF persistence enabled, you can still perform backups.
+AOF files are split into multiple files which reside in a single directory determined by the <code>appenddirname</code> configuration.
+During normal operation all you need to do is copy/tar the files in this directory to achieve a backup. However, if this is done during a <a href="https://valkey.io/topics/persistence/#log-rewriting">rewrite</a>, you might end up with an invalid backup.
+To work around this you must disable AOF rewrites during the backup:</p>
+<ol>
+<li>Turn off automatic rewrites with<br/>
+<code>CONFIG SET</code> <code>auto-aof-rewrite-percentage 0</code><br/>
+Make sure you don't manually start a rewrite (using <code>BGREWRITEAOF</code>) during this time.</li>
+<li>Check there's no current rewrite in progress using<br/>
+<code>INFO</code> <code>persistence</code><br/>
+and verifying <code>aof_rewrite_in_progress</code> is 0. If it's 1, then you'll need to wait for the rewrite to complete.</li>
+<li>Now you can safely copy the files in the <code>appenddirname</code> directory.</li>
+<li>Re-enable rewrites when done:<br/>
+<code>CONFIG SET</code> <code>auto-aof-rewrite-percentage &lt;prev-value&gt;</code></li>
+</ol>
+<p><strong>Note:</strong> If you want to minimize the time AOF rewrites are disabled you may create hard links to the files in <code>appenddirname</code> (in step 3 above) and then re-enable rewrites (step 4) after the hard links are created.
+Now you can copy/tar the hardlinks and delete them when done. This works because Valkey guarantees that it
+only appends to files in this directory, or completely replaces them if necessary, so the content should be
+consistent at any given point in time.</p>
+<p><strong>Note:</strong> If you want to handle the case of the server being restarted during the backup and make sure no rewrite will automatically start after the restart you can change step 1 above to also persist the updated configuration via <code>CONFIG REWRITE</code>.
+Just make sure to re-enable automatic rewrites when done (step 4) and persist it with another <code>CONFIG REWRITE</code>.</p>
+<h2 id="disaster-recovery">Disaster recovery</h2>
+<p>Disaster recovery in the context of Valkey is basically the same story as
+backups, plus the ability to transfer those backups in many different external
+data centers. This way data is secured even in the case of some catastrophic
+event affecting the main data center where Valkey is running and producing its
+snapshots.</p>
+<p>We'll review the most interesting disaster recovery techniques
+that don't have too high costs.</p>
+<ul>
+<li>Amazon S3 and other similar services are a good way for implementing your disaster recovery system. Simply transfer your daily or hourly RDB snapshot to S3 in an encrypted form. You can encrypt your data using <code>gpg -c</code> (in symmetric encryption mode). Make sure to store your password in many different safe places (for instance give a copy to the most important people of your organization). It is recommended to use multiple storage services for improved data safety.</li>
+<li>Transfer your snapshots using SCP (part of SSH) to far servers. This is a fairly simple and safe route: get a small VPS in a place that is very far from you, install ssh there, and generate a ssh client key without passphrase, then add it in the <code>authorized_keys</code> file of your small VPS. You are ready to transfer backups in an automated fashion. Get at least two VPS in two different providers
+for best results.</li>
+</ul>
+<p>It is important to understand that this system can easily fail if not
+implemented in the right way. At least, make absolutely sure that after the
+transfer is completed you are able to verify the file size (that should match
+the one of the file you copied) and possibly the SHA1 digest, if you are using
+a VPS.</p>
+<p>You also need some kind of independent alert system if the transfer of fresh
+backups is not working for some reason.</p>
+
+
+            </div>
+        </main>
+        <aside>
+            
+
+
+
+
+
+<nav class="docs-menu" aria-label="Documentation">
+    <ul class="docs-menu-sections">
+        <li>
+            <details>
+                <summary>Getting started</summary>
+                <ul>
+                    
+<li>
+    <a href="/topics/introduction/">Introduction</a>
+</li>
+
+                    
+<li>
+    <a href="/topics/quickstart/">Quick start guide</a>
+</li>
+
+                    
+<li>
+    <a href="/topics/installation/">Installation</a>
+</li>
+
+                    
+<li>
+    <a href="/topics/faq/">FAQ</a>
+</li>
+
+                    
+<li>
+    <a href="/topics/migration/">Migration from Redis to Valkey</a>
+</li>
+
+                    
+<li>
+    <a href="/topics/valkey-bundle/">Valkey Bundle</a>
+</li>
+
+                </ul>
+            </details>
+        </li>
+        
+<li>
+    <details>
+        <summary>Command reference</summary>
+        <ul>
+            <li><a href="/commands/">All commands</a></li>
+            <li><a href="/commands/#bitmap">Bitmap</a></li>
+            <li><a href="/commands/#bloom">Bloom filter</a></li>
+            <li><a href="/commands/#cluster">Cluster</a></li>
+            <li><a href="/commands/#connection">Connection</a></li>
+            <li><a href="/commands/#generic">Generic</a></li>
+            <li><a href="/commands/#geo">Geospatial indices</a></li>
+            <li><a href="/commands/#hash">Hash</a></li>
+            <li><a href="/commands/#hyperloglog">HyperLogLog</a></li>
+            <li><a href="/commands/#json">JSON</a></li>
+            <li><a href="/commands/#large-object">Large object</a></li>
+            <li><a href="/commands/#list">List</a></li>
+            <li><a href="/commands/#pubsub">Pub/Sub</a></li>
+            <li><a href="/commands/#scripting">Scripting and Functions</a></li>
+            <li><a href="/commands/#search">Search</a></li>
+            <li><a href="/commands/#server">Server</a></li>
+            <li><a href="/commands/#set">Set</a></li>
+            <li><a href="/commands/#sorted-set">Sorted Set</a></li>
+            <li><a href="/commands/#stream">Stream</a></li>
+            <li><a href="/commands/#string">String</a></li>
+            <li><a href="/commands/#transactions">Transactions</a></li>
+        </ul>
+    </details>
+</li>
+
+        <li>
+            <details>
+                <summary>Data types</summary>
+                <ul>
+                    
+<li>
+    <a href="/topics/data-types/">Overview</a>
+</li>
+
+                    
+<li class="docs-menu-has-commands">
+    <a href="/topics/strings/">Strings</a>
+    
+<details class="docs-menu-commands-toggle">
+    <summary><span class="sr-only">Strings commands</span></summary>
+    <ul class="docs-menu-commands" aria-label="Strings commands">
+        <li><a href="/commands/append/">APPEND</a></li>
+        <li><a href="/commands/decr/">DECR</a></li>
+        <li><a href="/commands/decrby/">DECRBY</a></li>
+        <li><a href="/commands/delex/">DELEX</a></li>
+        <li><a href="/commands/delifeq/">DELIFEQ</a></li>
+        <li><a href="/commands/get/">GET</a></li>
+        <li><a href="/commands/getdel/">GETDEL</a></li>
+        <li><a href="/commands/getex/">GETEX</a></li>
+        <li><a href="/commands/getrange/">GETRANGE</a></li>
+        <li><a href="/commands/getset/">GETSET</a></li>
+        <li><a href="/commands/incr/">INCR</a></li>
+        <li><a href="/commands/incrby/">INCRBY</a></li>
+        <li><a href="/commands/incrbyfloat/">INCRBYFLOAT</a></li>
+        <li><a href="/commands/increx/">INCREX</a></li>
+        <li><a href="/commands/lcs/">LCS</a></li>
+        <li><a href="/commands/mget/">MGET</a></li>
+        <li><a href="/commands/mset/">MSET</a></li>
+        <li><a href="/commands/msetex/">MSETEX</a></li>
+        <li><a href="/commands/msetnx/">MSETNX</a></li>
+        <li><a href="/commands/psetex/">PSETEX</a></li>
+        <li><a href="/commands/set/">SET</a></li>
+        <li><a href="/commands/setex/">SETEX</a></li>
+        <li><a href="/commands/setnx/">SETNX</a></li>
+        <li><a href="/commands/setrange/">SETRANGE</a></li>
+        <li><a href="/commands/strlen/">STRLEN</a></li>
+        <li><a href="/commands/substr/">SUBSTR</a></li>
+    </ul>
+</details>
+
+</li>
+
+                    
+<li class="docs-menu-has-commands">
+    <a href="/topics/lists/">Lists</a>
+    
+<details class="docs-menu-commands-toggle">
+    <summary><span class="sr-only">Lists commands</span></summary>
+    <ul class="docs-menu-commands" aria-label="Lists commands">
+        <li><a href="/commands/blmove/">BLMOVE</a></li>
+        <li><a href="/commands/blmpop/">BLMPOP</a></li>
+        <li><a href="/commands/blpop/">BLPOP</a></li>
+        <li><a href="/commands/brpop/">BRPOP</a></li>
+        <li><a href="/commands/brpoplpush/">BRPOPLPUSH</a></li>
+        <li><a href="/commands/lindex/">LINDEX</a></li>
+        <li><a href="/commands/linsert/">LINSERT</a></li>
+        <li><a href="/commands/llen/">LLEN</a></li>
+        <li><a href="/commands/lmove/">LMOVE</a></li>
+        <li><a href="/commands/lmpop/">LMPOP</a></li>
+        <li><a href="/commands/lpop/">LPOP</a></li>
+        <li><a href="/commands/lpos/">LPOS</a></li>
+        <li><a href="/commands/lpush/">LPUSH</a></li>
+        <li><a href="/commands/lpushx/">LPUSHX</a></li>
+        <li><a href="/commands/lrange/">LRANGE</a></li>
+        <li><a href="/commands/lrem/">LREM</a></li>
+        <li><a href="/commands/lset/">LSET</a></li>
+        <li><a href="/commands/ltrim/">LTRIM</a></li>
+        <li><a href="/commands/rpop/">RPOP</a></li>
+        <li><a href="/commands/rpoplpush/">RPOPLPUSH</a></li>
+        <li><a href="/commands/rpush/">RPUSH</a></li>
+        <li><a href="/commands/rpushx/">RPUSHX</a></li>
+    </ul>
+</details>
+
+</li>
+
+                    
+<li class="docs-menu-has-commands">
+    <a href="/topics/sets/">Sets</a>
+    
+<details class="docs-menu-commands-toggle">
+    <summary><span class="sr-only">Sets commands</span></summary>
+    <ul class="docs-menu-commands" aria-label="Sets commands">
+        <li><a href="/commands/sadd/">SADD</a></li>
+        <li><a href="/commands/scard/">SCARD</a></li>
+        <li><a href="/commands/sdiff/">SDIFF</a></li>
+        <li><a href="/commands/sdiffstore/">SDIFFSTORE</a></li>
+        <li><a href="/commands/sinter/">SINTER</a></li>
+        <li><a href="/commands/sintercard/">SINTERCARD</a></li>
+        <li><a href="/commands/sinterstore/">SINTERSTORE</a></li>
+        <li><a href="/commands/sismember/">SISMEMBER</a></li>
+        <li><a href="/commands/smembers/">SMEMBERS</a></li>
+        <li><a href="/commands/smismember/">SMISMEMBER</a></li>
+        <li><a href="/commands/smove/">SMOVE</a></li>
+        <li><a href="/commands/spop/">SPOP</a></li>
+        <li><a href="/commands/srandmember/">SRANDMEMBER</a></li>
+        <li><a href="/commands/srem/">SREM</a></li>
+        <li><a href="/commands/sscan/">SSCAN</a></li>
+        <li><a href="/commands/sunion/">SUNION</a></li>
+        <li><a href="/commands/sunionstore/">SUNIONSTORE</a></li>
+    </ul>
+</details>
+
+</li>
+
+                    
+<li class="docs-menu-has-commands">
+    <a href="/topics/hashes/">Hashes</a>
+    
+<details class="docs-menu-commands-toggle">
+    <summary><span class="sr-only">Hashes commands</span></summary>
+    <ul class="docs-menu-commands" aria-label="Hashes commands">
+        <li><a href="/commands/hdel/">HDEL</a></li>
+        <li><a href="/commands/hexists/">HEXISTS</a></li>
+        <li><a href="/commands/hexpire/">HEXPIRE</a></li>
+        <li><a href="/commands/hexpireat/">HEXPIREAT</a></li>
+        <li><a href="/commands/hexpiretime/">HEXPIRETIME</a></li>
+        <li><a href="/commands/hget/">HGET</a></li>
+        <li><a href="/commands/hgetall/">HGETALL</a></li>
+        <li><a href="/commands/hgetdel/">HGETDEL</a></li>
+        <li><a href="/commands/hgetex/">HGETEX</a></li>
+        <li><a href="/commands/hincrby/">HINCRBY</a></li>
+        <li><a href="/commands/hincrbyfloat/">HINCRBYFLOAT</a></li>
+        <li><a href="/commands/hkeys/">HKEYS</a></li>
+        <li><a href="/commands/hlen/">HLEN</a></li>
+        <li><a href="/commands/hmget/">HMGET</a></li>
+        <li><a href="/commands/hmset/">HMSET</a></li>
+        <li><a href="/commands/hpersist/">HPERSIST</a></li>
+        <li><a href="/commands/hpexpire/">HPEXPIRE</a></li>
+        <li><a href="/commands/hpexpireat/">HPEXPIREAT</a></li>
+        <li><a href="/commands/hpexpiretime/">HPEXPIRETIME</a></li>
+        <li><a href="/commands/hpttl/">HPTTL</a></li>
+        <li><a href="/commands/hrandfield/">HRANDFIELD</a></li>
+        <li><a href="/commands/hscan/">HSCAN</a></li>
+        <li><a href="/commands/hset/">HSET</a></li>
+        <li><a href="/commands/hsetex/">HSETEX</a></li>
+        <li><a href="/commands/hsetnx/">HSETNX</a></li>
+        <li><a href="/commands/hstrlen/">HSTRLEN</a></li>
+        <li><a href="/commands/httl/">HTTL</a></li>
+        <li><a href="/commands/hvals/">HVALS</a></li>
+    </ul>
+</details>
+
+</li>
+
+                    
+<li class="docs-menu-has-commands">
+    <a href="/topics/sorted-sets/">Sorted Sets</a>
+    
+<details class="docs-menu-commands-toggle">
+    <summary><span class="sr-only">Sorted Sets commands</span></summary>
+    <ul class="docs-menu-commands" aria-label="Sorted Sets commands">
+        <li><a href="/commands/bzmpop/">BZMPOP</a></li>
+        <li><a href="/commands/bzpopmax/">BZPOPMAX</a></li>
+        <li><a href="/commands/bzpopmin/">BZPOPMIN</a></li>
+        <li><a href="/commands/zadd/">ZADD</a></li>
+        <li><a href="/commands/zcard/">ZCARD</a></li>
+        <li><a href="/commands/zcount/">ZCOUNT</a></li>
+        <li><a href="/commands/zdiff/">ZDIFF</a></li>
+        <li><a href="/commands/zdiffstore/">ZDIFFSTORE</a></li>
+        <li><a href="/commands/zincrby/">ZINCRBY</a></li>
+        <li><a href="/commands/zinter/">ZINTER</a></li>
+        <li><a href="/commands/zintercard/">ZINTERCARD</a></li>
+        <li><a href="/commands/zinterstore/">ZINTERSTORE</a></li>
+        <li><a href="/commands/zlexcount/">ZLEXCOUNT</a></li>
+        <li><a href="/commands/zmpop/">ZMPOP</a></li>
+        <li><a href="/commands/zmscore/">ZMSCORE</a></li>
+        <li><a href="/commands/zpopmax/">ZPOPMAX</a></li>
+        <li><a href="/commands/zpopmin/">ZPOPMIN</a></li>
+        <li><a href="/commands/zrandmember/">ZRANDMEMBER</a></li>
+        <li><a href="/commands/zrange/">ZRANGE</a></li>
+        <li><a href="/commands/zrangebylex/">ZRANGEBYLEX</a></li>
+        <li><a href="/commands/zrangebyscore/">ZRANGEBYSCORE</a></li>
+        <li><a href="/commands/zrangestore/">ZRANGESTORE</a></li>
+        <li><a href="/commands/zrank/">ZRANK</a></li>
+        <li><a href="/commands/zrem/">ZREM</a></li>
+        <li><a href="/commands/zremrangebylex/">ZREMRANGEBYLEX</a></li>
+        <li><a href="/commands/zremrangebyrank/">ZREMRANGEBYRANK</a></li>
+        <li><a href="/commands/zremrangebyscore/">ZREMRANGEBYSCORE</a></li>
+        <li><a href="/commands/zrevrange/">ZREVRANGE</a></li>
+        <li><a href="/commands/zrevrangebylex/">ZREVRANGEBYLEX</a></li>
+        <li><a href="/commands/zrevrangebyscore/">ZREVRANGEBYSCORE</a></li>
+        <li><a href="/commands/zrevrank/">ZREVRANK</a></li>
+        <li><a href="/commands/zscan/">ZSCAN</a></li>
+        <li><a href="/commands/zscore/">ZSCORE</a></li>
+        <li><a href="/commands/zunion/">ZUNION</a></li>
+        <li><a href="/commands/zunionstore/">ZUNIONSTORE</a></li>
+    </ul>
+</details>
+
+</li>
+
+                    
+<li class="docs-menu-has-commands">
+    <a href="/topics/streams-intro/">Streams</a>
+    
+<details class="docs-menu-commands-toggle">
+    <summary><span class="sr-only">Streams commands</span></summary>
+    <ul class="docs-menu-commands" aria-label="Streams commands">
+        <li><a href="/commands/xack/">XACK</a></li>
+        <li><a href="/commands/xackdel/">XACKDEL</a></li>
+        <li><a href="/commands/xadd/">XADD</a></li>
+        <li><a href="/commands/xautoclaim/">XAUTOCLAIM</a></li>
+        <li><a href="/commands/xclaim/">XCLAIM</a></li>
+        <li><a href="/commands/xdel/">XDEL</a></li>
+        <li><a href="/commands/xdelex/">XDELEX</a></li>
+        <li><a href="/commands/xgroup/">XGROUP</a></li>
+        <li><a href="/commands/xgroup-create/">XGROUP CREATE</a></li>
+        <li><a href="/commands/xgroup-createconsumer/">XGROUP CREATECONSUMER</a></li>
+        <li><a href="/commands/xgroup-delconsumer/">XGROUP DELCONSUMER</a></li>
+        <li><a href="/commands/xgroup-destroy/">XGROUP DESTROY</a></li>
+        <li><a href="/commands/xgroup-help/">XGROUP HELP</a></li>
+        <li><a href="/commands/xgroup-setid/">XGROUP SETID</a></li>
+        <li><a href="/commands/xinfo/">XINFO</a></li>
+        <li><a href="/commands/xinfo-consumers/">XINFO CONSUMERS</a></li>
+        <li><a href="/commands/xinfo-groups/">XINFO GROUPS</a></li>
+        <li><a href="/commands/xinfo-help/">XINFO HELP</a></li>
+        <li><a href="/commands/xinfo-stream/">XINFO STREAM</a></li>
+        <li><a href="/commands/xlen/">XLEN</a></li>
+        <li><a href="/commands/xpending/">XPENDING</a></li>
+        <li><a href="/commands/xrange/">XRANGE</a></li>
+        <li><a href="/commands/xread/">XREAD</a></li>
+        <li><a href="/commands/xreadgroup/">XREADGROUP</a></li>
+        <li><a href="/commands/xrevrange/">XREVRANGE</a></li>
+        <li><a href="/commands/xsetid/">XSETID</a></li>
+        <li><a href="/commands/xtrim/">XTRIM</a></li>
+    </ul>
+</details>
+
+</li>
+
+                    
+<li class="docs-menu-has-commands">
+    <a href="/topics/geospatial/">Geospatial</a>
+    
+<details class="docs-menu-commands-toggle">
+    <summary><span class="sr-only">Geospatial commands</span></summary>
+    <ul class="docs-menu-commands" aria-label="Geospatial commands">
+        <li><a href="/commands/geoadd/">GEOADD</a></li>
+        <li><a href="/commands/geodist/">GEODIST</a></li>
+        <li><a href="/commands/geohash/">GEOHASH</a></li>
+        <li><a href="/commands/geopos/">GEOPOS</a></li>
+        <li><a href="/commands/georadius/">GEORADIUS</a></li>
+        <li><a href="/commands/georadiusbymember/">GEORADIUSBYMEMBER</a></li>
+        <li><a href="/commands/georadiusbymember_ro/">GEORADIUSBYMEMBER_RO</a></li>
+        <li><a href="/commands/georadius_ro/">GEORADIUS_RO</a></li>
+        <li><a href="/commands/geosearch/">GEOSEARCH</a></li>
+        <li><a href="/commands/geosearchstore/">GEOSEARCHSTORE</a></li>
+    </ul>
+</details>
+
+</li>
+
+                    
+<li class="docs-menu-has-commands">
+    <a href="/topics/bitmaps/">Bitmaps</a>
+    
+<details class="docs-menu-commands-toggle">
+    <summary><span class="sr-only">Bitmaps commands</span></summary>
+    <ul class="docs-menu-commands" aria-label="Bitmaps commands">
+        <li><a href="/commands/bitcount/">BITCOUNT</a></li>
+        <li><a href="/commands/bitop/">BITOP</a></li>
+        <li><a href="/commands/bitpos/">BITPOS</a></li>
+        <li><a href="/commands/getbit/">GETBIT</a></li>
+        <li><a href="/commands/setbit/">SETBIT</a></li>
+    </ul>
+</details>
+
+</li>
+
+                    
+<li class="docs-menu-has-commands">
+    <a href="/topics/bitfields/">Bitfields</a>
+    
+<details class="docs-menu-commands-toggle">
+    <summary><span class="sr-only">Bitfields commands</span></summary>
+    <ul class="docs-menu-commands" aria-label="Bitfields commands">
+        <li><a href="/commands/bitfield/">BITFIELD</a></li>
+        <li><a href="/commands/bitfield_ro/">BITFIELD_RO</a></li>
+    </ul>
+</details>
+
+</li>
+
+                    
+<li class="docs-menu-has-commands">
+    <a href="/topics/hyperloglogs/">HyperLogLog</a>
+    
+<details class="docs-menu-commands-toggle">
+    <summary><span class="sr-only">HyperLogLog commands</span></summary>
+    <ul class="docs-menu-commands" aria-label="HyperLogLog commands">
+        <li><a href="/commands/pfadd/">PFADD</a></li>
+        <li><a href="/commands/pfcount/">PFCOUNT</a></li>
+        <li><a href="/commands/pfdebug/">PFDEBUG</a></li>
+        <li><a href="/commands/pfmerge/">PFMERGE</a></li>
+        <li><a href="/commands/pfselftest/">PFSELFTEST</a></li>
+    </ul>
+</details>
+
+</li>
+
+                    
+<li class="docs-menu-has-commands">
+    <a href="/topics/bloomfilters/">Bloom Filters <span class="docs-menu-badge">module</span></a>
+    
+<details class="docs-menu-commands-toggle">
+    <summary><span class="sr-only">Bloom Filters commands</span></summary>
+    <ul class="docs-menu-commands" aria-label="Bloom Filters commands">
+        <li><a href="/commands/bf.add/">BF.ADD</a></li>
+        <li><a href="/commands/bf.card/">BF.CARD</a></li>
+        <li><a href="/commands/bf.exists/">BF.EXISTS</a></li>
+        <li><a href="/commands/bf.info/">BF.INFO</a></li>
+        <li><a href="/commands/bf.insert/">BF.INSERT</a></li>
+        <li><a href="/commands/bf.load/">BF.LOAD</a></li>
+        <li><a href="/commands/bf.madd/">BF.MADD</a></li>
+        <li><a href="/commands/bf.mexists/">BF.MEXISTS</a></li>
+        <li><a href="/commands/bf.reserve/">BF.RESERVE</a></li>
+    </ul>
+</details>
+
+</li>
+
+                    
+<li class="docs-menu-has-commands">
+    <a href="/topics/valkey-json/">JSON <span class="docs-menu-badge">module</span></a>
+    
+<details class="docs-menu-commands-toggle">
+    <summary><span class="sr-only">JSON commands</span></summary>
+    <ul class="docs-menu-commands" aria-label="JSON commands">
+        <li><a href="/commands/json.arrappend/">JSON.ARRAPPEND</a></li>
+        <li><a href="/commands/json.arrindex/">JSON.ARRINDEX</a></li>
+        <li><a href="/commands/json.arrinsert/">JSON.ARRINSERT</a></li>
+        <li><a href="/commands/json.arrlen/">JSON.ARRLEN</a></li>
+        <li><a href="/commands/json.arrpop/">JSON.ARRPOP</a></li>
+        <li><a href="/commands/json.arrtrim/">JSON.ARRTRIM</a></li>
+        <li><a href="/commands/json.clear/">JSON.CLEAR</a></li>
+        <li><a href="/commands/json.debug/">JSON.DEBUG</a></li>
+        <li><a href="/commands/json.del/">JSON.DEL</a></li>
+        <li><a href="/commands/json.forget/">JSON.FORGET</a></li>
+        <li><a href="/commands/json.get/">JSON.GET</a></li>
+        <li><a href="/commands/json.merge/">JSON.MERGE</a></li>
+        <li><a href="/commands/json.mget/">JSON.MGET</a></li>
+        <li><a href="/commands/json.mset/">JSON.MSET</a></li>
+        <li><a href="/commands/json.numincrby/">JSON.NUMINCRBY</a></li>
+        <li><a href="/commands/json.nummultby/">JSON.NUMMULTBY</a></li>
+        <li><a href="/commands/json.objkeys/">JSON.OBJKEYS</a></li>
+        <li><a href="/commands/json.objlen/">JSON.OBJLEN</a></li>
+        <li><a href="/commands/json.resp/">JSON.RESP</a></li>
+        <li><a href="/commands/json.set/">JSON.SET</a></li>
+        <li><a href="/commands/json.strappend/">JSON.STRAPPEND</a></li>
+        <li><a href="/commands/json.strlen/">JSON.STRLEN</a></li>
+        <li><a href="/commands/json.toggle/">JSON.TOGGLE</a></li>
+        <li><a href="/commands/json.type/">JSON.TYPE</a></li>
+    </ul>
+</details>
+
+</li>
+
+                </ul>
+            </details>
+        </li>
+        <li>
+            <details>
+                <summary>Application development</summary>
+                <ul>
+                    
+<li class="docs-menu-has-commands">
+    <a href="/topics/keyspace/">Keyspace</a>
+    
+<details class="docs-menu-commands-toggle">
+    <summary><span class="sr-only">Keyspace commands</span></summary>
+    <ul class="docs-menu-commands" aria-label="Keyspace commands">
+        <li><a href="/commands/copy/">COPY</a></li>
+        <li><a href="/commands/dbsize/">DBSIZE</a></li>
+        <li><a href="/commands/del/">DEL</a></li>
+        <li><a href="/commands/dump/">DUMP</a></li>
+        <li><a href="/commands/exists/">EXISTS</a></li>
+        <li><a href="/commands/expire/">EXPIRE</a></li>
+        <li><a href="/commands/expireat/">EXPIREAT</a></li>
+        <li><a href="/commands/expiretime/">EXPIRETIME</a></li>
+        <li><a href="/commands/flushall/">FLUSHALL</a></li>
+        <li><a href="/commands/flushdb/">FLUSHDB</a></li>
+        <li><a href="/commands/keys/">KEYS</a></li>
+        <li><a href="/commands/migrate/">MIGRATE</a></li>
+        <li><a href="/commands/move/">MOVE</a></li>
+        <li><a href="/commands/object/">OBJECT</a></li>
+        <li><a href="/commands/object-encoding/">OBJECT ENCODING</a></li>
+        <li><a href="/commands/object-freq/">OBJECT FREQ</a></li>
+        <li><a href="/commands/object-help/">OBJECT HELP</a></li>
+        <li><a href="/commands/object-idletime/">OBJECT IDLETIME</a></li>
+        <li><a href="/commands/object-refcount/">OBJECT REFCOUNT</a></li>
+        <li><a href="/commands/persist/">PERSIST</a></li>
+        <li><a href="/commands/pexpire/">PEXPIRE</a></li>
+        <li><a href="/commands/pexpireat/">PEXPIREAT</a></li>
+        <li><a href="/commands/pexpiretime/">PEXPIRETIME</a></li>
+        <li><a href="/commands/pttl/">PTTL</a></li>
+        <li><a href="/commands/randomkey/">RANDOMKEY</a></li>
+        <li><a href="/commands/rename/">RENAME</a></li>
+        <li><a href="/commands/renamenx/">RENAMENX</a></li>
+        <li><a href="/commands/restore/">RESTORE</a></li>
+        <li><a href="/commands/scan/">SCAN</a></li>
+        <li><a href="/commands/sort/">SORT</a></li>
+        <li><a href="/commands/sort_ro/">SORT_RO</a></li>
+        <li><a href="/commands/swapdb/">SWAPDB</a></li>
+        <li><a href="/commands/touch/">TOUCH</a></li>
+        <li><a href="/commands/ttl/">TTL</a></li>
+        <li><a href="/commands/type/">TYPE</a></li>
+        <li><a href="/commands/unlink/">UNLINK</a></li>
+        <li><a href="/commands/wait/">WAIT</a></li>
+        <li><a href="/commands/waitaof/">WAITAOF</a></li>
+    </ul>
+</details>
+
+</li>
+
+                    
+<li>
+    <a href="/topics/pipelining/">Pipelining</a>
+</li>
+
+                    
+<li class="docs-menu-has-commands">
+    <a href="/topics/transactions/">Transactions</a>
+    
+<details class="docs-menu-commands-toggle">
+    <summary><span class="sr-only">Transactions commands</span></summary>
+    <ul class="docs-menu-commands" aria-label="Transactions commands">
+        <li><a href="/commands/discard/">DISCARD</a></li>
+        <li><a href="/commands/exec/">EXEC</a></li>
+        <li><a href="/commands/multi/">MULTI</a></li>
+        <li><a href="/commands/unwatch/">UNWATCH</a></li>
+        <li><a href="/commands/watch/">WATCH</a></li>
+    </ul>
+</details>
+
+</li>
+
+                    
+<li class="docs-menu-has-commands">
+    <a href="/topics/pubsub/">Pub/Sub</a>
+    
+<details class="docs-menu-commands-toggle">
+    <summary><span class="sr-only">Pub/Sub commands</span></summary>
+    <ul class="docs-menu-commands" aria-label="Pub/Sub commands">
+        <li><a href="/commands/psubscribe/">PSUBSCRIBE</a></li>
+        <li><a href="/commands/publish/">PUBLISH</a></li>
+        <li><a href="/commands/pubsub/">PUBSUB</a></li>
+        <li><a href="/commands/pubsub-channels/">PUBSUB CHANNELS</a></li>
+        <li><a href="/commands/pubsub-help/">PUBSUB HELP</a></li>
+        <li><a href="/commands/pubsub-numpat/">PUBSUB NUMPAT</a></li>
+        <li><a href="/commands/pubsub-numsub/">PUBSUB NUMSUB</a></li>
+        <li><a href="/commands/pubsub-shardchannels/">PUBSUB SHARDCHANNELS</a></li>
+        <li><a href="/commands/pubsub-shardnumsub/">PUBSUB SHARDNUMSUB</a></li>
+        <li><a href="/commands/punsubscribe/">PUNSUBSCRIBE</a></li>
+        <li><a href="/commands/spublish/">SPUBLISH</a></li>
+        <li><a href="/commands/ssubscribe/">SSUBSCRIBE</a></li>
+        <li><a href="/commands/subscribe/">SUBSCRIBE</a></li>
+        <li><a href="/commands/sunsubscribe/">SUNSUBSCRIBE</a></li>
+        <li><a href="/commands/unsubscribe/">UNSUBSCRIBE</a></li>
+    </ul>
+</details>
+
+</li>
+
+                    
+<li>
+    <a href="/topics/notifications/">Keyspace notifications</a>
+</li>
+
+                </ul>
+            </details>
+        </li>
+        <li>
+            <details>
+                <summary>Patterns and tutorials</summary>
+                <ul>
+                    
+<li>
+    <a href="/topics/lru-cache/">Key eviction</a>
+</li>
+
+                    
+<li>
+    <a href="/topics/client-side-caching/">Client-side caching</a>
+</li>
+
+                    
+<li>
+    <a href="/topics/distlock/">Distributed Locks</a>
+</li>
+
+                    
+<li>
+    <a href="/topics/indexing/">Secondary indexing</a>
+</li>
+
+                    
+<li>
+    <a href="/topics/twitter-clone/">Patterns example</a>
+</li>
+
+                </ul>
+            </details>
+        </li>
+        <li>
+            <details>
+                <summary>Scripting and functions</summary>
+                <ul>
+                    
+<li class="docs-menu-has-commands">
+    <a href="/topics/programmability/">Overview</a>
+    
+<details class="docs-menu-commands-toggle">
+    <summary><span class="sr-only">Scripting and functions commands</span></summary>
+    <ul class="docs-menu-commands" aria-label="Scripting and functions commands">
+        <li><a href="/commands/eval/">EVAL</a></li>
+        <li><a href="/commands/evalsha/">EVALSHA</a></li>
+        <li><a href="/commands/evalsha_ro/">EVALSHA_RO</a></li>
+        <li><a href="/commands/eval_ro/">EVAL_RO</a></li>
+        <li><a href="/commands/fcall/">FCALL</a></li>
+        <li><a href="/commands/fcall_ro/">FCALL_RO</a></li>
+        <li><a href="/commands/function/">FUNCTION</a></li>
+        <li><a href="/commands/function-delete/">FUNCTION DELETE</a></li>
+        <li><a href="/commands/function-dump/">FUNCTION DUMP</a></li>
+        <li><a href="/commands/function-flush/">FUNCTION FLUSH</a></li>
+        <li><a href="/commands/function-help/">FUNCTION HELP</a></li>
+        <li><a href="/commands/function-kill/">FUNCTION KILL</a></li>
+        <li><a href="/commands/function-list/">FUNCTION LIST</a></li>
+        <li><a href="/commands/function-load/">FUNCTION LOAD</a></li>
+        <li><a href="/commands/function-restore/">FUNCTION RESTORE</a></li>
+        <li><a href="/commands/function-stats/">FUNCTION STATS</a></li>
+        <li><a href="/commands/script/">SCRIPT</a></li>
+        <li><a href="/commands/script-debug/">SCRIPT DEBUG</a></li>
+        <li><a href="/commands/script-exists/">SCRIPT EXISTS</a></li>
+        <li><a href="/commands/script-flush/">SCRIPT FLUSH</a></li>
+        <li><a href="/commands/script-help/">SCRIPT HELP</a></li>
+        <li><a href="/commands/script-kill/">SCRIPT KILL</a></li>
+        <li><a href="/commands/script-load/">SCRIPT LOAD</a></li>
+        <li><a href="/commands/script-show/">SCRIPT SHOW</a></li>
+    </ul>
+</details>
+
+</li>
+
+                    
+<li>
+    <a href="/topics/eval-intro/">Scripting with Lua</a>
+</li>
+
+                    
+<li>
+    <a href="/topics/functions-intro/">Functions</a>
+</li>
+
+                    
+<li>
+    <a href="/topics/lua-api/">Lua API reference</a>
+</li>
+
+                    
+<li>
+    <a href="/topics/ldb/">Debugging Lua scripts</a>
+</li>
+
+                </ul>
+            </details>
+        </li>
+        <li>
+            <details>
+                <summary>Search <span class="docs-menu-badge">module</span></summary>
+                <ul>
+                    
+<li class="docs-menu-has-commands">
+    <a href="/topics/search/">Overview</a>
+    
+<details class="docs-menu-commands-toggle">
+    <summary><span class="sr-only">Search commands</span></summary>
+    <ul class="docs-menu-commands" aria-label="Search commands">
+        <li><a href="/commands/ft.aggregate/">FT.AGGREGATE</a></li>
+        <li><a href="/commands/ft.create/">FT.CREATE</a></li>
+        <li><a href="/commands/ft.cursor/">FT.CURSOR</a></li>
+        <li><a href="/commands/ft.dropindex/">FT.DROPINDEX</a></li>
+        <li><a href="/commands/ft.hybrid/">FT.HYBRID</a></li>
+        <li><a href="/commands/ft.info/">FT.INFO</a></li>
+        <li><a href="/commands/ft.search/">FT.SEARCH</a></li>
+        <li><a href="/commands/ft._list/">FT._LIST</a></li>
+    </ul>
+</details>
+
+</li>
+
+                    
+<li>
+    <a href="/topics/search-query/">Queries</a>
+</li>
+
+                    
+<li>
+    <a href="/topics/search-scoring/">Scoring</a>
+</li>
+
+                    
+<li>
+    <a href="/topics/search-scoring-examples/">Scoring examples</a>
+</li>
+
+                    
+<li>
+    <a href="/topics/search-expressions/">Aggregation expressions</a>
+</li>
+
+                    
+<li>
+    <a href="/topics/search-data-formats/">Data formats</a>
+</li>
+
+                    
+<li>
+    <a href="/topics/search-configurables/">Configuration</a>
+</li>
+
+                    
+<li>
+    <a href="/topics/search-monitoring/">Metrics and configurations</a>
+</li>
+
+                    
+<li>
+    <a href="/topics/search-observables/">INFO SEARCH metrics</a>
+</li>
+
+                </ul>
+            </details>
+        </li>
+        <li>
+            <details>
+                <summary>Large object <span class="docs-menu-badge">module</span></summary>
+                <ul>
+                    
+<li class="docs-menu-has-commands">
+    <a href="/topics/large-object/">Overview</a>
+    
+<details class="docs-menu-commands-toggle">
+    <summary><span class="sr-only">Large object commands</span></summary>
+    <ul class="docs-menu-commands" aria-label="Large object commands">
+        <li><a href="/commands/blob.info/">BLOB.INFO</a></li>
+        <li><a href="/commands/blob.rdma_get/">BLOB.RDMA_GET</a></li>
+        <li><a href="/commands/blob.rdma_hello/">BLOB.RDMA_HELLO</a></li>
+        <li><a href="/commands/blob.rdma_set/">BLOB.RDMA_SET</a></li>
+        <li><a href="/commands/blob.tcp_get/">BLOB.TCP_GET</a></li>
+        <li><a href="/commands/blob.tcp_set/">BLOB.TCP_SET</a></li>
+    </ul>
+</details>
+
+</li>
+
+                    
+<li>
+    <a href="/topics/large-object-getting-started/">Getting started</a>
+</li>
+
+                    
+<li>
+    <a href="/topics/large-object-use-cases/">Use cases and examples</a>
+</li>
+
+                    
+<li>
+    <a href="/topics/large-object-rdma/">RDMA transfers</a>
+</li>
+
+                    
+<li>
+    <a href="/topics/large-object-configuration/">Configuration and monitoring</a>
+</li>
+
+                </ul>
+            </details>
+        </li>
+        <li>
+            <details open>
+                <summary>Administration</summary>
+                <ul>
+                    
+<li>
+    <a href="/topics/server/">The Valkey server</a>
+</li>
+
+                    
+<li>
+    <a href="/topics/cli/">CLI</a>
+</li>
+
+                    
+<li class="docs-menu-has-commands">
+    <a href="/topics/valkey.conf/">Configuration</a>
+    
+<details class="docs-menu-commands-toggle">
+    <summary><span class="sr-only">Configuration commands</span></summary>
+    <ul class="docs-menu-commands" aria-label="Configuration commands">
+        <li><a href="/commands/config/">CONFIG</a></li>
+        <li><a href="/commands/config-get/">CONFIG GET</a></li>
+        <li><a href="/commands/config-help/">CONFIG HELP</a></li>
+        <li><a href="/commands/config-info/">CONFIG INFO</a></li>
+        <li><a href="/commands/config-resetstat/">CONFIG RESETSTAT</a></li>
+        <li><a href="/commands/config-rewrite/">CONFIG REWRITE</a></li>
+        <li><a href="/commands/config-set/">CONFIG SET</a></li>
+    </ul>
+</details>
+
+</li>
+
+                    
+<li>
+    <details class="docs-menu-current-topic" open>
+        <summary class="docs-menu-current" aria-current="page"><span>Persistence</span>
+        </summary>
+        <ul class="docs-menu-commands" aria-label="Persistence commands">
+            <li><a href="/commands/bgrewriteaof/">BGREWRITEAOF</a></li>
+            <li><a href="/commands/bgsave/">BGSAVE</a></li>
+            <li><a href="/commands/lastsave/">LASTSAVE</a></li>
+            <li><a href="/commands/save/">SAVE</a></li>
+        </ul>
+    </details>
+</li>
+
+                    
+<li class="docs-menu-has-commands">
+    <a href="/topics/replication/">Replication</a>
+    
+<details class="docs-menu-commands-toggle">
+    <summary><span class="sr-only">Replication commands</span></summary>
+    <ul class="docs-menu-commands" aria-label="Replication commands">
+        <li><a href="/commands/failover/">FAILOVER</a></li>
+        <li><a href="/commands/psync/">PSYNC</a></li>
+        <li><a href="/commands/replconf/">REPLCONF</a></li>
+        <li><a href="/commands/replicaof/">REPLICAOF</a></li>
+        <li><a href="/commands/role/">ROLE</a></li>
+        <li><a href="/commands/slaveof/">SLAVEOF</a></li>
+        <li><a href="/commands/sync/">SYNC</a></li>
+    </ul>
+</details>
+
+</li>
+
+                    
+<li>
+    <a href="/topics/forkless/">Forkless operations</a>
+</li>
+
+                    
+<li>
+    <a href="/topics/sentinel/">High availability with Valkey Sentinel</a>
+</li>
+
+                    
+<li>
+    <a href="/topics/admin/">Administration</a>
+</li>
+
+                    
+<li class="docs-menu-has-commands">
+    <a href="/topics/clients/">Client handling</a>
+    
+<details class="docs-menu-commands-toggle">
+    <summary><span class="sr-only">Client handling commands</span></summary>
+    <ul class="docs-menu-commands" aria-label="Client handling commands">
+        <li><a href="/commands/auth/">AUTH</a></li>
+        <li><a href="/commands/client/">CLIENT</a></li>
+        <li><a href="/commands/client-caching/">CLIENT CACHING</a></li>
+        <li><a href="/commands/client-capa/">CLIENT CAPA</a></li>
+        <li><a href="/commands/client-getname/">CLIENT GETNAME</a></li>
+        <li><a href="/commands/client-getredir/">CLIENT GETREDIR</a></li>
+        <li><a href="/commands/client-help/">CLIENT HELP</a></li>
+        <li><a href="/commands/client-id/">CLIENT ID</a></li>
+        <li><a href="/commands/client-import-source/">CLIENT IMPORT-SOURCE</a></li>
+        <li><a href="/commands/client-info/">CLIENT INFO</a></li>
+        <li><a href="/commands/client-kill/">CLIENT KILL</a></li>
+        <li><a href="/commands/client-list/">CLIENT LIST</a></li>
+        <li><a href="/commands/client-no-evict/">CLIENT NO-EVICT</a></li>
+        <li><a href="/commands/client-no-touch/">CLIENT NO-TOUCH</a></li>
+        <li><a href="/commands/client-pause/">CLIENT PAUSE</a></li>
+        <li><a href="/commands/client-reply/">CLIENT REPLY</a></li>
+        <li><a href="/commands/client-setinfo/">CLIENT SETINFO</a></li>
+        <li><a href="/commands/client-setname/">CLIENT SETNAME</a></li>
+        <li><a href="/commands/client-tracking/">CLIENT TRACKING</a></li>
+        <li><a href="/commands/client-trackinginfo/">CLIENT TRACKINGINFO</a></li>
+        <li><a href="/commands/client-unblock/">CLIENT UNBLOCK</a></li>
+        <li><a href="/commands/client-unpause/">CLIENT UNPAUSE</a></li>
+        <li><a href="/commands/echo/">ECHO</a></li>
+        <li><a href="/commands/hello/">HELLO</a></li>
+        <li><a href="/commands/ping/">PING</a></li>
+        <li><a href="/commands/quit/">QUIT</a></li>
+        <li><a href="/commands/reset/">RESET</a></li>
+        <li><a href="/commands/select/">SELECT</a></li>
+    </ul>
+</details>
+
+</li>
+
+                    
+<li>
+    <a href="/topics/signals/">Signal handling</a>
+</li>
+
+                    
+<li>
+    <a href="/topics/ARM/">ARM support</a>
+</li>
+
+                    
+<li>
+    <a href="/topics/RDMA/">RDMA experimental support</a>
+</li>
+
+                    <li>
+                        <details class="docs-menu-other-commands">
+                            <summary>Other commands</summary>
+                            <ul class="docs-menu-commands" aria-label="Administration commands">
+                                <li><a href="/commands/debug/">DEBUG</a></li>
+                                <li><a href="/commands/info/">INFO</a></li>
+                                <li><a href="/commands/lolwut/">LOLWUT</a></li>
+                                <li><a href="/commands/monitor/">MONITOR</a></li>
+                                <li><a href="/commands/restore-asking/">RESTORE-ASKING</a></li>
+                                <li><a href="/commands/shutdown/">SHUTDOWN</a></li>
+                                <li><a href="/commands/time/">TIME</a></li>
+                            </ul>
+                        </details>
+                    </li>
+                </ul>
+            </details>
+        </li>
+        <li>
+            <details>
+                <summary>Cluster</summary>
+                <ul>
+                    
+<li class="docs-menu-has-commands">
+    <a href="/topics/cluster-tutorial/">Cluster tutorial</a>
+    
+<details class="docs-menu-commands-toggle">
+    <summary><span class="sr-only">Cluster tutorial commands</span></summary>
+    <ul class="docs-menu-commands" aria-label="Cluster tutorial commands">
+        <li><a href="/commands/asking/">ASKING</a></li>
+        <li><a href="/commands/cluster/">CLUSTER</a></li>
+        <li><a href="/commands/cluster-addslots/">CLUSTER ADDSLOTS</a></li>
+        <li><a href="/commands/cluster-addslotsrange/">CLUSTER ADDSLOTSRANGE</a></li>
+        <li><a href="/commands/cluster-bumpepoch/">CLUSTER BUMPEPOCH</a></li>
+        <li><a href="/commands/cluster-cancelslotmigrations/">CLUSTER CANCELSLOTMIGRATIONS</a></li>
+        <li><a href="/commands/cluster-count-failure-reports/">CLUSTER COUNT-FAILURE-REPORTS</a></li>
+        <li><a href="/commands/cluster-countkeysinslot/">CLUSTER COUNTKEYSINSLOT</a></li>
+        <li><a href="/commands/cluster-delslots/">CLUSTER DELSLOTS</a></li>
+        <li><a href="/commands/cluster-delslotsrange/">CLUSTER DELSLOTSRANGE</a></li>
+        <li><a href="/commands/cluster-failover/">CLUSTER FAILOVER</a></li>
+        <li><a href="/commands/cluster-flushslots/">CLUSTER FLUSHSLOTS</a></li>
+        <li><a href="/commands/cluster-forget/">CLUSTER FORGET</a></li>
+        <li><a href="/commands/cluster-getkeysinslot/">CLUSTER GETKEYSINSLOT</a></li>
+        <li><a href="/commands/cluster-getslotmigrations/">CLUSTER GETSLOTMIGRATIONS</a></li>
+        <li><a href="/commands/cluster-help/">CLUSTER HELP</a></li>
+        <li><a href="/commands/cluster-info/">CLUSTER INFO</a></li>
+        <li><a href="/commands/cluster-keyslot/">CLUSTER KEYSLOT</a></li>
+        <li><a href="/commands/cluster-links/">CLUSTER LINKS</a></li>
+        <li><a href="/commands/cluster-meet/">CLUSTER MEET</a></li>
+        <li><a href="/commands/cluster-migrateslots/">CLUSTER MIGRATESLOTS</a></li>
+        <li><a href="/commands/cluster-myid/">CLUSTER MYID</a></li>
+        <li><a href="/commands/cluster-myshardid/">CLUSTER MYSHARDID</a></li>
+        <li><a href="/commands/cluster-nodes/">CLUSTER NODES</a></li>
+        <li><a href="/commands/cluster-replicas/">CLUSTER REPLICAS</a></li>
+        <li><a href="/commands/cluster-replicate/">CLUSTER REPLICATE</a></li>
+        <li><a href="/commands/cluster-reset/">CLUSTER RESET</a></li>
+        <li><a href="/commands/cluster-saveconfig/">CLUSTER SAVECONFIG</a></li>
+        <li><a href="/commands/cluster-set-config-epoch/">CLUSTER SET-CONFIG-EPOCH</a></li>
+        <li><a href="/commands/cluster-setslot/">CLUSTER SETSLOT</a></li>
+        <li><a href="/commands/cluster-shards/">CLUSTER SHARDS</a></li>
+        <li><a href="/commands/cluster-slaves/">CLUSTER SLAVES</a></li>
+        <li><a href="/commands/cluster-slot-stats/">CLUSTER SLOT-STATS</a></li>
+        <li><a href="/commands/cluster-slots/">CLUSTER SLOTS</a></li>
+        <li><a href="/commands/cluster-syncslots/">CLUSTER SYNCSLOTS</a></li>
+        <li><a href="/commands/clusterscan/">CLUSTERSCAN</a></li>
+        <li><a href="/commands/readonly/">READONLY</a></li>
+        <li><a href="/commands/readwrite/">READWRITE</a></li>
+    </ul>
+</details>
+
+</li>
+
+                    
+<li>
+    <a href="/topics/cluster-spec/">Cluster specification</a>
+</li>
+
+                    
+<li>
+    <a href="/topics/atomic-slot-migration/">Atomic slot migration</a>
+</li>
+
+                </ul>
+            </details>
+        </li>
+        <li>
+            <details>
+                <summary>Security</summary>
+                <ul>
+                    
+<li>
+    <a href="/topics/security/">Overview</a>
+</li>
+
+                    
+<li class="docs-menu-has-commands">
+    <a href="/topics/acl/">ACL</a>
+    
+<details class="docs-menu-commands-toggle">
+    <summary><span class="sr-only">ACL commands</span></summary>
+    <ul class="docs-menu-commands" aria-label="ACL commands">
+        <li><a href="/commands/acl/">ACL</a></li>
+        <li><a href="/commands/acl-cat/">ACL CAT</a></li>
+        <li><a href="/commands/acl-delrole/">ACL DELROLE</a></li>
+        <li><a href="/commands/acl-deluser/">ACL DELUSER</a></li>
+        <li><a href="/commands/acl-digest/">ACL DIGEST</a></li>
+        <li><a href="/commands/acl-dryrun/">ACL DRYRUN</a></li>
+        <li><a href="/commands/acl-genpass/">ACL GENPASS</a></li>
+        <li><a href="/commands/acl-getrole/">ACL GETROLE</a></li>
+        <li><a href="/commands/acl-getuser/">ACL GETUSER</a></li>
+        <li><a href="/commands/acl-help/">ACL HELP</a></li>
+        <li><a href="/commands/acl-list/">ACL LIST</a></li>
+        <li><a href="/commands/acl-load/">ACL LOAD</a></li>
+        <li><a href="/commands/acl-log/">ACL LOG</a></li>
+        <li><a href="/commands/acl-roles/">ACL ROLES</a></li>
+        <li><a href="/commands/acl-save/">ACL SAVE</a></li>
+        <li><a href="/commands/acl-setrole/">ACL SETROLE</a></li>
+        <li><a href="/commands/acl-setuser/">ACL SETUSER</a></li>
+        <li><a href="/commands/acl-users/">ACL USERS</a></li>
+        <li><a href="/commands/acl-whoami/">ACL WHOAMI</a></li>
+    </ul>
+</details>
+
+</li>
+
+                    
+<li>
+    <a href="/topics/tls/">TLS</a>
+</li>
+
+                    
+<li>
+    <a href="/topics/ldap/">LDAP authentication <span class="docs-menu-badge">module</span></a>
+</li>
+
+                </ul>
+            </details>
+        </li>
+        <li>
+            <details>
+                <summary>Performance and troubleshooting</summary>
+                <ul>
+                    
+<li>
+    <a href="/topics/problems/">Troubleshooting Valkey</a>
+</li>
+
+                    
+<li class="docs-menu-has-commands">
+    <a href="/topics/memory-optimization/">Memory optimization</a>
+    
+<details class="docs-menu-commands-toggle">
+    <summary><span class="sr-only">Memory optimization commands</span></summary>
+    <ul class="docs-menu-commands" aria-label="Memory optimization commands">
+        <li><a href="/commands/memory/">MEMORY</a></li>
+        <li><a href="/commands/memory-doctor/">MEMORY DOCTOR</a></li>
+        <li><a href="/commands/memory-help/">MEMORY HELP</a></li>
+        <li><a href="/commands/memory-malloc-stats/">MEMORY MALLOC-STATS</a></li>
+        <li><a href="/commands/memory-purge/">MEMORY PURGE</a></li>
+        <li><a href="/commands/memory-stats/">MEMORY STATS</a></li>
+        <li><a href="/commands/memory-usage/">MEMORY USAGE</a></li>
+    </ul>
+</details>
+
+</li>
+
+                    
+<li class="docs-menu-has-commands">
+    <a href="/topics/latency-monitor/">Latency monitoring</a>
+    
+<details class="docs-menu-commands-toggle">
+    <summary><span class="sr-only">Latency monitoring commands</span></summary>
+    <ul class="docs-menu-commands" aria-label="Latency monitoring commands">
+        <li><a href="/commands/latency/">LATENCY</a></li>
+        <li><a href="/commands/latency-doctor/">LATENCY DOCTOR</a></li>
+        <li><a href="/commands/latency-graph/">LATENCY GRAPH</a></li>
+        <li><a href="/commands/latency-help/">LATENCY HELP</a></li>
+        <li><a href="/commands/latency-histogram/">LATENCY HISTOGRAM</a></li>
+        <li><a href="/commands/latency-history/">LATENCY HISTORY</a></li>
+        <li><a href="/commands/latency-latest/">LATENCY LATEST</a></li>
+        <li><a href="/commands/latency-reset/">LATENCY RESET</a></li>
+    </ul>
+</details>
+
+</li>
+
+                    
+<li class="docs-menu-has-commands">
+    <a href="/topics/latency/">Diagnosing latency issues</a>
+    
+<details class="docs-menu-commands-toggle">
+    <summary><span class="sr-only">Diagnosing latency issues commands</span></summary>
+    <ul class="docs-menu-commands" aria-label="Diagnosing latency issues commands">
+        <li><a href="/commands/commandlog/">COMMANDLOG</a></li>
+        <li><a href="/commands/commandlog-get/">COMMANDLOG GET</a></li>
+        <li><a href="/commands/commandlog-help/">COMMANDLOG HELP</a></li>
+        <li><a href="/commands/commandlog-len/">COMMANDLOG LEN</a></li>
+        <li><a href="/commands/commandlog-reset/">COMMANDLOG RESET</a></li>
+        <li><a href="/commands/slowlog/">SLOWLOG</a></li>
+        <li><a href="/commands/slowlog-get/">SLOWLOG GET</a></li>
+        <li><a href="/commands/slowlog-help/">SLOWLOG HELP</a></li>
+        <li><a href="/commands/slowlog-len/">SLOWLOG LEN</a></li>
+        <li><a href="/commands/slowlog-reset/">SLOWLOG RESET</a></li>
+    </ul>
+</details>
+
+</li>
+
+                    
+<li class="docs-menu-has-commands">
+    <a href="/topics/hotkeys/">Hot key tracking</a>
+    
+<details class="docs-menu-commands-toggle">
+    <summary><span class="sr-only">Hot key tracking commands</span></summary>
+    <ul class="docs-menu-commands" aria-label="Hot key tracking commands">
+        <li><a href="/commands/hotkeys/">HOTKEYS</a></li>
+        <li><a href="/commands/hotkeys-get/">HOTKEYS GET</a></li>
+        <li><a href="/commands/hotkeys-help/">HOTKEYS HELP</a></li>
+        <li><a href="/commands/hotkeys-reset/">HOTKEYS RESET</a></li>
+    </ul>
+</details>
+
+</li>
+
+                    
+<li>
+    <a href="/topics/benchmark/">Benchmarking tool</a>
+</li>
+
+                    
+<li>
+    <a href="/topics/performance-on-cpu/">CPU profiling</a>
+</li>
+
+                    
+<li>
+    <a href="/topics/debugging/">Debugging</a>
+</li>
+
+                    
+<li>
+    <a href="/topics/mass-insertion/">Bulk loading</a>
+</li>
+
+                </ul>
+            </details>
+        </li>
+        <li>
+            <details>
+                <summary>Module development</summary>
+                <ul>
+                    
+<li class="docs-menu-has-commands">
+    <a href="/topics/modules-intro/">Overview</a>
+    
+<details class="docs-menu-commands-toggle">
+    <summary><span class="sr-only">Module development commands</span></summary>
+    <ul class="docs-menu-commands" aria-label="Module development commands">
+        <li><a href="/commands/module/">MODULE</a></li>
+        <li><a href="/commands/module-help/">MODULE HELP</a></li>
+        <li><a href="/commands/module-list/">MODULE LIST</a></li>
+        <li><a href="/commands/module-load/">MODULE LOAD</a></li>
+        <li><a href="/commands/module-loadex/">MODULE LOADEX</a></li>
+        <li><a href="/commands/module-unload/">MODULE UNLOAD</a></li>
+    </ul>
+</details>
+
+</li>
+
+                    
+<li>
+    <a href="/topics/modules-native-types/">Modules API for native types</a>
+</li>
+
+                    
+<li>
+    <a href="/topics/modules-blocking-ops/">Modules and blocking commands</a>
+</li>
+
+                    
+<li>
+    <a href="/topics/modules-api-ref/">Modules API reference</a>
+</li>
+
+                </ul>
+            </details>
+        </li>
+        <li>
+            <details>
+                <summary>Client development</summary>
+                <ul>
+                    
+<li>
+    <a href="/topics/protocol/">Serialization protocol specification</a>
+</li>
+
+                    
+<li class="docs-menu-has-commands">
+    <a href="/topics/command-arguments/">Command arguments</a>
+    
+<details class="docs-menu-commands-toggle">
+    <summary><span class="sr-only">Command arguments commands</span></summary>
+    <ul class="docs-menu-commands" aria-label="Command arguments commands">
+        <li><a href="/commands/command/">COMMAND</a></li>
+        <li><a href="/commands/command-count/">COMMAND COUNT</a></li>
+        <li><a href="/commands/command-docs/">COMMAND DOCS</a></li>
+        <li><a href="/commands/command-getkeys/">COMMAND GETKEYS</a></li>
+        <li><a href="/commands/command-getkeysandflags/">COMMAND GETKEYSANDFLAGS</a></li>
+        <li><a href="/commands/command-help/">COMMAND HELP</a></li>
+        <li><a href="/commands/command-info/">COMMAND INFO</a></li>
+        <li><a href="/commands/command-list/">COMMAND LIST</a></li>
+    </ul>
+</details>
+
+</li>
+
+                    
+<li>
+    <a href="/topics/key-specs/">Command key specifications</a>
+</li>
+
+                    
+<li>
+    <a href="/topics/command-tips/">Command tips</a>
+</li>
+
+                    
+<li>
+    <a href="/topics/sentinel-clients/">Sentinel client spec</a>
+</li>
+
+                </ul>
+            </details>
+        </li>
+        <li>
+            <details>
+                <summary>About Valkey</summary>
+                <ul>
+                    
+<li>
+    <a href="/topics/releases/">Releases and versioning schema</a>
+</li>
+
+                    
+<li>
+    <a href="/topics/history/">History</a>
+</li>
+
+                </ul>
+            </details>
+        </li>
+    </ul>
+</nav>
+
+
+<div class="edit_box">
+    See an error?
+    <a href="https://github.com/valkey-io/valkey-doc/edit/main/topics/persistence.md">Update this Page on GitHub!</a>
+</div>
+
+        </aside>
+    </div>
+</div>
+
+  </div>
+  <div class="footer">
+      <div class="row">
+        <div class="col col-6 icon-links">
+          <a href="https://valkey.io/slack" target="_blank">
+            <img src="/img/IconSlack.svg" alt="Slack Icon" width="20" height="20" />
+            Slack
+          </a>
+          <a href="https://github.com/valkey-io" target="_blank">
+            <img src="/img/IconGithub.svg" alt="GitHub Icon" width="20" height="20" />
+            GitHub
+          </a>
+          <a href="https://www.linkedin.com/company/valkey/" target="_blank">
+            <img src="/img/IconLinkedin.svg" alt="LinkedIn Icon" width="20" height="20" />
+            LinkedIn
+          </a>
+          <a href="https://x.com/valkey_io" target="_blank">
+            <img src="/img/IconX.svg" alt="X Icon" width="20" height="20" />
+            X.com
+          </a>
+          <a href="https://www.youtube.com/@valkeyproject" target="_blank">
+            <img src="/img/IconYoutube.svg" alt="YouTube Icon" width="24" height="24" />
+            YouTube
+          </a>
+          <a href="/connect">
+            <img src="/img/IconMail.svg" alt="Mail Icon" width="20" height="20" />
+            Connect
+          </a>
+        </div>
+        <div class="col col-6 links">
+          <a href="/code_of_conduct">Code of Conduct</a>
+          <a href="/community/meetup-groups/">Meetup Groups</a>
+          <a href="https://github.com/orgs/valkey-io/discussions" target="_blank">Forum</a>
+          <a href="https://planet.valkey.io/" target="_blank">Planet</a>
+          <a href="/about">About</a>
+          <a href="/leadership">Leadership</a>
+          <a href="/topics/faq">FAQ</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer">
+      <div class="row">
+        <div class="row footer-email-list" id="email-signup">
+    <div class="col col-4">
+        <h2>Subscribe for updates, event info, and the latest Valkey news</h2>
+
+        <p>Stay connected with everything happening in the Valkey ecosystem: news, community stories, updates, and opportunities to get involved.</p>
+        <p>Subscriptions are open to all, so invite a friend or teammate. Thanks for joining and happy reading!</p>
+    </div>
+    <div class="footer-form col col-8">
+        <script charset="utf-8" type="text/javascript" src="//js.hsforms.net/forms/embed/v2.js"></script>
+        <script>
+        hbspt.forms.create({
+            portalId: "8112310",
+            formId: "7d793edf-4628-41c5-8c66-1a40a5b345b6",
+            region: "na1"
+        });
+        </script>
+    </div>
+</div>
+      </div>
+    </div>
+    <div class="footer">
+      <div class="footer_bottom">
+        <p>&copy; Valkey contributors.</p>
+        <p>Valkey and the Valkey logo are trademarks of LF Projects, LLC.</p>
+        <p>
+          <a href="https://lfprojects.org/policies/trademark-policy/">Trademark Policy</a>.
+          <a href="https://lfprojects.org/policies/privacy-policy/">Privacy Policy</a>.
+          <a href="https://lfprojects.org/policies/terms-of-use/">Terms of Use</a>.
+          For other policies, please see <a href="https://lfprojects.org/">lfprojects.org</a>.
+        </p>
+        <p>Valkey includes certain 3-Clause BSD-licensed Redis code from Redis Ltd. and other source code. Redis Ltd. is
+          not the source of that other source code. Redis is a registered trademark of Redis Ltd.</p>
+        <p>
+          Logo design by <a href="https://github.com/dizys" target="_blank">Ziyang.</a>
+        </p>
+      </div>
+      <img referrerpolicy="no-referrer-when-downgrade" src="https://static.scarf.sh/a.png?x-pxid=4682283c-f8b7-410c-9c31-c6d7944cee8b" />
+      <!-- Google Tag Manager (noscript) -->
+      <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-MFFCB7SR"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+      <!-- End Google Tag Manager (noscript) -->
+    </div>
+    
+
+</body>
+</html>

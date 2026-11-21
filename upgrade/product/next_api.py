@@ -6,7 +6,9 @@ migration. This module never deletes resources or broadens permissions.
 from upgrade.product.kubernetes_preflight import Refused, mapping, query
 
 
-def admit(binary, config, server):
+def admit(binary, config, server, *, target='v1.35.10'):
+    if target not in ['v1.35.10', 'v1.36.6']:
+        raise Refused('API admission requires an explicitly reviewed target')
     def get(path):
         return mapping(query(binary, config, server, ['get', '--raw=' + path]))
 
@@ -71,3 +73,44 @@ def admit(binary, config, server):
                     raise Refused('streaming RBAC needs create permission reviewed for ' +
                                   identity.get('namespace', '') + '/' + identity.get('name', 'unknown') +
                                   ': ' + resource)
+
+    if target == 'v1.36.6':
+        _admit_git_repo_and_dra(get, versions)
+
+
+def _admit_git_repo_and_dra(get, versions):
+    """Refuse persisted uses of changed APIs; never rewrite customer workloads."""
+    paths = [('/api/v1/pods', ('spec',)),
+             ('/api/v1/podtemplates', ('template', 'spec')),
+             ('/api/v1/replicationcontrollers', ('spec', 'template', 'spec'))]
+    paths += [('/apis/apps/v1/' + kind, ('spec', 'template', 'spec'))
+              for kind in ['deployments', 'replicasets', 'daemonsets', 'statefulsets']]
+    paths += [('/apis/batch/v1/jobs', ('spec', 'template', 'spec')),
+              ('/apis/batch/v1/cronjobs', ('spec', 'jobTemplate', 'spec', 'template', 'spec'))]
+    for path, fields in paths:
+        items = get(path).get('items')
+        if not isinstance(items, list):
+            raise Refused('complete workload observation required before the gitRepo lock')
+        for obj in items:
+            spec = obj
+            for field in fields:
+                if not isinstance(spec, dict):
+                    raise Refused('workload pod specification is incomplete')
+                spec = spec.get(field)
+            if not isinstance(spec, dict) or not isinstance(spec.get('volumes', []), list):
+                raise Refused('workload volume observation is incomplete')
+            if any(not isinstance(volume, dict) or 'gitRepo' in volume
+                   for volume in spec.get('volumes', [])):
+                raise Refused('gitRepo volumes cannot run on Kubernetes 1.36; migrate workloads before upgrade')
+
+    # This product does not deliver DRA drivers. Existing nonempty claims/slices
+    # require their owner's granular-status RBAC and driver qualification.
+    dra = versions.get('resource.k8s.io', set())
+    if dra:
+        version = next((v for v in ['v1', 'v1beta1'] if v in dra), None)
+        if version is None:
+            raise Refused('DRA discovery has no reviewed 1.36 transition API')
+        for resource in ['resourceclaims', 'resourceslices']:
+            items = get('/apis/resource.k8s.io/' + version + '/' + resource).get('items')
+            if not isinstance(items, list) or items:
+                raise Refused('nonempty or unknown DRA resources require a separately qualified driver migration')

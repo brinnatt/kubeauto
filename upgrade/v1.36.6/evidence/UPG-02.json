@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "accepted": true,
+  "source": "v1.35.10",
+  "target": "v1.36.6",
+  "case_ids": [
+    "UPG-02"
+  ],
+  "method": "analysis",
+  "claim": "已核验相邻minor精确稳定pin、30个组件域的安装组合/迁移边及官方来源实际力度。Kubernetes1.36.6与Harbor2.16.0为新目标；未变组件保留已接受维护组合。Harbor经2.14.6进入2.16，原第三方ARM采用项目逻辑迁移路径；该路径、未提供逐版上游表的组件及退役组件均明确边界，本项不签项目实测、完整官方目录阅读、原生ARM运行或GA。",
+  "covered_subcases": [
+    "exact-adjacent-kubernetes-stable-pin",
+    "every-catalog-component-has-decision-pin-and-transition-edge",
+    "official-evidence-strength-and-noncertification-boundaries",
+    "eol-and-transition-only-components-are-explicit"
+  ],
+  "inputs": {
+    "upgrade/v1.36.6/release.yaml": "c85bdb55513ba62c141924c32f5dc8c1f4794f8e4db32dfeee4da505abe37e8f"
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.36.6/evidence/combination-review.json",
+      "sha256": "c486b5e34c893c86092961477d80f504bfe4a0b4283fa2f8c2e0a705dc2145e5"
+    }
+  ],
+  "applicability": {
+    "conditions": "固定版本及官方资料快照可读且摘要一致；适用性按tested、支持声明、最低版本、稳定API、源码和上游过程分别评估。",
+    "differences": "本跳不重演维护基线已有etcd/runtime/CNI引擎迁移；Harbor数据库、缓存与跨架构路线须由后续真实场景证明，组合冻结不授权未知路径。",
+    "reason": "本项仅审查组合及已确定的迁移设计；既有用户接受的非逐版认证与生命周期过渡边界保留。完整目录消化、产品集成和恢复由对应矩阵另验。"
+  },
+  "customer_signoff": null
+}

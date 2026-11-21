@@ -147,7 +147,8 @@ def _runtime_inputs() -> dict:
 
 def _next_runtime_inputs(extra_bin_dir):
     """Consume the already published dual-architecture pack; never fetch or compile."""
-    pins = json.loads((Path(__file__).parent.parent/'v1.35.10/artifact-pins.json').read_text())
+    from upgrade.product.hop import PINS_PATH
+    pins = json.loads(PINS_PATH.read_text())
     arch = {'x86_64': 'amd64', 'aarch64': 'arm64'}.get(platform.machine())
     if arch not in pins['runtime']:
         raise CoordinatorRefused('runtime architecture is outside the admitted pack')
@@ -262,9 +263,10 @@ def run_next_hop(manager, cluster: str):
             raise CoordinatorRefused('another preparation or upgrade owns this cluster boundary') from None
         if os.fstat(descriptor).st_ino != lease.stat().st_ino:
             raise CoordinatorRefused('upgrade lease identity changed')
-        return _run_hop(manager, cluster, source="v1.34.13", target="v1.35.10",
+        from upgrade.product.hop import SOURCE, TARGET, RUN_ID
+        return _run_hop(manager, cluster, source=SOURCE, target=TARGET,
                         expected_cluster=cluster, state=state,
-                        run_id="k8s-v13413-to-v13510", next_hop=True)
+                        run_id=RUN_ID, next_hop=True)
     finally:
         os.close(descriptor)
 
@@ -348,7 +350,7 @@ def _run_hop(manager, cluster, *, source, target, expected_cluster, state, run_i
             raise CoordinatorRefused('API authentication compatibility refused before mutation')
         from upgrade.product.next_api import admit as admit_api
         for server in backends:
-            admit_api(kubectl, kubeconfig, server)
+            admit_api(kubectl, kubeconfig, server, target=target)
         variables.update(_next_runtime_inputs(manager.extra_bin_dir))
         from upgrade.product.continuity import Continuity
         from upgrade.product.next_platform import PlatformPrerequisites
@@ -367,6 +369,7 @@ def _run_hop(manager, cluster, *, source, target, expected_cluster, state, run_i
              if next_hop else stage.steps)
     binding = {**stage.binding, "run_id": run_id}
     if next_hop:
+        from upgrade.product.hop import PINS_PATH
         binding['platform_inputs_sha256'] = hashlib.sha256(json.dumps({
             'receipt_sha256': _sha256(Path(str(state)+'.receipt.json')),
             'implementation': {p.name: _sha256(p) for p in [
@@ -379,7 +382,8 @@ def _run_hop(manager, cluster, *, source, target, expected_cluster, state, run_i
                 Path(__file__).with_name('next_config.py'), Path(__file__).with_name('etcd.yml'),
                 Path(__file__).with_name('etcd-observe.yml'), Path(__file__).with_name('dns_stage.py'),
                 Path(__file__).with_name('metrics_stage.py'),
-                Path(__file__).parent.parent/'v1.35.10/artifact-pins.json']}
+                Path(__file__).with_name('hop.py'),
+                PINS_PATH]}
         }, sort_keys=True).encode()).hexdigest()
     with Journal(journal_dir, binding, steps) as journal:
         if next_hop:
@@ -409,6 +413,8 @@ def _run_hop(manager, cluster, *, source, target, expected_cluster, state, run_i
             platform_stage.run(journal)
         stop_after = None if CONTROL in journal.data['completed'] else CONTROL
         stage.run(journal, verify_business, stop_after=stop_after)
+        if next_hop:
+            platform_stage.verify_retained()
         if next_hop and all(step in journal.data['completed'] for step in stage.steps):
             addon_stage.run(journal)
             if 'product/config' in journal.data['completed']:

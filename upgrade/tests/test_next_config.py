@@ -12,13 +12,13 @@ class FinalConfigContracts(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root=Path(temporary);state=root/'state';state.mkdir(mode=0o700)
             path=root/'config.yml'
-            path.write_text('# customer annotation\nK8S_VER: "1.34.13"\ncalico_ver: v3.28.4\nCONTAINER_RUNTIME: containerd\ndns_install: "yes"\nENABLE_LOCAL_DNS_CACHE: true\nmetricsserver_install: "yes"\nCUSTOM: preserve\n')
+            path.write_text('# customer annotation\nK8S_VER: "1.35.10"\ncalico_ver: v3.28.4\nCONTAINER_RUNTIME: containerd\ndns_install: "yes"\nENABLE_LOCAL_DNS_CACHE: true\nmetricsserver_install: "yes"\nCUSTOM: preserve\n')
             original,text=configuration(path,state)
-            self.assertEqual(yaml.safe_load(path.read_text())['K8S_VER'],'1.34.13')
+            self.assertEqual(yaml.safe_load(path.read_text())['K8S_VER'],'1.35.10')
             publish(path,text)
             self.assertEqual(path.stat().st_mode & 0o777,0o600)
             current=yaml.safe_load(path.read_text())
-            self.assertEqual((current['K8S_VER'],current['calico_ver'],current['corednsVer'],current['CUSTOM']),('1.35.10','v3.32.4','1.15.0','preserve'))
+            self.assertEqual((current['K8S_VER'],current['calico_ver'],current['corednsVer'],current['CUSTOM']),('1.36.6','v3.32.4','1.15.0','preserve'))
             self.assertTrue(text.startswith('# customer annotation'))
             self.assertEqual(configuration(path,state),(original,text))
             before=path.stat().st_mtime_ns;publish(path,text)
@@ -28,7 +28,7 @@ class FinalConfigContracts(unittest.TestCase):
 
     def test_uninstalled_consumers_are_not_silently_added(self):
         with tempfile.TemporaryDirectory() as temporary:
-            root=Path(temporary);path=root/'config.yml';path.write_text('K8S_VER: 1.34.13\ncalico_ver: v3.28.4\ndns_install: "no"\nmetricsserver_install: "no"\n')
+            root=Path(temporary);path=root/'config.yml';path.write_text('K8S_VER: 1.35.10\ncalico_ver: v3.28.4\ndns_install: "no"\nmetricsserver_install: "no"\n')
             original,text=configuration(path,root)
             self.assertNotIn('corednsVer',yaml.safe_load(text))
             self.assertNotIn('metricsVer',yaml.safe_load(text))

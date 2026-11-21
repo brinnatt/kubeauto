@@ -1,0 +1,170 @@
+{
+  "schema_version": 1,
+  "scope": "本跳三手册及30组件目录复用/增量检查；Harbor96目录作者覆盖、Valkey固定源码及真实迁移/新建/恢复/逻辑导入结果已核对。仅签本次增量文字与读者路径，原历史全站阅读缺口保留；不代签客户、不代签最终组合或正式发布。",
+  "files": {
+    "operations-manual.md": "a216d7230f2a9736a9067d636c3a8b4860110ae0bbe5a79272e9088470e07009",
+    "technical-whitepaper.md": "03230c511dc97efc063983f9122fe0ab9fdd37552ecc8468e488762d0223a4ff",
+    "development-manual.md": "814ab8d64da583615fcb1618ba95e58a800b4add87c8ee0e493ab81a7aaef33b"
+  },
+  "checks": [
+    {
+      "requirement": "Kubernetes源与目标分开，正常执行及PDB拒绝后续跑闭合",
+      "chapter": "operations-manual.md#准备kubernetes升级 / #执行与续跑",
+      "result": "已检查；实际源固定1.35.10、目标1.36.6，不先改源配置；原HTTP账本输入、prepare出口、两次upgrade交接及保留journal均已说明。",
+      "basis": [
+        "evidence/UPG-06.json",
+        "evidence/UPG-07.json"
+      ]
+    },
+    {
+      "requirement": "入口允许/拒绝及清理事实进入客户可判断正文",
+      "chapter": "operations-manual.md#已验证的升级边界",
+      "result": "已修正并复核；HTTP/可信HTTPS的原内容、错误CA rc60、真实webhook冲突拒绝与原配置/标签恢复逐项说明，非上游逐版认证。",
+      "basis": [
+        "evidence/ingress-target-qualification.json"
+      ]
+    },
+    {
+      "requirement": "Harbor官方发行签名及运行认证不混用",
+      "chapter": "operations-manual.md#选择路径与准备恢复空间",
+      "result": "已检查；AMD/ARM的Sigstore官方Python4.5.1正例及错误身份反例已明确，不把Python结果写成Cosign执行，也不推导ARM运行通过。研究旧状态文字已同步修正。",
+      "basis": [
+        "evidence/harbor-official-signatures.json"
+      ]
+    },
+    {
+      "requirement": "Harbor新手主线的信任和认证输入一致",
+      "chapter": "operations-manual.md#干净新建 / #私有制品使用",
+      "result": "已检查；01/03/11与Docker库存连续，域名/authority/CA贯穿login/push/pull。nerdctl独立hosts-dir显式校验TLS，CLI凭据不授予Pod；独立AMD64新建及原身份/只拉权限已按UPG-13验收。",
+      "basis": [
+        "research.yaml dependency_review:nerdctl"
+      ]
+    },
+    {
+      "requirement": "运维可独立找到停止与恢复条件",
+      "chapter": "operations-manual.md#原点备份amd64迁移与恢复 / #异常诊断与恢复",
+      "result": "正文说明同一原点完整恢复、目标新增写入边界及恢复后原权限/内容复验；已加入原生AMD小型业务迁移10分53秒与恢复2分24秒的实际条件和结果，禁止外推客户维护窗口。ARM原生运行明确未经项目实测。",
+      "basis": [
+        "release.yaml registry transition_edges",
+        "evidence/harbor-amd64-migration-qualification.json",
+        "evidence/harbor-amd64-restore-qualification.json"
+      ]
+    },
+    {
+      "requirement": "开发贡献执行流程与已交付维护入口分开",
+      "chapter": "development-manual.md#官方贡献与定制边界",
+      "result": "已检查；6项排除对应源码构建/翻译/Portal/文档/Make/E2E贡献流程，固定API、TLS与日志凭据边界保留，未引用旧工具链为2.16依据。",
+      "basis": [
+        "research.yaml harbor_directory"
+      ]
+    },
+    {
+      "requirement": "受保护版本字段与源凭据前置明确",
+      "chapter": "development-manual.md#harbor-api与业务校验 / operations-manual.md#原点备份amd64迁移与恢复",
+      "result": "官方2.13/2.14/2.16处理器与原生AMD现场均证明匿名200隐藏版本；正文说明原配置管理员认证、本机TLS、CA及密码轮换边界，禁止按tag猜版本或重置密码绕过。",
+      "basis": [
+        "evidence/harbor-version-inventory-repair.json"
+      ]
+    },
+    {
+      "requirement": "独立新建与重入的实测及OS前置一致",
+      "chapter": "operations-manual.md#干净新建 / development-manual.md#compose数据及命令边界",
+      "result": "正文增加原生AMD64独立新建、私有项目/原身份/只拉机器人及第二次setup11同账本结果；声明未覆盖ARM新建。开发手册补tar/gzip前置与既有实例只读检查，认证读取原密码并验证原CA。",
+      "basis": [
+        "evidence/harbor-amd64-clean-install-qualification.json",
+        "evidence/harbor-clean-install-repair.json"
+      ]
+    },
+    {
+      "requirement": "独立Compose清理、档案复用和原失败状态一致",
+      "chapter": "operations-manual.md#干净新建 / development-manual.md#验证与发布",
+      "result": "已核对源/目标清理回执、完整恢复档案摘要、六节点release recap、共享锁和owner释放；原父1/1、清理子任务0/0分别记录，不将资格失败改写为最终通过。未完成rsync半成品不作为恢复依据。",
+      "basis": [
+        "evidence/harbor-qualification-cleanup.json"
+      ]
+    },
+    {
+      "requirement": "交付负责人明确调整架构验收范围",
+      "chapter": "operations-manual.md#选择路径与准备恢复空间 / technical-whitepaper.md#harbor升级与恢复 / development-manual.md",
+      "result": "三手册统一x86运行、ARM64来源/签名/双架构制品/静态核验边界；不把x86结果写成ARM运行或跨CPU实测，也不再要求无可用主机的ARM现场作为本次GA前置。",
+      "basis": [
+        "acceptance-plan.yaml architecture_acceptance",
+        "交付负责人本轮明确回复"
+      ]
+    },
+    {
+      "requirement": "逻辑迁移两端上下文和失败恢复闭合",
+      "chapter": "operations-manual.md#逻辑迁移与目标撤回 / development-manual.md#compose数据及命令边界",
+      "result": "作者新手/熟练运维路径检查发现源CLUSTER可能被新建步骤覆盖，已保存独立源变量并明确目标只01/03、不11；补私有清单传输、源停写、原CA/身份账本、先abort目标后restore源、已有输出拒绝覆盖和syslog依赖；命令/内嵌Python语法通过。213经2146至216、216同版逻辑导入、目标撤回及源恢复已完成原账本/权限/层内容复验并写回正文；原父失败及限定清理分别留证。",
+      "basis": [
+        "evidence/raw/local-qualification/harbor-export-syslog-contracts.log",
+        "upgrade/product/library/harbor_migration.py"
+      ]
+    },
+    {
+      "requirement": "Valkey格式与停止检查点安全续跑",
+      "chapter": "operations-manual.md#原点备份amd64迁移与恢复 / development-manual.md#harbor维护接口",
+      "result": "核对Valkey9.0.3官方RDB_VERSION80及写入逻辑；正文分别说明旧Redis和VALKEY080、stopped无输出/原身份条件、已有归档拒绝及不重复SAVE。真实目标备份/216逻辑导入与原业务恢复均通过；首失败保留。",
+      "basis": [
+        "evidence/valkey-rdb-format.json",
+        "evidence/harbor-logical-qualification.json",
+        "evidence/harbor-logical-cleanup.json"
+      ]
+    },
+    {
+      "requirement": "干净checkout可构建且不能绕过原验收",
+      "chapter": "development-manual.md#验证与发布",
+      "result": "已补连续导出命令及受控工作区/CI分工；原export在私有证据删除后真实拒绝，新build准入绑定已导出policy/矩阵/产品源码，缺失或变化拒绝，10项合同成功。不会把私有日志放入Git，也不牵连tools或按源码SHA重建历史镜像。",
+      "basis": [
+        "evidence/raw/local-qualification/release-policy-clean-checkout-contracts.log",
+        "upgrade/product/release_policy.py",
+        "kubecli-onefile.spec"
+      ]
+    }
+  ],
+  "static": {
+    "local_links": 45,
+    "bash_yaml_json_blocks": 22,
+    "heredoc_python_blocks": 2,
+    "official_directory_mappings": 96,
+    "directory_target_anchors": 90,
+    "unchanged_rendered_mermaid": 3,
+    "result": "pass"
+  },
+  "pending": [
+    "UPG-15最终组合现场验收及其后的正式产品发布身份闭环；不属于本次作者内容检查的已通过结论。"
+  ],
+  "customer_signoff": null,
+  "harbor_directory_review": {
+    "items": 96,
+    "understood_and_transferred": 90,
+    "excluded_with_basis": 6,
+    "role": "author",
+    "result": "pass",
+    "research_path": "upgrade/v1.36.6/research.yaml",
+    "research_sha256": "f9ed1c5c29df01168049a10230661e13138dab3ad0676a7d5728ff193bd1a880",
+    "groups": [
+      {
+        "topics": "身份源、角色及机器人",
+        "finding": "补齐初始密码与已存密码差异、LDAP/OIDC外部依赖、个人与组授权并集、机器人期限及间接删除风险，保留原身份业务实测和旧JWT未覆盖界限。"
+      },
+      {
+        "topics": "制品、标签、扫描与信任",
+        "finding": "补齐index/child引用与删除约束、不可变和保留规则OR语义、自定义media type及扫描能力边界；区分SBOM、签名和漏洞报告，说明allowlist复制不自动同步。"
+      },
+      {
+        "topics": "复制、Webhook、缓存、预热及观测",
+        "finding": "补齐Webhook重复投递/格式/egress限制、Jobservice暂停不等于停写，保留任务状态、远端依赖、指标类型、审计与容量约束。"
+      },
+      {
+        "topics": "安装、生命周期、迁移与恢复",
+        "finding": "主线为config+kubecli；补齐运行时及磁盘前置，按官方2.14桥接、整套停写恢复和CPU边界解释。官方演示及功能对照不是生产验证，Helm和外置依赖不冒签Compose能力。"
+      },
+      {
+        "topics": "API、定制与贡献",
+        "finding": "固定Swagger及认证错误/重试边界独立解释，API Explorer写操作会改变状态；修正其目录去向。六项上游构建/贡献流程排除依据保留，共享TLS/API/凭据语义保留。"
+      }
+    ],
+    "claim_limit": "作者内容检查；不是用户签收、原生ARM实测或最终GA。"
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "claim": "Checksum-qualified official offline package contents for AMD64 and ARM64; original third-party ARM 2.13 content identity for migration research",
+  "packages": {
+    "v2.14.6-amd64": "f3adaff30c4531c58f9d6ee8c5164f95f08582651c12b698b92be9e98df55cf6",
+    "v2.16.0-amd64": "643c137d8e829c857ef0ba45c46b5d6d8553077340bbd4929ded7e92808e77ff",
+    "v2.16.0-arm64": "6525af9c26cc24e48ecf37d3f7d9d139895b39a037a3de697f995171ce65524a"
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-content/harbor-v2.14.6-amd64-image-content.json",
+      "sha256": "040f61ba3f2bd38d4d23ddcf9ac54b2242ca64209eddf4f0c3bbbab300f59064",
+      "bytes": 2617
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-content/harbor-v2.16.0-amd64-image-content.json",
+      "sha256": "451539bdb4ae983faa24089d7cb38030282af73b634c925e1be260ace8ea30c0",
+      "bytes": 2618
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-content/harbor-v2.13.0-arm64-image-content.json",
+      "sha256": "d23bdf546001eb15c8ff7a79078936093e485837ee2a670d9a41aec53f766005",
+      "bytes": 7728
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-content/harbor-v2.16.0-arm64-image-content.json",
+      "sha256": "abc95a1f967fe5f8406fd16c099cd71f7b52918ca70ba63d1922b33fc068580a",
+      "bytes": 4024
+    },
+    {
+      "path": "upgrade/official-snapshots/2026-11-20-next-hop/harbor-v2.13.0-make_photon_db_docker-entrypoint.sh",
+      "sha256": "0d4c1588ed23194c4d1fbb36fa6d8fe695a7d57cba79b3c96282ecf3fa7fac1f",
+      "bytes": 3297,
+      "observation": "third-party ARM source package DB entrypoint matches pinned official source bytes"
+    }
+  ],
+  "runtime_validation": false,
+  "boundary": "Internal RepoTags, image config IDs and CPU architectures only. v2.14.6 has no official ARM runtime. Old ARM 2.13 artifact remains a third-party build despite matching DB entrypoint bytes."
+}

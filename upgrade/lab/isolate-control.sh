@@ -2,7 +2,11 @@
 # Private mount namespace: production roles may write ~/.kube on the controller.
 # Keep the control host's home/kubeconfig intact, retaining read-only SSH access.
 set -euo pipefail
-[[ "$#" -ge 2 && "$1" == /var/tmp/kubeauto-v13510-lab ]] || exit 2
+[[ "$#" -ge 2 ]] || exit 2
+case "$1" in
+  /var/tmp/kubeauto-v13510-lab|/var/tmp/kubeauto-v1366-lab) ;;
+  *) exit 2 ;;
+esac
 state="$1"; shift
 [[ "$(id -u)" == 0 && -d "$state" && ! -L "$state" ]]
 [[ "$(stat -c '%u:%a' "$state")" == 0:700 ]]

@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "classification": "test-gate",
+  "claim": "最终组合中target-config存在时遗漏目标私有目录离线包准备；在产品import前只读发现，暂停主监督保留租约，固定入口补充相同官方字节，未修改活跃源码/清单或客户路径。后续runner两条首次portable路径均在源停写前准备固定包。",
+  "original_helper": {
+    "path": "upgrade/v1.36.6/evidence/raw/local-qualification/package-fixture-before-repair/upgrade/lab/harbor_session.py",
+    "sha256": "c181978118f17fd701a7417b4e19c8a6fb56b603ee83efe0cc25f8499fd72cd0"
+  },
+  "current_helper_sha256": "d17e4ab75e6e3e307cd30bec0c9622e5887fd1abc5233156c2d6fd2444251e6d",
+  "changed_existing_functions": [
+    "main",
+    "packages",
+    "portable_phase"
+  ],
+  "unchanged_existing_functions": [
+    "__init__",
+    "assert_source_stopped",
+    "bootstrap",
+    "clean_phase",
+    "configure",
+    "finish_new_install",
+    "finish_portable",
+    "maintenance",
+    "migration_phase",
+    "new_install_phase",
+    "node",
+    "owner_check",
+    "plan",
+    "preserve",
+    "record_node",
+    "remote",
+    "repair_new_install",
+    "repair_new_install_boundary",
+    "repair_portable_boundary",
+    "restore_phase",
+    "run",
+    "shutdown",
+    "source_phase",
+    "stopped_backup_boundary",
+    "transfer_export"
+  ],
+  "production_build_inputs_sha256": "13de1107e13c72dc8049c64609c792149b56ff06ac794f923888f48f66b6231b",
+  "contract_tests": 92,
+  "skipped": 0,
+  "contract_rc": 0,
+  "current_run": "v1366-final-20261121c",
+  "child_run": "v1366-harbor-final-5c2fe5aaadaf",
+  "live_claim": "补齐私有夹具后原冻结runner续行；新runner完整现场未重跑。原UPG12恢复/业务函数和产品输入未变，旧证据绑定原helper快照保持原签署范围。",
+  "references": [
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/local-qualification/package-fixture-contracts.log",
+      "sha256": "7a1485ecd3e4c00829e7d77887e010d4790d17ac5de0062a9ce235e75c0b82a5"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-final-5c2fe5aaadaf/preemptive-fixture-pause.json",
+      "sha256": "c0eae6a53da818c41204b935498723887961d02773d2d04c12d92e29d2da66d9"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-final-5c2fe5aaadaf/paused-package-supply.json",
+      "sha256": "8af276d9b458037c70bc145b571b9e5f5be7c061c15621141360e5c9372283d4"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-final-5c2fe5aaadaf/paused-package-resume.json",
+      "sha256": "76959ea4f000d532dfce5ae3d2a2be73c1781fbc8c7400ee35d2d6b9e2e16e2a"
+    },
+    {
+      "path": "upgrade/v1.36.6/private/v1366-harbor-final-5c2fe5aaadaf/package-fixture-repair/harbor_session.py",
+      "sha256": "d17e4ab75e6e3e307cd30bec0c9622e5887fd1abc5233156c2d6fd2444251e6d"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/local-qualification/paused-package-supply.log",
+      "sha256": "f3fe51432a1f001f661986dc7ca73676e02701d47319520d0110fd33e906d23f"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/local-qualification/paused-package-resume.log",
+      "sha256": "a917191a1cb7cbd7ae36ef8140f4debdfd591bdc394bb616d3b35b71039a0ec8"
+    }
+  ],
+  "fixture_supply_rc": 0,
+  "resume_rc": 0
+}

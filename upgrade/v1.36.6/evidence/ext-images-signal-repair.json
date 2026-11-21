@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "classification": "delivery-process-supervision",
+  "first_failure": {
+    "run_id": 44773585543,
+    "job_id": 136417334875,
+    "stage": "Check release contracts",
+    "publication_job": "skipped",
+    "cause": "Signal handler print reentered BufferedWriter while normal streaming flush held its lock; RuntimeError replaced intended 143/130."
+  },
+  "official_source": {
+    "url": "https://docs.python.org/3.12/library/io.html#reentrancy",
+    "local_copy": "upgrade/v1.36.6/evidence/raw/ext-images-signal/python312-io.html",
+    "sha256": "9c904cc08f0349d853d6ed5795bd08131f77cdb4090068fff3bb5285c3e0ed38"
+  },
+  "correction": "Handler only stores first signal; normal selector loop performs cancellation, child process-group cleanup and diagnostic output. No mapping, artifact tag or build selection changes.",
+  "tests": {
+    "deterministic_buffer_lock_reproduction": "SIGTERM/SIGINT fail with original exact reentrant error before fix; pass after fix",
+    "supervision_tests": 10,
+    "complete_local_contracts": 119,
+    "catalog": "pass",
+    "fixture_boundary": "Real local subprocesses and signal/buffer locks; Docker/registries remain isolated protocol fixtures."
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/ext-images-signal/readback-plan-job.log",
+      "sha256": "2ad4d099cdaa820c0f49f13b80ad33f6d8080163e2fd48d0acba291473216fe3"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/ext-images-signal/ext-images-signal-reproduce.log",
+      "sha256": "700b1e8f30f32ad1da34d6ad6509037097b4ec847a9961c4b6c349d447217cfc"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/ext-images-signal/ext-images-signal-reproduce-2.log",
+      "sha256": "ca781c2e15f8b620b8223d8efc839e4ae9ef71e4de41447f42439ce0d9d6c0aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/ext-images-signal/ext-images-signal-contracts.log",
+      "sha256": "2772b1e9de4a4c763af91e86c70dc3a7472eab70469d4e70aa3f3c798826917f"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/ext-images-signal/ext-images-regression-20261121.log",
+      "sha256": "6a34c12eb3989dcd074e775209534ffc80ad60b7be18e4369825f434b6b990cc"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/ext-images-signal/ext-images-catalog-20261121.log",
+      "sha256": "1e1aa5616378b2821412f2856adcc5233f87963f466fa586f95b96564a5dd55b"
+    }
+  ],
+  "runtime_or_component_acceptance": false
+}

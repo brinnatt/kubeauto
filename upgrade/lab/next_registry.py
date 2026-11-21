@@ -8,11 +8,16 @@ from __future__ import annotations
 
 import argparse
 import base64
+from contextlib import contextmanager
 import hashlib
+import http.client
 import json
 from pathlib import Path
 import re
+import socket
+import subprocess
 import tempfile
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -24,17 +29,21 @@ ACCEPT=','.join(['application/vnd.oci.image.index.v1+json','application/vnd.dock
                  'application/vnd.oci.image.manifest.v1+json','application/vnd.docker.distribution.manifest.v2+json'])
 
 
-def scope():
+def scope(*, ingress=False):
     records=ROOT/'upgrade/v1.35.10/evidence'
     observed=json.loads((records/'consumer-readback-plan.json').read_text())['observed']
     observed+=json.loads((records/'source-image-readback.json').read_text())['plan']['observed']
     names=['brinnatt/pause:3.10','brinnatt/busybox:1.37','brinnatt/local-path-provisioner:v0.0.37']
-    names += ['brinnatt/'+name+':'+version for version in ['v3.28.4','v3.31.7','v3.32.4']
+    names += ['brinnatt/'+name+':'+version for version in ['v3.32.4']
               for name in ['calico-node','calico-cni','calico-kube-controllers']]
     names += ['brinnatt/'+name+':'+version for name,versions in [
-        ('coredns',['1.12.4','1.15.0']),('k8s-dns-node-cache',['1.26.4','1.26.8']),
-        ('metrics-server',['v0.8.0','v0.9.1'])] for version in versions]
+        ('coredns',['1.15.0']),('k8s-dns-node-cache',['1.26.8']),
+        ('metrics-server',['v0.9.1'])] for version in versions]
     lookup={i['row']['image']+':'+i['row']['tag']:i for i in observed}
+    if ingress:
+        observed=json.loads((ROOT/'upgrade/v1.36.6/evidence/consumer-readback-plan.json').read_text())['observed']
+        lookup={i['row']['image']+':'+i['row']['tag']:i for i in observed}
+        names=['brinnatt/ingress-nginx-controller:v1.15.1','brinnatt/kube-webhook-certgen:v1.6.9']
     return {name:lookup[name]['talkedu'] for name in names}
 
 
@@ -42,8 +51,53 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self,*args,**kwargs):return None
 
 
+@contextmanager
+def lab_tunnel():
+    """Reach only the fixed lab registry; private credentials stay local."""
+    with socket.socket() as listener:
+        listener.bind(('127.0.0.1',0))
+        port=listener.getsockname()[1]
+    command=['ssh','-T','-N','-o','BatchMode=yes','-o','ConnectTimeout=10',
+             '-o','ExitOnForwardFailure=yes','-o','ServerAliveInterval=10',
+             '-o','ServerAliveCountMax=3','-J','root@192.168.47.130',
+             '-L',f'127.0.0.1:{port}:127.0.0.1:5000','root@192.168.122.2']
+    with tempfile.TemporaryFile() as errors:
+        process=subprocess.Popen(command,stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=errors)
+        try:
+            deadline=time.monotonic()+15
+            while True:
+                if process.poll() is not None:
+                    raise RuntimeError('fixed lab registry tunnel failed before readiness')
+                try:
+                    with socket.create_connection(('127.0.0.1',port),timeout=0.2):break
+                except OSError:
+                    if time.monotonic()>=deadline:
+                        raise RuntimeError('fixed lab registry tunnel readiness timed out') from None
+                    time.sleep(0.1)
+
+            class Connection(http.client.HTTPConnection):
+                def connect(self):
+                    self.sock=socket.create_connection(('127.0.0.1',port),self.timeout)
+
+            class Handler(urllib.request.HTTPHandler):
+                def http_open(self,request):
+                    if request.host!='192.168.122.2:5000':
+                        raise ValueError('tunnel request escaped the fixed lab registry')
+                    return self.do_open(Connection,request)
+
+            # Keep the actual registry URL/Host and upload Location validation.
+            # Only the TCP connection changes; environment proxies are disabled.
+            yield urllib.request.build_opener(urllib.request.ProxyHandler({}),NoRedirect,Handler)
+        finally:
+            if process.poll() is None:
+                process.terminate()
+                try:process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    process.kill();process.wait(timeout=5)
+
+
 class Registry:
-    def __init__(self):
+    def __init__(self,local_opener=None):
         path=Path('/home/brinnatt/.hub.talkedu.cn')
         if path.stat().st_mode&0o777!=0o600:raise ValueError('private registry credentials required')
         credentials={}
@@ -54,6 +108,7 @@ class Registry:
         password=credentials.get('password',credentials.get('pass'))
         self.basic='Basic '+base64.b64encode((user+':'+password).encode()).decode()
         self.tokens={};self.opener=urllib.request.build_opener(NoRedirect)
+        self.local_opener=local_opener or self.opener
 
     def get(self, repository, kind, reference, *, local=False, optional=False):
         base=LAB if local else HUB
@@ -62,7 +117,8 @@ class Registry:
         for attempt in range(2):
             headers={'Accept':ACCEPT,'Accept-Encoding':'identity'}
             if not local:headers['Authorization']=self.tokens.get(repository,self.basic)
-            try:return self.opener.open(urllib.request.Request(url,headers=headers),timeout=30)
+            try:return (self.local_opener if local else self.opener).open(
+                urllib.request.Request(url,headers=headers),timeout=30)
             except urllib.error.HTTPError as error:
                 if error.code==404 and optional:return None
                 if error.code==401 and not local:
@@ -100,7 +156,7 @@ class Registry:
         if content_type:headers['Content-Type']=content_type
         if hasattr(body,'seek'):
             position=body.tell();body.seek(0,2);headers['Content-Length']=str(body.tell()-position);body.seek(position)
-        return self.opener.open(urllib.request.Request(url,data=body,method=method,headers=headers),timeout=120)
+        return self.local_opener.open(urllib.request.Request(url,data=body,method=method,headers=headers),timeout=120)
 
     def blob(self,repository,descriptor):
         digest=descriptor['digest']
@@ -132,9 +188,9 @@ def equivalent(expected,actual):
     return runtime(expected)==runtime(actual)
 
 
-def execute(registry,publish=False):
+def execute(registry,publish=False,*,accepted_scope=None):
     records=[]
-    for name,accepted in scope().items():
+    for name,accepted in (scope() if accepted_scope is None else accepted_scope).items():
         repository,tag=name.split(':')
         source,raw,digest=registry.document(repository,'manifests',accepted['platforms']['linux/amd64'])
         existing=registry.document(repository,'manifests',tag,local=True,optional=True)
@@ -169,7 +225,10 @@ def execute(registry,publish=False):
 if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--supply-missing',action='store_true')
+    parser.add_argument('--ingress',action='store_true',help='Only the two frozen ingress qualification images')
     args=parser.parse_args()
-    result=execute(Registry(),args.supply_missing)
-    (ROOT/'upgrade/v1.35.10/evidence/lab-registry-supply.json').write_text(json.dumps(result,indent=2)+'\n')
+    with lab_tunnel() as local_opener:
+        result=execute(Registry(local_opener),args.supply_missing,accepted_scope=scope(ingress=args.ingress))
+    filename='ingress-registry-supply.json' if args.ingress else 'lab-registry-supply.json'
+    (ROOT/'upgrade/v1.36.6/evidence'/filename).write_text(json.dumps(result,indent=2)+'\n')
     if result['ready']:print('NEXT_LAB_REGISTRY_QUALIFIED_PASS',flush=True)

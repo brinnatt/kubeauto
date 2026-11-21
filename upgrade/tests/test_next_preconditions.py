@@ -31,6 +31,59 @@ class ActionModule(ActionBase):
 
 
 class NextPreconditionsContracts(unittest.TestCase):
+    def test_136_removed_and_locked_gates_in_service_and_typed_configuration(self):
+        removed = ['CSIMigrationPortworx', 'HonorPVReclaimPolicy',
+            'InPlacePodVerticalScalingAllocatedStatus', 'InTreePluginPortworxUnregister',
+            'MemoryManager', 'ServiceTrafficDistribution', 'TopologyAwareHints']
+        locked = {name: True for name in ['CSIServiceAccountTokenSecrets', 'DRAAdminAccess',
+            'DisableNodeKubeProxyVersion', 'ExternalServiceAccountTokenSigner', 'ImageVolume',
+            'KubeletFineGrainedAuthz', 'KubeletPSI', 'KubeletPodResourcesDynamicResources',
+            'KubeletPodResourcesGet', 'MutableCSINodeAllocatableCount', 'NodeLogQuery',
+            'ProcMountType', 'SELinuxChangePolicy', 'SELinuxMountReadWriteOncePod',
+            'TopologyManagerPolicyOptions', 'UserNamespacesSupport', 'VolumeAttributesClass']}
+        locked['GitRepoVolumeDriver'] = False
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root/'actions').mkdir(); (root/'connections').mkdir()
+            (root/'actions/runtime_record.py').write_text(ACTION)
+            (root/'connections/upgrade_test_forbidden.py').write_text(NO_CONNECTION)
+            play = yaml.safe_load((ROOT/'upgrade/product/next-preconditions.yml').read_text())[0]
+            play['tasks'] = recording_tasks(play['tasks'])
+            (root/'book.yml').write_text(yaml.safe_dump([play]))
+            (root/'hosts').write_text('[kube_master]\n[kube_node]\nworker-one\n'
+                '[all:vars]\nansible_connection=upgrade_test_forbidden\n')
+            cases = [('1.36.6', {}, {}, True),
+                ('v1.36.6', locked, locked, True),
+                # These are still configurable on the source minor. Never
+                # retroactively apply the new target policy to the old path.
+                ('1.35.10', {'GitRepoVolumeDriver': True}, {'ImageVolume': False}, True)]
+            for name in removed:
+                for location in ['cli', 'typed']:
+                    cases.append(('1.36.6', {name: True} if location == 'cli' else {},
+                        {name: False} if location == 'typed' else {}, False))
+            for name, default in locked.items():
+                for location in ['cli', 'typed']:
+                    cases.append(('1.36.6', {name: not default} if location == 'cli' else {},
+                        {name: not default} if location == 'typed' else {}, False))
+            for target, cli, typed, expected in cases:
+                with self.subTest(target=target, cli=cli, typed=typed):
+                    unit = '--feature-gates=' + ','.join(f'{k}={str(v).lower()}' for k,v in cli.items())
+                    config = {'kind': 'KubeletConfiguration',
+                        'apiVersion': 'kubelet.config.k8s.io/v1beta1', 'featureGates': typed}
+                    variables = {'K8S_VER': target, 'fixture_kernel': '5.14.0-611.el9',
+                        'fixture_cgroup': 'cgroup2fs', 'fixture_unit': unit,
+                        'fixture_config': yaml.safe_dump(config)}
+                    (root/'vars.json').write_text(json.dumps(variables))
+                    result = subprocess.run([str(Path(sys.executable).parent/'ansible-playbook'),
+                        '-i', str(root/'hosts'), str(root/'book.yml'), '-e', '@'+str(root/'vars.json')],
+                        capture_output=True, text=True, timeout=30,
+                        env={**os.environ, 'ANSIBLE_ACTION_PLUGINS': str(root/'actions'),
+                            'ANSIBLE_CONNECTION_PLUGINS': str(root/'connections'),
+                            'ANSIBLE_LOCAL_TEMP': str(root/'local')})
+                    self.assertEqual(result.returncode == 0, expected, result.stdout+result.stderr)
+                    self.assertNotIn('TEST_REMOTE_CONNECTION_REFUSED', result.stdout+result.stderr)
+                    self.assertNotIn('unmodelled', result.stdout+result.stderr)
+
     def test_actual_host_floor_cgroup_opt_in_and_removed_flags(self):
         with tempfile.TemporaryDirectory() as temporary:
             root=Path(temporary)

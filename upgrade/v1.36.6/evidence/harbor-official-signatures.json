@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "claim": "官方Harbor2.16.0双架构完整离线包的Sigstore keyless签名实际验证；不是原生ARM运行证据。",
+  "verifier": "sigstore-python 4.5.1 (isolated external venv)",
+  "official_verifier_source": "https://github.com/sigstore/sigstore-python/blob/v4.5.1/README.md",
+  "identity": "https://github.com/goharbor/harbor/.github/workflows/publish_release.yml@refs/tags/v2.16.0",
+  "issuer": "https://token.actions.githubusercontent.com",
+  "packages": {
+    "amd64": "643c137d8e829c857ef0ba45c46b5d6d8553077340bbd4929ded7e92808e77ff",
+    "arm64": "6525af9c26cc24e48ecf37d3f7d9d139895b39a037a3de697f995171ce65524a"
+  },
+  "positive": {
+    "amd64_rc": 0,
+    "arm64_rc": 0,
+    "input": "actual package files, not only declared digest"
+  },
+  "negative": {
+    "mismatched_workflow_tag": "untrusted",
+    "rc": 1,
+    "reason": "Certificate SAN identity mismatch"
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-signatures/harbor-signature-verification.log",
+      "sha256": "9bb8b0df58e15027ebf165fa4cb9f3a9da4c93596a1fbd3da216536edc3a8853"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-signatures/harbor-signature-negative.log",
+      "sha256": "96b1ea664de0eb621893828b9aa3253d8361345091883808070eb8af101595b6"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-signatures/harbor-offline-installer-v2.16.0-amd64.tgz.sigstore.json",
+      "sha256": "2b1fdd6700a118bcd2e2769283e8a8dc4e2d904287ecde9e0cf2e9f27cc1f4fb"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-signatures/harbor-offline-installer-v2.16.0-arm64.tgz.sigstore.json",
+      "sha256": "814191678ef2264901dfa5ae7cf6d7f28fa96ad2b27004b6e6fb49183457f068"
+    }
+  ],
+  "runtime_validation": false
+}

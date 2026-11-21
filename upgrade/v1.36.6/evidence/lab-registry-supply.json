@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "registry": "http://192.168.122.2:5000",
+  "builds": [],
+  "existing_tags_overwritten": [],
+  "records": [
+    {
+      "image": "brinnatt/pause:3.10",
+      "source_child": "sha256:94b743db8a7016837cf705713fa31e9b9eed90c7cf2f8279470a597672d242b8",
+      "action": "reuse-equivalent-runtime-and-rootfs"
+    },
+    {
+      "image": "brinnatt/busybox:1.37",
+      "source_child": "sha256:91f1e8e9dd461f16a9a7625de0ea9568e6054f27896961234766bf36c0399f71",
+      "action": "reuse-equivalent-runtime-and-rootfs"
+    },
+    {
+      "image": "brinnatt/local-path-provisioner:v0.0.37",
+      "source_child": "sha256:13612ca9ffb4d1cccde1585fc0548642cbbce68547883a846775e95c44a505b3",
+      "action": "reuse-equivalent-runtime-and-rootfs"
+    },
+    {
+      "image": "brinnatt/calico-node:v3.32.4",
+      "source_child": "sha256:de0253a3a3eeb5d3179e0d55dd1b590efd8e51b3c5231dfd7e2bdeb1f6d498bf",
+      "action": "reuse-equivalent-runtime-and-rootfs"
+    },
+    {
+      "image": "brinnatt/calico-cni:v3.32.4",
+      "source_child": "sha256:3c288beff038cd960bb685cd7240faa4c310aecbc8936d318fa664650d2485c2",
+      "action": "reuse-equivalent-runtime-and-rootfs"
+    },
+    {
+      "image": "brinnatt/calico-kube-controllers:v3.32.4",
+      "source_child": "sha256:27dc7c6e418aa96a79fe4ae3e542002d4a90525b6d67aa811a356f4cbdda1fd3",
+      "action": "reuse-equivalent-runtime-and-rootfs"
+    },
+    {
+      "image": "brinnatt/coredns:1.15.0",
+      "source_child": "sha256:418bea67884ddd0ecbca0b4a9dbbbb62538320afa49f52373923ab02ffb1623f",
+      "action": "reuse-equivalent-runtime-and-rootfs"
+    },
+    {
+      "image": "brinnatt/k8s-dns-node-cache:1.26.8",
+      "source_child": "sha256:c392f1f91987742c2479270e91e8bccf3e90986d1b5da13b96465b9628cf39a9",
+      "action": "reuse-equivalent-runtime-and-rootfs"
+    },
+    {
+      "image": "brinnatt/metrics-server:v0.9.1",
+      "source_child": "sha256:85668af2a63a90a493f8f83e6281367c075a2d5e9a575c818e92af554d7e40d7",
+      "action": "reuse-equivalent-runtime-and-rootfs"
+    }
+  ],
+  "ready": true
+}

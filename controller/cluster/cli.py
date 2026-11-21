@@ -230,6 +230,18 @@ class KubeautoCLI:
                             help='Verify the source and save an isolated recovery boundary')
         parser.add_argument('--continuity', metavar='JSON',
                             help='Existing Service/PVC ledger contract, required with --prepare')
+        parser.add_argument('--harbor', choices=['backup', 'upgrade', 'restore', 'export', 'import', 'abort-import'],
+                            help='Maintain Harbor independently from the Kubernetes upgrade')
+        parser.add_argument('--harbor-backup-dir', metavar='REMOTE_PATH',
+                            help='Private stopped-backup directory outside the Harbor data tree')
+        parser.add_argument('--harbor-ca-file', metavar='REMOTE_PATH',
+                            help='Trusted CA on the Harbor host; required for backup')
+        parser.add_argument('--harbor-bridge-package', metavar='REMOTE_PATH',
+                            help='Official v2.14.6 AMD64 offline installer on the Harbor host')
+        parser.add_argument('--harbor-target-package', metavar='REMOTE_PATH',
+                            help='Official v2.16.0 offline installer for the Harbor host architecture')
+        parser.add_argument('--harbor-transfer-dir', metavar='REMOTE_PATH',
+                            help='Private stopped export on the clean target host; required for import')
 
     def _setup_backup_command(self) -> None:
         """Setup 'backup' command"""
@@ -1108,6 +1120,18 @@ Examples:
         """Handle 'upgrade' command"""
         preparing = getattr(args, 'prepare', False)
         continuity = getattr(args, 'continuity', None)
+        harbor = getattr(args, 'harbor', None)
+        harbor_inputs = [getattr(args, name, None) for name in ['harbor_backup_dir', 'harbor_ca_file',
+                         'harbor_bridge_package', 'harbor_target_package', 'harbor_transfer_dir']]
+        if harbor:
+            if preparing or continuity:
+                raise ValueError('Harbor maintenance and Kubernetes preparation are separate operations')
+            from upgrade.product.entrypoint import run_harbor_operation
+            return run_harbor_operation(ClusterManager(), args.cluster, operation=harbor,
+                backup_directory=harbor_inputs[0], ca_file=harbor_inputs[1],
+                bridge_package=harbor_inputs[2], target_package=harbor_inputs[3], transfer_directory=harbor_inputs[4])
+        if any(harbor_inputs):
+            raise ValueError('Harbor maintenance paths require an explicit --harbor operation')
         if preparing != bool(continuity):
             raise ValueError('--prepare and --continuity JSON must be supplied together')
         cm = ClusterManager()

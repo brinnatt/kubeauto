@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "accepted": true,
+  "source": "v1.35.10",
+  "target": "v1.36.6",
+  "case_ids": [
+    "UPG-08"
+  ],
+  "method": "analysis",
+  "claim": "目标Calico迁移中的DNS/Service及跨节点原HTTP账本、六节点/三API健康已真实通过；保留其他CNI原GA功能证据与本跳逐pin官方/稳定API和当前模板合同。未部署的CNI未在本轮重演，也不据Calico结果签其原地迁移；自动入口仍拒绝非Calico迁移。",
+  "covered_subcases": [
+    "calico-daemonset-and-controller-target-readback",
+    "coredns-node-local-dns-and-service-endpoints",
+    "all-api-backends-ready-and-no-failed-pods",
+    "undeployed-network-paths-bound-to-official-static-evidence"
+  ],
+  "inputs": {
+    "roles/calico/tasks/calico-rr.yml": "cb8aa0e4718d19299dc182feb52d4e25eade97d359b47d9dcaf045666e83bdba",
+    "roles/calico/tasks/main.yml": "79cd10719c956a67bd21a1ed5b1793fbb21698f0c0d7321d5fbe365612a689f9",
+    "roles/calico/templates/bgp-default.yaml.j2": "29b83c863a57f19b799387b47800ffd2e672c1a7f0b4b98b57e1ced5a9317e7d",
+    "roles/calico/templates/bgp-rr.yaml.j2": "fcd1e964b68be7300934f0c94941b17949093aba9f06edbba92a5698f259b5cb",
+    "roles/calico/templates/calico-csr.json.j2": "2097a24e386c540d064dea5d437b089fab7e0fb5447905289fe6cd122eb029ac",
+    "roles/calico/templates/calico-v3.24.yaml.j2": "b704c93cc928419e503d74225459e20bce13705966746e77e365542850c83017",
+    "roles/calico/templates/calico-v3.26.yaml.j2": "bdf77bfbdb080336c1e001d6ab80bd5a23026f0c90de3414db72db69549fa877",
+    "roles/calico/templates/calico-v3.28.yaml.j2": "6aa4f63276965bd6a3a997e39c27ee2690756b1ac687db51a567efcbfc8099dc",
+    "roles/calico/templates/calico-v3.31.yaml.j2": "4320fb44238cdc23e4b1ecb3dbf4ececdd1ad66d2b0ba39b3207a3a49591dd66",
+    "roles/calico/templates/calico-v3.32.yaml.j2": "4320fb44238cdc23e4b1ecb3dbf4ececdd1ad66d2b0ba39b3207a3a49591dd66",
+    "roles/calico/templates/calicoctl.cfg.j2": "7fa2f4d3487db2ffac8f61652b0714f7149ab14b9d37ed06e5a8492575c41092",
+    "roles/calico/vars/main.yml": "1bf3a8672b71138fcef561099d8e0e588ca55f21b785991c7f7ab5d62c982b5a",
+    "roles/cilium/cilium.yml": "b1b1c8f55dd69c7a534e15d5116276891515148278ee39ddacb37f7b12e6b7cc",
+    "roles/cilium/files/cilium-1.17.4.tgz": "06dcedfe25c08c770d193690d561037153e233f9cde31e0705a06802d24cea87",
+    "roles/cilium/files/cilium-1.19.10.tgz": "b7252afca3413a33e2b987c954e52441e96979e411e1495ecc6aefe8cd258863",
+    "roles/cilium/files/cilium-1.19.5.tgz": "56b60445a2c650b387ce2edb13cfd8d83219a9da693b0523915dba8be451a29e",
+    "roles/cilium/files/cilium-1.20.4.tgz": "505abff8385811df1a949776fc42e9f10697989a332acc86d6e8933efcb855ed",
+    "roles/cilium/files/star_war_example/http-sw-app.yaml": "2b8d203f6d6cee1345123025eb8641feb49cf66e047bb2433753bb54f5d88029",
+    "roles/cilium/files/star_war_example/sw_l3_l4_l7_policy.yaml": "5e0ab7438e1ccf64a6eaa0c1e3f4f7c58860a3052d585c4d16aedd7de059f85c",
+    "roles/cilium/files/star_war_example/sw_l3_l4_policy.yaml": "27c086007a5c6ad5aa6e7936a4878179b04bb9ef7d4850c54770ca1432568d49",
+    "roles/cilium/tasks/main.yml": "0db9013c0786584aac0a3ad268c6f214dca55b2d0ea5629270495a5ee901e6b9",
+    "roles/cilium/templates/values.yaml.j2": "d28b24732a108803727cd5183f77c2c91050931e991a02614a4982cfabd6ce06",
+    "roles/flannel/tasks/main.yml": "f7c4d0567bc6feb1ed1a569a2617e4722ba764e9cf9daccdb67284dee915a3c2",
+    "roles/flannel/templates/kube-flannel.yaml.j2": "9841eb60176021c16e1f457b767975869d260f3943ee90a2d3aad61d202bf931",
+    "roles/kube-ovn/tasks/main.yml": "40391b9a147ef80980f3d2c8c896a54317a6b9b0c38744c08802c12f813d6112",
+    "roles/kube-ovn/templates/coredns.yaml.j2": "902dbabd1c584ff3b1c549717f17d6418ebc36e73ce1b84ee197a0624c656402",
+    "roles/kube-ovn/templates/install.sh.j2": "3a4f3cb0787dbe4bde969ed85188315b191a184b3c644bcfb560684c72fcebe3",
+    "roles/kube-ovn/templates/nodelocaldns-iptables.yaml.j2": "ce68933bae03dd3d633ab79dc907cb6f7fade5ba435b312eaaf44612911ee654",
+    "roles/kube-ovn/templates/nodelocaldns-ipvs.yaml.j2": "12e11f17fc55c493a7cf531d909998459725627dc0027b7412eaf1399b75885a",
+    "roles/kube-ovn/vars/main.yml": "beb92080ceea4309bda1d2a1c8aa1e6b74ccedcea41af9a47849a8288233f9a9",
+    "roles/kube-router/kube-router.yml": "d7d7aedc2780527cdc8725eb9ca5793fc52ca54856c575db40270b3827f3f048",
+    "roles/kube-router/tasks/main.yml": "13709977c3b4ce81f7932bd1229218a6f2cd3cbe962c53e8d6e7c552c555c0e7",
+    "roles/kube-router/templates/kuberouter.yaml.j2": "ad3ee753cdb493ee459f15e68feec14e45269a06957575e626abf2d6dc509a25",
+    "upgrade/v1.36.6/release.yaml": "c85bdb55513ba62c141924c32f5dc8c1f4794f8e4db32dfeee4da505abe37e8f",
+    "common/constants.py": "f1a09af57ad4b6aea36c3a6454190220fca2a34e0ebecf408d218f7b04a5f81f"
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.36.6/evidence/UPG-08-applicability.json",
+      "sha256": "43b575f5bcbc39f5ef0be4895ef2aa79df063048b3c0029db54aa5ba904729c6"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/retained-network-storage-inputs.json",
+      "sha256": "8a2c1bce3aeb4599b6a4449189a470fc87b9994a0d84b0f77f533483af0614b2"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/local-qualification/UPG-07-before-final-runner.json",
+      "sha256": "e5c73f1db54fecd6e89b9532c17d743db89719de6f79c9a1ac0fef4cfd871caa"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/UPG-02.json",
+      "sha256": "b3d0d99f4852a61bcdd33ed9b4329e6ad911e46314460426fa29b152c83c4718"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/UPG-03.json",
+      "sha256": "4aa3ab519a15761e9df13651c0186735653496436b87d7ff2f5649f073ab1d58"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/local-qualification/kubernetes-qualified-static-snapshot.json",
+      "sha256": "5817081eb9a766300d6f40d9dd6c14555cf0a0a3c87ab446109c19a2837518cf"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/source/identity.json",
+      "sha256": "2357fc24b2575821de714775197c0809d0c0c83d76245c6d5363173ebe3cd644"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/source/upgrade/v1.35.10/evidence/UPG-08.json",
+      "sha256": "3f5bc1e04000733c2de91c8b8c367f0cdbfbac91db1a854c6fb8251ecb7148af"
+    }
+  ],
+  "applicability": {
+    "conditions": "沿用户接受的上游证据力度边界，固定组件/模板/自有补丁不变；本跳实际Calico/local-path主链通过，原GA身份及副本已由UPG-01核验。",
+    "differences": "基座变为1.36.6，实际变化的默认gate/API由本跳预检/40组原生二进制参数及模板合同覆盖；OpenEBS helper精确版本变化由UPG-03验证。未把原功能深测改签为目标新实测。",
+    "reason": "逐组件核对官方目标覆盖或实际最低/稳定API契约，角色实现相对已接受源逐文件相同；缺失的新迁移断言由当前真实主链补齐，其余不变引擎/数据面沿原证据复用，避免无依据重测。"
+  },
+  "customer_signoff": null,
+  "static_snapshot_boundary": "仅引用已完成Kubernetes资格链时的不变网络/存储合同；后续Harbor专用修订不改签此原始结果。",
+  "runner_applicability": "引用原资格签署字节快照；后续final入口增量不改写原业务、运行或durable结果。"
+}

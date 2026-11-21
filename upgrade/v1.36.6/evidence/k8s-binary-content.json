@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "image": "hub.talkedu.cn/kubeauto/kubeauto-k8s-bin:v1.36.6",
+  "index_digest": "sha256:edcdc1fd30e7e6b3adafa5400fcbe8c22603b77e2b12af229dd02c41f015b2da",
+  "architectures": [
+    {
+      "architecture": "amd64",
+      "manifest_digest": "sha256:7e9c4d1b9802bd1d4d4f27596098b552570e0164def5f00bc4c82bd2065aafd1",
+      "files": {
+        "kube-apiserver": {
+          "sha256": "88619f24329ace76d9c2f7c2fbdd5a8a28831e711df403d7aaca93ece51254fb",
+          "mode": "0o755",
+          "bytes": 88711330
+        },
+        "kube-controller-manager": {
+          "sha256": "e06f4197b8b5685262ab93e8865cacf249752684d85a52a6e97b7968ee2e2620",
+          "mode": "0o755",
+          "bytes": 74469538
+        },
+        "kube-proxy": {
+          "sha256": "4884526934ce9dd595feaea123eca6c652056cc616e93f9387a7e70bdf41ae6e",
+          "mode": "0o755",
+          "bytes": 44282018
+        },
+        "kube-scheduler": {
+          "sha256": "e3b1284b0e52fbda11bffc81b2d6d3673364ec2196278bc200cf203a06fd5e5a",
+          "mode": "0o755",
+          "bytes": 49225890
+        },
+        "kubectl": {
+          "sha256": "29818b6729dc9262b692307470d0558d027725e738be5dd47c760261868a2634",
+          "mode": "0o755",
+          "bytes": 59592866
+        },
+        "kubelet": {
+          "sha256": "cf8baae869b810d84338f8c7111e2bb32733e992c0c08107cf6692120f5e229f",
+          "mode": "0o755",
+          "bytes": 60199177
+        },
+        "official.sha256": {
+          "sha256": "555e4d59879d12063277670a060e658d4ef9b7eb888895d7602a8a80b93209be",
+          "mode": "0o644",
+          "bytes": 477
+        }
+      },
+      "official_hashes_match": true,
+      "elf_architecture_match": true
+    },
+    {
+      "architecture": "arm64",
+      "manifest_digest": "sha256:f1d853ea9f3c3e6451a3e36d2a62f3af078b146f9923419a442c92783d40eb48",
+      "files": {
+        "kube-apiserver": {
+          "sha256": "aeed0f326a674e8dbd23852b48865dbbc4b7b165cd8e4e860f8b40052b13d728",
+          "mode": "0o755",
+          "bytes": 81985698
+        },
+        "kube-controller-manager": {
+          "sha256": "cad599e81b427402586a63b61032bf5177a40700108936a8d2bd8f9c99b362f8",
+          "mode": "0o755",
+          "bytes": 68944034
+        },
+        "kube-proxy": {
+          "sha256": "f939429db4b2461807c7407f7644d38468ab3968ad8cb14ebe42c6adebeb559d",
+          "mode": "0o755",
+          "bytes": 41549986
+        },
+        "kube-scheduler": {
+          "sha256": "b1bd422fd619ae13da44709cb2c2ee0e2cb2ce481d27435090e6ae5ee46e70f4",
+          "mode": "0o755",
+          "bytes": 45940898
+        },
+        "kubectl": {
+          "sha256": "35507ef408c3d38849e5d3203e18f8e861db822aa664101a9ced0869edd06046",
+          "mode": "0o755",
+          "bytes": 55771298
+        },
+        "kubelet": {
+          "sha256": "14c52637849edf6abdcfb2d094c5ff69f257309d6a6cae2f707f9113fab91d39",
+          "mode": "0o755",
+          "bytes": 56099081
+        },
+        "official.sha256": {
+          "sha256": "cea958d0269b61a81189bb83319009195ab7b9a0fadeae7f220a3eef589f436d",
+          "mode": "0o644",
+          "bytes": 477
+        }
+      },
+      "official_hashes_match": true,
+      "elf_architecture_match": true
+    }
+  ]
+}

@@ -14,15 +14,62 @@ class ApiAdmissionContracts(unittest.TestCase):
             '/apis/rbac.authorization.k8s.io/v1/roles': {'items': []}}
         self.calls = []
 
-    def admit(self):
+    def admit(self, target='v1.35.10'):
         def query(binary, config, server, args):
             self.assertEqual((binary, config, server), ('kubectl', 'config', 'https://source:6443'))
             self.assertEqual(args[0], 'get')
-            self.assertTrue(args[1].startswith('--raw=/apis'))
+            self.assertTrue(args[1].startswith('--raw=/api'))
             self.calls.append(args[1][6:])
             return json.dumps(self.responses[args[1][6:]])
         with patch.object(next_api, 'query', side_effect=query):
-            return next_api.admit('kubectl', 'config', 'https://source:6443')
+            return next_api.admit('kubectl', 'config', 'https://source:6443', target=target)
+
+    def workload_paths(self):
+        paths = {'/api/v1/pods': ['spec'], '/api/v1/podtemplates': ['template', 'spec'],
+                 '/api/v1/replicationcontrollers': ['spec', 'template', 'spec']}
+        paths.update({ '/apis/apps/v1/'+kind: ['spec', 'template', 'spec']
+            for kind in ['deployments', 'replicasets', 'daemonsets', 'statefulsets']})
+        paths.update({'/apis/batch/v1/jobs': ['spec', 'template', 'spec'],
+            '/apis/batch/v1/cronjobs': ['spec', 'jobTemplate', 'spec', 'template', 'spec']})
+        for path in paths:
+            self.responses[path] = {'items': []}
+        return paths
+
+    def test_136_checks_scaled_zero_and_active_workloads_without_mutation(self):
+        paths = self.workload_paths()
+        self.admit('v1.36.6')
+        self.assertTrue(set(paths) <= set(self.calls))
+        for path, fields in paths.items():
+            with self.subTest(path=path):
+                obj = {'volumes': [{'name': 'old-source', 'gitRepo': {}}]}
+                for field in reversed(fields):
+                    obj = {field: obj}
+                self.responses[path] = {'items': [obj]}
+                with self.assertRaisesRegex(Refused, 'gitRepo volumes'):
+                    self.admit('v1.36.6')
+                self.responses[path] = {'items': []}
+
+    def test_136_incomplete_workload_observation_refuses(self):
+        paths = self.workload_paths()
+        for path in paths:
+            with self.subTest(path=path):
+                self.responses[path] = {}
+                with self.assertRaisesRegex(Refused, 'complete workload observation'):
+                    self.admit('v1.36.6')
+                self.responses[path] = {'items': []}
+
+    def test_136_existing_dra_requires_its_driver_qualification(self):
+        self.workload_paths()
+        self.responses['/apis'] = {'groups': [{'name': 'resource.k8s.io', 'versions': [{'version': 'v1'}]}]}
+        base = '/apis/resource.k8s.io/v1/'
+        self.responses[base+'resourceclaims'] = {'items': []}
+        self.responses[base+'resourceslices'] = {'items': []}
+        self.admit('v1.36.6')
+        for resource in ['resourceclaims', 'resourceslices']:
+            self.responses[base+resource] = {'items': [{'spec': {}}]}
+            with self.assertRaisesRegex(Refused, 'separately qualified driver'):
+                self.admit('v1.36.6')
+            self.responses[base+resource] = {'items': []}
 
     def test_default_profile_is_readonly_and_requires_complete_discovery(self):
         self.admit()
