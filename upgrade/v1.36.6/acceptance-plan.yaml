@@ -103,8 +103,8 @@ cost_control:
     heartbeat_seconds: 20
     stop_rule: 首失败停止依赖链并持租约；先诊断再最小修复，不默认重建源。
     harbor: 一次AMD64源安装→桥接/目标迁移→原点恢复；独立243新建2.16与幂等；随后目标/源按归属清理。
-    final: 前置通过后一次冻结范围干净链，当前不启动。
-freeze_boundary: 冻结既有Kubernetes资格链、目标边界入口最小集成，以及独立AMD64 Harbor五phase资格；Harbor仅在Kubernetes清理释放后stage/launch。原生ARM运行不属于本次验收范围；逻辑迁移和最终链仍须完成准入与真实验证。
+    final: 前置通过后验收冻结范围干净链；已接受执行及清理见evidence/final-clean-run.json，不因状态文字维护重跑。
+freeze_boundary: 冻结既有Kubernetes资格链、目标边界入口最小集成，以及独立AMD64 Harbor五phase资格；Harbor仅在Kubernetes清理释放后stage/launch。原生ARM运行不属于本次验收范围；逻辑迁移和最终链的当前验收及原始运行身份见UPG-12、UPG-13、UPG-15证据。
 local_admission:
   evidence: upgrade/v1.36.6/evidence/UPG-04.json
   narrow_gate: 当前438项合同、14项原生渲染、40个service参数组合及真实控制机隔离合同；后续变化只补所属合同，未验证变更不得入场。
@@ -147,10 +147,7 @@ execution_commands:
   handoff: bash upgrade/lab/next-control.sh acceptance RUN_ID; bash upgrade/lab/next-control.sh signal RUN_ID PHASE
     advance
   repair: 保留首失败与租约；仅修所属因果层，通过最窄合同后才重试。产品代码变化时先收证据并分析journal绑定，禁止静默续用。
-remaining_before_execution:
-- 最终stage/launch前重新核验空间、时间、实际输入与共享租约，01至14全部有效后运行一次冻结干净组合链。
-- ARM64按交付负责人决定仅签官方来源/签名/双架构制品及静态依据，未经项目原生运行实测。
-- 最终组合成功后导出发行policy，发布精确产品修订并核验正式制品；不覆盖旧tag。
+remaining_before_execution: []
 harbor_native_amd64_qualification:
   enabled: true
   runner: upgrade/lab/harbor-session.sh
@@ -168,7 +165,7 @@ harbor_native_amd64_qualification:
   - UPG-12
   - UPG-13
   claim_boundary: 原生AMD64的源迁移/原点恢复，以及243独立干净2.16.0新建和二次setup11幂等；不签完整父项、ARM运行或逻辑跨架构。
-  gap: AMD64源、迁移、原点恢复及独立新建已有子资格；原父链存在真实失败，尚未执行最终干净完整范围验收，不据子资格签父项或ARM。
+  gap: 本项缺口已由UPG-10、UPG-12、UPG-13及UPG-15限定范围证据关闭；原父链真实失败保留，最终组合另有双0/清理，不据x86实测推导ARM运行。
   completion: 各phase独立日志和durable双0，原确认制品清缓存后读回，原用户/机器人pull及push拒绝，最终限定清理与LAB_CLEAN_VERIFY_PASS。
   cost_bound: 复用已清理六节点租约，仅217源/243新建；不新建Kubernetes、不构建镜像；源与目标分别保存私有账本和清理归属。
   failure_rule: 首失败停止依赖链、保留恢复资料和租约；完成定位/合同后重试所属边界，或请求runner限定清理。

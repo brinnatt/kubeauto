@@ -5,6 +5,12 @@
 使用前先核对[交付组合](release.yaml)和[验收矩阵](test-matrix.yaml)：待验收路径
 不得用于客户生产，本文中的操作定义不代表这些路径已经验收或客户已经签收。
 
+本跳正式产品发行是 [v0.1.9](https://github.com/brinnatt/kubeauto/releases/tag/v0.1.9)，
+运行镜像为 `hub.talkedu.cn/kubeauto/kubeauto:v0.1.9`，保留
+`brinnatt/kubeauto:v0.1.9` 回退。选择与控制机 CPU 对应的二进制，并按发行文件校验
+SHA256；精确源码、构建和双架构镜像摘要见[发布记录](evidence/product-publication.json)。
+镜像和二进制的发布成功不替代客户现场的源状态、恢复点及维护窗口检查。
+
 任务导航：[准备Kubernetes升级](#准备kubernetes升级) · [执行与续跑](#执行与续跑)
 · [Harbor](#harbor) · [私有制品使用](#私有制品使用) · [日常运维](#日常运维)
 · [异常诊断与恢复](#异常诊断与恢复)。原理见[技术白皮书](technical-whitepaper.md)。

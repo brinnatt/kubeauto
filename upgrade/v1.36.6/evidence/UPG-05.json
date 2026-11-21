@@ -18,12 +18,12 @@
   ],
   "inputs": {
     "upgrade/v1.36.6/source-baseline.yaml": "9e5e8ce1480f87b35424182ef2c391cf2f8e65367fad751a81b52f2aad465ef2",
-    "upgrade/v1.36.6/release.yaml": "c85bdb55513ba62c141924c32f5dc8c1f4794f8e4db32dfeee4da505abe37e8f",
     "upgrade/v1.36.6/artifact-pins.json": "6ceaf94c0fb6657a66017ff1563b9743c754ff1c7282b36242ade029b9a25047",
     "upgrade/product/prepare.py": "145cbda05d0d16f985a1b3e1ba9134b2d05563e806ea91ce0f0c18afdef39b95",
     "upgrade/product/continuity.py": "c5834306448f21dd167e4909cfe6380a1d29f10f908cefc2ded450aed65a6538",
     "upgrade/lab/next-hosts.yml": "d7b9ff348850831b87b1d03fa1f579f4255a97d8a0b964772aa59a5fffa547af",
-    "upgrade/v1.36.6/evidence/raw/local-qualification/kubernetes-qualified-next_session.py.txt": "542ea11c51f4109db9311858e636d017746966d72518bea7000ba10395fd053c"
+    "upgrade/v1.36.6/evidence/raw/local-qualification/kubernetes-qualified-next_session.py.txt": "542ea11c51f4109db9311858e636d017746966d72518bea7000ba10395fd053c",
+    "upgrade/v1.36.6/evidence/source/delivery-closeout/release.yaml": "c85bdb55513ba62c141924c32f5dc8c1f4794f8e4db32dfeee4da505abe37e8f"
   },
   "references": [
     {
@@ -113,6 +113,10 @@
     {
       "path": "upgrade/v1.36.6/evidence/kubernetes-runner-final-applicability.json",
       "sha256": "b6fcf1c2d14c3d0662aed352578e246c95d658d219807c3191116c9412c2dfe2"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/completion-metadata-review.json",
+      "sha256": "4942cddf581460fc537946c89afe7ae1f8f70ee7fadab0b947642f38b5b85a40"
     }
   ],
   "run_id": "v1366-qualify-20261121a/source.attempt-1",
@@ -141,5 +145,6 @@
     "固定六节点独占租约和所有权复验通过、无注入故障，控制机隔离，保留健康源用于控制面迁移"
   ],
   "customer_signoff": null,
-  "runner_applicability": "原现场helper已保留原字节；当前final扩展适用性见kubernetes-runner-final-applicability.json。原现场run/durable/log/业务断言未修改。"
+  "runner_applicability": "原现场helper已保留原字节；当前final扩展适用性见kubernetes-runner-final-applicability.json。原现场run/durable/log/业务断言未修改。",
+  "input_binding_note": "现场固定原release字节；完成状态元数据另行复核，原运行、日志和结论不改签。"
 }

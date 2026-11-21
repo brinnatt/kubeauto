@@ -16,14 +16,14 @@
     "source-lease-and-recovery-point-bound-to-run"
   ],
   "inputs": {
-    "upgrade/v1.36.6/release.yaml": "c85bdb55513ba62c141924c32f5dc8c1f4794f8e4db32dfeee4da505abe37e8f",
     "upgrade/v1.36.6/artifact-pins.json": "6ceaf94c0fb6657a66017ff1563b9743c754ff1c7282b36242ade029b9a25047",
     "upgrade/product/coordinator.py": "3e95c6742a291cb51334a9bfd7c8e4dd54de2e88eb5e30e1c286c4107af3eb55",
     "upgrade/product/kubernetes_stage.py": "312129f61989e75954e3aab446577e2e0cf537c21df6653ce98c4b2b96e2d586",
     "upgrade/product/control-plane.yml": "b2cb0dad62f1bd9a9d231da30506a05916a86b858413e4cfa749ae3e9cd595ef",
     "upgrade/product/next_platform.py": "78c0631680e65b189f44ae7e5efe572d9f1443830d676ad542230a05474ce2bf",
     "upgrade/product/next_etcd.py": "01262e97c80615b3aa1eb02bd17b3e96f4d760213b7ec6e7f88e3f6366976cc9",
-    "upgrade/v1.36.6/evidence/raw/local-qualification/UPG-05-before-final-runner.json": "d2b21b3575d547549687ae5167d2f697c0d06154f10547e8c0439a890b877f7e"
+    "upgrade/v1.36.6/evidence/raw/local-qualification/UPG-05-before-final-runner.json": "d2b21b3575d547549687ae5167d2f697c0d06154f10547e8c0439a890b877f7e",
+    "upgrade/v1.36.6/evidence/source/delivery-closeout/release.yaml": "c85bdb55513ba62c141924c32f5dc8c1f4794f8e4db32dfeee4da505abe37e8f"
   },
   "references": [
     {
@@ -105,6 +105,10 @@
     {
       "path": "upgrade/v1.36.6/evidence/raw/v1366-qualify-20261121a/control/product-state/source-observation.json",
       "sha256": "b7340cb534525a5fa9b1a1936f9f0878fe3a19984d3d8e438deac35561b60e27"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/completion-metadata-review.json",
+      "sha256": "4942cddf581460fc537946c89afe7ae1f8f70ee7fadab0b947642f38b5b85a40"
     }
   ],
   "run_id": "v1366-qualify-20261121a/control.attempt-1",
@@ -133,5 +137,6 @@
   ],
   "customer_signoff": null,
   "completed_ladder": 3,
-  "runner_applicability": "引用原资格签署字节快照；后续final入口增量不改写原业务、运行或durable结果。"
+  "runner_applicability": "引用原资格签署字节快照；后续final入口增量不改写原业务、运行或durable结果。",
+  "input_binding_note": "现场固定原release字节；完成状态元数据另行复核，原运行、日志和结论不改签。"
 }

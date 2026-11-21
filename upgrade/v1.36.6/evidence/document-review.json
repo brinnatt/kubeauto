@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "scope": "本跳三手册及30组件目录复用/增量检查；Harbor96目录作者覆盖、Valkey固定源码及真实迁移/新建/恢复/逻辑导入结果已核对。仅签本次增量文字与读者路径，原历史全站阅读缺口保留；不代签客户、不代签最终组合或正式发布。",
+  "scope": "本跳三手册的来源、内容、静态及两类读者路径作者检查；复用已接受的官方目录与操作证据，最终范围和正式v0.1.9身份均已闭合，不代签客户或ARM原生运行。",
   "files": {
-    "operations-manual.md": "a216d7230f2a9736a9067d636c3a8b4860110ae0bbe5a79272e9088470e07009",
+    "operations-manual.md": "33bb981a9f06e52809eca002a0c953b04c0d232f99ff6682d59ab021088cf361",
     "technical-whitepaper.md": "03230c511dc97efc063983f9122fe0ab9fdd37552ecc8468e488762d0223a4ff",
-    "development-manual.md": "814ab8d64da583615fcb1618ba95e58a800b4add87c8ee0e493ab81a7aaef33b"
+    "development-manual.md": "44679d65a0329e1e61e31e9b082e97f6789a1ca02221a72dfa46f23455c295ff"
   },
   "checks": [
     {
@@ -120,6 +120,16 @@
         "upgrade/product/release_policy.py",
         "kubecli-onefile.spec"
       ]
+    },
+    {
+      "requirement": "最终发行、入口完成状态与原现场身份分别闭合",
+      "chapter": "operations-manual.md首段发行入口；upgrade/AGENTS.md当前授权；release.yaml、acceptance-plan.yaml完成记录",
+      "result": "已核对唯一产品v0.1.9的精确源码、AMD64/ARM64二进制SHA、AMD64version/upgrade帮助、唯一镜像三端双架构及双rc0；补正式下载/镜像入口。旧待办改为完成证据导航，版本pin和迁移操作不变；原现场release字节另存并保持原run/日志，矩阵全量只读校验通过；客户签收仍null。",
+      "basis": [
+        "evidence/product-publication.json",
+        "evidence/completion-metadata-review.json",
+        "evidence/final-clean-run.json"
+      ]
     }
   ],
   "static": {
@@ -131,9 +141,7 @@
     "unchanged_rendered_mermaid": 3,
     "result": "pass"
   },
-  "pending": [
-    "UPG-15最终组合现场验收及其后的正式产品发布身份闭环；不属于本次作者内容检查的已通过结论。"
-  ],
+  "pending": [],
   "customer_signoff": null,
   "harbor_directory_review": {
     "items": 96,

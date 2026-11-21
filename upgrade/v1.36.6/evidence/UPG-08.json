@@ -48,8 +48,8 @@
     "roles/kube-router/kube-router.yml": "d7d7aedc2780527cdc8725eb9ca5793fc52ca54856c575db40270b3827f3f048",
     "roles/kube-router/tasks/main.yml": "13709977c3b4ce81f7932bd1229218a6f2cd3cbe962c53e8d6e7c552c555c0e7",
     "roles/kube-router/templates/kuberouter.yaml.j2": "ad3ee753cdb493ee459f15e68feec14e45269a06957575e626abf2d6dc509a25",
-    "upgrade/v1.36.6/release.yaml": "c85bdb55513ba62c141924c32f5dc8c1f4794f8e4db32dfeee4da505abe37e8f",
-    "common/constants.py": "f1a09af57ad4b6aea36c3a6454190220fca2a34e0ebecf408d218f7b04a5f81f"
+    "common/constants.py": "f1a09af57ad4b6aea36c3a6454190220fca2a34e0ebecf408d218f7b04a5f81f",
+    "upgrade/v1.36.6/evidence/source/delivery-closeout/release.yaml": "c85bdb55513ba62c141924c32f5dc8c1f4794f8e4db32dfeee4da505abe37e8f"
   },
   "references": [
     {
@@ -66,7 +66,7 @@
     },
     {
       "path": "upgrade/v1.36.6/evidence/UPG-02.json",
-      "sha256": "b3d0d99f4852a61bcdd33ed9b4329e6ad911e46314460426fa29b152c83c4718"
+      "sha256": "b0ae9eb1bd42d2e9cadc9d41ab797761166bacaa81ae32ff2596f0d07a359480"
     },
     {
       "path": "upgrade/v1.36.6/evidence/UPG-03.json",
@@ -83,6 +83,10 @@
     {
       "path": "upgrade/v1.36.6/evidence/source/upgrade/v1.35.10/evidence/UPG-08.json",
       "sha256": "3f5bc1e04000733c2de91c8b8c367f0cdbfbac91db1a854c6fb8251ecb7148af"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/completion-metadata-review.json",
+      "sha256": "4942cddf581460fc537946c89afe7ae1f8f70ee7fadab0b947642f38b5b85a40"
     }
   ],
   "applicability": {
@@ -92,5 +96,10 @@
   },
   "customer_signoff": null,
   "static_snapshot_boundary": "仅引用已完成Kubernetes资格链时的不变网络/存储合同；后续Harbor专用修订不改签此原始结果。",
-  "runner_applicability": "引用原资格签署字节快照；后续final入口增量不改写原业务、运行或durable结果。"
+  "runner_applicability": "引用原资格签署字节快照；后续final入口增量不改写原业务、运行或durable结果。",
+  "input_binding_note": "现场固定原release字节；完成状态元数据另行复核，原运行、日志和结论不改签。",
+  "original_prerequisite_digests": {
+    "upgrade/v1.36.6/evidence/UPG-02.json": "b3d0d99f4852a61bcdd33ed9b4329e6ad911e46314460426fa29b152c83c4718"
+  },
+  "metadata_reference_note": "完成文字修订与原输入快照绑定引起的上游证据摘要变化；原前置摘要保留，原发布提交e844be98485d6477b6314e76689d56fa602ca762可逐字节回读。仅重新核对元数据引用，不改变产品/运行/验收范围，不宣称重新现场执行。"
 }

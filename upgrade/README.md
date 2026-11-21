@@ -7,10 +7,12 @@
 [升级入口](AGENTS.md#当前授权与边界)；历史授权不自动延伸到下一 minor。
 各版本验收状态只取自所属矩阵，不把源 GA、方案冻结或单个模块成功当成目标交付通过。
 
-当前正在推进 `v1.35.10 → v1.36.6`，并按官方支持路径将 Harbor 升至
-`v2.16.0`，使用官方 AMD64/ARM64 制品。进入 [目标组合](v1.36.6/release.yaml)、
-[验收范围](v1.36.6/acceptance-plan.yaml) 与 [矩阵](v1.36.6/test-matrix.yaml)
-查看冻结条件和待验收项；这里的候选版本不表示已完成交付。
+最近完成的升级验收为 `v1.35.10 → v1.36.6`，Harbor 已按官方支持路径升至
+`v2.16.0`，使用官方 AMD64/ARM64 制品。进入 [固定组合](v1.36.6/release.yaml)、
+[验收范围](v1.36.6/acceptance-plan.yaml)、[矩阵](v1.36.6/test-matrix.yaml) 与
+[正式产品发布证据](v1.36.6/evidence/product-publication.json)核对当前状态和制品身份。
+运行验收使用 x86；ARM64 完成官方来源、签名及制品静态核验，未经原生运行实测。
+后续 minor 不因候选路线已列出而自动执行，客户生产签收独立于项目验收。
 
 本跳客户文档入口：[升级与Harbor运维手册](v1.36.6/operations-manual.md)、
 [技术白皮书](v1.36.6/technical-whitepaper.md)、

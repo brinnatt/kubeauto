@@ -26,7 +26,7 @@
   "references": [
     {
       "path": "upgrade/v1.36.6/evidence/UPG-06.json",
-      "sha256": "30cd35f422fc69dfaf450dada3d82789e7454d1de1e40364c2749d9f5f8b119b"
+      "sha256": "f321d78e2860b0007a73853eb37b90172258f5b1cc17129b94928a771a310bbb"
     },
     {
       "path": "upgrade/v1.36.6/evidence/UPG-07.json",
@@ -34,11 +34,11 @@
     },
     {
       "path": "upgrade/v1.36.6/evidence/UPG-09.json",
-      "sha256": "e4e443202ee8ab885f9c6237d5d2b20a43a97730179dd2186f97c107646067fe"
+      "sha256": "4b99a48d276b84a6df2471e3299c36563236d4261d962034af05abf442142306"
     },
     {
       "path": "upgrade/v1.36.6/evidence/UPG-10.json",
-      "sha256": "cb059408b56654d687929cb84ca0a355a815de65bffa87efc816984a9c63538c"
+      "sha256": "73aafbb4f62e595d7445d714227c8499ce4bc37ef1d4453ccf21fad7600763dc"
     },
     {
       "path": "upgrade/v1.36.6/evidence/raw/local-qualification/UPG-04-before-build-policy.json",
@@ -102,5 +102,11 @@
     "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
   },
   "customer_signoff": null,
-  "build_policy_applicability": "后续修改仅新增构建时校验和发行导出摘要，原admit_packaged/runtime_data与非冻结现场入口未变；本项绑定原UPG04字节，实际日志、durable、业务与清理断言不变。"
+  "build_policy_applicability": "后续修改仅新增构建时校验和发行导出摘要，原admit_packaged/runtime_data与非冻结现场入口未变；本项绑定原UPG04字节，实际日志、durable、业务与清理断言不变。",
+  "original_prerequisite_digests": {
+    "upgrade/v1.36.6/evidence/UPG-06.json": "30cd35f422fc69dfaf450dada3d82789e7454d1de1e40364c2749d9f5f8b119b",
+    "upgrade/v1.36.6/evidence/UPG-09.json": "e4e443202ee8ab885f9c6237d5d2b20a43a97730179dd2186f97c107646067fe",
+    "upgrade/v1.36.6/evidence/UPG-10.json": "cb059408b56654d687929cb84ca0a355a815de65bffa87efc816984a9c63538c"
+  },
+  "metadata_reference_note": "完成文字修订与原输入快照绑定引起的上游证据摘要变化；原前置摘要保留，原发布提交e844be98485d6477b6314e76689d56fa602ca762可逐字节回读。仅重新核对元数据引用，不改变产品/运行/验收范围，不宣称重新现场执行。"
 }

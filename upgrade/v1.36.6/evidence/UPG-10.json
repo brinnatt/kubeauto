@@ -152,7 +152,7 @@
     },
     {
       "path": "upgrade/v1.36.6/evidence/UPG-02.json",
-      "sha256": "b3d0d99f4852a61bcdd33ed9b4329e6ad911e46314460426fa29b152c83c4718"
+      "sha256": "b0ae9eb1bd42d2e9cadc9d41ab797761166bacaa81ae32ff2596f0d07a359480"
     },
     {
       "path": "upgrade/v1.36.6/evidence/harbor-official-signatures.json",
@@ -192,5 +192,9 @@
     "differences": "K8s基座1.35→1.36，Harbor2.13→官方2.16；保留组件不虚构逐版认证，未部署的中间件无目标实测，ARM64无原生实测。",
     "reason": "接口变化由K8s官方API/default-gate与参数合同、主链实际DNS/Service/PVC/metrics和入口探针补齐；引擎与协调实现未变，原业务/恢复/长稳依赖可复用，不重复无变化深测。"
   },
-  "customer_signoff": null
+  "customer_signoff": null,
+  "original_prerequisite_digests": {
+    "upgrade/v1.36.6/evidence/UPG-02.json": "b3d0d99f4852a61bcdd33ed9b4329e6ad911e46314460426fa29b152c83c4718"
+  },
+  "metadata_reference_note": "完成文字修订与原输入快照绑定引起的上游证据摘要变化；原前置摘要保留，原发布提交e844be98485d6477b6314e76689d56fa602ca762可逐字节回读。仅重新核对元数据引用，不改变产品/运行/验收范围，不宣称重新现场执行。"
 }

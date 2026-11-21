@@ -15,12 +15,16 @@
     "eol-and-transition-only-components-are-explicit"
   ],
   "inputs": {
-    "upgrade/v1.36.6/release.yaml": "c85bdb55513ba62c141924c32f5dc8c1f4794f8e4db32dfeee4da505abe37e8f"
+    "upgrade/v1.36.6/release.yaml": "1917736f9452c97e2ca5c048d94e1b29b107b3354427753ead24d20e8f28e762"
   },
   "references": [
     {
       "path": "upgrade/v1.36.6/evidence/combination-review.json",
       "sha256": "c486b5e34c893c86092961477d80f504bfe4a0b4283fa2f8c2e0a705dc2145e5"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/completion-metadata-review.json",
+      "sha256": "4942cddf581460fc537946c89afe7ae1f8f70ee7fadab0b947642f38b5b85a40"
     }
   ],
   "applicability": {

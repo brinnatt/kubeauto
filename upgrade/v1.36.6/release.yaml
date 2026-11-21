@@ -31,7 +31,7 @@ component_decisions:
   - UPG-02
   - UPG-04
   - UPG-15
-  rationale: 本跳Kubernetes/Harbor入口和打包闭包已变化，必须发布新产品修订v0.1.9；该tag目前尚未创建或发布，原v0.1.8不作为当前新功能制品。保留Python/Ansible配套与独立tools边界。
+  rationale: 本跳Kubernetes/Harbor入口和打包闭包已变化，必须发布新产品修订v0.1.9；正式源码、二进制及产品镜像身份见evidence/product-publication.json，原v0.1.8不作为当前新功能制品。保留Python/Ansible配套与独立tools边界。
   transition_edges:
   - edge_id: product-k8s13510-to1366
     source: 已接受v1.35.10维护基线及实际现场身份
@@ -1222,7 +1222,7 @@ component_decisions:
   - UPG-13
   - UPG-14
   - UPG-15
-  rationale: Harbor目标固定官方GA2.16.0 AMD64/ARM64完整包；独立Distribution2.8.3不变。213至216不直升：AMD经官方2146桥接；旧第三方ARM仅允许停写后逻辑迁移到干净AMD2146、升216，再以216逻辑恢复到干净ARM216。后者是官方数据库/缓存机制组成的项目集成路径，待实测，不冒称上游跨架构整链认证。外置DB/Redis/对象存储、internalTLS及未审计定制拒绝进入本地快照路径。
+  rationale: Harbor目标固定官方GA2.16.0 AMD64/ARM64完整包；独立Distribution2.8.3不变。213至216不直升：AMD经官方2146桥接；旧第三方ARM仅允许停写后逻辑迁移到干净AMD2146、升216，再以216逻辑恢复到干净ARM216。后者是官方数据库/缓存机制组成的项目集成路径；逻辑导入、恢复与身份/数据保持已在x86实测，ARM64只核验官方来源/签名/制品静态依据，未经原生运行，不冒称上游跨架构整链认证。外置DB/Redis/对象存储、internalTLS及未审计定制拒绝进入本地快照路径。
   transition_edges:
   - source: 已接受源Harbor2.13.0及原实际制品；独立Distribution2.8.3保持
     target: 官方Harbor2.16.0；原配置/TLS/加密密钥/用户角色/robot/镜像及任务状态保持
@@ -1397,7 +1397,4 @@ component_decisions:
     irreversible_point: Kubernetes持久化或组件数据写入后不盲目降级；未改引擎不产生新的引擎迁移承诺
     recovery: 保留首失败和journal，验证边界后限定续跑；必要时恢复完整原恢复点
     cleanup: 只回收本run自有对象/故障/进程/租约，不接管其它集群或删除原数据
-gaps:
-- id: G-03
-  subject: 当前合同、产品发行、固定现场/恢复与正式客户文档尚待验收
-  blocks_through: final-acceptance
+gaps: []

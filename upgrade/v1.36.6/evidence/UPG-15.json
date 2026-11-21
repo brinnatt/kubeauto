@@ -17,19 +17,19 @@
   ],
   "inputs": {
     "upgrade/v1.36.6/evidence/UPG-01.json": "1ef8d07c3d93853e6775784526ce7714e2a2d6d2751d1b6ba804e38a9cac5188",
-    "upgrade/v1.36.6/evidence/UPG-02.json": "b3d0d99f4852a61bcdd33ed9b4329e6ad911e46314460426fa29b152c83c4718",
+    "upgrade/v1.36.6/evidence/UPG-02.json": "b0ae9eb1bd42d2e9cadc9d41ab797761166bacaa81ae32ff2596f0d07a359480",
     "upgrade/v1.36.6/evidence/UPG-03.json": "4aa3ab519a15761e9df13651c0186735653496436b87d7ff2f5649f073ab1d58",
     "upgrade/v1.36.6/evidence/UPG-04.json": "d3dc05a455d7fe0919c8663f592967b223a43f494cadff032e6353f143ba8008",
-    "upgrade/v1.36.6/evidence/UPG-05.json": "69c673bdf6c2162f62f8c136766a6138b2ed2c8ba8e38fe71643a18af22beaff",
-    "upgrade/v1.36.6/evidence/UPG-06.json": "30cd35f422fc69dfaf450dada3d82789e7454d1de1e40364c2749d9f5f8b119b",
+    "upgrade/v1.36.6/evidence/UPG-05.json": "bc88bd34429bcd327de86ad41b8633d9f5341c721166529946e58fd1ef58d87d",
+    "upgrade/v1.36.6/evidence/UPG-06.json": "f321d78e2860b0007a73853eb37b90172258f5b1cc17129b94928a771a310bbb",
     "upgrade/v1.36.6/evidence/UPG-07.json": "a4504e8b6985d9e4a7244dd494b8ca17252c909fac1275443a95c7497a2ad0d1",
-    "upgrade/v1.36.6/evidence/UPG-08.json": "0b5cbdc33882a9be21bea3dcdcf77e0ff9e6b7f00816772860a18cecbcdfcb28",
-    "upgrade/v1.36.6/evidence/UPG-09.json": "e4e443202ee8ab885f9c6237d5d2b20a43a97730179dd2186f97c107646067fe",
-    "upgrade/v1.36.6/evidence/UPG-10.json": "cb059408b56654d687929cb84ca0a355a815de65bffa87efc816984a9c63538c",
-    "upgrade/v1.36.6/evidence/UPG-11.json": "e35bb95f1a65581111c7816d4430bebd53d93b714a38929ecdf6ad9aecd5ebf4",
-    "upgrade/v1.36.6/evidence/UPG-12.json": "8c3e3f9ffb08bf36051e7b34baad4325f7854fe424cd64437f38bb291ffad643",
+    "upgrade/v1.36.6/evidence/UPG-08.json": "12996f616f1b3a929f311baaa060f970fc92786a2a8eef30e8aad7a0880d578b",
+    "upgrade/v1.36.6/evidence/UPG-09.json": "4b99a48d276b84a6df2471e3299c36563236d4261d962034af05abf442142306",
+    "upgrade/v1.36.6/evidence/UPG-10.json": "73aafbb4f62e595d7445d714227c8499ce4bc37ef1d4453ccf21fad7600763dc",
+    "upgrade/v1.36.6/evidence/UPG-11.json": "6ad172af50fe8dd21589fe49c33fd4af54f4b887b139c23b9e030c9530a8882f",
+    "upgrade/v1.36.6/evidence/UPG-12.json": "9e2053cdcfea169817628554276ffa8ff503137db55ae087392808216e8a4d86",
     "upgrade/v1.36.6/evidence/UPG-13.json": "60eaaebc6db0ee66b044cb150faae69ecc614baa9b72bf75d3fac869be93d725",
-    "upgrade/v1.36.6/evidence/UPG-14.json": "2319c8c962e26c23201abb3832f083da5c7aa299d6eb9fcad184b6103232e8a7"
+    "upgrade/v1.36.6/evidence/UPG-14.json": "4fc246d77e9660881545624542f9c27aba47c844f23e79ac772454ccdcc830c6"
   },
   "references": [
     {
@@ -363,6 +363,14 @@
     {
       "path": "upgrade/v1.36.6/evidence/completed-scope-handoff.json",
       "sha256": "55ac8eb2f3baf969c35dd21400e53b3ef442d8f69d5db2bb5e54623098c07916"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/completion-metadata-review.json",
+      "sha256": "4942cddf581460fc537946c89afe7ae1f8f70ee7fadab0b947642f38b5b85a40"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/product-publication.json",
+      "sha256": "5d0a72c10bf1cea8ce03596676ae987277d3a3187631edfc598bf3bb6136d2cc"
     }
   ],
   "run_id": "v1366-final-20261121c",
@@ -394,5 +402,31 @@
     "2.13经桥接逻辑导入2.16、2.16同版逻辑导入、目标撤回两遍及原源恢复后原project/artifact/digest/payload、用户/只拉机器人权限一致。",
     "源/目标数据、运行时、节点清理回执及完整归档校验齐全，六节点释放，owner消失及四锁可用。"
   ],
-  "customer_signoff": null
+  "customer_signoff": null,
+  "run_prerequisite_inputs": {
+    "upgrade/v1.36.6/evidence/UPG-01.json": "1ef8d07c3d93853e6775784526ce7714e2a2d6d2751d1b6ba804e38a9cac5188",
+    "upgrade/v1.36.6/evidence/UPG-02.json": "b3d0d99f4852a61bcdd33ed9b4329e6ad911e46314460426fa29b152c83c4718",
+    "upgrade/v1.36.6/evidence/UPG-03.json": "4aa3ab519a15761e9df13651c0186735653496436b87d7ff2f5649f073ab1d58",
+    "upgrade/v1.36.6/evidence/UPG-04.json": "d3dc05a455d7fe0919c8663f592967b223a43f494cadff032e6353f143ba8008",
+    "upgrade/v1.36.6/evidence/UPG-05.json": "69c673bdf6c2162f62f8c136766a6138b2ed2c8ba8e38fe71643a18af22beaff",
+    "upgrade/v1.36.6/evidence/UPG-06.json": "30cd35f422fc69dfaf450dada3d82789e7454d1de1e40364c2749d9f5f8b119b",
+    "upgrade/v1.36.6/evidence/UPG-07.json": "a4504e8b6985d9e4a7244dd494b8ca17252c909fac1275443a95c7497a2ad0d1",
+    "upgrade/v1.36.6/evidence/UPG-08.json": "0b5cbdc33882a9be21bea3dcdcf77e0ff9e6b7f00816772860a18cecbcdfcb28",
+    "upgrade/v1.36.6/evidence/UPG-09.json": "e4e443202ee8ab885f9c6237d5d2b20a43a97730179dd2186f97c107646067fe",
+    "upgrade/v1.36.6/evidence/UPG-10.json": "cb059408b56654d687929cb84ca0a355a815de65bffa87efc816984a9c63538c",
+    "upgrade/v1.36.6/evidence/UPG-11.json": "e35bb95f1a65581111c7816d4430bebd53d93b714a38929ecdf6ad9aecd5ebf4",
+    "upgrade/v1.36.6/evidence/UPG-12.json": "8c3e3f9ffb08bf36051e7b34baad4325f7854fe424cd64437f38bb291ffad643",
+    "upgrade/v1.36.6/evidence/UPG-13.json": "60eaaebc6db0ee66b044cb150faae69ecc614baa9b72bf75d3fac869be93d725",
+    "upgrade/v1.36.6/evidence/UPG-14.json": "2319c8c962e26c23201abb3832f083da5c7aa299d6eb9fcad184b6103232e8a7"
+  },
+  "post_run_metadata_note": "仅更新完成文字、固定原输入快照及当前分析引用；原run准入身份见run_prerequisite_inputs与原manifest，运行/产品/矩阵不变，未重跑或重签现场。",
+  "original_prerequisite_digests": {
+    "upgrade/v1.36.6/evidence/UPG-08.json": "023ea5f704bbac2a519f37d601d701215bc118c91c45acc0d410265292145c08",
+    "upgrade/v1.36.6/evidence/UPG-09.json": "6be79ef428f89b6e1cb2ff30ed9a2b7954c3798e0824b9c1aeacb9d4f9642efe",
+    "upgrade/v1.36.6/evidence/UPG-10.json": "cb059408b56654d687929cb84ca0a355a815de65bffa87efc816984a9c63538c",
+    "upgrade/v1.36.6/evidence/UPG-11.json": "e35bb95f1a65581111c7816d4430bebd53d93b714a38929ecdf6ad9aecd5ebf4",
+    "upgrade/v1.36.6/evidence/UPG-12.json": "8c3e3f9ffb08bf36051e7b34baad4325f7854fe424cd64437f38bb291ffad643",
+    "upgrade/v1.36.6/evidence/UPG-14.json": "29c90ada7a737bae456d328b864e61d44a2522ad3150d18349d8b21147a22826"
+  },
+  "metadata_reference_note": "完成文字修订与原输入快照绑定引起的上游证据摘要变化；原前置摘要保留，原发布提交e844be98485d6477b6314e76689d56fa602ca762可逐字节回读。仅重新核对元数据引用，不改变产品/运行/验收范围，不宣称重新现场执行。"
 }

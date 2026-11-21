@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "classification": "completion-metadata-only",
+  "original_source_commit": "e844be98485d6477b6314e76689d56fa602ca762",
+  "records": [
+    {
+      "before": "upgrade/v1.36.6/evidence/source/delivery-closeout/release.yaml",
+      "before_sha256": "c85bdb55513ba62c141924c32f5dc8c1f4794f8e4db32dfeee4da505abe37e8f",
+      "after": "upgrade/v1.36.6/release.yaml",
+      "after_sha256": "1917736f9452c97e2ca5c048d94e1b29b107b3354427753ead24d20e8f28e762",
+      "changed_fields": [
+        "/component_decisions/0/rationale",
+        "/component_decisions/26/rationale",
+        "/gaps"
+      ]
+    },
+    {
+      "before": "upgrade/v1.36.6/evidence/source/delivery-closeout/acceptance-plan.yaml",
+      "before_sha256": "64950ea7da228bc055044a6e31ad3d33b2ab7a46c852d415f7494a2c981b7923",
+      "after": "upgrade/v1.36.6/acceptance-plan.yaml",
+      "after_sha256": "8ac44a18143cf27cbbd4a0405a6131eb1562fb0b15570fb2f321cee9de159d01",
+      "changed_fields": [
+        "/cost_control/budget/final",
+        "/freeze_boundary",
+        "/harbor_native_amd64_qualification/gap",
+        "/remaining_before_execution"
+      ]
+    }
+  ],
+  "unchanged": "精确pin、迁移边、API、产品/门禁源码、实际制品、矩阵字节、原日志/退出状态与现场运行输入均未改变；仅完成状态、发行身份导航和ARM边界说明修正。现场项绑定原release快照，组合/文档重新核对当前记录，UPG15保留原执行并关联此次元数据复核，不宣称重新现场执行。",
+  "matrix_sha256": "4f1f4f552562e3ee6f6e127fc8d0bb52e0988ceb5ee0c211317e3a1141311b99",
+  "release_build_inputs_sha256": "9d8768041b6613668c9a75de520a5eb935c7f2a7715958b0843e8607244d438e"
+}

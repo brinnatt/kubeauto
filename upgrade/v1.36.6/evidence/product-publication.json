@@ -1,0 +1,157 @@
+{
+  "schema_version": 1,
+  "product_version": "v0.1.9",
+  "kubernetes": "v1.36.6",
+  "harbor": "v2.16.0",
+  "source_sha": "e844be98485d6477b6314e76689d56fa602ca762",
+  "binary_release": {
+    "run_id": 44896458863,
+    "run_url": "https://github.com/brinnatt/kubeauto/actions/runs/44896458863",
+    "release_url": "https://github.com/brinnatt/kubeauto/releases/tag/v0.1.9",
+    "conclusion": "success",
+    "scope": "kubecli-only",
+    "assets": {
+      "amd64": {
+        "tar_sha256": "3f3d1c56196910181458217e658c361620cd1164350c38ba81890416b7fe6e25",
+        "elf_sha256": "564c54f1d46ec7cfc316dd9c72db3f36be888f5f7f846fe52cdbac12d9557ffc",
+        "elf_machine": 62,
+        "size": 35467992
+      },
+      "arm64": {
+        "tar_sha256": "42a3a5e78d967de7bf66da42ff0417004c1f0c5b9b6e985f53fa93b6a84ea8e6",
+        "elf_sha256": "a9fe1c990f1a135323802b98a4097c7cec9f5ef80ffba294f2879c64935b3386",
+        "elf_machine": 183,
+        "size": 34753624
+      }
+    },
+    "amd64_entrypoints": {
+      "version": {
+        "rc": 0,
+        "sha256": "6e6af754897f59db9df1516e3bb13ca158b72529d00bf1ade7233638175dadd8"
+      },
+      "upgrade_help": {
+        "rc": 0,
+        "sha256": "18142cd8a5b3a9f10f42b0f68c2341d73fcc84a8e8b7172027c53cc104dd6d7b"
+      }
+    },
+    "build_glibc": "2.28"
+  },
+  "product_image": {
+    "run_id": 44896812981,
+    "run_url": "https://github.com/brinnatt/kubeauto-dockerfile/actions/runs/44896812981",
+    "source_sha": "41eabf544e10264955add9c4d389616d014f1afd",
+    "mode": "selected",
+    "images": [
+      "brinnatt/kubeauto:v0.1.9"
+    ],
+    "image_count": 1,
+    "status": "completed",
+    "conclusion": "success",
+    "durable_job_rc": 0,
+    "durable_release_rc": 0,
+    "failure_markers": 0,
+    "input_digest": "sha256:b64d2b62a6ff1a5ad21aaab690005d17d78e0ab5c0f376034e1e7db94419dcfd",
+    "action": "build",
+    "source_archive": {
+      "source_tag": "v0.1.9",
+      "source_sha": "e844be98485d6477b6314e76689d56fa602ca762",
+      "archive_sha256": "5d7e3eb4f591d365fb958ceae929bbb2702cb1eff2c1262de1dcde1317d1b0e1"
+    },
+    "registry_references": [
+      "hub.talkedu.cn/kubeauto/kubeauto:v0.1.9",
+      "docker.io/brinnatt/kubeauto:v0.1.9",
+      "ghcr.io/brinnatt/kubeauto:v0.1.9"
+    ],
+    "identity": {
+      "digest": "sha256:95c037c4d9a9ca13b62638adb25f2a1ca54ca6a408fe878578057c3cc1543151",
+      "platforms": {
+        "linux/amd64": "sha256:4948971c3c389f54e93cbac9e958907d8d9f340a9bec0bcd017fb358d6958c85",
+        "linux/arm64": "sha256:45f1091f6b9066a842b03bd6600cbdb51d01b7f64d74b49b0d9bf44817943782"
+      }
+    },
+    "verification": "正式通用发布器依次读取三端index及AMD64/ARM64子manifest，摘要相等后签pass；本地复核原plan、source与durable回执。",
+    "build_glibc": "2.28"
+  },
+  "architecture_boundary": "官方构建与ELF/摘要静态核验；未执行原生ARM运行",
+  "references": [
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/product-publication/release-metadata.json",
+      "sha256": "f0d3fcb7a694119515394bdb459c648c4eb2b6f7a0066067fd89ddb85b311cd7"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/product-publication/verified-readback.json",
+      "sha256": "2868bf7a21d818e431c6eb7fd9c49a35feb46a75d3789d5ebb8a68011b9e2b49"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/product-publication/version.txt",
+      "sha256": "6e6af754897f59db9df1516e3bb13ca158b72529d00bf1ade7233638175dadd8"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/product-publication/upgrade_help.txt",
+      "sha256": "18142cd8a5b3a9f10f42b0f68c2341d73fcc84a8e8b7172027c53cc104dd6d7b"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/product-publication/44896458863-run.json",
+      "sha256": "a005dad48f9aad74b82cbb7186c3b20acf56ec3ffaa3fe953d1fc7ea1e8f1809"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/product-publication/44896458863-jobs.json",
+      "sha256": "ba72522535d7017450f9b43d59a10d00512fc5f8f1c7199b6fe4bdd02b684ac1"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/product-publication/44896458863-artifacts.json",
+      "sha256": "ead483c1978ad894c60305810107c166759d107acbca0c2456271119f90753e6"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/product-publication/kubeauto-job-136823059595.log",
+      "sha256": "bb396fbe7c88a69aa694d23f6ae9e96766ac75bfc1cb2dc8dd56f5de1f83fe9a"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/product-publication/image/evidence/release.rc",
+      "sha256": "93ff7811a209e2a8479230bbb9b6bc19f7f311d3af383ec350c1db2a7e7d5494"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/product-publication/image/evidence/release.log",
+      "sha256": "5bff00b846a2b3c8fc68e25751f9174e4ff8b1debd624d0089ec9221e709986b"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/product-publication/image/evidence/job.rc",
+      "sha256": "93ff7811a209e2a8479230bbb9b6bc19f7f311d3af383ec350c1db2a7e7d5494"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/product-publication/image/evidence/job.status",
+      "sha256": "81b2bd4ea98c8db66554fbc8d7637a1a69a130f331feb732b75caab4c4868fd5"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/product-publication/image/upgrade/output/plan.json",
+      "sha256": "30377e4dae245815c01f399ab1d6084a1f0919f379e9e4536db2f4e356fc1990"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/product-publication/image/upgrade/output/0/source.json",
+      "sha256": "516c1ec01bb511992001b88214fc92ca1f893f29bc90c12d613dad3db7729bf5"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/product-publication/image/44896812981-run.json",
+      "sha256": "d871a4c3fdb355f76c04792f0d4f335c93f27a9513497d940fcaf3c9dd80a748"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/product-publication/image/44896812981-jobs.json",
+      "sha256": "0a51e906208653b1067ce64ed25e4b8a3ab8bf38f92b3bb5a844d609873c3d7c"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/product-publication/image/44896812981-artifacts.json",
+      "sha256": "c63426881d55cc02b16f2da07a82c0aa3b6d553cc2e652127bd6f974b9340613"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/product-publication/image/14704602981.zip",
+      "sha256": "99ff772f180aae92b11ada329cc7b1325aa7b377e3528be656190fef5d4d82f4"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/product-publication/image/kubeauto-dockerfile-job-136824135505.log",
+      "sha256": "a61ed0339bc2a9f25c90840c11bcd91c384a1dbe26c87934f4dc3589607864f6"
+    }
+  ],
+  "customer_signoff": null,
+  "accepted": true,
+  "claim": "正式kubecli-only双架构发行及唯一产品运行镜像的精确源构建、三端双架构manifest核验和AMD64二进制入口读回成功；原现场验收独立保留，不把manifest/构建结果代签业务或原生ARM运行。产品镜像沿用既有完整dist打包，独立tools未改变，不声称本次重验全部tools。"
+}
