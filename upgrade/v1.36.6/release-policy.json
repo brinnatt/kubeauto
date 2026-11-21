@@ -16,7 +16,7 @@
     "UPG-14",
     "UPG-15"
   ],
-  "build_inputs_sha256": "13de1107e13c72dc8049c64609c792149b56ff06ac794f923888f48f66b6231b",
+  "build_inputs_sha256": "9d8768041b6613668c9a75de520a5eb935c7f2a7715958b0843e8607244d438e",
   "matrix_sha256": "4f1f4f552562e3ee6f6e127fc8d0bb52e0988ceb5ee0c211317e3a1141311b99",
   "runtime_data": {
     "upgrade/product/api-auth-observe.yml": "6c3fa82c10570193cc9c3a4d39fc87add749ffe2771604d23390f5cde2ce4093",

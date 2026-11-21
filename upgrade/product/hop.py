@@ -12,4 +12,3 @@ DIRECTORY = Path(__file__).resolve().parents[1] / TARGET
 PINS_PATH = DIRECTORY / 'artifact-pins.json'
 MATRIX_PATH = DIRECTORY / 'test-matrix.yaml'
 RUN_ID = 'k8s-v13510-to-v1366'
-

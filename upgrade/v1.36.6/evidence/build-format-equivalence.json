@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "classification": "format-only",
+  "path": "upgrade/product/hop.py",
+  "before_snapshot": "upgrade/v1.36.6/evidence/raw/local-qualification/hop-before-eof-cleanup.py.txt",
+  "before_sha256": "92c952aedb67fb4b60aa7b4e6ebfa577240ead19d7c3556471dd7c724b32802a",
+  "after_sha256": "f15769167eacbad49f09fd22d87abb0a27a59d8c902143db348ddb7f47fa7f59",
+  "ast_identical": true,
+  "frozen_live_build_inputs_sha256": "13de1107e13c72dc8049c64609c792149b56ff06ac794f923888f48f66b6231b",
+  "release_build_inputs_sha256": "9d8768041b6613668c9a75de520a5eb935c7f2a7715958b0843e8607244d438e",
+  "claim": "仅删除文件末尾额外空行；AST完全相同，无pin/API/配置/控制流/模板变化。原现场fingerprint及原始输入不改签，正式发行重新导出policy绑定清理后字节。"
+}

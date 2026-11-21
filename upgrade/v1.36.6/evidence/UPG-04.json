@@ -7,7 +7,7 @@
     "UPG-04"
   ],
   "method": "static",
-  "claim": "当前产品/升级合同438项成功（4项原生渲染相关skip已由另跑14项实际工具合同补齐）；控制机隔离修复25项、CLI/六仓消费33项及55文件静态检查通过。官方1.36.6 AMD64二进制实际解析40个产品service参数组合并拒绝未知参数。证明当前已实现入口及固定K8s runner的交接/拒绝/恢复合同；Harbor Docker/SQL仍为夹具，不签真实迁移、数据库恢复或ARM运行。新增现场runner或产品变更必须补其最小合同并更新本项依赖，不能沿用本项预签未来代码。 后续增量81项合同全部成功且无skip：官方Compose尾斜杠路径等价修复、真实Compose渲染、可选Docker目录执行权限恢复、原生AMD Harbor固定runner的阶段交接/首失败/归档清理。ARM运行、新建Harbor及真实迁移仍不由静态合同签署。 入口增量合同通过：目标健康交接/拒绝、真实CLI作用域、HTTP/HTTPS确认内容、错误CA须rc60、Webhook拒绝与UID/标签清理；另两镜像按既有digest补到实验室，非发布。 Harbor扩展同一固定入口覆盖独立243目标新建和幂等；合同确认目标回收不触碰仍运行源，完整回收最后释放六节点租约；两台Harbor均明确使用Docker库存。 最终增量103项无skip；Harbor归档逐文件摘要和只收小型证据的fetch合同通过，原恢复archive保留控制机私有目录。 Harbor版本读取增量54项合同通过且无skip：按官方2.13/2.14/2.16处理器使用原管理员认证读取受保护版本，保留本机监听与原CA校验；匿名200不再误判为完整版本。未更改源安装、业务或原始归档。 干净主机安装修复65项合同无skip：Harbor角色显式保证tar/gzip、原配置认证读取版本；固定受限续跑仅接受本次解压前缺tar、原配置/租约和无Harbor容器，复用01/03，仅执行setup11。原父资格失败状态不改签，子资格独立收证据后限定清理。 Harbor限定清理21项合同通过：无Kubernetes安装的Compose资格不调用Kubernetes destroy；先按原归属验证无K8s服务/数据及剩余容器，再调用固定主机wipe。节点helper已绑定恢复归档，新增只读前置经stdin执行，不覆盖已归档原始文件。 恢复归档增量23项合同无skip；实际rsync证明同主机完整快照内容复用、变化内容复制和历史字节保持，排除其它主机及未完成快照；清理失败重试保留独立attempt与原durable失败。 最终组合入口增量79项无skip，覆盖K8s→Harbor锁内交接、最终失败不改签、ingress自动交接；不签最终现场成功。 逻辑导出syslog启动依赖及有界恢复75项合同无skip；原完整备份不覆盖、所有业务写服务保持停止。 Valkey 9.0.3官方RDB格式及停止检查点续跑增量123项合同成功无skip；验证原格式、错误/未来格式拒绝、配置/容器/tag/部分归档拒绝、原首次逻辑导入复用及后半链交接；未签现场结果。 干净checkout打包准入10项合同成功：完整验收后导出policy，构建绑定精确产品输入与矩阵，不将私有日志加入Git或冻结包；不签最终现场或正式构建。 PV异步回收门禁增量71项合同无skip：原namespace消失后仅等待原PV/PVC/namespace UID匹配的Delete卷；拒绝外来/替换/Retain/目标卷，超时保留集群，等待结束前不得destroy或wipe。原最终source-clean首失败保留，不由本项签修复后现场或最终成功。 干净作用域交接增量87项合同无skip：真实客户端切换/恢复、限定复用七步已清理证据、拒绝产品/制品/其它门禁漂移、锁内只读交接资格与无重跑续接、原父失败保留及子链期间证据漂移拒签；产品输入摘要和十个K8s阶段函数AST保持，不由静态合同签新现场。 最终新装到逻辑迁移夹具交接增量92项合同无skip：两条真实portable路径在源停止备份前准备固定包，校验原始SHA/节点所有权、拒绝外来与部分文件、临时文件校验后原子落盘；暂停补给只允许原SIGSTOP监督/四锁/四步首次成功/原配置/未导入边界，并绑定补给helper摘要才允许SIGCONT。当前组合现场使用冻结旧runner与有记录的私有夹具补给，不冒称新runner完整现场通过。",
+  "claim": "当前产品/升级合同438项成功（4项原生渲染相关skip已由另跑14项实际工具合同补齐）；控制机隔离修复25项、CLI/六仓消费33项及55文件静态检查通过。官方1.36.6 AMD64二进制实际解析40个产品service参数组合并拒绝未知参数。证明当前已实现入口及固定K8s runner的交接/拒绝/恢复合同；Harbor Docker/SQL仍为夹具，不签真实迁移、数据库恢复或ARM运行。新增现场runner或产品变更必须补其最小合同并更新本项依赖，不能沿用本项预签未来代码。 后续增量81项合同全部成功且无skip：官方Compose尾斜杠路径等价修复、真实Compose渲染、可选Docker目录执行权限恢复、原生AMD Harbor固定runner的阶段交接/首失败/归档清理。ARM运行、新建Harbor及真实迁移仍不由静态合同签署。 入口增量合同通过：目标健康交接/拒绝、真实CLI作用域、HTTP/HTTPS确认内容、错误CA须rc60、Webhook拒绝与UID/标签清理；另两镜像按既有digest补到实验室，非发布。 Harbor扩展同一固定入口覆盖独立243目标新建和幂等；合同确认目标回收不触碰仍运行源，完整回收最后释放六节点租约；两台Harbor均明确使用Docker库存。 最终增量103项无skip；Harbor归档逐文件摘要和只收小型证据的fetch合同通过，原恢复archive保留控制机私有目录。 Harbor版本读取增量54项合同通过且无skip：按官方2.13/2.14/2.16处理器使用原管理员认证读取受保护版本，保留本机监听与原CA校验；匿名200不再误判为完整版本。未更改源安装、业务或原始归档。 干净主机安装修复65项合同无skip：Harbor角色显式保证tar/gzip、原配置认证读取版本；固定受限续跑仅接受本次解压前缺tar、原配置/租约和无Harbor容器，复用01/03，仅执行setup11。原父资格失败状态不改签，子资格独立收证据后限定清理。 Harbor限定清理21项合同通过：无Kubernetes安装的Compose资格不调用Kubernetes destroy；先按原归属验证无K8s服务/数据及剩余容器，再调用固定主机wipe。节点helper已绑定恢复归档，新增只读前置经stdin执行，不覆盖已归档原始文件。 恢复归档增量23项合同无skip；实际rsync证明同主机完整快照内容复用、变化内容复制和历史字节保持，排除其它主机及未完成快照；清理失败重试保留独立attempt与原durable失败。 最终组合入口增量79项无skip，覆盖K8s→Harbor锁内交接、最终失败不改签、ingress自动交接；不签最终现场成功。 逻辑导出syslog启动依赖及有界恢复75项合同无skip；原完整备份不覆盖、所有业务写服务保持停止。 Valkey 9.0.3官方RDB格式及停止检查点续跑增量123项合同成功无skip；验证原格式、错误/未来格式拒绝、配置/容器/tag/部分归档拒绝、原首次逻辑导入复用及后半链交接；未签现场结果。 干净checkout打包准入10项合同成功：完整验收后导出policy，构建绑定精确产品输入与矩阵，不将私有日志加入Git或冻结包；不签最终现场或正式构建。 PV异步回收门禁增量71项合同无skip：原namespace消失后仅等待原PV/PVC/namespace UID匹配的Delete卷；拒绝外来/替换/Retain/目标卷，超时保留集群，等待结束前不得destroy或wipe。原最终source-clean首失败保留，不由本项签修复后现场或最终成功。 干净作用域交接增量87项合同无skip：真实客户端切换/恢复、限定复用七步已清理证据、拒绝产品/制品/其它门禁漂移、锁内只读交接资格与无重跑续接、原父失败保留及子链期间证据漂移拒签；产品输入摘要和十个K8s阶段函数AST保持，不由静态合同签新现场。 最终新装到逻辑迁移夹具交接增量92项合同无skip：两条真实portable路径在源停止备份前准备固定包，校验原始SHA/节点所有权、拒绝外来与部分文件、临时文件校验后原子落盘；暂停补给只允许原SIGSTOP监督/四锁/四步首次成功/原配置/未导入边界，并绑定补给helper摘要才允许SIGCONT。当前组合现场使用冻结旧runner与有记录的私有夹具补给，不冒称新runner完整现场通过。 发布排版清理仅删除hop.py尾部空行，AST一致；原现场输入不改签，正式发行策略绑定清理后字节。",
   "covered_subcases": [
     "product-config-and-inventory-handoff-contract",
     "legacy-minor-refusal-and-version-identity-contract",
@@ -38,7 +38,7 @@
     "upgrade/product/etcd.yml": "ef881e24e82093a6714465e38a93d8bdc32388487fddc5e14d111473764b19a2",
     "upgrade/product/flannel_stage.py": "a090a488a991c57e030905cd8dcaeb0e27957ed2ce598b15be5f6a048e8f9e86",
     "upgrade/product/harbor.yml": "0915a3af1d0f209fe08778494a1b321c4cb54bc9823ff13f462b2799c0b63796",
-    "upgrade/product/hop.py": "92c952aedb67fb4b60aa7b4e6ebfa577240ead19d7c3556471dd7c724b32802a",
+    "upgrade/product/hop.py": "f15769167eacbad49f09fd22d87abb0a27a59d8c902143db348ddb7f47fa7f59",
     "upgrade/product/inventory.py": "66b51949ba7946bb63cc3c2978d8630c8f591f8cd9b1a321aa8af4df9cc51af8",
     "upgrade/product/inventory.yml": "c5f5e2b9b35ce1029235959d4f59199ac46ca256afd554f57d3d8c586c978e5b",
     "upgrade/product/journal.py": "ff445ee4356712256d146f5d28cd298a83aa0ce08072e14ade3e23f1df67e87d",
@@ -223,6 +223,10 @@
     {
       "path": "upgrade/v1.36.6/evidence/raw/local-qualification/package-fixture-contracts.log",
       "sha256": "7a1485ecd3e4c00829e7d77887e010d4790d17ac5de0062a9ce235e75c0b82a5"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/build-format-equivalence.json",
+      "sha256": "96235ed010eb846d5e494e26af34ade1f808a706d73a255c5af478fc1b68e288"
     }
   ],
   "checks": [
