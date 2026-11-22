@@ -1,0 +1,325 @@
+{
+  "schema_version": 1,
+  "accepted": true,
+  "source": "v1.35.10",
+  "target": "v1.36.6",
+  "method": "live",
+  "run_id": "v1366-harbor-arm-20261122g",
+  "durable_rc": 0,
+  "finalized_rc": 0,
+  "failure_markers": 0,
+  "inputs": {
+    "upgrade/product/library/harbor_migration.py": "cb93cea14c4e94726bf355da5e0fefd31ac55b10593386e4e02576ea4a165c6f",
+    "upgrade/product/entrypoint.py": "77c16f180baef40ef3c90ec50f409111d406cca187f8ef86862a1fce8cac1c95",
+    "upgrade/product/harbor.yml": "0915a3af1d0f209fe08778494a1b321c4cb54bc9823ff13f462b2799c0b63796",
+    "upgrade/lab/harbor_arm_session.py": "97eb0e9e70f2bf0b46f577792323f4b88a523c794b5bdb0753c9d26b1b640d56",
+    "upgrade/lab/harbor_node.py": "9b6aab3eddc66344fabc46a80f5e61adc1fc606621ae61e7aa9f47f3789b0f1b",
+    "upgrade/lab/harbor_fixture.py": "c315bcff7debf567e5d284305cee84eae566ef701fde7fa8cba56e403e6cdfab",
+    "upgrade/lab/harbor-arm-control.sh": "4d5c16b7b3d907d3babe0f66df092017dc3b806031a807d6a1e063ab2c81afe9",
+    "common/constants.py": "5545540f862751b6d17cec510225e797deec927203cf7a5e5a82e9508c3e5595"
+  },
+  "log": {
+    "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/session.log",
+    "sha256": "8b1c4833d2070ef33c49492c7d10b6a15958a4d075486e1de0a4cf284e226fff"
+  },
+  "durable_exit": {
+    "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/session.exit",
+    "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+  },
+  "durable_finalized": {
+    "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/session.finalized",
+    "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+  },
+  "cleanup_marker": "LAB_CLEAN_VERIFY_PASS",
+  "customer_signoff": null,
+  "references": [
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/admission-192.168.37.101.json",
+      "sha256": "5fb2378f8521c6408d433d565066461fb3091acdf896da89db41582517fd565c"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/harbor-clean.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/harbor-clean.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/harbor-clean.log",
+      "sha256": "2ed1c79465cf096172f6b0fd84d049826bccf4bfed590cd33e6256861bf8046d"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/harbor-clean.status.json",
+      "sha256": "9fa9e94796a6b6b8c6d33f8ea753f3117e923d2e29194672e359e22827b51cc9"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/harbor-migration.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/harbor-migration.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/harbor-migration.log",
+      "sha256": "b28bfaf1f9527459bbd6f7571a04bf42623ff09dde797638cad9a717b8b928ff"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/harbor-migration.status.json",
+      "sha256": "9fa9e94796a6b6b8c6d33f8ea753f3117e923d2e29194672e359e22827b51cc9"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/harbor-new-install.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/harbor-new-install.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/harbor-new-install.log",
+      "sha256": "4da2ffbc228ad9da9635f217ed27697565aac2791edd7a9e8445329d20624dbb"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/harbor-new-install.status.json",
+      "sha256": "9fa9e94796a6b6b8c6d33f8ea753f3117e923d2e29194672e359e22827b51cc9"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/harbor-restore.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/harbor-restore.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/harbor-restore.log",
+      "sha256": "2a0040e64485bc243de52638a6f8e458be4d7ce4cb8cb8fafc4eba07592bb3bb"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/harbor-restore.status.json",
+      "sha256": "9fa9e94796a6b6b8c6d33f8ea753f3117e923d2e29194672e359e22827b51cc9"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/harbor-source.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/harbor-source.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/harbor-source.log",
+      "sha256": "0f0bac422b7a0c4ac0407c15755dc70ee752a5e4b597c2c29e33214a81030c95"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/harbor-source.status.json",
+      "sha256": "9fa9e94796a6b6b8c6d33f8ea753f3117e923d2e29194672e359e22827b51cc9"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/image-cache-admission.json",
+      "sha256": "8ea0f66d49cd34eb743882051e4592fc7e5170052a3dc882d756446a248cf6d0"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/migrated-business.json",
+      "sha256": "d177baf8e682ded90eac207e0e0bfe4a15c646985904953a21386f549e1eca9f"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/migrated-inventory.json",
+      "sha256": "192b960bf7f26870a5a3300f0d061b6a89e02a76aaf1fc91dbb3a5ef2641df78"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/migration-idempotent-business.json",
+      "sha256": "d177baf8e682ded90eac207e0e0bfe4a15c646985904953a21386f549e1eca9f"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/migration-idempotent-inventory.json",
+      "sha256": "192b960bf7f26870a5a3300f0d061b6a89e02a76aaf1fc91dbb3a5ef2641df78"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/new-created.json",
+      "sha256": "bac47fb844ee2fe315d306c3d2b33ec14bfada95b21b2a85c64acb028700c85f"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/new-idempotent-business.json",
+      "sha256": "bac47fb844ee2fe315d306c3d2b33ec14bfada95b21b2a85c64acb028700c85f"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/new-idempotent-inventory.json",
+      "sha256": "841771eede30502376d9a96a05842d16b33baedaff701172bd6ce0f2fa622162"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/new-install-business.json",
+      "sha256": "bac47fb844ee2fe315d306c3d2b33ec14bfada95b21b2a85c64acb028700c85f"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/new-install-inventory.json",
+      "sha256": "9c00e4c1d74e3ebb61a134ecddc09f831a0ffe4a22d1f78e4ac292a6361d9eff"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/node-admission.json",
+      "sha256": "7792fe262b7198a10b3a20ffd06b3cac0ffe061e2905358003cdbf03a644791c"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/plan.json",
+      "sha256": "ebd1a8258fc96fda22dcf707ebbf2fd16d6c49404315461761b879bc77dd2804"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/recovery-archive.json",
+      "sha256": "1f191da424a4fb1036ffa4c86c644a96cec67c1877ae0d6c6448203674534e05"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/restored-business.json",
+      "sha256": "d177baf8e682ded90eac207e0e0bfe4a15c646985904953a21386f549e1eca9f"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/restored-inventory.json",
+      "sha256": "3498a6e5068c0d1aa92440164da24f8a1afea7bcf4166db89de384e8cfb15635"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/runtime-config-isolation.json",
+      "sha256": "98ec61dd339ac742257027ab6f37c63b20a26f4d970a039cb2a88cd91007e70d"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/runtime-config-restoration.json",
+      "sha256": "ebec93777f6dce9d7e675c939c975d00372943600e5c64d090b65a636c5a3afe"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/session.exit",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/session.finalized",
+      "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/session.log",
+      "sha256": "8b1c4833d2070ef33c49492c7d10b6a15958a4d075486e1de0a4cf284e226fff"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/source-business.json",
+      "sha256": "d177baf8e682ded90eac207e0e0bfe4a15c646985904953a21386f549e1eca9f"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/source-created.json",
+      "sha256": "d177baf8e682ded90eac207e0e0bfe4a15c646985904953a21386f549e1eca9f"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/source-inventory.json",
+      "sha256": "ca99371b3f68be4093fc2599fca1efcc11bf2b945d06d7462f22e12e6425bd80"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122g/staged-inputs.json",
+      "sha256": "72003a2e23d4b925418344b842eb2136f9b203bf1e92741211ecf5c8faa64605"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/arm-release-version-applicability.json",
+      "sha256": "ebb0343fadf8b4904d4c24d633dececf79a8f50ee8cc872ace676ea2ef48d046"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/UPG-15.json",
+      "sha256": "c1772a51a2e2d32d0d665068505a8e7957349030e48f242491f284fe31b95232"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/UPG-01.json",
+      "sha256": "1ef8d07c3d93853e6775784526ce7714e2a2d6d2751d1b6ba804e38a9cac5188"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/UPG-02-arm-supplement.json",
+      "sha256": "63a3244146e08ad84a5c09e51fe1f688f4a2da45bcb1f43a84721082956af10e"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/UPG-03-arm-supplement.json",
+      "sha256": "625fb457f523dbeaacfccc05d2afab03dc93ac5d888649ff758d3e5b6ca779ac"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/UPG-04-arm-supplement.json",
+      "sha256": "6d1ed3e88b538b993c2eb9310648af9f5e0390beb9ef4c73c31a517aa08046ca"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/UPG-05.json",
+      "sha256": "bc88bd34429bcd327de86ad41b8633d9f5341c721166529946e58fd1ef58d87d"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/UPG-06.json",
+      "sha256": "f321d78e2860b0007a73853eb37b90172258f5b1cc17129b94928a771a310bbb"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/UPG-07.json",
+      "sha256": "a4504e8b6985d9e4a7244dd494b8ca17252c909fac1275443a95c7497a2ad0d1"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/UPG-08-arm-supplement.json",
+      "sha256": "8a5a279e68189fa2e7b19f57c310f87422b5f8ce6f96b64ed2e7120165e75ae5"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/UPG-09-arm-supplement.json",
+      "sha256": "1c44c42276416726733123c965b2c04ae3e547015cbba99b87390c9b7aeff6f1"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/UPG-10.json",
+      "sha256": "73aafbb4f62e595d7445d714227c8499ce4bc37ef1d4453ccf21fad7600763dc"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/UPG-11.json",
+      "sha256": "6ad172af50fe8dd21589fe49c33fd4af54f4b887b139c23b9e030c9530a8882f"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/UPG-12-arm-supplement.json",
+      "sha256": "d1559a20008c033477165f6c920e1393c1e27342f6b59861f8d1a2964d9f6549"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/UPG-13-arm-supplement.json",
+      "sha256": "ee40e007be95b12617a3b322e10a6a118b0964203bf3db2f947345b97cd50b27"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/UPG-14-arm-supplement.json",
+      "sha256": "02c2423e8d6d0f5f2713c7a70d37bb621303857ffa099a452d589c134a21b7ce"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/UPG-15-arm-supplement.json",
+      "sha256": "35f7eaf74214d122f8a41aeb05a638508226accb475be3db80bce20f3e1948f0"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/arm-publication-metadata-review.json",
+      "sha256": "0a795e7089ecb2c179a5651bd68752ab159d2231860c0b9c800646576dcf77a9"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/product-arm-publication.json",
+      "sha256": "b30f3e1a9be07d969e626d8706913238a16cde5eccd5e75869ac88cc92155d01"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/UPG-14-arm-closeout.json",
+      "sha256": "7741046ce8402f6505fad9a09fcdce08d6bc20b9fab984c7589f2f21000f2e95"
+    }
+  ],
+  "applicability": {
+    "conditions": "原Kubernetes/AMD64原始验收按既有身份保留；本run在ARM101以真实产品CLI完成五阶段和限定清理。",
+    "differences": "final使用v0.1.10显示版本和已核验的本次产品输入；只补原生ARM Harbor。",
+    "reason": "现有Kubernetes、其它组件及AMD64路径没有本次变化的运行依赖；补充包只进入受管ARM主机的Harbor分支，不把旧证据改签本run。"
+  },
+  "case_ids": [
+    "UPG-15"
+  ],
+  "covered_subcases": [
+    "final-prerequisite-refusal-before-mutation",
+    "clean-source-minor-upgrade-main-chain",
+    "clean-target-install-idempotence-and-affected-readback",
+    "durable-zero-zero-failure-and-final-cleanup",
+    "harbor-qualified-migration-new-install-and-recovery",
+    "harbor-native-arm64-scoped-final-run"
+  ],
+  "success_marker": "UPGRADE_NEXT_FINAL_PASS",
+  "claim": "原UPG-15已接受Kubernetes七步与AMD64 Harbor六步保持原run及原输入；本次final模式在01至14当前有效后，从干净ARM101完成源账本、IabSDocker2144到官方216迁移与幂等、原点恢复、官方216干净新建与幂等、完整私有归档及限定清理五阶段。每阶段首尝试双0、父双0、零失败、原身份权限/真实内容保持、owner释放及LAB_CLEAN_VERIFY_PASS齐全；不重跑其它组件。",
+  "business_assertions": [
+    "all14-prerequisites-current-before-mutation",
+    "clean-five-phase-native-arm-final",
+    "original-and-new-ledgers-preserved-in-declared-boundaries",
+    "all-phase-durable-zero-no-failures",
+    "private-recovery-archive-verified-before-removal",
+    "runtime-restored-and-owner-released",
+    "original13-stage-final-retained-by-reference"
+  ],
+  "post_run_publication_note": "只闭合正式发行身份、文档和当前引用；原现场run、产品输入、业务断言及清理证据保持不变。原记录保留原字节，本记录不宣称新增现场执行。"
+}

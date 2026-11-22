@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "accepted": true,
+  "source": "v1.35.10",
+  "target": "v1.36.6",
+  "case_ids": [
+    "UPG-02"
+  ],
+  "method": "analysis",
+  "claim": "相邻minor精确pin及30个组件域的组合、迁移边和官方来源力度保持不变。AMD64采用2.13→官方2.14.6→官方2.16，ARM64采用2.13→IabSDocker2.14.4→官方2.16的同CPU桥接；第三方完整构建源码不可公开核实，不视为官方构建或安全认证。原生迁移/恢复/新装验收见UPG-12/13/15，正式v0.1.10发行见独立发布记录；组合审查不代签运行、跨CPU迁移或客户签收。",
+  "covered_subcases": [
+    "exact-adjacent-kubernetes-stable-pin",
+    "every-catalog-component-has-decision-pin-and-transition-edge",
+    "official-evidence-strength-and-noncertification-boundaries",
+    "eol-and-transition-only-components-are-explicit"
+  ],
+  "inputs": {
+    "upgrade/v1.36.6/release.yaml": "7f28c189975edf9449b6e4a933b55f188ea836e4ae592f4a6f93ec9cd414f708"
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.36.6/evidence/combination-review.json",
+      "sha256": "c486b5e34c893c86092961477d80f504bfe4a0b4283fa2f8c2e0a705dc2145e5"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/completion-metadata-review.json",
+      "sha256": "4942cddf581460fc537946c89afe7ae1f8f70ee7fadab0b947642f38b5b85a40"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/UPG-02.json",
+      "sha256": "b0ae9eb1bd42d2e9cadc9d41ab797761166bacaa81ae32ff2596f0d07a359480"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-content/harbor-v2.14.4-iabs-arm64-image-content.json",
+      "sha256": "3c0e7e61b80c08be8595ab5964fdddf1dcb5199c096fbdf1c3381e0c197786e0"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/UPG-02-arm-supplement.json",
+      "sha256": "63a3244146e08ad84a5c09e51fe1f688f4a2da45bcb1f43a84721082956af10e"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/arm-publication-metadata-review.json",
+      "sha256": "0a795e7089ecb2c179a5651bd68752ab159d2231860c0b9c800646576dcf77a9"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/product-arm-publication.json",
+      "sha256": "b30f3e1a9be07d969e626d8706913238a16cde5eccd5e75869ac88cc92155d01"
+    }
+  ],
+  "applicability": {
+    "conditions": "固定版本及官方资料快照可读且摘要一致；适用性按tested、支持声明、最低版本、稳定API、源码和上游过程分别评估。",
+    "differences": "本跳不重演维护基线已有etcd/runtime/CNI引擎迁移；Harbor数据库、缓存与跨架构路线须由后续真实场景证明，组合冻结不授权未知路径。",
+    "reason": "本项仅审查组合及已确定的迁移设计；既有用户接受的非逐版认证与生命周期过渡边界保留。完整目录消化、产品集成和恢复由对应矩阵另验。"
+  },
+  "customer_signoff": null,
+  "post_run_publication_note": "只闭合正式发行身份、文档和当前引用；原现场run、产品输入、业务断言及清理证据保持不变。原记录保留原字节，本记录不宣称新增现场执行。"
+}

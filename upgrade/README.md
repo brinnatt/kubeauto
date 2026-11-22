@@ -10,7 +10,7 @@
 最近完成的升级验收为 `v1.35.10 → v1.36.6`，Harbor 已按官方支持路径升至
 `v2.16.0`，使用官方 AMD64/ARM64 制品。进入 [固定组合](v1.36.6/release.yaml)、
 [验收范围](v1.36.6/acceptance-plan.yaml)、[矩阵](v1.36.6/test-matrix.yaml) 与
-[正式产品发布证据](v1.36.6/evidence/product-publication.json)核对当前状态和制品身份。
+[正式产品发布证据](v1.36.6/evidence/product-arm-publication.json)核对当前状态和制品身份。
 原运行验收使用 x86；本轮追加 Harbor 原生 ARM64 补充，选定 IabSDocker 2.14.4
 仅作过渡，最终仍为官方 2.16.0。当前补充尚未验收，见
 [ARM 补充记录](v1.36.6/evidence/harbor-arm64-supplement.json)，不扩展其它组件回归。

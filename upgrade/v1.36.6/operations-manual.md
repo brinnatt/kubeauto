@@ -5,11 +5,15 @@
 使用前先核对[交付组合](release.yaml)和[验收矩阵](test-matrix.yaml)：待验收路径
 不得用于客户生产，本文中的操作定义不代表这些路径已经验收或客户已经签收。
 
-既有产品发行 [v0.1.9](https://github.com/brinnatt/kubeauto/releases/tag/v0.1.9) 保留原验收范围，
-运行镜像为 `hub.talkedu.cn/kubeauto/kubeauto:v0.1.9`，保留
-`brinnatt/kubeauto:v0.1.9` 回退。选择与控制机 CPU 对应的二进制，并按发行文件校验
-SHA256；精确源码、构建和双架构镜像摘要见[发布记录](evidence/product-publication.json)。
-本次 ARM 2.14.4 桥接需要新修订 `v0.1.10`；它完成验收及正式发布前，不能用旧发行执行本文新增 ARM 路线。镜像和二进制的发布成功不替代客户现场的源状态、恢复点及维护窗口检查。
+当前产品发行 [v0.1.10](https://github.com/brinnatt/kubeauto/releases/tag/v0.1.10)
+包含已验收的 ARM 2.14.4 桥接实现。运行镜像为
+`hub.talkedu.cn/kubeauto/kubeauto:v0.1.10`，保留 `brinnatt/kubeauto:v0.1.10`
+和 `ghcr.io/brinnatt/kubeauto:v0.1.10` 回退。选择与控制机 CPU 对应的二进制，
+按发行文件校验 SHA256；精确源码、构建和三端双架构摘要见
+[当前发布记录](evidence/product-arm-publication.json)。原
+[v0.1.9 发布记录](evidence/product-publication.json)保留历史范围，该旧发行不含新增 ARM 桥接。
+本次原生 ARM 已完成迁移、原点恢复、干净新建与幂等验收；镜像和二进制发布成功
+仍不能替代客户现场的源状态、恢复点及维护窗口检查。
 
 任务导航：[准备Kubernetes升级](#准备kubernetes升级) · [执行与续跑](#执行与续跑)
 · [Harbor](#harbor) · [私有制品使用](#私有制品使用) · [日常运维](#日常运维)

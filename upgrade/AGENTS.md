@@ -13,7 +13,7 @@
 最近完成的升级验收为 `v1.35.10 → v1.36.6`，同时将 Harbor 迁移至官方双架构
 `v2.16.0` GA。目标组合与当前验收状态见 [本跳记录](v1.36.6/release.yaml) 和
 [本跳矩阵](v1.36.6/test-matrix.yaml)；正式产品发布状态与身份见
-[发布证据](v1.36.6/evidence/product-publication.json)。不得将已完成步骤当作待执行任务；
+[当前发布证据](v1.36.6/evidence/product-arm-publication.json)（原 v0.1.9 身份保留在旧发布记录中）。不得将已完成步骤当作待执行任务；
 后续 minor 尚未授权，不自动开始下一跳。
 本次任务以用户当次明确的目标和范围为准；历史授权不自动延伸为重跑旧升级或
 实施下一 minor 的授权。进入后续升级前，先确认精确目标版本与实施范围，分支
@@ -25,7 +25,7 @@
 交付负责人已追加授权仅补 Harbor 原生 ARM64 验收，并选择
 [`IabSDocker/harbor`](https://github.com/IabSDocker/harbor) 提供 ARM 过渡包；
 目标仍为官方 `v2.16.0`，不扩展 Kubernetes 或其它组件回归。
-选定制品、供应链核查及待补出口见
+选定制品、供应链核查、验收结果及交付边界见
 [ARM 补充记录](v1.36.6/evidence/harbor-arm64-supplement.json)。
 原 x86/Kubernetes 验收保留原身份；新增 ARM 同CPU桥接、恢复、新建与最终验收
 已由本跳矩阵补充证据闭合。第三方包仍仅作过渡，不标为官方构建；生产使用须采用

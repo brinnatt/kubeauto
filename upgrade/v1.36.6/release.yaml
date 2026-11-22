@@ -31,7 +31,7 @@ component_decisions:
   - UPG-02
   - UPG-04
   - UPG-15
-  rationale: 本次新增Harbor ARM2144桥接，须在补充验收后发布kubecli-only修订v0.1.10；既有v0.1.9发布身份保留在evidence/product-publication.json，不将其当成本次ARM桥接制品。保留Python/Ansible配套与独立tools边界。
+  rationale: Harbor ARM2144桥接已完成原生补充验收并发布kubecli-only修订v0.1.10及单产品运行镜像；实际源码、三端双架构身份见evidence/product-arm-publication.json。既有v0.1.9发布身份保留在evidence/product-publication.json，不将其当成本次ARM桥接制品。保留Python/Ansible配套与独立tools边界。
   transition_edges:
   - edge_id: product-k8s13510-to1366
     source: 已接受v1.35.10维护基线及实际现场身份

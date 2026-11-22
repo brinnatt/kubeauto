@@ -17,7 +17,7 @@
     "UPG-15"
   ],
   "build_inputs_sha256": "91c86a2569b3a3425eda4d9b0789e5bc3516378461caafb9ed81824d9bd1df5f",
-  "matrix_sha256": "bf3c94a55bc62ea9afee67edf95639f4a3efc24ebf53091021e5a98220956ea0",
+  "matrix_sha256": "430ca49e0e72b52cf24f8950c979fc32777877401d4261a4e43b7b97b349af8b",
   "runtime_data": {
     "upgrade/product/api-auth-observe.yml": "6c3fa82c10570193cc9c3a4d39fc87add749ffe2771604d23390f5cde2ce4093",
     "upgrade/product/api-auth.yml": "b25ddd0eaa687685fb0dda80cff2cc20e2a89f0f872cbb62df2158b405911498",

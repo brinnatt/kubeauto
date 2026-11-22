@@ -72,9 +72,7 @@
     "lease_acquired": false,
     "boundary": "只读盘点与已授权 SSH 密钥引导；未启动 Docker 服务、部署 Harbor 或取得有状态测试租约。"
   },
-  "remaining_acceptance": [
-    "原生ARM本范围矩阵已闭合；待v0.1.10二进制/单产品镜像正式发布和六仓分支收尾。"
-  ],
+  "remaining_acceptance": [],
   "publication": {
     "triggered": true,
     "allowed_builds": [
@@ -157,7 +155,7 @@
     "boundary": "准入只允许为本次已授权的最小集成固定第三方包；不是安全认证、官方ARM认证、运行成功或GA。"
   },
   "product_adaptation": {
-    "state": "native qualification and final accepted; v0.1.10 publication pending",
+    "state": "native qualification and final accepted; v0.1.10 binary and product image published",
     "amd64_bridge": "official v2.14.6",
     "arm64_bridge": "IabSDocker v2.14.4, pinned SHA256",
     "selection": "managed-host architecture; CLI passes neutral bridge key",
@@ -354,5 +352,13 @@
       "path": "upgrade/v1.36.6/evidence/UPG-15-arm-supplement.json",
       "sha256": "35f7eaf74214d122f8a41aeb05a638508226accb475be3db80bce20f3e1948f0"
     }
+  },
+  "product_release": {
+    "path": "upgrade/v1.36.6/evidence/product-arm-publication.json",
+    "sha256": "b30f3e1a9be07d969e626d8706913238a16cde5eccd5e75869ac88cc92155d01"
+  },
+  "metadata_closeout": {
+    "path": "upgrade/v1.36.6/evidence/arm-publication-metadata-review.json",
+    "sha256": "0a795e7089ecb2c179a5651bd68752ab159d2231860c0b9c800646576dcf77a9"
   }
 }

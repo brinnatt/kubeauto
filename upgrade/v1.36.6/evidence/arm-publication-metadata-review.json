@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "classification": "publication-and-completion-metadata-only",
+  "original_source_commit": "a36d97a7dbe87022b073d90755f5b0c700f011a6",
+  "records": [
+    {
+      "before": {
+        "path": "upgrade/v1.36.6/evidence/source/arm-publication-closeout/release.yaml",
+        "sha256": "d4547e15acbdf211e7a5ec4c7143ffda6beec6da9e71acafc9189ca966a993fc"
+      },
+      "after": {
+        "path": "upgrade/v1.36.6/release.yaml",
+        "sha256": "7f28c189975edf9449b6e4a933b55f188ea836e4ae592f4a6f93ec9cd414f708"
+      }
+    },
+    {
+      "before": {
+        "path": "upgrade/v1.36.6/evidence/source/arm-publication-closeout/research.yaml",
+        "sha256": "bdf4791398d37d9f386fa2e62d46d30412e18cf73119631004a1c3a4785b0858"
+      },
+      "after": {
+        "path": "upgrade/v1.36.6/research.yaml",
+        "sha256": "74dbbe2b3cfd46e839a037a15ee5bafe7acb52125fc24eafd19decd8ca9b59a2"
+      }
+    },
+    {
+      "before": {
+        "path": "upgrade/v1.36.6/evidence/source/arm-publication-closeout/operations-manual.md",
+        "sha256": "1c2c3a7b8e45ae140187a2e8acfaad6019ced71dbae0f71717e35651650710cb"
+      },
+      "after": {
+        "path": "upgrade/v1.36.6/operations-manual.md",
+        "sha256": "2d7025047cad0476ecd511ce52947aaf4f116319575814fa3aa3ba4dde3fc493"
+      }
+    }
+  ],
+  "unchanged": "精确组件pin、产品和门禁源码、实际制品、原运行输入/日志/退出状态不变；只把已完成的final及真实发布身份写回正文和导航。原签署记录保持原字节，未重跑或重签现场。",
+  "structured_comparison": {
+    "release_yaml_changed_fields": [
+      "/component_decisions/0/rationale"
+    ],
+    "research_yaml_changed_fields": [
+      "/harbor_native_arm64_bridge_supplement/runtime_boundary"
+    ],
+    "component_pins_and_transition_contracts_equal": true
+  },
+  "publication": {
+    "path": "upgrade/v1.36.6/evidence/product-arm-publication.json",
+    "sha256": "b30f3e1a9be07d969e626d8706913238a16cde5eccd5e75869ac88cc92155d01"
+  },
+  "static_check": {
+    "path": "upgrade/v1.36.6/evidence/raw/harbor-content/arm-publication-document-static.json",
+    "sha256": "da550c3d896c021859a76c91ab87c668c9488a2541ec170becfc0328f278fc46"
+  },
+  "author_review": [
+    {
+      "requirement": "首次实施者取得当前可执行制品",
+      "location": "operations-manual.md前言",
+      "result": "当前Release、三端镜像、架构选择和SHA校验连续衔接；旧版缺少ARM桥接边界保留。"
+    },
+    {
+      "requirement": "熟练运维核对已验收与未验收范围",
+      "location": "operations-manual.md前言、research.yaml ARM补充、release.yaml product rationale",
+      "result": "原生迁移/原点恢复/新装/幂等与f/g证据对应；第三方源码与跨CPU未验收边界不变。"
+    },
+    {
+      "requirement": "来源与图文不因发布变动失真",
+      "location": "三手册原96目录研究、document-arm-review.json",
+      "result": "没有新增技术行为、来源、命令参数或图形；复用既有内容及图形审查，只复核发布入口和完成措辞。"
+    }
+  ],
+  "customer_signoff": null
+}

@@ -1735,4 +1735,4 @@ harbor_native_arm64_bridge_supplement:
     operations: upgrade/v1.36.6/operations-manual.md#harbor
     mechanism: upgrade/v1.36.6/technical-whitepaper.md#数据保护与架构迁移
     maintenance: upgrade/v1.36.6/development-manual.md#harbor维护接口
-  runtime_boundary: 原生ARM101资格五阶段已通过（v1366-harbor-arm-20261122f、双0与限定清理）；UPG-12/13补充已验收，final另验。不扩Kubernetes或其它组件，不推导跨CPU逻辑迁移或性能。
+  runtime_boundary: 原生ARM101资格f与最终g均完成五阶段、双0、零失败及限定清理（v1366-harbor-arm-20261122f/g）；UPG-12/13/15补充已验收，v0.1.10正式发行身份见evidence/product-arm-publication.json。不扩Kubernetes或其它组件，不推导跨CPU逻辑迁移或性能。
