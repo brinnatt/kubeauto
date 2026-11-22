@@ -4,7 +4,7 @@ meta:
   component: kubernetes-minor-upgrade
   source: v1.35.10
   target: v1.36.6
-  phase: ga-readiness-accepted
+  phase: ga-readiness-accepted-with-native-harbor-arm64
   execution_enabled: true
   runner: upgrade/lab/next-session.sh
   validator: upgrade/validate.py
@@ -64,7 +64,7 @@ cases:
   group: U0
   desc: 官方版本搭配、过渡路径及维护边界
   status: pass
-  evidence: upgrade/v1.36.6/evidence/UPG-02.json
+  evidence: upgrade/v1.36.6/evidence/UPG-02-arm-supplement.json
   depends_on:
   - UPG-01
   component_ids:
@@ -122,7 +122,7 @@ cases:
   group: U1
   desc: 最小制品集合与双端双架构准入
   status: pass
-  evidence: upgrade/v1.36.6/evidence/UPG-03.json
+  evidence: upgrade/v1.36.6/evidence/UPG-03-arm-supplement.json
   depends_on:
   - UPG-02
   - UPG-04
@@ -154,7 +154,7 @@ cases:
   group: U1
   desc: 升级门禁、产品与六仓静态合同
   status: pass
-  evidence: upgrade/v1.36.6/evidence/UPG-04.json
+  evidence: upgrade/v1.36.6/evidence/UPG-04-arm-supplement.json
   depends_on:
   - UPG-02
   component_ids:
@@ -283,7 +283,7 @@ cases:
   group: U3
   desc: 各支持网络、DNS 与 Service 连续性
   status: pass
-  evidence: upgrade/v1.36.6/evidence/UPG-08.json
+  evidence: upgrade/v1.36.6/evidence/UPG-08-arm-supplement.json
   depends_on:
   - UPG-07
   component_ids:
@@ -318,7 +318,7 @@ cases:
   group: U3
   desc: 持久存储、CSI 与快照数据保持
   status: pass
-  evidence: upgrade/v1.36.6/evidence/UPG-09.json
+  evidence: upgrade/v1.36.6/evidence/UPG-09-arm-supplement.json
   depends_on:
   - UPG-07
   component_ids:
@@ -426,7 +426,7 @@ cases:
   group: U4
   desc: 升级中断、限定恢复与不可逆边界
   status: pass
-  evidence: upgrade/v1.36.6/evidence/UPG-12.json
+  evidence: upgrade/v1.36.6/evidence/UPG-12-arm-supplement.json
   depends_on:
   - UPG-06
   - UPG-07
@@ -444,11 +444,10 @@ cases:
   disproof: 改动journal集群身份或输入、重复不可逆步骤必须拒绝；恢复后保留确认数据边界。
   disproof_command: .venv/bin/python -B -m unittest upgrade.tests.test_harbor_migration
     upgrade.tests.test_harbor_session upgrade.tests.test_node -v
-  runner_command: bash upgrade/lab/harbor-control.sh launch v1366-harbor-portable-20261121a
-    portable
-  success_marker: UPGRADE_NEXT_PDB_REFUSAL_PASS
+  runner_command: bash upgrade/lab/harbor-control.sh launch v1366-harbor-arm-20261122f qualify
+  success_marker: HARBOR_ARM_ORIGINAL_RESTORE_PASS
   official_source_ids: []
-  fixture: runner所属独立夹具；精确版本、拓扑、归属与run/change ID待P3/P4冻结
+  fixture: 原Kubernetes/AMD64验收按原身份复用；新增仅ARM101，固定五阶段及独占租约，详见acceptance-plan.yaml harbor_native_arm64_supplement
   cleanup: 只回收本轮所属对象/故障/进程/租约，验证前后边界；最终项另需LAB_CLEAN_VERIFY_PASS
   subcases:
   - journal-binding-and-exclusive-owner-refusal
@@ -456,6 +455,7 @@ cases:
   - accepted-boundary-resume-and-adjacent-runtime-edges
   - completed-order-and-no-downgrade-observation
   - harbor-stopped-consistent-backup-and-restored-business-identity
+  - harbor-native-arm64-via-iabs2144-migration-and-original-restore
   subcase_expansion_complete: true
   planned_evidence_methods:
   - archived-project-evidence
@@ -467,7 +467,7 @@ cases:
   group: U5
   desc: 目标干净新建安装与幂等
   status: pass
-  evidence: upgrade/v1.36.6/evidence/UPG-13.json
+  evidence: upgrade/v1.36.6/evidence/UPG-13-arm-supplement.json
   depends_on:
   - UPG-03
   - UPG-04
@@ -482,11 +482,11 @@ cases:
   product_entry: config.yml + kubecli setup90; independent Harbor config.yml + kubecli
     setup01/03/11
   disproof: 缺失旧环境隐式资源时目标新安装也须成立；第二遍不得重建身份或丢业务。
-  disproof_command: bash upgrade/lab/next-control.sh status v1366-qualify-20261121a
-  runner_command: bash upgrade/lab/next-control.sh launch qualify v1366-qualify-20261121a
-  success_marker: UPGRADE_NEXT_INSTALL_PASS
+  disproof_command: bash upgrade/lab/harbor-control.sh status v1366-harbor-arm-20261122f
+  runner_command: bash upgrade/lab/harbor-control.sh launch v1366-harbor-arm-20261122f qualify
+  success_marker: HARBOR_ARM_CLEAN_INSTALL_IDEMPOTENCE_PASS
   official_source_ids: []
-  fixture: runner所属独立夹具；精确版本、拓扑、归属与run/change ID待P3/P4冻结
+  fixture: 原Kubernetes/AMD64验收按原身份复用；新增仅ARM101，固定五阶段及独占租约，详见acceptance-plan.yaml harbor_native_arm64_supplement
   cleanup: 只回收本轮所属对象/故障/进程/租约，验证前后边界；最终项另需LAB_CLEAN_VERIFY_PASS
   subcases:
   - independent-clean-target-install-through-config-and-kubecli
@@ -494,6 +494,7 @@ cases:
   - metrics-api-readyz-and-no-failed-pods
   - second-setup-idempotence-and-image-digest-readback
   - harbor-2160-clean-install-authentication-push-pull
+  - harbor-native-arm64-official216-clean-install-and-idempotence
   subcase_expansion_complete: true
   planned_evidence_methods:
   - archived-project-evidence
@@ -505,7 +506,7 @@ cases:
   group: U6
   desc: 客户升级步骤、来源覆盖与交付身份
   status: pass
-  evidence: upgrade/v1.36.6/evidence/UPG-14.json
+  evidence: upgrade/v1.36.6/evidence/UPG-14-arm-supplement.json
   depends_on:
   - UPG-02
   - UPG-06
@@ -572,7 +573,7 @@ cases:
   group: U7
   desc: 下一跳最终干净完整范围验收
   status: pass
-  evidence: upgrade/v1.36.6/evidence/UPG-15.json
+  evidence: upgrade/v1.36.6/evidence/UPG-15-arm-supplement.json
   depends_on:
   - UPG-01
   - UPG-02
@@ -625,10 +626,10 @@ cases:
   disproof: 任一前置pending/stale时不变更；运行计划提前结束、模块失败或清理不完整时不得输出最终PASS。
   disproof_command: .venv/bin/python -B -m unittest upgrade.tests.test_next_session
     upgrade.tests.test_harbor_session -v
-  runner_command: bash upgrade/lab/next-control.sh launch final v1366-final-20261121c
+  runner_command: bash upgrade/lab/harbor-control.sh launch v1366-harbor-arm-20261122g final
   success_marker: UPGRADE_NEXT_FINAL_PASS
   official_source_ids: []
-  fixture: 固定六节点独占池；Kubernetes 7阶段后Harbor 6阶段，同组共享锁内顺序交接。原GA深测按前置复用，无镜像构建/无无关深测。
+  fixture: 原已接受Kubernetes七阶段与AMD64 Harbor六阶段按原身份复用；新增ARM101独占的Harbor五阶段，final模式先核验01至14，不重跑其它组件。
   cleanup: 只回收本轮所属对象/故障/进程/租约，验证前后边界；最终项另需LAB_CLEAN_VERIFY_PASS
   subcases:
   - final-prerequisite-refusal-before-mutation
@@ -636,6 +637,7 @@ cases:
   - clean-target-install-idempotence-and-affected-readback
   - durable-zero-zero-failure-and-final-cleanup
   - harbor-qualified-migration-new-install-and-recovery
+  - harbor-native-arm64-scoped-final-run
   subcase_expansion_complete: true
   planned_evidence_methods:
   - archived-project-evidence

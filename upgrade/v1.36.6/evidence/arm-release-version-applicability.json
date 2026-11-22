@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "change": "v_kubeauto display/release identity only: v0.1.9 to v0.1.10",
+  "before_sha256": "f1a09af57ad4b6aea36c3a6454190220fca2a34e0ebecf408d218f7b04a5f81f",
+  "after_sha256": "5545540f862751b6d17cec510225e797deec927203cf7a5e5a82e9508c3e5595",
+  "all_other_bytes_equal": true,
+  "component_pins_changed": false,
+  "no_new_network_or_storage_runtime_claim": true
+}

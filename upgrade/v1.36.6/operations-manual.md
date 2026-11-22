@@ -5,11 +5,11 @@
 使用前先核对[交付组合](release.yaml)和[验收矩阵](test-matrix.yaml)：待验收路径
 不得用于客户生产，本文中的操作定义不代表这些路径已经验收或客户已经签收。
 
-本跳正式产品发行是 [v0.1.9](https://github.com/brinnatt/kubeauto/releases/tag/v0.1.9)，
+既有产品发行 [v0.1.9](https://github.com/brinnatt/kubeauto/releases/tag/v0.1.9) 保留原验收范围，
 运行镜像为 `hub.talkedu.cn/kubeauto/kubeauto:v0.1.9`，保留
 `brinnatt/kubeauto:v0.1.9` 回退。选择与控制机 CPU 对应的二进制，并按发行文件校验
 SHA256；精确源码、构建和双架构镜像摘要见[发布记录](evidence/product-publication.json)。
-镜像和二进制的发布成功不替代客户现场的源状态、恢复点及维护窗口检查。
+本次 ARM 2.14.4 桥接需要新修订 `v0.1.10`；它完成验收及正式发布前，不能用旧发行执行本文新增 ARM 路线。镜像和二进制的发布成功不替代客户现场的源状态、恢复点及维护窗口检查。
 
 任务导航：[准备Kubernetes升级](#准备kubernetes升级) · [执行与续跑](#执行与续跑)
 · [Harbor](#harbor) · [私有制品使用](#私有制品使用) · [日常运维](#日常运维)
@@ -144,8 +144,42 @@ Harbor独立维护，不调用Kubernetes升级或重放全部中间件。项目�
 | 源 | 路径 | 限制 |
 | --- | --- | --- |
 | AMD64 2.13.0 | 原点完整备份 → 官方AMD64 2.14.6 → 官方AMD64 2.16.0 | 不允许2.13直接进入2.16 |
-| 第三方ARM64 2.13.0 | 原点备份/逻辑导出 → 干净AMD64 2.14.6 → AMD64 2.16.0 → 干净官方ARM64 2.16.0逻辑恢复 | 属项目集成路径；本次在x86验证逻辑迁移机制，未经原生ARM及跨CPU实测，不可照AMD原地步骤执行 |
+| 第三方ARM64 2.13.0 | 原点完整备份 → IabSDocker ARM64 2.14.4 → 官方ARM64 2.16.0 | 同CPU原地迁移；第三方仅作过渡，原生补充验收状态见本跳矩阵；不能使用AMD64 2.14.6包 |
 | 干净AMD64或ARM64 | 官方对应架构2.16.0新建 | 目录必须无旧数据库、密钥、Registry及停止的安装 |
+
+ARM过渡包来自 [IabSDocker v2.14.4发行](https://github.com/IabSDocker/harbor/releases/tag/v2.14.4)，
+固定文件 `harbor-offline-installer-v2.14.4_arm64.tgz`，SHA256：
+
+```text
+524ab0439cdb421f3226c689c5d5799f9e4dda6dd3a26dbdf0cc2311690e0626
+```
+
+该包是第三方构建，不具有官方发行签名或上游逐架构认证。公开GitHub仓只提供分发
+资料，其指向的构建源码需要认证；当前核查不能证明全部源码与官方无差异。已核对
+包内12个镜像均为ARM64、固定版本及关键迁移脚本；这些结论不等于安全认证。
+过渡结束后运行官方2.16.0，不长期维护第三方2.14.4。若组织要求全部构建源码可审计，
+应停在选型阶段，不能将本路线写成满足该要求。
+
+项目分发镜像为 `hub.talkedu.cn/kubeauto/harbor-upgrade-bridge-arm64:v2.14.4-iabs.1`，
+Docker Hub回退为 `brinnatt/harbor-upgrade-bridge-arm64:v2.14.4-iabs.1`。双架构包装内
+都是同一个ARM安装包，不能在AMD64上运行它。在Harbor主机准备独立包目录
+`/srv/packages`，先确认目录可写、目标文件不存在且容器名`harbor-arm-bridge-package`
+未占用；每条命令非零立即停止，不继续复制或删除。然后提取：
+
+```bash
+docker pull hub.talkedu.cn/kubeauto/harbor-upgrade-bridge-arm64:v2.14.4-iabs.1
+docker create --name harbor-arm-bridge-package \
+  hub.talkedu.cn/kubeauto/harbor-upgrade-bridge-arm64:v2.14.4-iabs.1
+docker cp harbor-arm-bridge-package:/harbor/harbor-offline-installer-v2.14.4.tgz \
+  /srv/packages/harbor-offline-installer-v2.14.4.tgz
+docker rm harbor-arm-bridge-package
+printf '%s  %s\n' \
+  524ab0439cdb421f3226c689c5d5799f9e4dda6dd3a26dbdf0cc2311690e0626 \
+  /srv/packages/harbor-offline-installer-v2.14.4.tgz | sha256sum -c -
+```
+
+提取只创建未运行的包装容器，最后仅删除该容器，不覆盖既有包或容器。SHA核对失败保留首因并
+重新核查来源，不继续迁移。AMD64保持官方2.14.6路线，不下载此ARM过渡包。
 
 官方最低资源2CPU/4GB/40GB，推荐4CPU/8GB/160GB。按实际数据再预留完整数据副本、
 原镜像archive、目标解包与失败隔离空间，不能把“40GB磁盘”理解成迁移总空间足够。
@@ -174,7 +208,7 @@ ARM64使用`arm64`文件名。预期`Verified OK`，签名验证失败或结果�
 [签名证据](evidence/harbor-official-signatures.json)。上面的Cosign命令是官方提供的
 同类验证入口，本记录没有将Python验证结果表述为Cosign执行结果。
 
-### 原点备份、AMD64迁移与恢复
+### 原点备份、同CPU迁移与恢复
 
 在控制机使用原集群配置，`[harbor]`只允许一个明确管理主机。原`harbor.yml`是密码、
 端口、存储与TLS的权威，备份入口读取它；不能用新模板生成随机密码覆盖原配置。
@@ -189,6 +223,8 @@ export HARBOR_BACKUP=/srv/harbor-recovery/pre-216
 export HARBOR_CA=/etc/kubernetes/ssl/ca.pem
 export HARBOR_BRIDGE=/srv/packages/harbor-offline-installer-v2.14.6.tgz
 export HARBOR_TARGET=/srv/packages/harbor-offline-installer-v2.16.0.tgz
+# ARM64主机使用下一行替代上面的AMD64桥接包路径：
+# export HARBOR_BRIDGE=/srv/packages/harbor-offline-installer-v2.14.4.tgz
 kubecli upgrade "$CLUSTER" --harbor backup \
   --harbor-backup-dir "$HARBOR_BACKUP" --harbor-ca-file "$HARBOR_CA"
 ```
@@ -210,7 +246,8 @@ kubecli upgrade "$CLUSTER" --harbor upgrade \
   --harbor-target-package "$HARBOR_TARGET"
 ```
 
-产品按检查点完成桥接、schema/数据迁移、目标启动与健康确认。迁移失败先停止，
+产品以受管Harbor主机的真实CPU选择桥接：AMD64为2.14.6，ARM64为2.14.4，控制机CPU不参与该选择。
+包路径必须位于受管主机；错误CPU或包SHA在迁移前拒绝。产品按检查点完成桥接、schema/数据迁移、目标启动与健康确认。迁移失败先停止，
 保留恢复目录中的`receipt.json`、`commands.log`及`first-failure.json`。不要另做一次
 备份取代原点，也不要在已迁移数据库上启动旧服务。成功后仍在维护窗口内用原项目、
 原用户/机器人、原制品digest验证内容、允许拉取及拒绝越权推送，核对队列状态和
@@ -239,7 +276,22 @@ kubecli upgrade "$CLUSTER" --harbor restore --harbor-backup-dir "$HARBOR_BACKUP"
 
 对应[AMD64迁移证据](evidence/harbor-amd64-migration-qualification.json)与
 [原点恢复证据](evidence/harbor-amd64-restore-qualification.json)仅覆盖这些操作。
-本次按交付负责人确定的范围在x86完成运行验收；ARM64核验官方来源、签名、双架构制品及静态依据，未经项目原生运行及跨CPU迁移实测。完整父项仍以本跳矩阵为准。
+本次原生ARM补充使用openEuler 22.03 LTS-SP4、4 KiB页、约14 GiB内存，
+Docker26.1.3及Compose2.27.0，保持同CPU、HTTPS原CA、内部数据库与本地文件存储，
+未启用Trivy、外置服务或internal TLS。实际结果如下：
+
+| ARM操作 | 已验证的业务结果 |
+| --- | --- |
+| 2.13经IabSDocker 2.14.4到官方2.16 | 九个运行容器为审核包内的ARM镜像；原项目ID 2、制品ID 1、manifest digest与实际层文件保持，原用户及只拉机器人仍可拉取、拒绝越权推送 |
+| 再次upgrade与原点restore | 重复升级不重建身份；恢复原2.13后直接读取同一原账本，项目/成员/机器人、原secret、digest和层内容保持；每次拉取前移除本地夹具缓存 |
+
+原账本的manifest digest为
+`sha256:c66d7e9e6c569189eeba110a0bac63b3ebc260da8ca9af8d8e874190af75b90d`，
+层文件SHA256为`517aef10289ebf4fbc9de74573596fc84f03d8d668d0d7075b8a5086dcfcd1a0`。
+这些是小型实验室账本的身份与内容判据，不是性能测试或客户数据保证。
+原生补充的完整状态见[矩阵UPG-12](test-matrix.yaml)；只在该项及最终项通过后交付此路线。
+
+上述原验收只包含x86运行与ARM来源、签名和静态检查。本次追加的同CPU ARM迁移、恢复与新建由独立原生补充范围验收；跨CPU逻辑迁移仍没有项目实测。完整父项以本跳矩阵为准。
 
 ### 逻辑迁移与目标撤回
 
@@ -256,7 +308,7 @@ kubecli new "$HARBOR_TARGET_CLUSTER"
 [干净新建](#干净新建)中的Docker库存要求编辑**目标**配置和库存，但不执行该节的
 整段安装命令，也不覆盖源集群变量。目标仅执行`setup 01`和`setup 03`，
 **此时不执行`setup 11`创建新数据库**。目标不得有旧数据、停止容器或独立生成的
-同名证书。原第三方ARM64 2.13必须先导入AMD64桥接主机；源为2.16时才可直接导入
+同名证书。若选择本节的逻辑迁移接口，原第三方ARM64 2.13必须先导入AMD64桥接主机；同CPU原地升级应使用前节ARM 2.14.4路线，不需要逻辑中转。源为2.16时才可直接导入
 官方2.16的对应CPU目标。本次原生实测CPU为x86，跨CPU没有项目实测。
 
 源完整备份成功后，在控制机导出：
@@ -402,8 +454,14 @@ kubecli setup "$CLUSTER" 11
 本跳在另一台原生AMD64、Rocky Linux 9.8主机以独立配置验证了官方2.16.0新建：
 私有项目、原创建用户及只拉机器人完成实际内容拉取与越权推送拒绝；第二次`setup 11`
 保持同一业务账本及身份，原迁移源未受影响。见
-[新建与幂等证据](evidence/harbor-amd64-clean-install-qualification.json)。此结果不包含
-原生ARM64新建，双架构交付状态仍以矩阵为准。
+[新建与幂等证据](evidence/harbor-amd64-clean-install-qualification.json)。此历史结果只覆盖AMD64；原生ARM64新建由本次补充范围独立验收，双架构交付状态以矩阵为准。
+
+本次另在原生ARM的干净Harbor数据边界通过`setup 11`安装官方2.16.0，创建独立
+私有项目、用户和只拉机器人；第二次`setup 11`为`changed=0`，原新建账本保持。
+其manifest digest为`sha256:a186b2a6f62ba493dbeec8dd5bb87d00f4ed43feff30d80ead9b1d633a5f3e6f`，
+层文件摘要与上表相同，原用户和机器人权限均通过实际允许/拒绝请求确认。
+该补充使用上一节列出的ARM运行时，不重演整机prepare、CRI或Kubernetes安装；
+完整新建与清理结论见矩阵UPG-13，不把它扩大为其它组件ARM验收。
 
 上述资格结束后，已按归属清理源、目标Harbor及运行时，复验六节点并释放共享租约；
 完整恢复档案仍在受控目录保存，未作为临时文件删除。见

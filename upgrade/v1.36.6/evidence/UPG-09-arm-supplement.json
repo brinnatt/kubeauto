@@ -1,0 +1,127 @@
+{
+  "schema_version": 1,
+  "accepted": true,
+  "source": "v1.35.10",
+  "target": "v1.36.6",
+  "case_ids": [
+    "UPG-09"
+  ],
+  "method": "analysis",
+  "claim": "目标真实迁移保留local-path原PVC/PV绑定与HTTP账本，drain后原数据重挂载通过；Ceph CSI3.17.2及Longhorn1.12.2官方目标版本覆盖和原GA存储/恢复证据复用，模板、CRD及自有补丁不变。OpenEBS仅kubectl helper跟随1.36.6，双端双架构发布与内容核验已通过；不把本轮本地卷当成Ceph/Longhorn现场数据测量。 本次仅产品发行显示版本变为v0.1.10，逐字节差异证明其余常量、组件pin和原运行路径未变，复用原网络/存储证据；不改签原运行身份，不新增ARM网络/存储主张。",
+  "covered_subcases": [
+    "target-cluster-storage-scope-and-no-pv-drift",
+    "local-storage-contract-and-node-path-ownership",
+    "ceph-csi-official-combination-reuse-boundary",
+    "longhorn-official-combination-reuse-boundary"
+  ],
+  "inputs": {
+    "roles/ceph/files/ceph-csi-cephfs-3.17.1.tgz": "100c00932b1969df63400e5bb477b5ef2701371fb350e5b8cb8c4fb2873aa117",
+    "roles/ceph/files/ceph-csi-cephfs-3.17.1.tgz.sha256": "3c1d60313e4bfdcdd4bd765865ac313f265a12d7dc28069799b37e1aceaba40b",
+    "roles/ceph/files/ceph-csi-rbd-3.17.1.tgz": "75527adefcdf248e9acd2e9759205ddf4fd444824157e3e1914cf9659544bffc",
+    "roles/ceph/files/ceph-csi-rbd-3.17.1.tgz.sha256": "56013c6375a12a18cc2e445652ddebfe3359f6694c4d8a8cdebacf5bfd5f5e9a",
+    "roles/ceph/files/kernel-client-check.py": "340dead99366ba4302f888a438a6454600962dad9b6759f6d92fbe52f83e4687",
+    "roles/ceph/tasks/cephadm.yml": "57f540406c268758a9c1d4c0e89f6841a9dfa9f1f493b133c2da953593d9398b",
+    "roles/ceph/tasks/client-preflight.yml": "86aedb774207dcb1e1d9d03794738afcbbbc6f1c1e606c21a3349f568d9534c6",
+    "roles/ceph/tasks/cluster.yml": "44c9f0ef620af283f48956f0b850becd2cc1896e6be418376e31fae0e5fc50ca",
+    "roles/ceph/tasks/csi.yml": "10e4727ab17a480e4da720d0a0e1568e43be07c224810ac78548282d2e4e7459",
+    "roles/ceph/tasks/host-prerequisites.yml": "944712c5487837603b898b6ed5323931c7e6b23f3cbf42ad8456218eca7a9afd",
+    "roles/ceph/tasks/main.yml": "4779da7d8aa4c61e1aa6184477d9bb5cb5b58a21ed5771dd7b916522be9b0ba9",
+    "roles/ceph/tasks/prepare.yml": "4f615737a0918f4f6283edc8f23c1dd09ddc0bb81eca2cd11b97136e4fee001d",
+    "roles/ceph/templates/bootstrap.conf.j2": "91fd67cf229edfa3cafe5fdbb0185d955ca570ebeb559f73df8667caaf158510",
+    "roles/ceph/templates/cluster-spec.yml.j2": "ba1d2eb0faee292ec82bc38f2bbc37cd8d5fa8f1ec64d1eda032786f155cee5e",
+    "roles/ceph/templates/csi-cephfs-values.yml.j2": "d19b9f88d01a103f59833aca5b7f29b32578006306d450b10f9d7e75dc4dfc10",
+    "roles/ceph/templates/csi-rbd-values.yml.j2": "499e3c2c18495ef32734b5d2675b143398b0d38ec63fa82207311ef3b021f78e",
+    "roles/ceph/templates/monitoring-spec.yml.j2": "6a966ae420eb67acd05df3a3acf9f1102bb7abd1e223536d2f93fa812432ce5e",
+    "roles/cluster-addon/templates/nfs-provisioner/nfs-provisioner.yaml.j2": "2d9f150fac42a531cb524eccc447b32d25fd9854c5b41019e6be5dade9d8854e",
+    "roles/cluster-addon/templates/nfs-provisioner/test-pod.yaml.j2": "f6207ddb538f60deabff8e8f0e26375f068c1d191a497f4961f375b7c001d34f",
+    "roles/cluster-addon/templates/openebs/readme.md": "8e18f7ecce36dd04fda4d9dde6fd405f9e904f97ba5a93ba3024808b35c31dde",
+    "roles/cluster-addon/templates/openebs/sc.yaml.j2": "68164072bce09fdbcfc6cb158341e761b22126621192f7bc29b9e15f0aa405b5",
+    "roles/cluster-addon/templates/openebs/values.yaml.j2": "538bd596ae6f7474c87b350f521d262930edf1d49cb64b0381c119f3477fc33e",
+    "roles/longhorn/defaults/main.yml": "b2eb35e094d4feef8b3e9cd1779aaf6462ed21d3229562765b9a89e1c4dad780",
+    "roles/longhorn/files/block-check.py": "c4f314c0a9af6b6744f798b5b060facf3caa1923290afedefea4814ee1014259",
+    "roles/longhorn/files/block-retire.py": "43fff93ab49f95051f0952dbbf0238a953e808198d761975beb1bf39c708f214",
+    "roles/longhorn/files/host-check.py": "7ca7645ecab510a2e56dce0252f32b680abab893cab778c4f53296633fafe573",
+    "roles/longhorn/files/images.json": "e9e4d6f7853143a53784e97560384af80bb84d9ee6564aef3ad1e4994dc918d6",
+    "roles/longhorn/files/longhorn-1.12.0.tgz": "869bb20701b154473606f1e8967b27f34f2448a2dfe6eb8970f1cae6957384f5",
+    "roles/longhorn/files/longhorn-1.12.0.tgz.sha256": "d3eeb28bffc3069c7901eaf31142246af58b7ee13ea13a8380b70e24f39eb2ee",
+    "roles/longhorn/files/longhorn-1.12.1.tgz": "c8cf4b35a9d872cd5f7e44fd26d8e6ac7c2abaee42f4e2f2a0b0ebbc6e3a6116",
+    "roles/longhorn/files/longhorn-1.12.1.tgz.sha256": "e70e6e765c440b68328e0229852b73495ca3aed722a2b8e34826fe2280d16742",
+    "roles/longhorn/files/longhorn-1.12.2.tgz": "3514c3a802ec910b3e97698f0b816c038d66547e1bf3d1a4ebad44a9f5b8ac8a",
+    "roles/longhorn/files/longhorn.py": "bf6e7982acf16dcac00d42f9e827fca6dad7512ea7f26411a4918a72e7a09dc3",
+    "roles/longhorn/files/snapshot-controller-8.6.0/SHA256SUMS": "34d0cfc4a2fa1558efac4f33aa538cdd2f8f5da3122f7cf817405c9da02c2fca",
+    "roles/longhorn/files/snapshot-controller-8.6.0/rbac-snapshot-controller.yaml": "99c4ac480b6c9563be0d85599e29cc7b68b25a82d250b0e789726727551e8d38",
+    "roles/longhorn/files/snapshot-controller-8.6.0/setup-snapshot-controller.yaml": "920166ff9001203e9def2504903eb196cd1da55d520f022807cc6ac82ef8eeba",
+    "roles/longhorn/files/snapshot-controller-8.6.0/snapshot.storage.k8s.io_volumesnapshotclasses.yaml": "75e6565aac2c0f2949ed13ea884bbaa388cb7be576b558b709cf1168e011828d",
+    "roles/longhorn/files/snapshot-controller-8.6.0/snapshot.storage.k8s.io_volumesnapshotcontents.yaml": "895a3c1e73b60f06a0deb566dd123d01bdf1b2efc5d5ff5231ff8bbcf42dafc7",
+    "roles/longhorn/files/snapshot-controller-8.6.0/snapshot.storage.k8s.io_volumesnapshots.yaml": "b032116e987fb1d7d93cec7d942833adeb9d95c9bdc7e00c10b280c2fe4a6c33",
+    "roles/longhorn/tasks/control.yml": "3fbe1c8ed8d879ba3b68a94c5df97a572f9557db4eecd5710d9635a438568d19",
+    "roles/longhorn/tasks/host.yml": "924651f94629f8fcf27415efad09a802ded959286af59ece659279840da8d7e2",
+    "roles/longhorn/tasks/main.yml": "f65fa78bf19800d1d5f388dfceeb7381504067baa8e2a3342e7e77a506911563",
+    "roles/longhorn/tasks/removal-guard.yml": "b02ba63652879c3dfa9ea68de3d762328c219ed3c55f18c1fd6deb6d309bf3c7",
+    "common/constants.py": "5545540f862751b6d17cec510225e797deec927203cf7a5e5a82e9508c3e5595",
+    "upgrade/v1.36.6/evidence/source/delivery-closeout/release.yaml": "c85bdb55513ba62c141924c32f5dc8c1f4794f8e4db32dfeee4da505abe37e8f"
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.36.6/evidence/UPG-09-applicability.json",
+      "sha256": "fa3efa2d661137773a55964eb7e404ccc0c808825fbeb45b23de06d26831868a"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/retained-network-storage-inputs.json",
+      "sha256": "8a2c1bce3aeb4599b6a4449189a470fc87b9994a0d84b0f77f533483af0614b2"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/local-qualification/UPG-07-before-final-runner.json",
+      "sha256": "e5c73f1db54fecd6e89b9532c17d743db89719de6f79c9a1ac0fef4cfd871caa"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/UPG-02.json",
+      "sha256": "b0ae9eb1bd42d2e9cadc9d41ab797761166bacaa81ae32ff2596f0d07a359480"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/UPG-03.json",
+      "sha256": "4aa3ab519a15761e9df13651c0186735653496436b87d7ff2f5649f073ab1d58"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/local-qualification/kubernetes-qualified-static-snapshot.json",
+      "sha256": "5817081eb9a766300d6f40d9dd6c14555cf0a0a3c87ab446109c19a2837518cf"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/source/identity.json",
+      "sha256": "2357fc24b2575821de714775197c0809d0c0c83d76245c6d5363173ebe3cd644"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/source/upgrade/v1.35.10/evidence/UPG-09.json",
+      "sha256": "be616966a1aa7b86ec7d867162df5674d13ee70d718325efd75020bde8bb0fbe"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/completion-metadata-review.json",
+      "sha256": "4942cddf581460fc537946c89afe7ae1f8f70ee7fadab0b947642f38b5b85a40"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/UPG-09.json",
+      "sha256": "4b99a48d276b84a6df2471e3299c36563236d4261d962034af05abf442142306"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-content/constants-before-arm-release.py.txt",
+      "sha256": "f1a09af57ad4b6aea36c3a6454190220fca2a34e0ebecf408d218f7b04a5f81f"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/arm-release-version-applicability.json",
+      "sha256": "ebb0343fadf8b4904d4c24d633dececf79a8f50ee8cc872ace676ea2ef48d046"
+    }
+  ],
+  "applicability": {
+    "conditions": "沿用户接受的上游证据力度边界，固定组件/模板/自有补丁不变；本跳实际Calico/local-path主链通过，原GA身份及副本已由UPG-01核验。",
+    "differences": "基座变为1.36.6，实际变化的默认gate/API由本跳预检/40组原生二进制参数及模板合同覆盖；OpenEBS helper精确版本变化由UPG-03验证。未把原功能深测改签为目标新实测。；产品版本字符串v0.1.9→v0.1.10，除此之外constants.py字节不变。",
+    "reason": "逐组件核对官方目标覆盖或实际最低/稳定API契约，角色实现相对已接受源逐文件相同；缺失的新迁移断言由当前真实主链补齐，其余不变引擎/数据面沿原证据复用，避免无依据重测。"
+  },
+  "customer_signoff": null,
+  "static_snapshot_boundary": "仅引用已完成Kubernetes资格链时的不变网络/存储合同；后续Harbor专用修订不改签此原始结果。",
+  "runner_applicability": "引用原资格签署字节快照；后续final入口增量不改写原业务、运行或durable结果。",
+  "input_binding_note": "现场固定原release字节；完成状态元数据另行复核，原运行、日志和结论不改签。",
+  "original_prerequisite_digests": {
+    "upgrade/v1.36.6/evidence/UPG-02.json": "b3d0d99f4852a61bcdd33ed9b4329e6ad911e46314460426fa29b152c83c4718"
+  },
+  "metadata_reference_note": "完成文字修订与原输入快照绑定引起的上游证据摘要变化；原前置摘要保留，原发布提交e844be98485d6477b6314e76689d56fa602ca762可逐字节回读。仅重新核对元数据引用，不改变产品/运行/验收范围，不宣称重新现场执行。"
+}

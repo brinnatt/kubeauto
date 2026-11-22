@@ -1719,3 +1719,20 @@ valkey_rdb_increment:
   - UPG-04
   - UPG-12
   runtime_boundary: 本次原生AMD64；格式源码及合同不等于ARM运行结果。
+
+harbor_native_arm64_bridge_supplement:
+  recorded_on: '2026-11-22'
+  authority: 用户指定IabSDocker/harbor用于ARM过渡，最终仍采用官方2.16.0。
+  official_migration_basis:
+    - https://goharbor.io/docs/2.14.0/administration/upgrade/
+    - https://goharbor.io/docs/2.16.0/administration/upgrade/
+  selected_asset: https://github.com/IabSDocker/harbor/releases/tag/v2.14.4
+  asset_sha256: 524ab0439cdb421f3226c689c5d5799f9e4dda6dd3a26dbdf0cc2311690e0626
+  source_boundary: 公开分发仓不含构建源码；指向的GitLab源码要求认证，未核实完整差异。不把供应商声明或SHA视为源码安全认证。
+  content_review: 12个内部镜像均ARM64；固定Registry版本和关键数据库/prepare迁移文件已核对；详见evidence/raw/harbor-content/harbor-v2.14.4-iabs-arm64-image-content.json。
+  product_mapping: upgrade/product/library/harbor_migration.py，受管CPU选择桥接，原点恢复和官方目标校验保留。
+  documentation_mapping:
+    operations: upgrade/v1.36.6/operations-manual.md#harbor
+    mechanism: upgrade/v1.36.6/technical-whitepaper.md#数据保护与架构迁移
+    maintenance: upgrade/v1.36.6/development-manual.md#harbor维护接口
+  runtime_boundary: 原生ARM101资格五阶段已通过（v1366-harbor-arm-20261122f、双0与限定清理）；UPG-12/13补充已验收，final另验。不扩Kubernetes或其它组件，不推导跨CPU逻辑迁移或性能。

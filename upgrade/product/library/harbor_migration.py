@@ -28,10 +28,13 @@ import uuid
 
 
 PACKAGES = {
+    # Explicitly selected third-party ARM bridge; final 2.16 remains official.
+    'v2.14.4': {'arm64': '524ab0439cdb421f3226c689c5d5799f9e4dda6dd3a26dbdf0cc2311690e0626'},
     'v2.14.6': {'amd64': 'f3adaff30c4531c58f9d6ee8c5164f95f08582651c12b698b92be9e98df55cf6'},
     'v2.16.0': {'amd64': '643c137d8e829c857ef0ba45c46b5d6d8553077340bbd4929ded7e92808e77ff',
                  'arm64': '6525af9c26cc24e48ecf37d3f7d9d139895b39a037a3de697f995171ce65524a'},
 }
+BRIDGES = {'amd64': 'v2.14.6', 'arm64': 'v2.14.4'}
 
 
 class Refused(ValueError):
@@ -125,6 +128,14 @@ class Harbor:
         if self.arch is None:
             raise Refused('unsupported host architecture')
         self.package_paths = {version: real_path(path) for version, path in (packages or {}).items()}
+        # Choose on the managed host, never from the controller's CPU. Keep
+        # version-keyed inputs compatible with already-delivered automation.
+        if 'bridge' in self.package_paths:
+            bridge = self.package_paths.pop('bridge')
+            version = BRIDGES[self.arch]
+            if version in self.package_paths and self.package_paths[version] != bridge:
+                raise Refused('conflicting bridge package paths')
+            self.package_paths[version] = bridge
         self.receipt = self.backup / 'receipt.json'
         self.transfer = real_path(transfer_directory) if transfer_directory else None
 
@@ -316,7 +327,7 @@ class Harbor:
                 raise Refused('backup already exists; inspect its durable checkpoint instead of replacing it')
             return receipt
         if receipt.get('phase') not in ['backup-complete', 'restore-stop-intent', 'restore-extract-intent',
-                'restored', 'upgrade-intent', 'v2.14.6-ready', 'v2.16.0-ready',
+                'restored', 'upgrade-intent', 'v2.14.4-ready', 'v2.14.6-ready', 'v2.16.0-ready',
                 'portable-export-intent', 'portable-export-complete']:
             raise Refused('the stopped backup is incomplete; preserve its first failure')
         if not {'data.tar', 'images.tar'} <= set(receipt.get('files', {})):
@@ -471,8 +482,9 @@ class Harbor:
 
     def portable_import(self):
         portable, original = self.portable_input()
-        # Old ARM 2.13 must first enter the official AMD64 2.14 bridge.
-        # A later same-version 2.16 logical transfer returns it to native ARM.
+        # Keep the separately accepted logical 2.13->AMD64 route unchanged.
+        # The selected third-party ARM bridge is for native in-place upgrade;
+        # it does not authorize an untested logical 2.13->ARM64 import.
         versions = ['v2.14.6', 'v2.16.0'] if portable['source'] == 'v2.13.0' else ['v2.16.0']
         for version in versions: self.package(version)
         if self.backup.exists() or self.data.exists() or self.data.is_symlink():
@@ -555,7 +567,7 @@ class Harbor:
             receipt = self.load(stopped=True)
             return self.finish_backup(receipt)
         version = self.api('systeminfo').get('harbor_version', '').split('-')[0]
-        if version not in ['v2.13.0', 'v2.14.6', 'v2.16.0']:
+        if version not in ['v2.13.0', BRIDGES[self.arch], 'v2.16.0']:
             raise Refused('this migration requires an inventoried exact Harbor source release')
         self.health(version)
         composition = self.composition()
@@ -642,24 +654,24 @@ class Harbor:
         return dict(row.rsplit(' ', 1) for row in rows.splitlines() if row)
 
     def package(self, version):
-        """Validate the complete official installer before any runtime mutation."""
+        """Validate the exact approved installer before any runtime mutation."""
         path = self.package_paths.get(version)
         expected = PACKAGES.get(version, {}).get(self.arch)
         if expected is None:
-            raise Refused('no official offline bridge exists for this host architecture; physical cross-architecture migration is forbidden')
+            raise Refused('no approved offline bridge exists for this host architecture; physical cross-architecture migration is forbidden')
         if path is None or not path.is_file() or digest(path) != expected:
-            raise Refused('the exact official offline installer is missing or corrupt')
+            raise Refused('the exact approved offline installer is missing or corrupt')
         with tarfile.open(path) as archive:
             names = []
             for member in archive:
                 parts = Path(member.name).parts
                 if (not parts or parts[0] != 'harbor' or Path(member.name).is_absolute() or
                         '..' in parts or not (member.isdir() or member.isfile())):
-                    raise Refused('an official installer member escapes its installation directory')
+                    raise Refused('an approved installer member escapes its installation directory')
                 names.append(member.name)
             required = {'harbor/prepare', 'harbor/install.sh', 'harbor/harbor.'+version+'.tar.gz'}
             if not required <= set(names):
-                raise Refused('the official installer is incomplete')
+                raise Refused('the approved installer is incomplete')
         return path
 
     def prepare_container(self, version, arguments, mounts, *, privileged=False):
@@ -770,9 +782,9 @@ class Harbor:
         if receipt['phase'] == 'v2.16.0-ready':
             self.health('v2.16.0')
             return {'changed': False, 'marker': 'HARBOR_OFFICIAL_MIGRATION_PASS', 'target': 'v2.16.0'}
-        if receipt['phase'] != 'backup-complete' or receipt['source'] not in ['v2.13.0', 'v2.14.6']:
+        if receipt['phase'] != 'backup-complete' or receipt['source'] not in ['v2.13.0', BRIDGES[self.arch]]:
             raise Refused('upgrade requires a complete stopped source backup; inspect interrupted checkpoints before recovery')
-        versions = ['v2.14.6', 'v2.16.0'] if receipt['source'] == 'v2.13.0' else ['v2.16.0']
+        versions = [BRIDGES[self.arch], 'v2.16.0'] if receipt['source'] == 'v2.13.0' else ['v2.16.0']
         packages = {version: self.package(version) for version in versions}
         composition = self.composition()
         stopped = self.containers(composition, running=False)

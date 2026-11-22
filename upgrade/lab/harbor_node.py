@@ -26,9 +26,60 @@ else:
 STATE = Path('/var/tmp/kubeauto-harbor-v1366')
 DATA = Path('/var/data')
 TLS = Path('/etc/kubernetes/ssl')
+DAEMON = Path('/etc/docker/daemon.json')
 HOSTS = {'192.168.122.217', '192.168.122.243'}
+ARM_HOST = '192.168.37.101'
 SERVICES = {'log', 'registry', 'registryctl', 'postgresql', 'core', 'portal',
             'jobservice', 'redis', 'proxy', 'trivy-adapter'}
+
+
+def arm_runtime_fixture(*, restore=False):
+    """Temporarily isolate a stopped ARM lab runtime; restore exact old bytes."""
+    for unit in ['docker', 'docker.socket', 'containerd']:
+        if command('systemctl', 'show', unit, '--property=ActiveState', '--value').strip() != 'inactive':
+            raise ValueError('stopped native runtime required for configuration handoff')
+    receipt, saved = STATE/'daemon-fixture.json', STATE/'original-daemon.json'
+    fixture = b'{}\n'
+    if restore:
+        record = read_private(receipt)
+        if DAEMON.is_symlink() or DAEMON.read_bytes() != fixture:
+            raise ValueError('foreign Docker configuration change prevents restoration')
+        if record['exists']:
+            raw = saved.read_bytes()
+            if hashlib.sha256(raw).hexdigest() != record['sha256']:
+                raise ValueError('original Docker configuration snapshot changed')
+            temporary = DAEMON.with_name('daemon.json.kubeauto-arm')
+            with temporary.open('xb') as stream:
+                os.fchmod(stream.fileno(), 0o600); stream.write(raw)
+                stream.flush(); os.fsync(stream.fileno())
+            os.chown(temporary, record['uid'], record['gid']); temporary.chmod(record['mode'])
+            os.replace(temporary, DAEMON)
+            if DAEMON.read_bytes() != raw:
+                raise ValueError('original Docker configuration restoration differs')
+        else:
+            DAEMON.unlink()
+        return {'marker':'HARBOR_ARM_RUNTIME_CONFIG_RESTORED', 'original_sha256':record.get('sha256')}
+    if receipt.exists() or saved.exists() or DAEMON.is_symlink():
+        raise ValueError('native runtime fixture cannot adopt previous state')
+    record = {'exists':DAEMON.exists()}
+    if DAEMON.exists():
+        raw = DAEMON.read_bytes()
+        config = json.loads(raw)
+        if config.get('data-root', '/var/lib/docker') != '/var/lib/docker':
+            raise ValueError('foreign Docker data root prevents native fixture isolation')
+        info = DAEMON.stat()
+        record.update(sha256=hashlib.sha256(raw).hexdigest(), mode=info.st_mode & 0o777,
+                      uid=info.st_uid, gid=info.st_gid)
+        with saved.open('xb') as stream:
+            os.fchmod(stream.fileno(),0o600);stream.write(raw)
+            stream.flush();os.fsync(stream.fileno())
+    private_json(receipt,record)
+    temporary = DAEMON.with_name('daemon.json.kubeauto-arm')
+    with temporary.open('xb') as stream:
+        os.fchmod(stream.fileno(),0o600);stream.write(fixture)
+        stream.flush();os.fsync(stream.fileno())
+    os.replace(temporary,DAEMON)
+    return {'marker':'HARBOR_ARM_RUNTIME_CONFIG_READY'}
 
 
 def command(*args):
@@ -42,14 +93,15 @@ def guard(run_id):
     if not re.fullmatch(r'v1366-harbor-[a-z0-9-]{1,32}', run_id):
         raise ValueError('fixed Harbor run identity required')
     addresses = set(command('hostname', '-I').split())
-    if len(addresses & HOSTS) != 1 or os.geteuid() != 0:
+    allowed = {ARM_HOST} if run_id.startswith('v1366-harbor-arm-') else HOSTS
+    if len(addresses & allowed) != 1 or os.geteuid() != 0:
         raise ValueError('fixed leased Harbor node required')
     marker = Path('/var/tmp/kubeauto-v1366-node-owner')
     if marker.is_symlink() or marker.stat().st_uid != 0 or marker.stat().st_mode & 0o777 != 0o600:
         raise ValueError('private node ownership marker required')
     if marker.read_text().strip() != run_id:
         raise ValueError('node belongs to another run')
-    return next(iter(addresses & HOSTS))
+    return next(iter(addresses & allowed))
 
 
 def initialize(run_id):
@@ -59,8 +111,9 @@ def initialize(run_id):
     for path in [DATA, Path('/var/log/harbor')]:
         if path.exists() or path.is_symlink():
             raise ValueError('foreign Harbor data or logs exist')
-    if platform.machine() != 'x86_64':
-        raise ValueError('this focused path qualifies native AMD64 only')
+    expected = 'aarch64' if host == ARM_HOST else 'x86_64'
+    if platform.machine() != expected:
+        raise ValueError('the real CPU differs from the fixed Harbor host profile')
     memory = int(re.search(r'^MemTotal:\s+(\d+)', Path('/proc/meminfo').read_text(), re.M)[1])
     disk = shutil.disk_usage(DATA.parent)
     if memory < 4 * 1024**2 or disk.total < 40 * 1024**3 or disk.free < 20 * 1024**3:
@@ -288,6 +341,10 @@ def execute(action, run_id, payload=None):
     if action == 'init':
         return initialize(run_id)
     owner(run_id)
+    if action in ['arm-runtime-fixture', 'arm-runtime-restore']:
+        if not run_id.startswith('v1366-harbor-arm-'):
+            raise ValueError('native ARM runtime fixture requires its own run identity')
+        return arm_runtime_fixture(restore=action=='arm-runtime-restore')
     if action == 'settings':
         return settings(payload)
     if action in ['create', 'verify']:
@@ -317,6 +374,7 @@ def execute(action, run_id, payload=None):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=['init', 'settings', 'create', 'verify',
+                                        'arm-runtime-fixture', 'arm-runtime-restore',
                                         'configuration', 'stop', 'clean-data', 'clean-state', 'inventory',
                                         'runtime-clean-admission','export-files','transfer-directory',
                                         'link-transfer','transfer-fixture','adopt-fixture','retire-fixture',

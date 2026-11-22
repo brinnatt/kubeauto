@@ -1,0 +1,358 @@
+{
+  "schema_version": 1,
+  "recorded_on": "2026-11-22",
+  "accepted": true,
+  "owning_matrix": "upgrade/v1.36.6/test-matrix.yaml",
+  "acceptance_refs": [
+    "UPG-02",
+    "UPG-03",
+    "UPG-04",
+    "UPG-10",
+    "UPG-12",
+    "UPG-13",
+    "UPG-14",
+    "UPG-15"
+  ],
+  "authorization": "交付负责人选择 IabSDocker/harbor 补充 Harbor ARM；只补 Harbor 原生 ARM 缺口，不扩展 Kubernetes 或其它组件回归。",
+  "selected_bridge": {
+    "provider": "IabSDocker/harbor",
+    "origin": "third-party-build",
+    "version": "v2.14.4",
+    "architecture": "arm64",
+    "asset_id": 424226536,
+    "asset_name": "harbor-offline-installer-v2.14.4_arm64.tgz",
+    "asset_bytes": 652847959,
+    "asset_sha256": "524ab0439cdb421f3226c689c5d5799f9e4dda6dd3a26dbdf0cc2311690e0626",
+    "release_url": "https://github.com/IabSDocker/harbor/releases/tag/v2.14.4",
+    "download_url": "https://github.com/IabSDocker/harbor/releases/download/v2.14.4/harbor-offline-installer-v2.14.4_arm64.tgz",
+    "metadata_url": "https://api.github.com/repos/IabSDocker/harbor/releases/assets/424226536",
+    "repository_commit": "ee43e74e5bd9571d88a3c390e26cc223a6a7d2f0",
+    "repository_commit_boundary": "此提交只固定公开分发仓的说明和发布检查入口，不是离线包构建源码的提交。"
+  },
+  "official_target": {
+    "version": "v2.16.0",
+    "architecture": "arm64",
+    "asset_sha256": "6525af9c26cc24e48ecf37d3f7d9d139895b39a037a3de697f995171ce65524a",
+    "evidence": "upgrade/v1.36.6/evidence/harbor-official-signatures.json"
+  },
+  "upstream_path": {
+    "source": "v2.13.0",
+    "bridge": "v2.14.4",
+    "target": "v2.16.0",
+    "references": [
+      "https://goharbor.io/docs/2.14.0/administration/upgrade/",
+      "https://goharbor.io/docs/2.16.0/administration/upgrade/"
+    ],
+    "boundary": "官方 2.14 支持从 2.11 及以后迁入，2.16 支持从 2.14 及以后迁入。这些版本范围不认证第三方 ARM 构建，也不证明项目迁移器支持此包。"
+  },
+  "source_audit": {
+    "publisher_statement": "README 声明仅修改 ARM 打包所需 Makefile、Dockerfile.base，不修改核心源码；此为供应商声明，尚未经源码差异核实。",
+    "source_url": "https://gitlab.ayou.ink/IabSDocker/Harbor",
+    "web_result": "redirect-to-sign-in",
+    "raw_result": "redirect-to-sign-in",
+    "api_result": "HTTP 404",
+    "git_result": "authentication-required",
+    "build_commit": null,
+    "verified_source_diff": false,
+    "runtime_executed": true,
+    "boundary": "GitHub 公开仓只有分发说明与版本通知 workflow，不含 ARM 构建配方；发布包 SHA256 仅证明固定字节身份，不证明源码等同官方或没有漏洞。"
+  },
+  "read_only_host_inventory": {
+    "host": "192.168.37.101",
+    "architecture": "aarch64",
+    "os": "openEuler 22.03 LTS-SP4",
+    "kernel": "5.10.0-216.0.0.115.oe2203sp4.aarch64",
+    "page_size_bytes": 4096,
+    "memory_mib": 14325,
+    "available_disk_mib": 169048,
+    "docker_client": "26.1.3",
+    "docker_daemon": "not-running",
+    "kubelet": "inactive",
+    "harbor_data": "absent",
+    "lease_acquired": false,
+    "boundary": "只读盘点与已授权 SSH 密钥引导；未启动 Docker 服务、部署 Harbor 或取得有状态测试租约。"
+  },
+  "remaining_acceptance": [
+    "原生ARM本范围矩阵已闭合；待v0.1.10二进制/单产品镜像正式发布和六仓分支收尾。"
+  ],
+  "publication": {
+    "triggered": true,
+    "allowed_builds": [
+      "brinnatt/harbor-upgrade-bridge-arm64:v2.14.4-iabs.1"
+    ],
+    "boundary": "只新增一个ARM过渡包载体；双架构Alpine外壳内均为同一固定ARM payload，不宣称AMD64 Harbor运行能力；沿用通用selected发布入口，旧制品不重建。",
+    "run_id": 44975709751,
+    "run_url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/44975709751",
+    "conclusion": "success",
+    "source_sha": "ea8f3866ed2fab441d09197037d3129292649db4",
+    "mode": "selected",
+    "image_count": 1,
+    "index_digest": "sha256:a0d4aec8632bc4c0a9fde6ab6b99698f7719414dc7b4da50f1ff9151d978cdd7",
+    "platforms": {
+      "linux/amd64": "sha256:e8282e114063ae1fb1a5fb110bcc8fbc7ceb66fdd8b5188bf23602a26c7f17de",
+      "linux/arm64": "sha256:1e206bef8fe1256969633c4f201630d574a622a27acc636ef737b8fdd9079df3"
+    },
+    "durable_rc": 0,
+    "registry_references": [
+      "hub.talkedu.cn/kubeauto/harbor-upgrade-bridge-arm64:v2.14.4-iabs.1",
+      "brinnatt/harbor-upgrade-bridge-arm64:v2.14.4-iabs.1"
+    ],
+    "references": [
+      {
+        "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64-publication/plan/image-plan.json",
+        "sha256": "6aa75bdb2c338b9e68507f2e8e97747141be2d3830b83f947bc89b09bd8776b7"
+      },
+      {
+        "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64-publication/plan-evidence/plan-reuse.log",
+        "sha256": "4b9b826ed1e6b738882cbbd19706d1cf999779a659b27f330dc820e8d4dcf90f"
+      },
+      {
+        "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64-publication/plan-evidence/plan-reuse.status",
+        "sha256": "93ff7811a209e2a8479230bbb9b6bc19f7f311d3af383ec350c1db2a7e7d5494"
+      },
+      {
+        "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64-publication/plan-evidence/plan.log",
+        "sha256": "4b9b826ed1e6b738882cbbd19706d1cf999779a659b27f330dc820e8d4dcf90f"
+      },
+      {
+        "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64-publication/plan-evidence/plan.status",
+        "sha256": "93ff7811a209e2a8479230bbb9b6bc19f7f311d3af383ec350c1db2a7e7d5494"
+      },
+      {
+        "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64-publication/release/records/9f5ddf3775c820d5feef244b2efdbed9615e8b0b8702d28267af0427309d2a20.json",
+        "sha256": "90ad47b055d06b59caddd7ee86a4489dc9f546ba6ff92e4b29acb53b10865911"
+      },
+      {
+        "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64-publication/release/runs/44975709751-1/release-0.log",
+        "sha256": "e3cc7ba239e1e226771429b5fa94ad7c64d30492c22668e5d91e79576d7d7b80"
+      },
+      {
+        "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64-publication/release/runs/44975709751-1/release-0.status",
+        "sha256": "93ff7811a209e2a8479230bbb9b6bc19f7f311d3af383ec350c1db2a7e7d5494"
+      },
+      {
+        "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64-publication/run.json",
+        "sha256": "0e4d026043835a08e2e543ee5dc1129fdd157b09b75c9c48e7b39deaa396a18e"
+      }
+    ]
+  },
+  "claim_boundary": "原生ARM同CPU迁移、原点恢复、官方目标新建/幂等及final五阶段已验收，旧x86/Kubernetes范围按原证据复用；第三方仅临时桥接，完整构建源码差异仍未经核实，不称官方构建或安全认证。新产品发布状态另记录，不代签客户。",
+  "package_audit": {
+    "accepted_for_scoped_integration": true,
+    "runtime_executed": true,
+    "image_count": 12,
+    "all_image_configs": "linux/arm64; exact v2.14.4 tags",
+    "official_matching_files": [
+      "harbor-db/docker-entrypoint.sh",
+      "harbor-db/upgrade.sh",
+      "prepare/templates/docker_compose/docker-compose.yml.jinja",
+      "prepare/utils/migration.py"
+    ],
+    "database_layout": "PostgreSQL 14 and 15 AArch64 binaries; official entrypoint and upgrade scripts match. Runtime data migration pending.",
+    "registry": "Embedded v2.8.3-25-g086d3c33 resolves to official goharbor/distribution commit 086d3c33b3981cf598d0d82336a907fcf5c4c848. Build source differences remain unverified.",
+    "evidence": {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-content/harbor-v2.14.4-iabs-arm64-image-content.json",
+      "sha256": "3c0e7e61b80c08be8595ab5964fdddf1dcb5199c096fbdf1c3381e0c197786e0"
+    },
+    "boundary": "准入只允许为本次已授权的最小集成固定第三方包；不是安全认证、官方ARM认证、运行成功或GA。"
+  },
+  "product_adaptation": {
+    "state": "native qualification and final accepted; v0.1.10 publication pending",
+    "amd64_bridge": "official v2.14.6",
+    "arm64_bridge": "IabSDocker v2.14.4, pinned SHA256",
+    "selection": "managed-host architecture; CLI passes neutral bridge key",
+    "logical_import": "existing 2.13→AMD64 path unchanged; no new 2.13→ARM64 logical acceptance",
+    "contract_evidence": {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-content/arm-bridge-product-contracts.log",
+      "sha256": "89de95335abef0c69d07bde372d15502ce04bedf6df66b28d4a90eacbd23bad5"
+    }
+  },
+  "acceptance_reopened": {
+    "ids": [
+      "UPG-12",
+      "UPG-13",
+      "UPG-14",
+      "UPG-15"
+    ],
+    "previous": "pass within original x86/static ARM scope",
+    "current": "pending additional native ARM claims",
+    "unchanged": "Kubernetes and other component runtime evidence retained",
+    "smallest_supplement": "Harbor native source→2.14.4 bridge→official2.16, original ledger/restore, official native clean install/idempotence, scoped cleanup and documentation; no Kubernetes installation or other middleware regression"
+  },
+  "qualification_attempts": [
+    {
+      "run_id": "v1366-harbor-arm-20261122a",
+      "classification": "environment",
+      "parent_rc": 1,
+      "boundary": "Original ARM Docker configuration refused before node admission.",
+      "harbor_installed": false,
+      "node_cleaned": true,
+      "references": [
+        {
+          "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122a/session.exit",
+          "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+        },
+        {
+          "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122a/session.finalized",
+          "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+        },
+        {
+          "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122a/session.log",
+          "sha256": "015325bc73c919ffb03ad6b43196b2fd4d0b8ff2f1dc144834273942a524daee"
+        }
+      ]
+    },
+    {
+      "run_id": "v1366-harbor-arm-20261122b",
+      "classification": "test-gate",
+      "parent_rc": 1,
+      "boundary": "ARM has no rsync; SCP archive basename dot refused in first cleanup; named-directory transfer and restored-runtime cleanup fixed.",
+      "harbor_installed": false,
+      "node_cleaned": true,
+      "references": [
+        {
+          "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122b/fixture-cleanup.exit",
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+        },
+        {
+          "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122b/fixture-cleanup.finalized",
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+        },
+        {
+          "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122b/fixture-cleanup.log",
+          "sha256": "1719d11537d5e62aaa49a8cecd2f56c60472e2e7bdbe1085021fe9672ce60b6e"
+        },
+        {
+          "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122b/session.exit",
+          "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+        },
+        {
+          "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122b/session.finalized",
+          "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+        },
+        {
+          "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122b/session.log",
+          "sha256": "06e2538a2fe49892d635d5a94be2fde250dd0c1682eae8b546e4d1840df0be52"
+        }
+      ]
+    },
+    {
+      "run_id": "v1366-harbor-arm-20261122c",
+      "classification": "environment",
+      "parent_rc": 1,
+      "boundary": "Private pip Ansible rejected by the actual native-package product gate before any Harbor playbook.",
+      "harbor_installed": false,
+      "node_cleaned": true,
+      "references": [
+        {
+          "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122c/fixture-cleanup.exit",
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+        },
+        {
+          "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122c/fixture-cleanup.finalized",
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+        },
+        {
+          "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122c/fixture-cleanup.log",
+          "sha256": "1719d11537d5e62aaa49a8cecd2f56c60472e2e7bdbe1085021fe9672ce60b6e"
+        },
+        {
+          "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122c/session.exit",
+          "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+        },
+        {
+          "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122c/session.finalized",
+          "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+        },
+        {
+          "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122c/session.log",
+          "sha256": "37fbe7f5d781da2b4fa5d9630cc8e621b40252a56537dda79f999422b5c24b5d"
+        }
+      ]
+    },
+    {
+      "run_id": "v1366-harbor-arm-20261122d",
+      "classification": "environment",
+      "parent_rc": 1,
+      "boundary": "Restored control clock was 119866 seconds slow; read-only admission refused; existing selected Chrony source stepped, time checked during stage.",
+      "harbor_installed": false,
+      "node_cleaned": true,
+      "references": [
+        {
+          "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122d/session.exit",
+          "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+        },
+        {
+          "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122d/session.finalized",
+          "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+        },
+        {
+          "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122d/session.log",
+          "sha256": "39a3c39053e7fa3bd65a85acdcb92838ee06e50ecb019da4d9e3b7d925967728"
+        }
+      ]
+    },
+    {
+      "run_id": "v1366-harbor-arm-20261122e",
+      "classification": "test-gate",
+      "parent_rc": 1,
+      "boundary": "Setup version display required real kube-apiserver and etcd missing from fixture; no Harbor playbook ran. Complete consumer binary reads covered and actual version display executed in stage.",
+      "harbor_installed": false,
+      "node_cleaned": true,
+      "references": [
+        {
+          "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122e/fixture-cleanup.exit",
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+        },
+        {
+          "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122e/fixture-cleanup.finalized",
+          "sha256": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+        },
+        {
+          "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122e/fixture-cleanup.log",
+          "sha256": "1719d11537d5e62aaa49a8cecd2f56c60472e2e7bdbe1085021fe9672ce60b6e"
+        },
+        {
+          "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122e/session.exit",
+          "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+        },
+        {
+          "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122e/session.finalized",
+          "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+        },
+        {
+          "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64/v1366-harbor-arm-20261122e/session.log",
+          "sha256": "778802a5bece268f3ac67d0de37da1066f710d20d5e08450ce038f1b83165779"
+        }
+      ]
+    }
+  ],
+  "current_qualification": {
+    "run_id": "v1366-harbor-arm-20261122f",
+    "control": "192.168.47.130",
+    "native_runtime": "Existing Python3.12.14 and RPM-owned ansible-core2.16.3; private source/config/log roots; no system package replacement",
+    "accepted": true,
+    "durable_rc": 0,
+    "finalized_rc": 0,
+    "failure_markers": 0,
+    "scoped_cleanup": "HARBOR_ARM_SCOPED_CLEAN_VERIFY_PASS",
+    "control_archive": "/home/kubeauto-harbor-arm-archives/v1366-harbor-arm-20261122f",
+    "private_recovery_archive": "/home/kubeauto-harbor-arm-archives/v1366-harbor-arm-20261122f/recovery/v1366-harbor-arm-20261122f/kubeauto-harbor-v1366"
+  },
+  "final_acceptance": {
+    "run_id": "v1366-harbor-arm-20261122g",
+    "mode": "final",
+    "completed_phases": 5,
+    "planned_phases": 5,
+    "durable_rc": 0,
+    "finalized_rc": 0,
+    "failure_markers": 0,
+    "cleanup_marker": "LAB_CLEAN_VERIFY_PASS",
+    "control_archive": "/home/kubeauto-harbor-arm-archives/v1366-harbor-arm-20261122g",
+    "private_recovery_archive": "/home/kubeauto-harbor-arm-archives/v1366-harbor-arm-20261122g/recovery/v1366-harbor-arm-20261122g/kubeauto-harbor-v1366",
+    "evidence": {
+      "path": "upgrade/v1.36.6/evidence/UPG-15-arm-supplement.json",
+      "sha256": "35f7eaf74214d122f8a41aeb05a638508226accb475be3db80bce20f3e1948f0"
+    }
+  }
+}

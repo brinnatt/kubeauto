@@ -31,7 +31,7 @@ class KubeConstant:
         "refer_github": "https://github.com/Mirantis/cri-dockerd/releases",
         "description": "cri-dockerd CRI shim for dockerd; pairs with Engine 28.x over CRI v1",
     })
-    v_kubeauto: str = field(default="v0.1.9", metadata={
+    v_kubeauto: str = field(default="v0.1.10", metadata={
         "refer_github": "https://github.com/brinnatt"
     })
     v_talkedu_registry: str = field(default="hub.talkedu.cn/kubeauto", metadata={

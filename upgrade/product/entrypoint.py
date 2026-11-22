@@ -63,7 +63,7 @@ def run_harbor_operation(manager, cluster, *, operation, backup_directory,
         raise ValueError('--harbor-transfer-dir is required only for --harbor import')
     transfer_directory = remote_path(transfer_directory) if transfer_directory else ''
     packages = {version: remote_path(path) for version,path in
-                [('v2.14.6', bridge_package), ('v2.16.0', target_package)] if path}
+                [('bridge', bridge_package), ('v2.16.0', target_package)] if path}
 
     def runner():
         manager._validate_for_setup(cluster)

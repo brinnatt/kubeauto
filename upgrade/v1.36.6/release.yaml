@@ -18,7 +18,7 @@ component_decisions:
 - component_id: product
   decision: update
   target_pins:
-    kubeauto: v0.1.9
+    kubeauto: v0.1.10
     ansible_core: 2.18.6
     ansible_core_py314: 2.20.9
     kubecli_scope: kubecli-only
@@ -31,7 +31,7 @@ component_decisions:
   - UPG-02
   - UPG-04
   - UPG-15
-  rationale: 本跳Kubernetes/Harbor入口和打包闭包已变化，必须发布新产品修订v0.1.9；正式源码、二进制及产品镜像身份见evidence/product-publication.json，原v0.1.8不作为当前新功能制品。保留Python/Ansible配套与独立tools边界。
+  rationale: 本次新增Harbor ARM2144桥接，须在补充验收后发布kubecli-only修订v0.1.10；既有v0.1.9发布身份保留在evidence/product-publication.json，不将其当成本次ARM桥接制品。保留Python/Ansible配套与独立tools边界。
   transition_edges:
   - edge_id: product-k8s13510-to1366
     source: 已接受v1.35.10维护基线及实际现场身份
@@ -50,7 +50,7 @@ component_decisions:
     - 最小合同通过；现场持有自有租约、恢复点及业务账本
     steps:
     - 保留Python/Ansible配套和独立tools字节；通过当前升级矩阵后导出发行准入策略。
-    - 以已验收源码发布新的kubecli-only产品v0.1.9，再由配对打包仓固定源码tag/SHA构建运行镜像；不覆盖旧v0.1.8。
+    - 以本次已验收源码发布kubecli-only产品v0.1.10，再由配对打包仓固定源码tag/SHA构建一个新运行镜像；不覆盖旧v0.1.9。
     success_conditions:
     - 源对象/数据及自有补丁保持，目标相关API与业务断言通过
     - 上游测试、支持下限、稳定接口、历史GA与本跳实测分别标注，不互相代签
@@ -1222,7 +1222,7 @@ component_decisions:
   - UPG-13
   - UPG-14
   - UPG-15
-  rationale: Harbor目标固定官方GA2.16.0 AMD64/ARM64完整包；独立Distribution2.8.3不变。213至216不直升：AMD经官方2146桥接；旧第三方ARM仅允许停写后逻辑迁移到干净AMD2146、升216，再以216逻辑恢复到干净ARM216。后者是官方数据库/缓存机制组成的项目集成路径；逻辑导入、恢复与身份/数据保持已在x86实测，ARM64只核验官方来源/签名/制品静态依据，未经原生运行，不冒称上游跨架构整链认证。外置DB/Redis/对象存储、internalTLS及未审计定制拒绝进入本地快照路径。
+  rationale: Harbor目标固定官方GA2.16.0 AMD64/ARM64完整包；独立Distribution2.8.3不变。213至216不直升：AMD经官方2146桥接；ARM新增同CPU过渡选择IabSDocker第三方2144，再进入官方ARM216；该新增原生资格已完成迁移/恢复与新建/幂等，证据为UPG-12/13-arm-supplement；最终验收另由UPG-15完成，不能引用历史x86 PASS代签。原逻辑导出/导入保持其既有x86实测与跨CPU未实测边界，不冒称上游跨架构整链认证。外置DB/Redis/对象存储、internalTLS及未审计定制拒绝进入本地快照路径。
   transition_edges:
   - source: 已接受源Harbor2.13.0及原实际制品；独立Distribution2.8.3保持
     target: 官方Harbor2.16.0；原配置/TLS/加密密钥/用户角色/robot/镜像及任务状态保持
@@ -1269,6 +1269,26 @@ component_decisions:
       archive，再停回原机。
     - 将私有数据/TLS与逻辑dump传入干净AMD；排除物理database及旧installer。通过官方2146 PG初始化，以--create恢复库级元数据和对象，再完成2146→2160。
     - 对AMD216同样停机备份/export，在干净ARM216逻辑恢复，核对真实CPU与完整业务/队列账本。每次切换前原源停止，失败隔离目标后回原机完整恢复。
+  - edge_id: harbor213-arm64-via-iabs2144-to2160
+    source: 已接受原第三方ARM64 Harbor v2.13.0及原实际制品
+    target: 官方ARM64 Harbor v2.16.0
+    bridge: IabSDocker/harbor v2.14.4 ARM64，第三方临时过渡
+    depends_on: [UPG-01, UPG-02, UPG-03, UPG-04, UPG-05]
+    official_source_ids: [HARBOR-214-UPGRADE, HARBOR-2160-UPGRADE]
+    product_entry: config.yml + kubecli upgrade CLUSTER --harbor backup/upgrade/restore
+    preconditions:
+    - 原生ARM64、固定包SHA、单一Harbor所有权、停写窗口和完整原点恢复点；外置服务、internalTLS及未知定制拒绝。
+    - 第三方供应商完整源码差异未经核实；不称官方构建、安全认证或上游ARM逐版认证。
+    steps:
+    - 完整停机备份原数据、配置、TLS、原服务镜像及队列。
+    - 按受管主机ARM64选择固定IabSDocker2144包，保留proxy/jobservice停止，完成桥接schema健康检查。
+    - 使用官方ARM216包完成PG15到18、schema及队列迁移，核对原业务账本后再开放写入。
+    success_conditions:
+    - 原项目/用户/robot身份及权限、manifest/blob、实际层内容和队列保持；官方目标组件健康。
+    - 使用同一原点恢复包完整恢复原213并读回原账本；目标新增写入不自动回源。
+    irreversible_point: 目标数据库或schema写入后不能直接挂旧镜像降级。
+    recovery: 停止目标后恢复同一原点完整数据/镜像/TLS；保留失败隔离数据至确认恢复。
+    cleanup: 只清理所属测试对象；完整恢复档案校验收取后才清理节点副本。
 - component_id: control-client
   decision: keep
   target_pins:

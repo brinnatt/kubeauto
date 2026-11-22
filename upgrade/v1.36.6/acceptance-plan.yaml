@@ -177,10 +177,10 @@ ingress_qualification:
   - brinnatt/ingress-nginx-controller:v1.15.1
   - brinnatt/kube-webhook-certgen:v1.6.9
 architecture_acceptance:
-  decision: 交付负责人明确无ARM测试机，本次使用x86回归，不等待原生ARM环境。
-  runtime: 原生x86_64完成新建、升级、恢复及逻辑迁移集成验证。
-  arm64: 核验官方完整包、签名、双架构制品及静态兼容依据；未经项目原生运行实测。
-  claim_boundary: x86结果不改称ARM运行或跨CPU迁移实测；上述边界不是本次GA阻断，但不豁免数据保护、身份权限和最终干净验收。
+  original_decision: 首次验收时无ARM测试机，已接受x86运行和ARM静态来源/签名核查；原记录保留当时范围。
+  runtime: 原生x86_64已完成新建、升级、恢复及逻辑迁移集成验证，按原身份复用。
+  arm64: 交付负责人已追加原生ARM环境，仅补下方harbor_native_arm64_supplement；状态见本跳矩阵，不扩其它组件。
+  claim_boundary: 原生ARM同CPU迁移、新建及恢复须有独立结果；x86不代签ARM，同CPU不代签跨CPU迁移。
 harbor_logical_qualification:
   enabled: true
   runner: upgrade/lab/harbor-session.sh
@@ -221,3 +221,33 @@ final_kubernetes_reuse:
   unchanged: 产品、二进制与其余门禁输入逐项不变；仅源客户端恢复/续接门禁、精确合同及正式记录变化。
   actual_execution: 复用原七步当前证据；本完成run只新执行Harbor六个干净阶段，不构建镜像。
   refusal: 原阶段失败或重试、缺日志/标志/双0、输入漂移、活动owner或Harbor已启动均拒绝。
+
+# Additive native ARM supplement; historical runs above retain their identity.
+harbor_native_arm64_supplement:
+  enabled: true
+  control: 192.168.47.130
+  active_hosts:
+  - 192.168.37.101
+  runner: upgrade/lab/harbor_arm_session.py
+  frontend: upgrade/lab/harbor-control.sh
+  phases:
+  - harbor-source
+  - harbor-migration
+  - harbor-restore
+  - harbor-new-install
+  - harbor-clean
+  source: v2.13.0
+  bridge: v2.14.4
+  bridge_provider: IabSDocker/harbor (third-party ARM64 build)
+  target: v2.16.0 (official ARM64)
+  runtime_fixture: native distribution Docker 26.1.3 and Compose 2.27.0, verified
+    TLS
+  product_entry: config.yml + kubecli setup CLUSTER 11 --start-at-task 'Validate the
+    path consumed by the official Harbor prepare script'; kubecli upgrade CLUSTER
+    --harbor
+  gap: 原生ARM过渡迁移、原业务及权限恢复、官方目标新建和幂等；旧x86运行与ARM制品静态证据不能证明本主张。
+  scope_limit: 不安装或升级Kubernetes、CRI、其它组件或系统运行时；不增加性能、故障或长稳链。
+  completion: 固定包校验、真实产品入口、原账本迁移/原点恢复、新账本新建/幂等、durable双0和限定清理。
+  cleanup: 仅本轮Harbor数据、TLS、trust、hosts行和别名；原点恢复包完整收取到控制机私有归档后删除节点副本；Docker/containerd恢复inactive，保留共享镜像cache。
+  cost_bound: 一台ARM主机顺序执行五phase，不编译Harbor，不重建旧镜像，不重跑Kubernetes或其它中间件。
+  source_boundary: 固定第三方包字节和已核查关键内容；未核实全部构建源码差异，不称官方ARM认证。

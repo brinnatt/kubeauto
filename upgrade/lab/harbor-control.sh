@@ -4,6 +4,9 @@ set -euo pipefail
 [[ $# -ge 2 ]]
 operation=$1 run_id=$2; shift 2
 [[ "$run_id" =~ ^v1366-harbor-[a-z0-9-]{1,32}$ ]] || exit 2
+if [[ "$run_id" == v1366-harbor-arm-* ]]; then
+  exec bash upgrade/lab/harbor-arm-control.sh "$operation" "$run_id" "$@"
+fi
 control=root@192.168.122.2
 SSH=(ssh -T -o BatchMode=yes -o ConnectTimeout=10 -o ProxyJump=root@192.168.47.130 -o ServerAliveInterval=10 -o ServerAliveCountMax=3)
 case "$operation" in

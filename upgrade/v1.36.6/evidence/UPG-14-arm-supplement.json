@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "accepted": true,
+  "source": "v1.35.10",
+  "target": "v1.36.6",
+  "case_ids": [
+    "UPG-14"
+  ],
+  "method": "analysis",
+  "claim": "本次Harbor ARM2144同CPU桥接的三手册完成增量来源、内容、操作证据、新手/熟练读者路径和静态作者检查；原96官方目录和未变正文研究按原身份复用。明确第三方源码不可完整核实与官方最终包、受管CPU选择、真实原账本/权限/内容、原点恢复、独立新装幂等及限定清理；新修订v0.1.10的发布前限制明确。本项不签最终现场、已发布新二进制、跨CPU实测、其它组件ARM或客户签收。",
+  "covered_subcases": [
+    "customer-operator-entry-and-preflight",
+    "frozen-component-combination-and-evidence-boundary",
+    "stop-resume-recovery-and-rollback-limits",
+    "official-source-directory-and-reader-path"
+  ],
+  "inputs": {
+    "upgrade/v1.36.6/operations-manual.md": "1c2c3a7b8e45ae140187a2e8acfaad6019ced71dbae0f71717e35651650710cb",
+    "upgrade/v1.36.6/technical-whitepaper.md": "6bd888e4c5f671cb1a4242ddc960255e86f171bba697a364e36cf033f8740b7c",
+    "upgrade/v1.36.6/development-manual.md": "1cb9225e9d76c750e0ed22e0be4097de089d9358caa77ba07765aafaee9aa9db",
+    "upgrade/v1.36.6/research.yaml": "bdf4791398d37d9f386fa2e62d46d30412e18cf73119631004a1c3a4785b0858",
+    "upgrade/v1.36.6/acceptance-plan.yaml": "139a79615552708907a6b7746483e3f0c768f974196791eb586c2af32c88d99e",
+    "upgrade/v1.36.6/release.yaml": "d4547e15acbdf211e7a5ec4c7143ffda6beec6da9e71acafc9189ca966a993fc",
+    "upgrade/v1.36.6/artifact-pins.json": "6ceaf94c0fb6657a66017ff1563b9743c754ff1c7282b36242ade029b9a25047"
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.36.6/evidence/UPG-14.json",
+      "sha256": "4fc246d77e9660881545624542f9c27aba47c844f23e79ac772454ccdcc830c6"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/document-arm-review.json",
+      "sha256": "1452a18a0f38549569c852498c75aed633461f2ded15f0b1330f34a25aa002b2"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/UPG-02-arm-supplement.json",
+      "sha256": "63a3244146e08ad84a5c09e51fe1f688f4a2da45bcb1f43a84721082956af10e"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/UPG-12-arm-supplement.json",
+      "sha256": "d1559a20008c033477165f6c920e1393c1e27342f6b59861f8d1a2964d9f6549"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/UPG-13-arm-supplement.json",
+      "sha256": "ee40e007be95b12617a3b322e10a6a118b0964203bf3db2f947345b97cd50b27"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-content/arm-document-static.json",
+      "sha256": "fcb0c6bae5132086203a1155d14db4bad1970040445143299ecd9bb17c027166"
+    }
+  ],
+  "applicability": {
+    "conditions": "官方目标仍为2.16，原96目录及未变能力研究可按旧来源和范围复用；新增第三方包资料、桥接关键源码/固定内容和真实ARM资格结果已核对。",
+    "differences": "仅同CPU ARM桥接、原生Harbor运行和新修订身份变化；原x86与全站研究缺口保留，不冒签历史ARM或供应商完整源码。",
+    "reason": "本次正文说明实际集成与真实结果，作者检查与最终产品验收/发布/客户签收分开，既有有效动作不为写作而重复现场。"
+  },
+  "customer_signoff": null,
+  "original_prerequisite_digests": {
+    "upgrade/v1.36.6/evidence/UPG-12.json": "8c3e3f9ffb08bf36051e7b34baad4325f7854fe424cd64437f38bb291ffad643"
+  },
+  "metadata_reference_note": "完成文字修订与原输入快照绑定引起的上游证据摘要变化；原前置摘要保留，原发布提交e844be98485d6477b6314e76689d56fa602ca762可逐字节回读。仅重新核对元数据引用，不改变产品/运行/验收范围，不宣称重新现场执行。"
+}

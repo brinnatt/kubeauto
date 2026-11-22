@@ -16,6 +16,16 @@ SPEC.loader.exec_module(entrypoint)
 
 
 class EntryPointContracts(unittest.TestCase):
+    def test_harbor_bridge_is_selected_on_managed_host_not_controller(self):
+        manager=Mock();manager.clusters_dir=Path('/fixture/clusters')
+        manager._yaml_to_dict.return_value={'HARBOR_PATH':'/var/data'}
+        with patch.object(entrypoint,'_admit',side_effect=lambda runner,required:runner()):
+            entrypoint.run_harbor_operation(manager,'customer',operation='upgrade',
+                backup_directory='/recovery/original',bridge_package='/input/bridge.tgz',
+                target_package='/input/target.tgz')
+        self.assertEqual(manager._run_playbook.call_args.kwargs['extra_vars']['UPGRADE_HARBOR_PACKAGES'],
+                         {'bridge':'/input/bridge.tgz','v2.16.0':'/input/target.tgz'})
+
     def test_harbor_static_refusal_precedes_all_remote_or_setup_callbacks(self):
         manager=Mock()
         with patch.object(entrypoint,'_admit',side_effect=ValueError('pending prerequisites')):

@@ -181,7 +181,7 @@ Compose独立资格的清理不调用Kubernetes销毁入口。先停止自有容
 
 每个子项结束立即收取日志、exit/finalized、实际业务和清理证据。原始敏感材料受控
 保存在被Git忽略的归档，正式JSON引用其SHA256及边界。父项只有全范围覆盖才签PASS；
-独立AMD64迁移资格不能替新建或最终验收签名。本次运行验收范围为x86；ARM64保留官方来源、签名、双架构制品与静态检查，明确未经项目原生实测。状态读取：
+独立AMD64迁移资格不能替新建或最终验收签名。原运行验收范围为x86，ARM静态材料保留原边界；本次仅补Harbor原生ARM迁移、恢复、新建与清理，验收状态以同一矩阵为准。状态读取：
 
 ```bash
 .venv/bin/python -B upgrade/validate.py upgrade/v1.36.6/test-matrix.yaml --status
@@ -245,3 +245,67 @@ tag发布是有外部结果的动作，不能用检查源码的成功代替Actio
 最终收尾核对六仓分支、HEAD、用户改动、临时目录、远程租约、进程、容器和归档。
 IDE看见上游隐藏文件时先检查嵌套Git/证据排除，不批量删除正式原始证据。临时clone
 放工作区外；需保存的固定源码使用无`.git`快照，运行日志和缓存不得进入提交。
+
+### Harbor原生ARM补充入口
+
+原生ARM补充沿用 `harbor-control.sh`，仅 `v1366-harbor-arm-*` run ID 路由到固定
+ARM runner；历史AMD64 run仍保留原入口和原身份。当前控制机为192.168.47.130，
+受管主机仅192.168.37.101，不访问已断开的192.168.122网段。授权池不等于可以接管
+其既有数据：入口要求Docker/containerd停止、无容器、无Harbor数据及外来TLS信任，
+主机CPU和资源满足约束后才声明本轮所有权。
+
+本入口复用发行版Docker26.1.3和Compose2.27.0，TLS由私有夹具提供，通过真实
+`config.yml + kubecli setup CLUSTER 11 --start-at-task`进入Harbor角色，不安装
+Kubernetes、CRI或重放系统准备。控制机复用既有Python3.12.14环境和RPM管理的
+Ansible2.16.3；源码、集群配置和日志放入本次私有目录，不复制开发机的Python二进制
+扩展。stage检查实际产品CLI、安装前版本展示和控制机/ARM时差，避免只检查`--help`
+却漏掉setup所需的真实二进制。源/桥接/目标
+三个包按固定SHA验真；装载前拒绝覆盖内容不同的已有包内tag。普通客户完整新建仍按
+运维手册执行，本聚焦入口不能用作整机安装的替代验收。
+
+执行stage前，在开发机的`~/.cache/kubeauto/harbor/`准备下列完整包。使用运维手册的
+[包提取方法](operations-manual.md#选择路径与准备恢复空间)，提取后只规范外层文件名，
+不重新打包内部内容。最终包也可从官方签名发行获取，核验方式同该节。
+
+| 包 | 本地缓存名 | 已发布载体及包内路径 |
+| --- | --- | --- |
+| 原ARM 2.13.0 | `harbor-offline-installer-v2.13.0-arm64.tgz` | `harbor-offline:v2.13.0`的ARM子清单；`/harbor/harbor-offline-installer-aarch64-v2.13.0.tgz` |
+| IabSDocker ARM 2.14.4 | `harbor-offline-installer-v2.14.4-iabs-arm64.tgz` | `harbor-upgrade-bridge-arm64:v2.14.4-iabs.1`；`/harbor/harbor-offline-installer-v2.14.4.tgz` |
+| 官方ARM 2.16.0 | `harbor-offline-installer-v2.16.0-arm64.tgz` | `harbor-offline:v2.16.0`的ARM子清单；`/harbor/harbor-offline-installer-v2.16.0.tgz` |
+
+载体优先使用`hub.talkedu.cn/kubeauto/`，保留`brinnatt/`回退。源/目标载体在x86控制机
+提取时显式指定`--platform linux/arm64`，仅create/cp/rm，不运行ARM容器。三个完整包
+的固定SHA由`upgrade/lab/harbor_arm_session.py`中的`PACKAGES`定义，并与制品审核记录
+对应。stage复用这些已校验缓存，不再登录Registry或重新拉取包装镜像。
+
+ARM节点传输只依赖SSH与SCP，不要求发行版预装rsync；控制机的源码同步仍使用
+rsync。`stage`先实际读取节点的Compose文件验证传输，成功后才能申请节点所有权。
+对已停止且没有容器的实验室Docker，夹具私有保存原`daemon.json`的字节、权限与
+属主，测试期间使用隔离配置，结束后逐字节恢复；外来修改会阻止自动恢复。
+这只适用于本入口独占的空测试主机，不是修改客户Docker配置的操作建议。
+恢复后的归档传输失败时，续清理先复验原配置和停止状态，不重新启动运行时。
+
+```bash
+bash upgrade/lab/harbor-control.sh stage v1366-harbor-arm-YYYYMMDDa
+bash upgrade/lab/harbor-control.sh plan v1366-harbor-arm-YYYYMMDDa
+bash upgrade/lab/harbor-control.sh launch v1366-harbor-arm-YYYYMMDDa
+bash upgrade/lab/harbor-control.sh status v1366-harbor-arm-YYYYMMDDa
+bash upgrade/lab/harbor-control.sh fetch v1366-harbor-arm-YYYYMMDDa
+```
+
+日期占位符须替换为本次唯一run ID；`stage`只准备私有控制目录，不运行Harbor。
+入场前本地合同及实际计划必须通过。阶段按源账本、同CPU迁移及幂等、完整原点恢复、
+官方目标干净新建及幂等、限定清理顺序执行；首失败停止，保留原日志、私有恢复点与
+节点owner，不能重建已接受源数据来掩盖失败。公开收证不包含settings、ledger密码或
+完整数据库归档。结束时完整私有恢复档案先逐文件核对再删除节点副本，回收本轮TLS、
+信任、hosts行和运行时别名，恢复Docker/containerd停止状态，保留共享镜像缓存。
+新增运行只签本Harbor补充范围，不把它改称为跨CPU迁移或整套组件ARM回归。
+`qualify`用于关闭UPG-12/13的新增ARM缺口；`final`在UPG-01至14全部有效后，
+从干净节点执行同一五阶段链。调用格式为`launch RUN final`，不是`launch final RUN`；
+前者完成不能改签后者。原Kubernetes七阶段和AMD64 Harbor六阶段继续绑定其原run，
+不纳入本次ARM实际执行步数。
+
+若源阶段在安装Harbor前失败，先检查首失败和私有状态；仅在没有Harbor数据、容器、
+业务账本及备份时，才可使用`cleanup-uninstalled RUN`回收本轮夹具。该入口保留父
+运行失败，清理重试各自归档helper、日志和退出状态，不能据清理通过补签产品成功。
+完成清理及收证后使用`archive RUN`归档控制目录，再以新的run ID开始。

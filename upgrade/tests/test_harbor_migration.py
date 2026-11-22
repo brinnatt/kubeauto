@@ -324,11 +324,11 @@ class HarborMigrationContracts(unittest.TestCase):
 
     def packages(self):
         hashes={}
-        for version in ['v2.14.6','v2.16.0']:
+        for version in [migration.BRIDGES[self.harbor.arch],'v2.16.0']:
             images=io.BytesIO();manifest=[]
             with tarfile.open(fileobj=images,mode='w:gz') as archive:
                 for name in self.harbor.layout['services']:
-                    raw=json.dumps({'architecture':'amd64','os':'linux','fixture':name,'version':version}).encode()
+                    raw=json.dumps({'architecture':self.harbor.arch,'os':'linux','fixture':name,'version':version}).encode()
                     filename=migration.hashlib.sha256(raw).hexdigest()+'.json'
                     info=tarfile.TarInfo(filename);info.size=len(raw);archive.addfile(info,io.BytesIO(raw))
                     manifest.append({'Config':filename,'RepoTags':['goharbor/'+name+':'+version],'Layers':[]})
@@ -341,7 +341,7 @@ class HarborMigrationContracts(unittest.TestCase):
                     info=tarfile.TarInfo(name);info.size=len(raw)
                     archive.addfile(info,io.BytesIO(raw))
             self.harbor.package_paths[version]=path
-            hashes[version]={'amd64':migration.digest(path)}
+            hashes[version]={self.harbor.arch:migration.digest(path)}
         return patch.object(migration,'PACKAGES',hashes)
 
     def test_bridge_starts_core_without_proxy_or_jobs_and_checks_each_boundary(self):
@@ -377,7 +377,50 @@ class HarborMigrationContracts(unittest.TestCase):
         self.assertEqual(len(self.harbor.trace),before)
         self.assertEqual(self.harbor.load()['phase'],'backup-complete')
         with self.packages(),patch.object(self.harbor,'arch','arm64'):
-            with self.assertRaisesRegex(migration.Refused,'official offline bridge'):self.harbor.package('v2.14.6')
+            with self.assertRaisesRegex(migration.Refused,'approved offline bridge'):self.harbor.package('v2.14.6')
+
+    def test_bridge_alias_uses_managed_host_architecture_and_rejects_conflicts(self):
+        parent=self.root/'arm-managed';parent.mkdir()
+        path=str(self.root/'bridge.tgz')
+        with patch.object(migration.platform,'machine',return_value='aarch64'):
+            instance=Fixture(parent,packages={'bridge':path})
+        self.assertEqual(instance.package_paths,{'v2.14.4':Path(path)})
+        parent=self.root/'conflicting-managed';parent.mkdir()
+        with patch.object(migration.platform,'machine',return_value='aarch64'):
+            with self.assertRaisesRegex(migration.Refused,'conflicting bridge'):
+                Fixture(parent,packages={'bridge':path,'v2.14.4':str(self.root/'other.tgz')})
+
+    def test_arm_bridge_keeps_original_data_permissions_and_full_restore_exit(self):
+        self.harbor.arch='arm64'
+        self.harbor.backup_source()
+        with self.packages():result=self.harbor.upgrade()
+        self.assertEqual(result['architecture'],'arm64')
+        self.assertEqual(self.harbor.load()['phase'],'v2.16.0-ready')
+        prepares=[v for args in self.harbor.trace if args[1:2]==['run']
+                  for v in args if v.startswith('goharbor/prepare:')]
+        self.assertEqual(prepares,['goharbor/prepare:v2.14.4']*2+['goharbor/prepare:v2.16.0']*2)
+        self.assertTrue(all(o['State']['Running'] for o in self.harbor.objects))
+        self.assertEqual(self.harbor.restore()['marker'],'HARBOR_ORIGINAL_RESTORE_PASS')
+        self.assertEqual(self.harbor.version,'v2.13.0')
+        self.assertEqual((self.harbor.data/'registry/confirmed-blob').read_bytes(),b'original confirmed image bytes')
+
+    def test_arm_bridge_failure_checkpoint_remains_restorable(self):
+        self.harbor.arch='arm64'
+        self.harbor.backup_source()
+        original=self.harbor.stage_release
+        def fail_target(version,*args,**kwargs):
+            if version=='v2.16.0':raise migration.Refused('target prepare refused')
+            return original(version,*args,**kwargs)
+        with self.packages(),patch.object(self.harbor,'stage_release',side_effect=fail_target):
+            with self.assertRaisesRegex(migration.Refused,'target prepare refused'):
+                self.harbor.upgrade()
+        self.assertEqual(self.harbor.load()['phase'],'v2.14.4-ready')
+        self.assertFalse(any(o['State']['Running'] for o in self.harbor.objects))
+        self.assertEqual(self.harbor.restore()['marker'],'HARBOR_ORIGINAL_RESTORE_PASS')
+
+    def test_third_party_arm_bridge_is_not_accepted_on_amd64(self):
+        with self.assertRaisesRegex(migration.Refused,'approved offline bridge'):
+            self.harbor.package('v2.14.4')
 
     def test_migration_failure_never_starts_services_and_keeps_restore_exit(self):
         self.harbor.backup_source();self.harbor.fault='migrate'
@@ -672,7 +715,7 @@ class HarborMigrationContracts(unittest.TestCase):
                             for a in self.harbor.trace))
         self.assertFalse(any(a[1:3]==['rm','-f'] for a in self.harbor.trace))
 
-    def test_corrupt_transfer_and_arm213_direct_bridge_refuse_before_target_creation(self):
+    def test_corrupt_transfer_and_wrong_architecture_packages_refuse_before_target_creation(self):
         self.portable_target()
         original=(self.harbor.transfer/'registry.dump').read_bytes()
         (self.harbor.transfer/'registry.dump').write_bytes(b'corrupt')
@@ -681,7 +724,7 @@ class HarborMigrationContracts(unittest.TestCase):
         self.assertFalse(self.harbor.backup.exists());self.assertFalse(self.harbor.data.exists())
         (self.harbor.transfer/'registry.dump').write_bytes(original)
         with self.packages(),patch.object(self.harbor,'arch','arm64'), \
-             self.assertRaisesRegex(migration.Refused,'official offline bridge'):
+             self.assertRaisesRegex(migration.Refused,'approved offline bridge'):
             self.harbor.portable_import()
         self.assertFalse(self.harbor.backup.exists());self.assertFalse(self.harbor.data.exists())
 

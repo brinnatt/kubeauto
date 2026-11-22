@@ -16,8 +16,8 @@
     "UPG-14",
     "UPG-15"
   ],
-  "build_inputs_sha256": "9d8768041b6613668c9a75de520a5eb935c7f2a7715958b0843e8607244d438e",
-  "matrix_sha256": "4f1f4f552562e3ee6f6e127fc8d0bb52e0988ceb5ee0c211317e3a1141311b99",
+  "build_inputs_sha256": "91c86a2569b3a3425eda4d9b0789e5bc3516378461caafb9ed81824d9bd1df5f",
+  "matrix_sha256": "bf3c94a55bc62ea9afee67edf95639f4a3efc24ebf53091021e5a98220956ea0",
   "runtime_data": {
     "upgrade/product/api-auth-observe.yml": "6c3fa82c10570193cc9c3a4d39fc87add749ffe2771604d23390f5cde2ce4093",
     "upgrade/product/api-auth.yml": "b25ddd0eaa687685fb0dda80cff2cc20e2a89f0f872cbb62df2158b405911498",
@@ -36,7 +36,7 @@
     "upgrade/product/harbor.yml": "0915a3af1d0f209fe08778494a1b321c4cb54bc9823ff13f462b2799c0b63796",
     "upgrade/product/inventory.yml": "c5f5e2b9b35ce1029235959d4f59199ac46ca256afd554f57d3d8c586c978e5b",
     "upgrade/product/kubernetes-observe.yml": "493b2ec1c90f91d468038d424ab76f07349a9596c0ede84772c7afae0e4b666d",
-    "upgrade/product/library/harbor_migration.py": "7673ce57ad0c409c49ff853f02aaecf0cc27daa6743fea00a3f286ed809ebb13",
+    "upgrade/product/library/harbor_migration.py": "cb93cea14c4e94726bf355da5e0fefd31ac55b10593386e4e02576ea4a165c6f",
     "upgrade/product/metrics-eviction.yml": "e30b53957e946b8d69dcea3b2feeaaacb895713f68c031e5d467e4e6d933b745",
     "upgrade/product/next-preconditions.yml": "5d0785b65105a03b0d26f4693fda5376940739b5e269432c7b19ae58f5d70566",
     "upgrade/product/node.yml": "0112a7d7eb7b528575f7e4da5f7147108f3820f6f819e0904a839da936d6627c",

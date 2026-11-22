@@ -22,6 +22,15 @@
 无关全量构建和客户生产变更不属于升级维护的隐含授权。
 授权不替代官方组合、发布集合、合同、租约与恢复前置，不允许重签历史证据。
 
+交付负责人已追加授权仅补 Harbor 原生 ARM64 验收，并选择
+[`IabSDocker/harbor`](https://github.com/IabSDocker/harbor) 提供 ARM 过渡包；
+目标仍为官方 `v2.16.0`，不扩展 Kubernetes 或其它组件回归。
+选定制品、供应链核查及待补出口见
+[ARM 补充记录](v1.36.6/evidence/harbor-arm64-supplement.json)。
+原 x86/Kubernetes 验收保留原身份；新增 ARM 同CPU桥接、恢复、新建与最终验收
+已由本跳矩阵补充证据闭合。第三方包仍仅作过渡，不标为官方构建；生产使用须采用
+包含此实现并已正式发布的新产品修订，实际发布身份与源码冻结分别核对。
+
 所有新增升级专用文件放在 `upgrade/`，包括方案、版本记录、正式升级矩阵、
 后续 runner/合同/fixture、升级证据摘要和升级操作文档。根 AGENTS 只保留导航。
 现有 `playbooks/93.upgrade.yml`、生产 roles、原 tests/runner、历史证据与组件手册

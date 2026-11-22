@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "accepted": true,
+  "source": "v1.35.10",
+  "target": "v1.36.6",
+  "case_ids": [
+    "UPG-02"
+  ],
+  "method": "analysis",
+  "claim": "已核验相邻minor精确稳定pin、30个组件域的安装组合/迁移边及官方来源实际力度。Kubernetes1.36.6与Harbor2.16.0为新目标；未变组件保留已接受维护组合。Harbor经2.14.6进入2.16，原第三方ARM采用项目逻辑迁移路径；该路径、未提供逐版上游表的组件及退役组件均明确边界，本项不签项目实测、完整官方目录阅读、原生ARM运行或GA。 本轮仅追加IabSDocker2144 ARM同CPU桥接至官方216：按官方214支持2.11+及216支持2.14+的版本顺序，保留完整构建源码不可公开审计的供应商边界。包身份/关键内容核查不是官方构建或安全认证，原生运行由后续Harbor补充项验收。",
+  "covered_subcases": [
+    "exact-adjacent-kubernetes-stable-pin",
+    "every-catalog-component-has-decision-pin-and-transition-edge",
+    "official-evidence-strength-and-noncertification-boundaries",
+    "eol-and-transition-only-components-are-explicit"
+  ],
+  "inputs": {
+    "upgrade/v1.36.6/release.yaml": "d4547e15acbdf211e7a5ec4c7143ffda6beec6da9e71acafc9189ca966a993fc"
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.36.6/evidence/combination-review.json",
+      "sha256": "c486b5e34c893c86092961477d80f504bfe4a0b4283fa2f8c2e0a705dc2145e5"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/completion-metadata-review.json",
+      "sha256": "4942cddf581460fc537946c89afe7ae1f8f70ee7fadab0b947642f38b5b85a40"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/UPG-02.json",
+      "sha256": "b0ae9eb1bd42d2e9cadc9d41ab797761166bacaa81ae32ff2596f0d07a359480"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-content/harbor-v2.14.4-iabs-arm64-image-content.json",
+      "sha256": "3c0e7e61b80c08be8595ab5964fdddf1dcb5199c096fbdf1c3381e0c197786e0"
+    }
+  ],
+  "applicability": {
+    "conditions": "固定版本及官方资料快照可读且摘要一致；适用性按tested、支持声明、最低版本、稳定API、源码和上游过程分别评估。",
+    "differences": "本跳不重演维护基线已有etcd/runtime/CNI引擎迁移；Harbor数据库、缓存与跨架构路线须由后续真实场景证明，组合冻结不授权未知路径。",
+    "reason": "本项仅审查组合及已确定的迁移设计；既有用户接受的非逐版认证与生命周期过渡边界保留。完整目录消化、产品集成和恢复由对应矩阵另验。"
+  },
+  "customer_signoff": null
+}

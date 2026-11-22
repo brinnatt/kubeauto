@@ -1,0 +1,166 @@
+{
+  "schema_version": 1,
+  "accepted": true,
+  "source": "v1.35.10",
+  "target": "v1.36.6",
+  "case_ids": [
+    "UPG-03"
+  ],
+  "method": "analysis",
+  "claim": "168个源/目标及运维依赖tag由run44775670366当前只读回查，双端同index且AMD64/ARM64齐全，release job跳过；本跳仅新增1个K8s包和3个外部镜像。1.35.10源二进制/1.17.1维护包固定复用、1.36.6六二进制官方SHA和两种架构ELF核验、Harbor安装包字节核验。9个实际lab镜像全部保持既有tag并核对runtime/rootfs后复用；不签现场集成或原生ARM运行。 本轮追加且只发布一个ARM2144过渡包载体，Actions44975709751 selected一项成功，双端双架构manifest一致、release durable rc0；包装双架构不代表payload双CPU，内部固定ARM包SHA。原有制品不重建。",
+  "covered_subcases": [
+    "complete-consumer-inventory-and-scope",
+    "changed-artifacts-publication-and-readback",
+    "unchanged-artifacts-reuse-boundary",
+    "kubernetes-and-binary-pack-identity"
+  ],
+  "inputs": {
+    "upgrade/v1.36.6/artifact-pins.json": "6ceaf94c0fb6657a66017ff1563b9743c754ff1c7282b36242ade029b9a25047"
+  },
+  "references": [
+    {
+      "path": "upgrade/v1.36.6/evidence/consumer-image-scope.json",
+      "sha256": "86a57ec8a499955f44a700c43f09480554d06cbed70cdb643ced0247173585d1"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/consumer-readback-plan.json",
+      "sha256": "697883d93971675c75c44f3307bc5287bc56d3fb0706c264cdbe07a7e68d9ab7"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/consumer-readback.json",
+      "sha256": "a41f18c34d526e9ae4ac1f63a2500a50bd8fd6a376a790c9f37cfd4905115504"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/artifact-publication.json",
+      "sha256": "9e56992a88bbabd9df09eed0a4a5511add338203acb65b179657b90ac679c9a8"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/k8s-binary-content.json",
+      "sha256": "ba78a049b7ba145b086b6aef4b2624c22d900c80cb1cac63d3a66b0d7b9d189c"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/source-pack-content.json",
+      "sha256": "3f52ebbc7a39b081769fa28432e5b0c6120f2f7ccf5b2cdd969ba9dea1a7bc12"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/harbor-package-content.json",
+      "sha256": "247b52e10140adc9dc4f809a69e3a785ad2b89647b4b9fd44f7cbf9d8c90e1f7"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/lab-registry-supply.json",
+      "sha256": "a8ed369c44c3d4edf77375e6ebe195f6d731e62eea6ca6153c8a7655ff737e44"
+    },
+    {
+      "path": "upgrade/v1.35.10/maintenance-baseline.yaml",
+      "sha256": "af301c489a6a9f6ee7e9242bf18f115d74342b4b28720db5a4267ce58a3f92fc"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/maintenance/qualification.json",
+      "sha256": "c2c30ee51d7ac34b1f3d56a920d39eb12e6f18574f05c352ea983183e89321ae"
+    },
+    {
+      "path": "upgrade/v1.35.10/evidence/k8s-binary-content.json",
+      "sha256": "c199e0242b22459c6c24f1350ee4ef794c54f7d1e7d6dcf4185b39895ba0b195"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/consumer-readback/14650556378.zip",
+      "sha256": "088319376d275cd72015f91d82ae31486978c47148e605ca72afd2e352a26c5a"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/consumer-readback/14650761073.zip",
+      "sha256": "bde478c14ff66df02e4b2b34887fd79eb90bc6ecb4b6a110beff88fbd27210b7"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/consumer-readback/lab-registry-readonly.log",
+      "sha256": "392de46ec38b55af42ee4852c695ebd812cb9538ed71b840480c41b0fbf943e4"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/consumer-readback/plan-verify.log",
+      "sha256": "7e48312ffc78935b1630954c011d4b485572908a2ce18f14b227f28136cf9b6a"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/consumer-readback/plan-verify.status",
+      "sha256": "93ff7811a209e2a8479230bbb9b6bc19f7f311d3af383ec350c1db2a7e7d5494"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/consumer-readback/plan.log",
+      "sha256": "f73f59cc1ea9d3c28c2bf4479afb531785860af9e4c775c2b0f5caa197079c9d"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/consumer-readback/plan.status",
+      "sha256": "93ff7811a209e2a8479230bbb9b6bc19f7f311d3af383ec350c1db2a7e7d5494"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/consumer-readback/readback-2-artifacts.json",
+      "sha256": "80510651154ccd5a2e1f323c4a0827b3a15e9abccfda0c2ade83b4cfad7abb7b"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/consumer-readback/readback-2-jobs.json",
+      "sha256": "abb21819c45f51e5371b008afe5dc15aadd09e7a05b46cf83698972e35fa4ea5"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/consumer-readback/readback-2-run.json",
+      "sha256": "a3cda15c7f46d58ad60dde6df5d6c8bcd5c42bc58d42754ed9a9d07b4bc3ddd5"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/UPG-03.json",
+      "sha256": "4aa3ab519a15761e9df13651c0186735653496436b87d7ff2f5649f073ab1d58"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-content/harbor-v2.14.4-iabs-arm64-image-content.json",
+      "sha256": "3c0e7e61b80c08be8595ab5964fdddf1dcb5199c096fbdf1c3381e0c197786e0"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64-publication/run.json",
+      "sha256": "0e4d026043835a08e2e543ee5dc1129fdd157b09b75c9c48e7b39deaa396a18e"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64-publication/plan-evidence/plan.log",
+      "sha256": "4b9b826ed1e6b738882cbbd19706d1cf999779a659b27f330dc820e8d4dcf90f"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64-publication/plan-evidence/plan-reuse.status",
+      "sha256": "93ff7811a209e2a8479230bbb9b6bc19f7f311d3af383ec350c1db2a7e7d5494"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64-publication/plan-evidence/plan.status",
+      "sha256": "93ff7811a209e2a8479230bbb9b6bc19f7f311d3af383ec350c1db2a7e7d5494"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64-publication/plan-evidence/plan-reuse.log",
+      "sha256": "4b9b826ed1e6b738882cbbd19706d1cf999779a659b27f330dc820e8d4dcf90f"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64-publication/plan/image-plan.json",
+      "sha256": "6aa75bdb2c338b9e68507f2e8e97747141be2d3830b83f947bc89b09bd8776b7"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64-publication/release/records/9f5ddf3775c820d5feef244b2efdbed9615e8b0b8702d28267af0427309d2a20.json",
+      "sha256": "90ad47b055d06b59caddd7ee86a4489dc9f546ba6ff92e4b29acb53b10865911"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64-publication/release/runs/44975709751-1/release-0.log",
+      "sha256": "e3cc7ba239e1e226771429b5fa94ad7c64d30492c22668e5d91e79576d7d7b80"
+    },
+    {
+      "path": "upgrade/v1.36.6/evidence/raw/harbor-arm64-publication/release/runs/44975709751-1/release-0.status",
+      "sha256": "93ff7811a209e2a8479230bbb9b6bc19f7f311d3af383ec350c1db2a7e7d5494"
+    }
+  ],
+  "applicability": {
+    "conditions": "正式image:tag与目录映射一致；当前双端manifest相同，架构明确；源维护接受记录及内容摘要一致。",
+    "differences": "本跳K8s1366、Harbor216、OpenEBSkubectl1366及AMD2146桥接载荷为新增制品。桥接wrapper双架构携带同一AMD64包，不能冒称官方ARM214运行时。",
+    "reason": "tag是交付身份，未变制品复用；不因源码SHA或历史指纹变动重建。维护组合现场健康另由UPG-05证明。"
+  },
+  "checks": [
+    {
+      "command": "inspect run44775670366 artifacts, exact168 allowlist, items=[], shards=0, dual registry identity and two platform keys",
+      "rc": 0
+    },
+    {
+      "command": ".venv/bin/python -B -m upgrade.lab.next_registry (read-only; nine existing tags)",
+      "rc": 0
+    }
+  ],
+  "customer_signoff": null
+}
