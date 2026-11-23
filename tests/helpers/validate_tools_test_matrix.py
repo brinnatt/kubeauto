@@ -29,6 +29,7 @@ EXPECTED_TOOLS = {
     "MyBackupCli": ROOT / "tools/mysqltools/MyBackupCli.py",
     "MyLogiBackupCli": ROOT / "tools/mysqltools/MyLogiBackupCli.py",
     "StarCli": ROOT / "tools/starrocks/StarCli.py",
+    "StarMigrtCli": ROOT / "tools/starrocks/starmigration/StarMigrtCli.py",
 }
 ALLOWED_122_ADDRESSES = {
     "192.168.122.2", "192.168.122.217", "192.168.122.243",

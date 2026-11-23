@@ -58,7 +58,7 @@ class ToolsMatrixContractTests(unittest.TestCase):
         self.assertEqual(set(inventory), {
             "NetCheckCli", "OvpnUserCli", "CalicoPolicyCli", "KubeBackupCli",
             "KubePublishCli", "KafkaCli", "MigrationCli", "MyBackupCli",
-            "MyLogiBackupCli", "StarCli",
+            "MyLogiBackupCli", "StarCli", "StarMigrtCli",
         })
         case_ids = {case["id"] for case in data["test_cases"]}
         capabilities = [cap for entries in inventory.values() for cap in entries]

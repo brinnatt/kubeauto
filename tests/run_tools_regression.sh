@@ -30,6 +30,10 @@ usage() {
 用法: tests/run_tools_regression.sh [--preflight|--status|--build-only|--star-artifact-prepare|--cross-live|--calico-live|--kafka-live|--kube-backup-live|--kube-publish-live|--migration-live|--mybackup-live|--mylogi-backup-live|--mysql-backup-live|--star-live|--full]
 
   --preflight  校验 tools 矩阵、脚本语法和独立导入边界（无远程变更）
+  --starmigrt-preflight  仅新 StarRocks 逻辑迁移工具的本地静态/CLI合同，无远程变更
+  --starmigrt-status     只读校验迁移工具当前证据并输出矩阵
+  --starmigrt-qualify    仅迁移工具的冻结、真实双实例往返、安全和恢复资格
+  --starmigrt-full       前置1–6通过后，迁移工具最终干净完整回归
   --status     输出当前 tools 矩阵状态
   --build-only 在固定 Rocky 8.10/glibc 2.28 环境构建并校验十个冻结工具
   --star-artifact-prepare 从官方固定 URL 原子准备并校验 StarRocks 3.5.12 归档
@@ -48,6 +52,25 @@ EOF
 }
 
 case "${1:---preflight}" in
+  --starmigrt-preflight)
+    "$PY" -B "$ROOT/tests/helpers/validate_tools_test_matrix.py" "$MATRIX"
+    STARMIGRT_TEST_TMP="$(mktemp -d /tmp/kubeauto-starmigrt-contract.XXXXXX)"
+    trap 'rm -rf "$STARMIGRT_TEST_TMP"' EXIT
+    (
+      cd "$ROOT"
+      KUBEAUTO_LOG_DIR="$STARMIGRT_TEST_TMP" PYTHONDONTWRITEBYTECODE=1 "$PY" -B -m unittest \
+        tests.unit.test_starmigrt_contract \
+        tests.unit.test_starmigrt_gate_contract \
+        tests.unit.test_tools_matrix_contract.ToolsMatrixContractTests.test_tools_matrix_summary_matches_cases \
+        tests.unit.test_tools_matrix_contract.ToolsMatrixContractTests.test_public_function_inventory_is_fully_mapped_to_cases \
+        -v
+    )
+    echo STARMIGRT_PREFLIGHT_PASS
+    ;;
+  --starmigrt-status|--starmigrt-qualify|--starmigrt-full)
+    stage="${1#--starmigrt-}"
+    "$PY" -B "$ROOT/tests/helpers/starmigrt-live.py" "$stage"
+    ;;
   --star-compose-preflight|--star-compose-status|--star-compose-be|--star-compose-cn|--star-compose-full)
     stage="${1#--star-compose-}"
     "$PY" "$ROOT/tests/helpers/starrocks-compose-live.py" "$stage"

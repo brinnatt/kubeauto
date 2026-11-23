@@ -1,0 +1,44 @@
+{
+  "ids": [
+    "TL-SD-01",
+    "TL-SD-02",
+    "TL-SD-03",
+    "TL-SD-04",
+    "TL-SD-05",
+    "TL-SD-06"
+  ],
+  "inputs": {
+    "tools/starrocks/starmigration/StarMigrtCli.py": "0e8d474ae0339eacfb050e375daa297b06d8a97c9582603170ee58611a7bb262",
+    "tools-onefile.spec": "7bb77b6db73a9c015aff2156120d94f7dc67a7a30e037f105d452bcbded45956",
+    "tests/helpers/starmigrt-live.py": "66337c60ce7d4bea430401332fa90b0a7347cca14992590a2563fb229f502c11",
+    "tests/helpers/starrocks-compose-live.py": "2b47b114fe23afc9cdc65956637a19690dea822e4f5de560970f896f4c5f8dcf",
+    "tests/helpers/run-durable-gate.sh": "352244f3c876f5f9626c0c21f574de3aecb61642e0be10324623b15b6b9b1843",
+    "tests/unit/test_starmigrt_contract.py": "61bf312f484368f5a64acc1e56cd874b8c2c835c06997cf835a942751524a6ea",
+    "tests/unit/test_starmigrt_gate_contract.py": "9a40e6b4615ade99f35d7cca952547cc8ff5c515ec0da43d007d556460644894",
+    "tests/helpers/validate_tools_test_matrix.py": "9315dd913c1dcc2a94df82d5719eff43ce6515dd6ec2138c17f4ffc742cfef0b",
+    "tests/evidence/starmigrt-images.json": "873ff3870ef32bc80c7b30e0a56242e4faffe2b3de654afc729e133c2e064f91"
+  },
+  "rc": 0,
+  "files": {
+    "logs/starmigrt-qualify-48948ebf8dc943bfb8d072f6bbc88aa2/StarMigrtCli": "e8c3822320ce878d5f582e17d68f5031e6efec8e11c0856e88b57204feb1d113",
+    "logs/starmigrt-qualify-48948ebf8dc943bfb8d072f6bbc88aa2/network-target.json": "b6d3911cf8517b4ceb493dd6ad4a18b61642d9462a4ebb8e07cf21a4d3f8d870",
+    "logs/starmigrt-qualify-48948ebf8dc943bfb8d072f6bbc88aa2/firewall-after.rules": "64b3765cec6294152679f0f107217fc9a3276465c23170cc206136e4a160a72c",
+    "logs/starmigrt-qualify-48948ebf8dc943bfb8d072f6bbc88aa2/firewall-before.rules": "64b3765cec6294152679f0f107217fc9a3276465c23170cc206136e4a160a72c",
+    "logs/starmigrt-qualify-48948ebf8dc943bfb8d072f6bbc88aa2/fixture.json": "0e761c0319155dd6b0490c6dfcd8772fdb8827aa2cd483db5e89dd682b617c4c",
+    "logs/starmigrt-qualify-48948ebf8dc943bfb8d072f6bbc88aa2/state.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/starmigrt-qualify-48948ebf8dc943bfb8d072f6bbc88aa2/state.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/starmigrt-qualify-48948ebf8dc943bfb8d072f6bbc88aa2/plan.json": "fd14570d563d7dcece2d10eaeaabf9023cd9df7fc3a7351ab3fda1b29bcd0561",
+    "logs/starmigrt-qualify-48948ebf8dc943bfb8d072f6bbc88aa2/freeze.log": "fa98c5fa0a95aead8f0a67f08ce81a39be0de8ed4a667660a7aa45d471dd6aca",
+    "logs/starmigrt-qualify-48948ebf8dc943bfb8d072f6bbc88aa2/scenario.log": "611ed0ab6e3d8c0db44c98fb1bafec289980d1d6f1754031b2a208f6d627929f",
+    "logs/starmigrt-qualify-48948ebf8dc943bfb8d072f6bbc88aa2/result.json": "5557a3ef890b7195bb49a293b61e4427a414fe98da40bf21d271cdf326e3bbaa",
+    "logs/starmigrt-qualify-48948ebf8dc943bfb8d072f6bbc88aa2/console.log": "bcaa74e2cf820f1b6ff7790bfdcadbdf29b5a5487b68871dc357312234d0193c",
+    "logs/starmigrt-qualify-48948ebf8dc943bfb8d072f6bbc88aa2/network-source.json": "d8235ac0252bb27387ccb2d32fcab2f115507ab2b952a1fd9604cc55728949f9",
+    "logs/starmigrt-qualify-48948ebf8dc943bfb8d072f6bbc88aa2/dockerd.log": "0780176d691b0808cd1134d9250afd39d10f66c822d8fccbc7b045622fefbf0b"
+  },
+  "durable": [
+    "logs/starmigrt-qualify-48948ebf8dc943bfb8d072f6bbc88aa2/state.exit",
+    "logs/starmigrt-qualify-48948ebf8dc943bfb8d072f6bbc88aa2/state.finalized"
+  ],
+  "binary": "logs/starmigrt-qualify-48948ebf8dc943bfb8d072f6bbc88aa2/StarMigrtCli",
+  "result": "logs/starmigrt-qualify-48948ebf8dc943bfb8d072f6bbc88aa2/result.json"
+}

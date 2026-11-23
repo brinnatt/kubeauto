@@ -907,9 +907,9 @@ bash tests/run_tools_regression.sh --preflight
 bash tests/run_tools_regression.sh --status
 ```
 
-The tools matrix contains 71 scenarios (70 applicable and one not applicable) plus a 102-item
+The tools matrix contains 78 scenarios (77 applicable and one not applicable) plus a 112-item
 `functional_inventory`. The inventory is the public-function checklist for all
-ten CLIs: every command/role/data path/configuration mode/remote path and
+eleven CLIs: every command/role/data path/configuration mode/remote path and
 failure-recovery behavior must point to a CLI, functional, security or recovery
 case. Build success and `--help` are never sufficient evidence for an inventory
 item. A functional case is PASS only after its isolated fixture reaches the
@@ -921,6 +921,35 @@ credentials, external-service versions and live cleanup scope. The current
 matrix is approved, and `--full` still requires the explicit
 `TOOLS_MATRIX_APPROVED=yes` gate; Tier3 `--help` results in the enterprise
 matrix are not tools delivery evidence.
+
+新增 `tools/starrocks/starmigration/StarMigrtCli.py` 的 `TL-SD-01`–`TL-SD-07`
+由 `starmigrt_review` 独立约束，已获得用户要求 GA 的本工具范围授权；不继承旧十工具的 PASS。
+其本地静态和隔离 CLI 合同入口为 `bash tests/run_tools_regression.sh --starmigrt-preflight`，
+只读矩阵状态为 `bash tests/run_tools_regression.sh --starmigrt-status`。
+这两个入口不连接实验室。`--starmigrt-qualify` 先运行本地合同，再持有 130 与 122.2
+共享池锁及 216 节点锁，在 `root@192.168.122.216` 的私有 Docker 28.5.2 中建立两个
+StarRocks 3.5.7 实例。仅消费已双端双架构 readback 的 allin1 digest；镜像不在此入口发布。
+离线 wheel 固定版本并按官方 PyPI SHA256 校验，冻结只选择 `StarMigrtCli`，平台为
+Rocky Linux 9.8/Python 3.9.25/glibc 2.34/x86_64。真实业务包括多库、类型、分区、模式、
+只读账号、TLS 协议代理的 CA/身份/降级正反向、SIGTERM 续传和目标同数内容变化。
+外部 mysql 仅消费工具生成的 SQL，不能替代工具的 dump/merge/verify CLI 证据。
+
+`--starmigrt-full` 在任何 SSH 前核验 TL-SD-01–06 的当前输入、日志、冻结文件及 durable
+双 0，然后从干净环境重新执行上述完整场景；不调用 `--full` 或旧工具业务。
+成功要求六个 case marker、`STARMIGRT_GATE_PASS stage=full`、durable exit/finalized 双 0、
+零非预期失败和 `TOOLS_CLEAN_VERIFY_PASS scope=starmigrt`。成功、失败、中断均回收本轮
+容器、internal 网络、daemon、数据和挂载，并检查防火墙前后不变及无所属运行时进程。
+原始日志和诊断在 `logs/starmigrt-*` 私有目录保留，正式 SHA 绑定在 `tests/evidence/starmigrt-*.json`。
+
+失败后的 `--recover-run` 仅接受本入口的固定 UUID，在重新取得租约、确认 durable 已结束、
+无运行时目录/进程/挂载且防火墙相同后，归档诊断并删除该失败 run 的残留目录：
+
+```bash
+run_id='替换为完整的32位运行ID'
+.venv/bin/python -B tests/helpers/starmigrt-live.py qualify --recover-run "$run_id"
+```
+
+它不会修复或清理其它服务；遇到不能证明的残留即拒绝，先按首失败诊断。
 
 ### StarRocks 3.5.7 容器线路回归
 
