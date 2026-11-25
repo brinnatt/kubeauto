@@ -907,7 +907,7 @@ bash tests/run_tools_regression.sh --preflight
 bash tests/run_tools_regression.sh --status
 ```
 
-The tools matrix contains 78 scenarios (77 applicable and one not applicable) plus a 112-item
+The tools matrix contains 90 scenarios (89 applicable and one not applicable) plus a 117-item
 `functional_inventory`. The inventory is the public-function checklist for all
 eleven CLIs: every command/role/data path/configuration mode/remote path and
 failure-recovery behavior must point to a CLI, functional, security or recovery
@@ -999,7 +999,7 @@ portability 在固定 Rocky 8、Debian 12、Ubuntu 24 容器内并行启动两�
 8.4.0-5 的 REDUCED 差异来自固定官方源码及确定性合同，不冒称实测了 MySQL 8.0.33 或原生 ARM64。
 
 MySQL 8.0 的物理生命周期补充使用独立范围，矩阵为 `TL-MBK-07/08/09`。
-固定产品入口仍为冻结的 `MyBackupCli`，测试主机为原生 Rocky Linux 8.10（131）和
+固定产品入口仍为冻结的 `MyBackupCli`，测试主机为原生 Rocky Linux 8.10（137；既有已接受证据来自 131）和
 9.8（.122.216），AMD64、单 MySQL 容器、无加密；每台主机分别验证 GTID OFF/ON。
 两个主机在共享池控制租约和各自主机锁内并行，主机内按顺序执行，不接管系统 Docker。
 镜像必须先有两端双架构摘要证据；冻结程序和私有 Docker 运行时按 SHA256 复用。
@@ -1025,6 +1025,54 @@ durable exit/finalized、容器诊断和数据/LSN/binlog 边界归档；成功�
 `accepted.json`。单主机通过不签收父项；对端失败仍须保留真实首错。
 固定状态入口核验这三个新项已登记 PASS 的输入、原始文件摘要、durable 双 0 和业务/清理标记，
 依赖变化时拒绝沿用旧 PASS。没有这套真实证据时，矩阵保持 pending。
+
+二进制部署补充归入 `TL-MBK-10/11/12/13`：单机、一主一从、异步双主和最终干净完整回归。
+后续使用 137 与 .122.216；既有已接受的 131 独立证据保留原身份。两端实际 Rocky 8.10/9.8，AMD64；各拓扑覆盖精确
+MySQL 8.0.33/8.0.46、GTID OFF/ON。国内来源及 SHA256 固定在
+`tests/evidence/mysql80-binary-sources.json`；从官方 RPM 私有解包原生 mysqld 和依赖，
+不把 EL9 包放到 Rocky 8，不安装系统 MySQL 包，也不覆盖现有 mysqld.service。
+每个版本在独享目录和端口启动真实宿主机二进制及 systemd unit，客户端/PXB 使用固定
+工具容器并保留原 argv 与相同绝对路径，不用 systemctl 替身掩盖产品路径问题。
+
+```bash
+MYSQL_BACKUP_STAGE=binary80-preflight bash tests/run_tools_regression.sh --mysql-backup-live
+MYSQL_BACKUP_STAGE=binary80-plan bash tests/run_tools_regression.sh --mysql-backup-live
+MYSQL_BACKUP_STAGE=binary80-prepare bash tests/run_tools_regression.sh --mysql-backup-live
+# 仅当前 MyBackupCli onefile 构建；不重建其它工具，不发布镜像。
+MYSQL_BACKUP_STAGE=binary80-build bash tests/run_tools_regression.sh --mysql-backup-live
+# probe / replication-probe 仅资格验证，不能签矩阵父项 PASS。
+MYSQL_BACKUP_STAGE=binary80-standalone bash tests/run_tools_regression.sh --mysql-backup-live
+MYSQL_BACKUP_STAGE=binary80-primary-replica bash tests/run_tools_regression.sh --mysql-backup-live
+MYSQL_BACKUP_STAGE=binary80-dual-primary bash tests/run_tools_regression.sh --mysql-backup-live
+# 01～12、TL-X-06、当前文档和原始前置证据均通过后再启动。
+MYSQL_BACKUP_STAGE=binary80-full bash tests/run_tools_regression.sh --mysql-backup-live
+```
+
+每个场景通过产品 CLI 验证全备、两级增量及 LSN、归档和审计、在线和真实停机恢复、
+PITR 包含/排除边界、目标 UUID/持久配置、隔离拒绝、错误重试及恢复后的新备份周期。
+复制场景先证明两端独立备份，再以恢复后的权威节点新全备通过另一节点 CLI 重建，
+按 GTID 或冻结坐标重接并读回；双主还须反向写入读回。复制 SQL 只是夹具的人工运维步骤，
+不宣称工具能自动选择权威节点、切流量或管理对端。ENOSPC 与 prepare 前 SIGINT 是适配层注入，
+不能冒称真实磁盘耗尽或 XtraBackup 写盘中断。用户配置和连续操作见
+`tools/mysqltools/mybackup.conf.example` 与 `operations-manual.md`。
+
+`logs/mysql80-binary-<阶段>-<系统>-<run>/` 保存计划、原始日志、双退出码和私有证据归档，
+成功时有独立 `accepted.json`；父项须两端所有组合及 scoped clean 都通过。最终入口在任何 SSH 前
+拒绝缺失/pending/失败前置、过期文档和原始证据；不会以状态字面值或 probe 冒充完整证据。
+失败后保留首错与原始日志，只能用本固定入口的 recovery 按原 run 目录回收：
+
+```bash
+.venv/bin/python -B tests/helpers/mysql80-binary-live.py recover \
+  --run-directory logs/mysql80-binary-实际阶段-实际系统-实际run
+```
+
+recovery 先取得同一全局租约，再要求 durable 已结束、本轮 unit/fixture/进程已退出、
+防火墙前后相同；只回收原 run 的私有运行时及目录。不得手工删除失败目录后直接重跑，
+也不得在父运行仍持有控制租约时另起回收。独立的容器生产范围仍由 07～09 签署，
+13 绑定其当前证据，不把二进制测试当成容器测试。
+
+131 的 VMware balloon 容量拒绝不改变产品结论；后续固定 Rocky8.10 主机为已授权的 137，仍按现场实际 OS/架构/内存和租约准入。
+旧证据保留原计划与输入摘要；仅精确主机地址替换、相应主机合同常量及证据复用守卫可复用，生命周期、版本、GTID、产品或原始文件改变均拒绝。
 
 每轮 `logs/mysql-backups-<stage>-<time>` 保存本地 durable、远端双退出码、原始日志及 SHA256 校验的
 证据归档。未完成远端工作时监控中断保留现场，先查原 durable，禁止覆盖 staging 目录启动另一轮。

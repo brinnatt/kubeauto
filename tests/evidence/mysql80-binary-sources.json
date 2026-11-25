@@ -1,0 +1,141 @@
+{
+  "date": "2026-11-25",
+  "origin": "Oracle MySQL community RPM; native unpacked binary fixture, not a system RPM installation",
+  "artifacts": {
+    "rocky8/8.0.33": {
+      "url": "https://mirrors.nju.edu.cn/mysql/yum/mysql-8.0-community/el/8/x86_64/mysql-community-server-8.0.33-1.el8.x86_64.rpm",
+      "sha256": "baf8904e9d738a6ae935f0c0c0856a7da9c7335431fee555bc2f3dd989a98b8f",
+      "checksum_source": "https://mirrors.nju.edu.cn/mysql/yum/mysql-8.0-community/el/8/x86_64/repodata/8dd699d3db2e7d2773bca9838a1fd8844ef3ab87dfc036fcd0ebf81702ec1a8d-primary.xml.gz",
+      "format": "rpm",
+      "version": "8.0.33",
+      "os": "8.10",
+      "architecture": "x86_64",
+      "abi": "el8",
+      "companions": {
+        "mysql-community-common": {
+          "url": "https://mirrors.nju.edu.cn/mysql/yum/mysql-8.0-community/el/8/x86_64/mysql-community-common-8.0.33-1.el8.x86_64.rpm",
+          "sha256": "cc2b88ccaac83beeba0059435a4443054b08473bff0e937f8b0e4b03b534b874",
+          "checksum_source": "https://mirrors.nju.edu.cn/mysql/yum/mysql-8.0-community/el/8/x86_64/repodata/8dd699d3db2e7d2773bca9838a1fd8844ef3ab87dfc036fcd0ebf81702ec1a8d-primary.xml.gz",
+          "format": "rpm"
+        },
+        "mysql-community-icu-data-files": {
+          "url": "https://mirrors.nju.edu.cn/mysql/yum/mysql-8.0-community/el/8/x86_64/mysql-community-icu-data-files-8.0.33-1.el8.x86_64.rpm",
+          "sha256": "bb5a3730c1ee85451d712cd45caaaed34be50fef713bb6351b2f10a8589a13a0",
+          "checksum_source": "https://mirrors.nju.edu.cn/mysql/yum/mysql-8.0-community/el/8/x86_64/repodata/8dd699d3db2e7d2773bca9838a1fd8844ef3ab87dfc036fcd0ebf81702ec1a8d-primary.xml.gz",
+          "format": "rpm"
+        },
+        "mysql-community-libs": {
+          "url": "https://mirrors.nju.edu.cn/mysql/yum/mysql-8.0-community/el/8/x86_64/mysql-community-libs-8.0.33-1.el8.x86_64.rpm",
+          "sha256": "2b0fdaae12fb79afb5ecd3e0a0fad1fe143ad769e8459dc516e64382a73f24ee",
+          "checksum_source": "https://mirrors.nju.edu.cn/mysql/yum/mysql-8.0-community/el/8/x86_64/repodata/8dd699d3db2e7d2773bca9838a1fd8844ef3ab87dfc036fcd0ebf81702ec1a8d-primary.xml.gz",
+          "format": "rpm"
+        }
+      }
+    },
+    "rocky8/8.0.46": {
+      "url": "https://mirrors.nju.edu.cn/mysql/yum/mysql-8.0-community/el/8/x86_64/mysql-community-server-8.0.46-1.el8.x86_64.rpm",
+      "sha256": "fd63782cb721d12135e864c3c59b37c293e23e7aea5589a8af298b307cb77003",
+      "checksum_source": "https://mirrors.nju.edu.cn/mysql/yum/mysql-8.0-community/el/8/x86_64/repodata/8dd699d3db2e7d2773bca9838a1fd8844ef3ab87dfc036fcd0ebf81702ec1a8d-primary.xml.gz",
+      "format": "rpm",
+      "version": "8.0.46",
+      "os": "8.10",
+      "architecture": "x86_64",
+      "abi": "el8",
+      "companions": {
+        "mysql-community-common": {
+          "url": "https://mirrors.nju.edu.cn/mysql/yum/mysql-8.0-community/el/8/x86_64/mysql-community-common-8.0.46-1.el8.x86_64.rpm",
+          "sha256": "b5f0df6f40f17a9ac033f067f1adbc4b5587024600c6bac150e91f48093fe4ce",
+          "checksum_source": "https://mirrors.nju.edu.cn/mysql/yum/mysql-8.0-community/el/8/x86_64/repodata/8dd699d3db2e7d2773bca9838a1fd8844ef3ab87dfc036fcd0ebf81702ec1a8d-primary.xml.gz",
+          "format": "rpm"
+        },
+        "mysql-community-icu-data-files": {
+          "url": "https://mirrors.nju.edu.cn/mysql/yum/mysql-8.0-community/el/8/x86_64/mysql-community-icu-data-files-8.0.46-1.el8.x86_64.rpm",
+          "sha256": "59abc55a7d65a611ee6850ead9cc67603e4c05136158e759f450c776d667eb60",
+          "checksum_source": "https://mirrors.nju.edu.cn/mysql/yum/mysql-8.0-community/el/8/x86_64/repodata/8dd699d3db2e7d2773bca9838a1fd8844ef3ab87dfc036fcd0ebf81702ec1a8d-primary.xml.gz",
+          "format": "rpm"
+        },
+        "mysql-community-libs": {
+          "url": "https://mirrors.nju.edu.cn/mysql/yum/mysql-8.0-community/el/8/x86_64/mysql-community-libs-8.0.46-1.el8.x86_64.rpm",
+          "sha256": "1519ed50ab40025a4de17161794dbbb1b122405286525eeb260b738dd7a7c1e1",
+          "checksum_source": "https://mirrors.nju.edu.cn/mysql/yum/mysql-8.0-community/el/8/x86_64/repodata/8dd699d3db2e7d2773bca9838a1fd8844ef3ab87dfc036fcd0ebf81702ec1a8d-primary.xml.gz",
+          "format": "rpm"
+        }
+      }
+    },
+    "rocky9/8.0.33": {
+      "url": "https://mirrors.nju.edu.cn/mysql/yum/mysql-8.0-community/el/9/x86_64/mysql-community-server-8.0.33-1.el9.x86_64.rpm",
+      "sha256": "17c53ad4d7fd9a532ea7b7a0302ad0eb79ac90f1fe284531e32b1f5e53bedce4",
+      "checksum_source": "https://mirrors.nju.edu.cn/mysql/yum/mysql-8.0-community/el/9/x86_64/repodata/d6f9724035d07ad20c385b0f844a4e8d4eb9db521ec8a6ac18dcda168fbdbaac-primary.xml.gz",
+      "format": "rpm",
+      "version": "8.0.33",
+      "os": "9.8",
+      "architecture": "x86_64",
+      "abi": "el9",
+      "companions": {
+        "mysql-community-common": {
+          "url": "https://mirrors.nju.edu.cn/mysql/yum/mysql-8.0-community/el/9/x86_64/mysql-community-common-8.0.33-1.el9.x86_64.rpm",
+          "sha256": "69a8ecbb24e284825e1486353bec2ded041fdd7851a9f3b2a0d144c21cd2717c",
+          "checksum_source": "https://mirrors.nju.edu.cn/mysql/yum/mysql-8.0-community/el/9/x86_64/repodata/d6f9724035d07ad20c385b0f844a4e8d4eb9db521ec8a6ac18dcda168fbdbaac-primary.xml.gz",
+          "format": "rpm"
+        },
+        "mysql-community-icu-data-files": {
+          "url": "https://mirrors.nju.edu.cn/mysql/yum/mysql-8.0-community/el/9/x86_64/mysql-community-icu-data-files-8.0.33-1.el9.x86_64.rpm",
+          "sha256": "c390538d671f1a05fda4e554d024f9e241a078041b2b54d6248a1cd38861e796",
+          "checksum_source": "https://mirrors.nju.edu.cn/mysql/yum/mysql-8.0-community/el/9/x86_64/repodata/d6f9724035d07ad20c385b0f844a4e8d4eb9db521ec8a6ac18dcda168fbdbaac-primary.xml.gz",
+          "format": "rpm"
+        },
+        "mysql-community-libs": {
+          "url": "https://mirrors.nju.edu.cn/mysql/yum/mysql-8.0-community/el/9/x86_64/mysql-community-libs-8.0.33-1.el9.x86_64.rpm",
+          "sha256": "58674c93ef1b23daeb3e28c39ce22087c72f80c5a112f7f1299765031a52f5db",
+          "checksum_source": "https://mirrors.nju.edu.cn/mysql/yum/mysql-8.0-community/el/9/x86_64/repodata/d6f9724035d07ad20c385b0f844a4e8d4eb9db521ec8a6ac18dcda168fbdbaac-primary.xml.gz",
+          "format": "rpm"
+        }
+      }
+    },
+    "rocky9/8.0.46": {
+      "url": "https://mirrors.nju.edu.cn/mysql/yum/mysql-8.0-community/el/9/x86_64/mysql-community-server-8.0.46-1.el9.x86_64.rpm",
+      "sha256": "3f59e6240e65014d99aee8b0f375976af3706cc94f75e781e445dad283c6530d",
+      "checksum_source": "https://mirrors.nju.edu.cn/mysql/yum/mysql-8.0-community/el/9/x86_64/repodata/d6f9724035d07ad20c385b0f844a4e8d4eb9db521ec8a6ac18dcda168fbdbaac-primary.xml.gz",
+      "format": "rpm",
+      "version": "8.0.46",
+      "os": "9.8",
+      "architecture": "x86_64",
+      "abi": "el9",
+      "companions": {
+        "mysql-community-common": {
+          "url": "https://mirrors.nju.edu.cn/mysql/yum/mysql-8.0-community/el/9/x86_64/mysql-community-common-8.0.46-1.el9.x86_64.rpm",
+          "sha256": "e7b10a3623ebab4e1e0b40563e56171b05827f56779e71a1e073e939bf540613",
+          "checksum_source": "https://mirrors.nju.edu.cn/mysql/yum/mysql-8.0-community/el/9/x86_64/repodata/d6f9724035d07ad20c385b0f844a4e8d4eb9db521ec8a6ac18dcda168fbdbaac-primary.xml.gz",
+          "format": "rpm"
+        },
+        "mysql-community-icu-data-files": {
+          "url": "https://mirrors.nju.edu.cn/mysql/yum/mysql-8.0-community/el/9/x86_64/mysql-community-icu-data-files-8.0.46-1.el9.x86_64.rpm",
+          "sha256": "8089fe52383ff34e876fd8340a0a4741c5bfa37ff97eb250e5c76b02ed2a4aec",
+          "checksum_source": "https://mirrors.nju.edu.cn/mysql/yum/mysql-8.0-community/el/9/x86_64/repodata/d6f9724035d07ad20c385b0f844a4e8d4eb9db521ec8a6ac18dcda168fbdbaac-primary.xml.gz",
+          "format": "rpm"
+        },
+        "mysql-community-libs": {
+          "url": "https://mirrors.nju.edu.cn/mysql/yum/mysql-8.0-community/el/9/x86_64/mysql-community-libs-8.0.46-1.el9.x86_64.rpm",
+          "sha256": "2fd83c380108baccc61dfc26e589122acda9a63b0073a9527d27b66ccba60210",
+          "checksum_source": "https://mirrors.nju.edu.cn/mysql/yum/mysql-8.0-community/el/9/x86_64/repodata/d6f9724035d07ad20c385b0f844a4e8d4eb9db521ec8a6ac18dcda168fbdbaac-primary.xml.gz",
+          "format": "rpm"
+        }
+      }
+    }
+  },
+  "source_files": {
+    "logs/mysql80-binary-sources-20261125/rocky8-repomd.xml": "cfc1f0bcbfdcaad91adc97aedec134826cc65f1ef00bafc1b04fc2b0f2e7a296",
+    "logs/mysql80-binary-sources-20261125/rocky9-primary.gz": "d6f9724035d07ad20c385b0f844a4e8d4eb9db521ec8a6ac18dcda168fbdbaac",
+    "logs/mysql80-binary-sources-20261125/rocky8-primary.gz": "8dd699d3db2e7d2773bca9838a1fd8844ef3ab87dfc036fcd0ebf81702ec1a8d",
+    "logs/mysql80-binary-sources-20261125/rocky9-repomd.xml": "e144a4dc5389ddf43ac5f105c13532d06bba3f1e008b6aca9ab6a4b04c246ebe",
+    "logs/mysql80-binary-sources-20261125/RPM-GPG-KEY-mysql-2023": "d11149d51dfc5ad854be7b0b510ed1489cdfd24dc630543b9ffec717435e2025",
+    "logs/mysql80-binary-sources-20261125/RPM-GPG-KEY-mysql-2025": "a4bcd9f16a53cc763f87b9955dbcdced33c7aa90296b157eb6ceef0f156f4327",
+    "logs/mysql80-binary-sources-20261125/RPM-GPG-KEY-mysql-2022": "e971e92ed9e1b7941d1d34cf50ee68510f72bb549f7af2a14ed1e37f5d2886c5"
+  },
+  "keys": {
+    "RPM-GPG-KEY-mysql-2022": "e971e92ed9e1b7941d1d34cf50ee68510f72bb549f7af2a14ed1e37f5d2886c5",
+    "RPM-GPG-KEY-mysql-2023": "d11149d51dfc5ad854be7b0b510ed1489cdfd24dc630543b9ffec717435e2025",
+    "RPM-GPG-KEY-mysql-2025": "a4bcd9f16a53cc763f87b9955dbcdced33c7aa90296b157eb6ceef0f156f4327"
+  },
+  "signature_verification": "Each native run imports the SHA256-pinned MySQL keys into its private RPM database and requires rpmkeys --checksig OK before extraction; per-package raw signature output belongs to that run's evidence archive. Metadata SHA256 is verified before cache publication; this catalog is not lifecycle acceptance."
+}

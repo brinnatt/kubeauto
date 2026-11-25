@@ -1,28 +1,36 @@
 {
   "date": "2026-11-25",
-  "scope": "Final MySQL-backup release admission; independently verified stage evidence, no relabelling of historical runs.",
+  "scope": "Current final MySQL-backup release admission: original owning stage identities retained and checked; current container16 and native24 final evidence bound; full still executes physical8.4, logical3 versions/real timers and portability anew.",
   "inputs": {
-    "tools/mysqltools/MyBackupCli.py": "aa774dbd784750f4af09de8e576f3ab77417e3ffdcc75914328c66f6d98df6f0",
+    "tools/mysqltools/MyBackupCli.py": "66423568f42804e9417d5e4f4b4fab791985d84f3e94fc2114f08cd921a92359",
     "tools/mysqltools/MyLogiBackupCli.py": "df68a6aeb660de6755526f0a49df1478bc1a1715dce46f804740d20d05c88d2c",
     "tools-onefile.spec": "7bb77b6db73a9c015aff2156120d94f7dc67a7a30e037f105d452bcbded45956",
-    "tests/run_tools_regression.sh": "0114d8fb4f08abf85d2456ae89859470a92b15ef79840f94834478eff9aee2b6",
+    "tests/run_tools_regression.sh": "10e506a3f4bd5af1238687ba89e154696c9ab9717044453cb10ab67bde26c46d",
     "tests/helpers/build-tools-rocky8.sh": "ded6c6717bc3bbce6fc64b0c5ab07bc5cbf4aa6cfa78dfec7ed84eea8fca23fa",
     "tests/helpers/mybackup-cli-live-regression.sh": "a04bae7c3123b04f5b9627f5c9e1fdb03d92804136c64a64a5936e35f405b501",
     "tests/helpers/mylogi-backup-live-regression.sh": "b28f0f84dc7ec531bd8a8b7bc75990f236a7310abc914d81389b77cb7477194d",
     "tests/helpers/mysql-backups-regression.sh": "359cda27fe0b0b6c81871f71604d8becb458ff716133d8cb288ef3925b83c274",
     "tests/helpers/supervise-mysql-backups.py": "4b948cff12a5ec8eff47fa9e8ba161428c16fcb48be8ed939c6b04c4e2e72bb6",
-    "tests/helpers/tools-production-audit.py": "96fa32ab80f0047f2bc24e7ee22bf4f4b1fe3a06e45f69b6623f80b7e76058ff",
-    "tests/evidence/tools-production-execution-audit-20261125.json": "ed1fd215490b04696a70dbfe0c8f47945bcf6d5a9ad143f707dd2e7db3ed77c3",
-    "tests/evidence/mysql80-physical-full.json": "0453bbca72bb65a0b8630f42c57e547a8ee61f3408b2da8e8f40a4773250d404",
-    "tests/evidence/mysql80-physical-documentation-20261125.json": "7058c5403f44ce6bfc4aafcc557eb80342bbb1c17ed933432d6665129a9281d3"
+    "tests/helpers/tools-production-audit.py": "31df0f4c6f888d47acf3410e5f74a4b8590245bd5191f851150f29f18ab46349",
+    "tests/evidence/tools-production-execution-audit-20261125.json": "65c9ae9238ada624eefa7fd4f90ea85b68de038948d77839b75926ec242f07e9",
+    "tests/evidence/mysql80-physical-full.json": "d8fbffc74a3ff84ee5c8699e3b93be127290ec086e57f36d5e7935b9c312cda6",
+    "tests/evidence/mysql80-physical-documentation-20261125.json": "d2872fdf1c43784248890817ee2bfbc35a257677e5bb0cf16a499879297db533",
+    "tests/evidence/mysql80-binary-full.json": "0b3c707b8cc109099149b9eef8807bafb07a28e80b5b7220f89b3ef88f49a59b",
+    "tests/evidence/mysql80-binary-supply-chain-20261125.json": "38f1d0031ce8bdad0b5a6c2793d4c6dc88730170229c884b5bc99893f37ab6c3",
+    "tests/evidence/mybackup-native-contract-20261125.json": "49f4f8a9f76545c404439fd422aa05e957a752a80f5c66216eff979b5f0682b8",
+    "tests/evidence/mysql84-physical-requal-20261125.json": "e7d5cfc1a5a02bda14a0637cf842b51e39e6f8cac1b789244a54db96d5e8e8c2",
+    "tests/evidence/mysql-backup-portability-20261125.json": "67e1b1a54c0586471dc9309fd1cbbff3776570145ff88512937f9bffdcabad7d",
+    "dist/mysql-backup-build.json": "4ee8bf09dbd4af5ef33192fc0134091430714e44fe3ffb40bd68f04819a2e44f",
+    "dist/MyBackupCli-rocky8": "635e787bd93a9b86ee4cc3d3119f1c9a4d61d0b9117fb9065e744d0076debbf3",
+    "dist/MyLogiBackupCli-rocky8": "e14afa5703941c1313cefe6c1277f4c80028848cb5f368cd91315d06b6d2ad0a"
   },
   "stages": {
     "physical": {
-      "log": "logs/mysql-backups-physical-20261125-140647.log",
+      "log": "logs/mysql-backups-physical-20261125-192539.log",
       "sha256": "53d027c402a63fe6f9f5a4f24eb8719e9603b75ccb39105e791919b2465ea13b",
-      "archive": "logs/mysql-backups-physical-20261125-140647.evidence.tar.gz",
-      "archive_sha256": "40b1e91f60c71e57adde72fc2876092a2251c41f27b2d81e1931773d556b7aea",
-      "remote_status": "logs/mysql-backups-physical-20261125-140647.remote-status",
+      "archive": "logs/mysql-backups-physical-20261125-192539.evidence.tar.gz",
+      "archive_sha256": "e5e80ada6c4ae40a76404559b2220836bf08df552916019ad6b667ef55e9270d",
+      "remote_status": "logs/mysql-backups-physical-20261125-192539.remote-status",
       "required_markers": [
         "MYBACKUP_NATIVE_BACKUP_PASS",
         "MYBACKUP_NATIVE_PREPARE_PASS",
@@ -35,14 +43,14 @@
         "MYSQL_BACKUP_RELEASE_EXIT rc=0"
       ],
       "source_evidence": "tests/evidence/mysql84-physical-requal-20261125.json",
-      "source_evidence_sha256": "faf8c380980b668682fea0b6972e2a2d3a5663d49380063917a0c5863e7f015f"
+      "source_evidence_sha256": "e7d5cfc1a5a02bda14a0637cf842b51e39e6f8cac1b789244a54db96d5e8e8c2"
     },
     "portability": {
-      "log": "logs/mysql-backups-portability-20261125-141419.log",
+      "log": "logs/mysql-backups-portability-20261125-193143.log",
       "sha256": "862e91136c85f93586cd480bb8644b1c2336c00d7c207a9774e7c5d71d3c024e",
-      "archive": "logs/mysql-backups-portability-20261125-141419.evidence.tar.gz",
-      "archive_sha256": "f114ebc46103745ec4ba7c39ebcd7ea25f2a28e29ae769685d537af084512698",
-      "remote_status": "logs/mysql-backups-portability-20261125-141419.remote-status",
+      "archive": "logs/mysql-backups-portability-20261125-193143.evidence.tar.gz",
+      "archive_sha256": "0a042db34a0c4e032468951fe76b0902820ee1f80edb26a4c7f97e53a69b70bd",
+      "remote_status": "logs/mysql-backups-portability-20261125-193143.remote-status",
       "required_markers": [
         "MYSQL_BACKUP_PORTABILITY_PASS runtime=rocky8 tools=2",
         "MYSQL_BACKUP_PORTABILITY_PASS runtime=debian12 tools=2",
@@ -52,7 +60,7 @@
         "MYSQL_BACKUP_RELEASE_EXIT rc=0"
       ],
       "source_evidence": "tests/evidence/mysql-backup-portability-20261125.json",
-      "source_evidence_sha256": "50f644833df3a0d893dfd56731bbd2d973c042baf4d1da604dd936ff3d0f9272"
+      "source_evidence_sha256": "67e1b1a54c0586471dc9309fd1cbbff3776570145ff88512937f9bffdcabad7d"
     },
     "logical": {
       "log": "logs/mysql-backups-logical-20261108-231754.log",
@@ -76,8 +84,29 @@
       "local_exit": 0,
       "remote_exit": 0,
       "remote_finalized": 0,
-      "unexpected_failure_markers": 0
+      "unexpected_failure_markers": 0,
+      "source_evidence": "tests/evidence/mysql-backup-20261108.json",
+      "source_evidence_sha256": "21984113127b2fad1bbe52f5b1df69dfbdba369f25df77479e7178f3c54fa073",
+      "owner_current_validation": "tools-production-audit.py logical_evidence(): exact unchanged logical product/artifact/fixture and setup/cleanup/body, original raw hashes/markers/durable states. Not a new run."
     }
   },
-  "logical_scope": "Unchanged source, artifact and execution body; original identity retained and verified by tools-production-audit.py logical_evidence(). Final full still runs actual logical business and real timer again."
+  "logical_scope": "Unchanged source, artifact and execution body; original identity retained and verified by tools-production-audit.py logical_evidence(). Final full still runs actual logical business and real timer again.",
+  "native_binary_final": {
+    "evidence": "tests/evidence/mysql80-binary-full.json",
+    "sha256": "0b3c707b8cc109099149b9eef8807bafb07a28e80b5b7220f89b3ef88f49a59b",
+    "combinations": 24,
+    "runs": {
+      "rocky8": "f03df7df7ac5",
+      "rocky9": "4e747763a8cb"
+    }
+  },
+  "container80_final": {
+    "evidence": "tests/evidence/mysql80-physical-full.json",
+    "sha256": "d8fbffc74a3ff84ee5c8699e3b93be127290ec086e57f36d5e7935b9c312cda6",
+    "combinations": 16,
+    "runs": {
+      "rocky8": "6cb1b80351dd",
+      "rocky9": "9c69d41d0e6f"
+    }
+  }
 }

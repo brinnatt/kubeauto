@@ -45,6 +45,8 @@ import tempfile
 import time
 import fcntl
 import re
+import shlex
+import configparser
 import logging
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -157,6 +159,7 @@ incremental incremental-basedir incremental-dir incremental-lsn incremental-hist
 incremental-history-uuid apply-log-only stream compress remove-original lock-ddl no-lock
 ignore-error no-backup-locks no-server-version-check start-position stop-position start-datetime
 stop-datetime read-from-remote-server raw to-last-log stop-never
+slave-info safe-slave-backup galera-info
 """.split())
 
 
@@ -250,7 +253,7 @@ def parse_native_options(entries):
 class Config:
     """配置类 - 管理所有配置项"""
     
-    def __init__(self, config_file=None, native_options=None):
+    def __init__(self, config_file=None, native_options=None, offline=False):
         # 初始化logger（在配置加载前使用）
         self.logger = setup_logger("mysqlbackup.config")
         """
@@ -311,6 +314,14 @@ class Config:
         self.mysql_container = defaults.get("mysql_container", "")
         if self.mysql_container and not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", self.mysql_container):
             self._fail("mysql_container must be a Docker container name or ID")
+        if not self.mysql_container and (not isinstance(self.mysql_service, str) or
+                not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.@-]*', self.mysql_service)):
+            self._fail('mysql_service must name the real systemd unit when mysql_container is empty')
+        self.mysql_topology = defaults.get("mysql_topology", "standalone")
+        self.offline = offline
+        self.mysql_defaults_file = defaults.get('mysql_defaults_file', '')
+        if self.mysql_topology not in ('standalone', 'primary-replica', 'dual-primary'):
+            self._fail("mysql_topology must be standalone, primary-replica or dual-primary; empty is invalid")
         self.mysql_datadir = Path(defaults["mysql_datadir"])
         self.mysql_binlog_prefix = defaults["mysql_binlog_prefix"]
         self.mysql_binlog_dir = Path(defaults.get("mysql_binlog_dir") or self.mysql_datadir)
@@ -354,7 +365,7 @@ class Config:
             self.native_options.setdefault(target, []).extend(native_arguments(target, *tokens))
 
         # 检测MySQL版本
-        self.mysql_version = self._detect_mysql_version()
+        self.mysql_version = self._offline_version() if offline else self._detect_mysql_version()
         if self.mysql_version[0] >= 9:
             self._fail(
                 "MySQL {0}.{1} is not supported by the declared XtraBackup "
@@ -397,6 +408,85 @@ class Config:
                 self._fail("Could not parse MySQL version; refusing to assume compatibility")
         except Exception as e:
             self._fail("Could not detect MySQL version; refusing to assume compatibility")
+
+    def _offline_version(self):
+        """Admit one explicit native unit; ask its binary for effective options.
+
+        No guessed server version and no empty temporary database. Wrapper
+        units and containers need their own startup proof and are refused here.
+        """
+        defaults = Path(self.mysql_defaults_file)
+        if (self.mysql_container or not self.mysql_defaults_file or not defaults.is_absolute()
+                or defaults.is_symlink() or not defaults.is_file()):
+            self._fail('Offline restore requires native systemd and an explicit ordinary mysql_defaults_file')
+
+        def output(argv):
+            result = subprocess.run(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                    text=True, env=_env_for_system_subprocess())
+            if result.returncode:
+                self._fail('Cannot verify offline MySQL startup configuration')
+            return result.stdout
+
+        execution = output(['systemctl', 'show', '--property=ExecStart', '--value', self.mysql_service])
+        match = re.fullmatch(r'\s*\{ path=([^;]+?) ; argv\[\]=([^;]+?) ; [^{}]*\}\s*', execution)
+        if not match:
+            self._fail('Offline restore requires a direct mysqld ExecStart with --defaults-file')
+        binary = match.group(1)
+        if (not Path(binary).is_absolute() or Path(binary).name != 'mysqld' or
+                shlex.split(match.group(2)) != [binary, '--defaults-file=' + str(defaults)]):
+            self._fail('Offline restore refuses wrapper units or extra ExecStart arguments')
+        status = subprocess.run(['systemctl', 'is-active', '--quiet', self.mysql_service],
+                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                env=_env_for_system_subprocess())
+        if status.returncode == 0:
+            self._fail('Offline restore requires the target unit already stopped')
+        version = output([binary, '--version'])
+        parsed = re.search(r'\bVer (\d+)\.(\d+)\.\d+', version)
+        if not parsed:
+            self._fail('Cannot establish the installed offline MySQL version')
+        self.mysql_version_text = parsed.group(0).split()[1]
+        help_text = output([binary, '--defaults-file=' + str(defaults), '--verbose', '--help'])
+        values = dict(re.findall(r'^([a-z][a-z0-9-]*)\s+([^\r\n]+?)\s*$', help_text, re.M))
+        for key, expected in (('datadir', self.mysql_datadir), ('socket', Path(self.mysql_socket)),
+                              ('log-bin', self.mysql_binlog_dir / self.mysql_binlog_prefix),
+                              ('log-bin-index', self.mysql_binlog_index)):
+            if not values.get(key) or Path(values[key]).resolve() != expected.resolve():
+                self._fail('Offline MySQL startup path mismatch: ' + key)
+        replicated = self.mysql_topology != 'standalone'
+        if replicated and any(values.get(key) != 'TRUE' for key in ('skip-replica-start', 'super-read-only')):
+            self._fail('Offline replication restore requires persistent skip_replica_start=ON and super_read_only=ON')
+        persisted = self.mysql_datadir / 'mysqld-auto.cnf'
+        if persisted.is_symlink():
+            self._fail('Offline restore refuses symlinked persisted configuration')
+        if persisted.exists():
+            try:
+                document = json.loads(persisted.read_text())
+                if document.get('Version') not in (1, 2):
+                    raise ValueError('unsupported format')
+                def inspect(node):
+                    if not isinstance(node, dict):
+                        return
+                    for name, item in node.items():
+                        key = name.replace('_', '-')
+                        if key in ('datadir', 'socket', 'log-bin', 'log-bin-index'):
+                            raise ValueError('persisted path override')
+                        if replicated and key in ('skip-replica-start', 'skip-slave-start', 'super-read-only'):
+                            if not isinstance(item, dict) or str(item.get('Value', '')).upper() not in ('ON', '1', 'TRUE'):
+                                raise ValueError('persisted unsafe startup override')
+                        inspect(item)
+                inspect(document)
+            except (OSError, ValueError, TypeError):
+                self._fail('Offline restore cannot prove persisted startup configuration is safe')
+        self.offline_state = {'channels': 0, 'running': 0, 'skip_start': 'ON' if replicated else 'OFF',
+                              'gtid': values.get('gtid-mode')}
+        identity = self.mysql_datadir / 'auto.cnf'
+        if identity.is_symlink():
+            self._fail('Offline restore refuses symlinked server identity')
+        if identity.is_file():
+            parser = configparser.ConfigParser()
+            parser.read(str(identity))
+            self.offline_state['uuid'] = parser.get('auto', 'server-uuid')
+        return int(parsed.group(1)), int(parsed.group(2))
     
     def _mysql_cmd(self, sql):
         """执行MySQL命令（用于版本检测）"""
@@ -514,6 +604,102 @@ class BackupManager:
             "--socket={0}".format(self.config.mysql_socket),
             "-e", sql
         ] + native_arguments("mysql", *args, **kwargs))
+
+    def _replication_state(self):
+        """Observe local channels; never infer or control remote writers."""
+        sql = """SELECT JSON_OBJECT(
+            'channels', (SELECT COUNT(*) FROM performance_schema.replication_connection_configuration),
+            'running', (SELECT COUNT(*) FROM performance_schema.replication_connection_status WHERE SERVICE_STATE='ON')
+                     + (SELECT COUNT(*) FROM performance_schema.replication_applier_status WHERE SERVICE_STATE='ON'),
+            'skip_start', (SELECT VARIABLE_VALUE FROM performance_schema.global_variables
+                          WHERE VARIABLE_NAME IN ('skip_replica_start','skip_slave_start') LIMIT 1),
+            'log_updates', (SELECT VARIABLE_VALUE FROM performance_schema.global_variables
+                           WHERE VARIABLE_NAME IN ('log_replica_updates','log_slave_updates') LIMIT 1),
+            'group_members', (SELECT COUNT(*) FROM performance_schema.replication_group_members),
+            'uuid', @@GLOBAL.server_uuid, 'gtid', @@GLOBAL.gtid_mode, 'version', VERSION(),
+            'datadir', @@GLOBAL.datadir, 'binlog', @@GLOBAL.log_bin_basename,
+            'index', @@GLOBAL.log_bin_index, 'super_read_only', @@GLOBAL.super_read_only);"""
+        state = json.loads(self.mysql_cmd(sql, batch=True, skip_column_names=True))
+        if not isinstance(state, dict) or not all(isinstance(state.get(k), int) for k in ('channels', 'running', 'group_members')):
+            raise RuntimeError('Unable to establish replication state')
+        if not self.config.mysql_container:
+            paths = {'datadir': self.config.mysql_datadir,
+                     'binlog': self.config.mysql_binlog_dir / self.config.mysql_binlog_prefix,
+                     'index': self.config.mysql_binlog_index}
+            if any(not state.get(key) or Path(state[key]).resolve() != expected.resolve()
+                   for key, expected in paths.items()):
+                raise RuntimeError('Configured local paths do not match the connected MySQL instance')
+        if state['group_members']:
+            raise RuntimeError('Group Replication is outside this asynchronous replication workflow')
+        if state['channels'] > 1:
+            raise RuntimeError('Only one asynchronous replication channel per instance is supported')
+        if self.config.mysql_topology == 'standalone' and state['channels']:
+            raise RuntimeError('Replication detected: configure mysql_topology explicitly')
+        return state
+
+    def _replication_backup_options(self):
+        state = self._replication_state()
+        self._backup_replication_state = state
+        restored_authority = (state['running'] == 0 and state.get('super_read_only') == 1 and
+                              (self.config.backup_base / 'lock/restore-needs-full').is_file())
+        if self.config.mysql_topology == 'dual-primary' and state['channels'] != 1 and not restored_authority:
+            raise RuntimeError('dual-primary backup requires its single configured replication channel')
+        if not state['channels']:
+            return []
+        if state['running'] != 2 and not restored_authority:
+            raise RuntimeError('Replica must have healthy receiver and applier threads before backup')
+        if state['log_updates'] != 'ON':
+            raise RuntimeError('Replica PITR requires log_replica_updates=ON')
+        # PXB owns stopping/resuming the SQL thread and recording upstream coordinates.
+        return ['--slave-info', '--safe-slave-backup']
+
+    def _record_replication_backup(self, target):
+        state = getattr(self, '_backup_replication_state', None)
+        if state is None:
+            return
+        if state['channels'] and not any((target / ('xtrabackup_slave_info' + ext)).is_file()
+                                         for ext in ('', '.zst', '.qp', '.lz4')):
+            raise RuntimeError('Replica backup is missing upstream replication coordinates')
+        (target / '.mysql_topology.json').write_text(json.dumps({
+            'topology': self.config.mysql_topology, 'source': state}, indent=2) + '\n')
+
+    def _replication_restore_check(self, confirmed, restarted=False):
+        if self.config.mysql_topology != 'standalone' and not confirmed:
+            raise RuntimeError('Replication restore requires --confirm-replication-isolated; isolate all application writers and peers first')
+        state = (self.config.offline_state if getattr(self.config, 'offline', False) and not restarted
+                 else self._replication_state())
+        if self.config.mysql_topology != 'standalone':
+            if state['skip_start'] != 'ON':
+                raise RuntimeError('Set persistent skip_replica_start=ON and restart before auditing/restoring this instance')
+            if restarted and state['running']:
+                raise RuntimeError('Restored replication threads are running; refusing PITR')
+        return state
+
+    def _offline_backup_check(self, full):
+        if not getattr(self.config, 'offline', False):
+            return
+        try:
+            metadata = json.loads((Path(full) / '.mysql_topology.json').read_text())
+            source = metadata['source']
+            version = re.match(r'\d+\.\d+\.\d+', source['version']).group(0)
+            if (metadata['topology'] != self.config.mysql_topology or
+                    version != self.config.mysql_version_text or
+                    source['gtid'] != self.config.offline_state['gtid']):
+                raise ValueError('identity mismatch')
+        except (OSError, ValueError, KeyError, TypeError, AttributeError):
+            raise RuntimeError('Offline restore requires current backup metadata matching topology, exact MySQL version and GTID mode')
+
+    def _donor_restore(self, full, target_state):
+        """Never mix the target's old logs into another server's archive."""
+        metadata = Path(full) / '.mysql_topology.json'
+        if not metadata.is_file():
+            if self.config.mysql_topology != 'standalone':
+                raise RuntimeError('Replication restore requires backup source identity metadata')
+            return False
+        source = json.loads(metadata.read_text()).get('source', {})
+        if not source.get('uuid'):
+            raise RuntimeError('Backup source UUID is missing')
+        return source['uuid'] != (target_state or {}).get('uuid')
     
     def ensure_dirs(self):
         """确保必要的目录存在"""
@@ -553,6 +739,7 @@ class BackupManager:
         Reference: https://docs.percona.com/percona-xtrabackup/8.4/
         """
         self.logger.info("START FULL BACKUP ...")
+        replica_options = self._replication_backup_options()
         if self.config.mysql_container:
             if not self.manage_mysql_service('status'):
                 raise RuntimeError('MySQL container must be running for backup')
@@ -578,7 +765,7 @@ class BackupManager:
         ]
         
         try:
-            self.run_cmd(backup_cmd)
+            self.run_cmd(backup_cmd + replica_options)
             
             # 验证备份完整性（压缩备份的文件会有.zst、.qp或.lz4后缀）
             # Reference: https://docs.percona.com/percona-xtrabackup/8.4/prepare-compressed-backup.html
@@ -595,6 +782,7 @@ class BackupManager:
                 if not found:
                     self.fail("Backup incomplete: missing {0} (checked: {0}, {0}.zst, {0}.qp, {0}.lz4)".format(req_file))
             
+            self._record_replication_backup(target)
             (target / ".binlog_generation").write_text(self.today + "/" + self.now)
             (target / ".backup_ok").touch()
             latest = self.config.backup_base / "full/latest_raw"
@@ -608,7 +796,9 @@ class BackupManager:
             latest_incr = self.config.backup_base / 'incr/latest'
             if latest_incr.is_symlink():
                 latest_incr.unlink()
-            (self.config.backup_base / "lock/restore-needs-full").unlink(missing_ok=True)
+            restore_marker = self.config.backup_base / 'lock/restore-needs-full'
+            if restore_marker.exists():
+                restore_marker.unlink()
             self.logger.info("FULL BACKUP DONE SUCCESSFULLY!")
         except Exception as e:
             self.logger.error("FULL BACKUP FAILED: {0}".format(e))
@@ -623,6 +813,7 @@ class BackupManager:
         """
         self.logger.info("START INCREMENTAL BACKUP ...")
         self._require_fresh_full()
+        replica_options = self._replication_backup_options()
         if self.config.mysql_container:
             if not self.manage_mysql_service('status'):
                 raise RuntimeError('MySQL container must be running for backup')
@@ -651,6 +842,14 @@ class BackupManager:
             except (OSError, RuntimeError) as e:
                 self.logger.warning("Failed to resolve latest_incr symlink: {0}, using latest_full".format(e))
                 # base 保持为 latest_full.resolve() 的值
+
+        state = getattr(self, '_backup_replication_state', None)
+        if state is not None:
+            metadata = base / '.mysql_topology.json'
+            previous = json.loads(metadata.read_text()) if metadata.is_file() else {}
+            if (previous.get('topology') != self.config.mysql_topology or
+                    any(previous.get('source', {}).get(key) != state.get(key) for key in ('uuid', 'gtid'))):
+                raise RuntimeError('Incremental source identity/topology changed or metadata is missing; take a new full backup')
         
         lock_ddl = self.backup_lock_ddl()
         target = self.config.backup_base / "incr" / self.today / self.now
@@ -674,7 +873,7 @@ class BackupManager:
         ]
         
         try:
-            self.run_cmd(backup_cmd)
+            self.run_cmd(backup_cmd + replica_options)
             
             # 验证备份完整性（压缩备份的文件会有.zst、.qp或.lz4后缀）
             # Reference: https://docs.percona.com/percona-xtrabackup/8.4/prepare-compressed-backup.html
@@ -690,7 +889,8 @@ class BackupManager:
                         break
                 if not found:
                     self.fail("Incremental backup incomplete: missing {0} (checked: {0}, {0}.zst, {0}.qp, {0}.lz4)".format(req_file))
-            
+
+            self._record_replication_backup(target)
             (target / ".backup_ok").touch()
             if latest_incr.exists() or latest_incr.is_symlink():
                 latest_incr.unlink()
@@ -931,6 +1131,8 @@ class BackupManager:
         if not date or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date):
             self.fail("INVALID BACKUP DATE")
         self.logger.info("RESTORE AUDITION {0}".format(date))
+        if not getattr(self.config, 'offline', False):
+            self._replication_state()
         self.checksum(date)
 
         plan = {
@@ -943,6 +1145,7 @@ class BackupManager:
         }
 
         full, increments = self.backup_chain(date)
+        self._offline_backup_check(full)
         plan['full'] = str(full)
         plan['incr'] = [str(path) for path in increments]
 
@@ -1007,11 +1210,11 @@ class BackupManager:
             return current_state == "active"
 
         # 检查状态变化，带进度条
-        start_time = time.time()
+        start_time = time.monotonic()
         check_interval = 1
 
-        while time.time() - start_time < timeout:
-            elapsed = int(time.time() - start_time)
+        while time.monotonic() - start_time < timeout:
+            elapsed = int(time.monotonic() - start_time)
             progress = min(100, int((elapsed / timeout) * 100))
 
             bar = "[" + "=" * (progress // 5) + " " * (20 - progress // 5) + "]"
@@ -1023,6 +1226,12 @@ class BackupManager:
             current_state = result.strip()
 
             if current_state == expected_state:
+                if action in ('start', 'restart'):
+                    try:
+                        self.mysql_cmd('SELECT 1;')
+                    except RuntimeError:
+                        time.sleep(check_interval)
+                        continue
                 sys.stdout.write("\n")
                 self.logger.info("SERVICE {0} SUCCESSFUL in {1}s (state: {2})".format(action.upper(), elapsed, current_state))
                 return True
@@ -1038,7 +1247,11 @@ class BackupManager:
             self.logger.info("SERVICE STOPPED (timed out but reached inactive state)")
             return True
         elif action in ['start', 'restart'] and current_state == 'active':
-            self.logger.info("SERVICE {0}ED (timed out but reached active state)".format(action.upper()))
+            try:
+                self.mysql_cmd('SELECT 1;')
+            except RuntimeError:
+                self.logger.error('MySQL service is active but SQL readiness timed out')
+                return False
             return True
 
         self.logger.error("SERVICE {0} TIMEOUT ({1}s). Current state: {2}".format(action.upper(), timeout, current_state))
@@ -1247,6 +1460,10 @@ class BackupManager:
         if data.is_symlink() or not data.is_dir() or data.resolve() == Path('/'):
             raise RuntimeError('Restore requires an existing ordinary MySQL datadir')
         owner = data.stat()
+        for name in ('auto.cnf', 'mysqld-auto.cnf'):
+            identity_file = data / name
+            if identity_file.is_symlink() or (identity_file.exists() and not identity_file.is_file()):
+                raise RuntimeError('Refusing non-regular server identity or persisted configuration file')
         suffix = datetime.now().strftime('%Y%m%d_%H%M%S_%f')
         saved = data.with_name(data.name + '.bak_' + suffix)
         external = data.resolve() != logs.resolve() and data.resolve() not in logs.resolve().parents
@@ -1273,6 +1490,16 @@ class BackupManager:
                 '--log-bin=' + str(logs / self.config.mysql_binlog_prefix),
                 '--log-bin-index=' + str(index),
             ])
+            # PXB excludes auto.cnf. Keep the target's UUID when restoring this
+            # instance, rather than generating a new identity on every restore.
+            if (saved / 'auto.cnf').is_file():
+                shutil.copy2(str(saved / 'auto.cnf'), str(data / 'auto.cnf'))
+            # Persisted variables are target configuration. A donor's startup
+            # settings must not override this node's skip-start/read-only guard.
+            if (saved / 'mysqld-auto.cnf').is_file():
+                shutil.copy2(str(saved / 'mysqld-auto.cnf'), str(data / 'mysqld-auto.cnf'))
+            elif (data / 'mysqld-auto.cnf').exists():
+                (data / 'mysqld-auto.cnf').unlink()
             # PXB writes the copy-back process's path into an external index.
             # MySQL must instead read paths visible inside its own container.
             if self.config.mysql_container:
@@ -1437,7 +1664,7 @@ class BackupManager:
             yield working
 
     def restore(self, date=None, binlog_start_time=None, binlog_stop_time=None,
-                confirm_destructive=False):
+                confirm_destructive=False, confirm_replication_isolated=False):
         """
         执行恢复（强制要求dry-run计划）
 
@@ -1456,6 +1683,9 @@ class BackupManager:
         
         # Validate the immutable audit plan before mutating the service/datadir.
         plan, plan_file = self._load_restore_plan(date)
+        self._offline_backup_check(plan.get('full'))
+        target_state = self._replication_restore_check(confirm_replication_isolated)
+        donor_restore = self._donor_restore(plan.get('full'), target_state)
         # Reject a missing/broken replay client while the original server and
         # data are still intact, rather than discovering it after copy-back.
         self.run_cmd(['mysqlbinlog', '--version'])
@@ -1468,7 +1698,7 @@ class BackupManager:
             self._decompress_backup(working)
             self._binlog_replay_files(working)
             self._prepare_backup(working)
-            stopped = False
+            stopped = bool(getattr(self.config, 'offline', False))
             try:
                 if was_active:
                     stopped = True  # An interrupt during stop is recoverable.
@@ -1480,7 +1710,7 @@ class BackupManager:
                     pass
                 else:
                     raise RuntimeError('MySQL is still accepting SQL; refusing restore with this service configuration')
-                if not (self.config.backup_base / 'lock/restore-needs-full').exists():
+                if not donor_restore and not (self.config.backup_base / 'lock/restore-needs-full').exists():
                     self.binlog_backup(backall=True)
                 self._restore_datadir(working)
                 # Copy-back creates a new server history. Do not append it to
@@ -1490,7 +1720,15 @@ class BackupManager:
                 self._restore_restart_safe = True
                 if stopped and not self.manage_mysql_service('start', timeout=60):
                     self.fail('FAILED TO START MYSQL SERVICE')
-                self._apply_binlog(working, binlog_start_time, binlog_stop_time)
+                self._replication_restore_check(confirm_replication_isolated, restarted=True)
+                replicated = self.config.mysql_topology != 'standalone'
+                if replicated:
+                    self.mysql_cmd('SET GLOBAL read_only=ON; SET GLOBAL super_read_only=OFF;')
+                try:
+                    self._apply_binlog(working, binlog_start_time, binlog_stop_time)
+                finally:
+                    if replicated:
+                        self.mysql_cmd('SET GLOBAL super_read_only=ON;')
                 self._update_restore_plan(plan, plan_file, binlog_start_time, binlog_stop_time)
             except BaseException:
                 if stopped and getattr(self, '_restore_restart_safe', True) and not self.manage_mysql_service('status'):
@@ -1642,6 +1880,14 @@ def parse_arguments():
         action='store_true',
         help='确认停止服务并覆盖数据目录（restore 必须显式指定）'
     )
+    parser.add_argument(
+        '--confirm-replication-isolated', action='store_true',
+        help='复制拓扑恢复：确认已隔离应用及对端；要求持久 skip_replica_start=ON，工具不自动重接复制'
+    )
+    parser.add_argument(
+        '--offline-restore', action='store_true',
+        help='已停机的二进制实例：仅用于 checksum/restore-dry-run/restore；须填写 mysql_defaults_file，核验真实 systemd ExecStart 和启动参数'
+    )
     
     parser.add_argument(
         '--backup-days',
@@ -1662,6 +1908,8 @@ def parse_arguments():
     parser.add_argument("--native-option", action="append", default=[], metavar="TARGET=--OPTION[=VALUE]",
                         help="给指定命令或阶段追加一个原生长参数；可重复。完整阶段名和示例见 --help-native")
     args = parser.parse_args()
+    if args.offline_restore and args.command not in ('checksum', 'restore-dry-run', 'restore'):
+        parser.error('--offline-restore is only valid for checksum, restore-dry-run and restore')
     try:
         args.native_options = parse_native_options(args.native_option)
     except ValueError as exc:
@@ -1675,7 +1923,7 @@ def main():
         args = parse_arguments()
         
         # 加载配置
-        config = Config(args.config, native_options=args.native_options)
+        config = Config(args.config, native_options=args.native_options, offline=args.offline_restore)
         manager = BackupManager(config)
         
         # 确保目录存在并获取锁
@@ -1699,7 +1947,8 @@ def main():
                     manager.fail("--binlog-start-time is required for restore command")
                 manager.restore(
                     args.date, args.binlog_start_time, args.binlog_stop_time,
-                    confirm_destructive=args.confirm_destructive_restore
+                    confirm_destructive=args.confirm_destructive_restore,
+                    confirm_replication_isolated=args.confirm_replication_isolated
                 )
             elif args.command == 'purge':
                 manager.purge(args.backup_days, args.binlog_days)

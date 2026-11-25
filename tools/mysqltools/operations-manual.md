@@ -1,12 +1,13 @@
 # MySQL 工具：物理备份恢复与原生参数使用指南
 
-本文面向数据库运维人员。物理备份章节说明 MyBackupCli 如何操作单 MySQL 容器的数据与日志挂载，并完成备份、恢复和失败处置；后续章节保留三个独立工具的原生参数入口。执行人应理解 MySQL 事务、binlog 和 Docker bind mount，具备备份文件及实例启停权限。
+本文面向数据库运维人员。物理备份章节说明 MyBackupCli 如何操作 MySQL 容器或由 systemd 管理的二进制实例，区分单机、主从与异步双主的备份、隔离恢复和复制重建；后续章节保留三个独立工具的原生参数入口。执行人应理解 MySQL 事务、binlog 和 Docker bind mount，具备备份文件及实例启停权限。
 
 三个工具彼此独立。以下命令假定相应可执行文件已安装到 PATH；使用源码时，把 `MyBackupCli` 换成 `python3 tools/mysqltools/MyBackupCli.py`，另外两个工具同理。
 
 | 要完成的任务 | 入口 |
 | --- | --- |
 | 查看普通命令及常用示例 | `MyBackupCli --help`、`MyLogiBackupCli --help` |
+| 二进制单机、主从及异步双主的配置与恢复边界 | [二进制部署与复制](#二进制部署主从与异步双主) |
 | 为单 MySQL 容器配置物理备份 | [执行位置与路径](#物理备份执行位置与路径) |
 | 完成全备、增量和恢复演练 | [物理备份与恢复主线](#物理备份与恢复主线) |
 | 恢复中途失败或进入下一备份周期 | [物理恢复异常与保留策略](#物理恢复异常与保留策略) |
@@ -48,6 +49,8 @@ docker exec -it "$MYSQL_CONTAINER" mysql -uroot -p -e \
 
 **宿主机执行。** MyBackupCli、`mysql`、`mysqlbinlog`、`xtrabackup` 及压缩解压依赖须在执行环境中可用；不能假定官方 MySQL server 镜像包含 `mysqlbinlog`。本节 8.0 测试依赖为 Percona XtraBackup 8.0.35-36，使用前核对其支持版本说明与服务端版本；不要使用关闭版本检查的参数绕过兼容要求。运行 `mysql --version`、`mysqlbinlog --version`、`xtrabackup --version` 并记录结果。备份账号需具备该版本 XtraBackup 文档列出的权限（包括备份锁和日志刷新所需权限）；恢复导入还需要相应写入权限，应单独管理恢复凭据。
 
+本节使用 `xtrabackup_lock_ddl=AUTO`，在 PXB 8.0.35-36 上选择 `ON`。这是 MySQL 8.0.33 旧版本备份的必要条件之一；不要把其它版本支持的 `REDUCED` 或关闭锁的配置照搬过来。PXB 从 8.0.34 起已取消原有服务端版本比较检查，命令没有报版本错误本身不能证明兼容；应同时核对[固定版本兼容说明](https://github.com/percona/pxb-docs/blob/f8a15e8e73028742f92f63bddb6fe365bca5e311/docs/server-backup-version-comparison.md)和对应恢复读回结果。
+
 下面是宿主机配置模板。密码为待替换示例，必须在受控编辑器中替换；文件归执行人所有且权限 `0600`。目录、前缀、index 和容器名都必须来自上面的实值核对。备份目录不得位于 datadir 或 binlog 目录内部。
 
 ```json
@@ -72,7 +75,7 @@ docker exec -it "$MYSQL_CONTAINER" mysql -uroot -p -e \
 
 **独立工具容器执行。** 工具容器需要同一套二进制与依赖，且连接本机 Docker daemon。把宿主机数据、日志、备份目录以**相同绝对路径**挂进工具容器，沿用上述配置，避免 Docker inspect 返回的宿主机路径在工具容器中不可见。恢复需要写权限和原数字 UID/GID 的所有权恢复能力；只读数据挂载只能用于备份，不能直接用于恢复。Docker socket 访问赋予宿主机管理能力，仅允许可信运维镜像和管理员使用。
 
-以下是执行位置模板。`MYSQL_BACKUP_TOOL_IMAGE` 必须由交付清单提供固定 digest，镜像内须已经装好 MyBackupCli、Docker CLI、mysql/mysqlbinlog/XtraBackup 及解压依赖；这里不指定一个未经验证的通用镜像代替它。先在宿主机设置该变量，再执行：
+下面是**自备完整运维镜像的替代模板**。本次交付的是独立 MyBackupCli 可执行文件，没有交付名为 `MYSQL_BACKUP_TOOL_IMAGE` 的组合镜像；不要把该变量当成产品自带镜像名，也不要直接填官方 MySQL 或 XtraBackup 镜像。采用此模板前，运维方须准备包含 MyBackupCli、Docker CLI、mysql/mysqlbinlog/XtraBackup 及解压依赖的可信镜像，在相同系统/架构上验证各命令版本、时区、socket 与目录访问，再将变量设为该镜像的完整 digest 引用。尚未准备这些输入时，使用前面的宿主机执行方式。
 
 ```bash
 : "${MYSQL_BACKUP_TOOL_IMAGE:?请设置已验证的工具镜像完整digest引用}"
@@ -88,17 +91,23 @@ docker run --rm --user 0 --entrypoint MyBackupCli \
 
 工具在独立容器中运行，才能在恢复时停止并重新启动 MySQL 容器。不要在将被停止的 MySQL 容器里运行完整恢复，否则停止目标容器也会终止恢复进程。直接在 MySQL 容器里进行备份需要工具及依赖真实存在、使用该容器可见路径；该执行方式没有等同于本节的独立工具容器生命周期验收。
 
+本项目的工具容器验收采用另一种组合方式：固定 digest 的 XtraBackup 镜像，挂载冻结的 MyBackupCli、校验过的静态 Docker CLI、保留原参数的原生客户端适配器，以及同绝对路径的目录和 Docker socket；适配器调用固定镜像中的真实原生命令。它验证独立进程/挂载命名空间与目标容器启停的交接，不代表任意自备镜像已经通过验收。执行环境的组成发生变化时，仍需在隔离实例完成全生命周期演练。
+
 ## 物理备份与恢复主线
 
 先在隔离恢复实例演练完整流程，再用于生产恢复。执行人必须核对 SQL 实例、挂载、版本、账号权限、可用空间和时区；恢复窗口内停止应用写入并隔离流量。`xtrabackup_use_memory=1G` 是 prepare 内存预算示例，线程数并非性能或容量保证。空间需要同时容纳原始压缩链、解压/prepare 工作副本、恢复后的数据以及保留的原目录，须按实际数据量和压缩比测量峰值，不能只给一个压缩全备的空间。
 
-以下命令在配置对应的同一执行环境中运行。先将 `BACKUP_DATE` 设置为本次全备实际生成的日期；不能把示例日期直接用于另一批备份：
+备份读取账号与恢复管理账号分开使用。以下 `full/incr/binlog/purge` 使用 `/etc/mysql/backup.conf`；恢复窗口由管理员通过受控编辑器另建 `/etc/mysql/backup-restore.conf`，保留同一目标的全部路径、服务/容器、topology 和 `backup_base`，只将 `mysql_user/mysql_password` 改为恢复专用账号。两份文件均归执行人所有、权限 `0600`。恢复账号须能完成 SQL 导入、复制状态检查，以及复制场景的全局只读设置；操作系统执行人还须能管理实际服务和文件所有权。工具不会自动提升一个仅具备备份读取权限的账号。恢复期间暂停这些目录的定时备份和 purge，完成读回及新全备后再恢复计划，避免并发任务修改归档。
+
+以下命令在配置对应的同一执行环境中运行。先将 `MYSQL_SOCKET`、`MYSQL_BACKUP_USER` 分别设置为该目标 `backup.conf` 中的实际 `mysql_socket`、`mysql_user`。前面的容器宿主机 socket 例子为 `/data/deploy/mysql8.0.33/data/mysql.sock`，二进制部署则使用本机实际路径；不要混用两个场景的路径。后续 `BACKUP_DATE` 使用本次全备实际生成的日期，不能把示例日期直接用于另一批备份：
 
 ```bash
+: "${MYSQL_SOCKET:?请先设置本目标 backup.conf 中的实际 mysql_socket}"
+: "${MYSQL_BACKUP_USER:?请先设置本目标 backup.conf 中的实际 mysql_user}"
 sudo MyBackupCli full -c /etc/mysql/backup.conf
 sudo MyBackupCli incr -c /etc/mysql/backup.conf
 sudo MyBackupCli incr -c /etc/mysql/backup.conf
-mysql --socket=/data/deploy/mysql8.0.33/data/mysql.sock -umysql_backup -p \
+mysql --socket="$MYSQL_SOCKET" -u"$MYSQL_BACKUP_USER" -p \
   -e 'FLUSH BINARY LOGS;'
 sudo MyBackupCli binlog -c /etc/mysql/backup.conf
 ```
@@ -107,8 +116,8 @@ sudo MyBackupCli binlog -c /etc/mysql/backup.conf
 
 ```bash
 BACKUP_DATE=2026-11-25
-sudo MyBackupCli checksum -c /etc/mysql/backup.conf --date "$BACKUP_DATE"
-sudo MyBackupCli restore-dry-run -c /etc/mysql/backup.conf --date "$BACKUP_DATE"
+sudo MyBackupCli checksum -c /etc/mysql/backup-restore.conf --date "$BACKUP_DATE"
+sudo MyBackupCli restore-dry-run -c /etc/mysql/backup-restore.conf --date "$BACKUP_DATE"
 sudo cat "/mybackup/restore_audit/$BACKUP_DATE/restore.plan.json"
 ```
 
@@ -123,7 +132,7 @@ date '+%Y-%m-%d %H:%M:%S %z %Z'
 BACKUP_DATE=2026-11-25
 RECOVERY_START='2026-11-25 09:00:00'
 RECOVERY_STOP='2026-11-25 10:00:00'
-sudo MyBackupCli restore -c /etc/mysql/backup.conf --date "$BACKUP_DATE" \
+sudo MyBackupCli restore -c /etc/mysql/backup-restore.conf --date "$BACKUP_DATE" \
   --confirm-destructive-restore \
   --binlog-start-time "$RECOVERY_START" --binlog-stop-time "$RECOVERY_STOP"
 ```
@@ -152,6 +161,236 @@ sudo MyBackupCli purge -c /etc/mysql/backup.conf --backup-days 15 --binlog-days 
 15/30 天是示例，须满足业务 RPO、审计及灾备要求。`purge` 会删除过期归档，没有预演模式；执行前核对独立副本与最后成功恢复演练记录。不能通过删除近期备份内 mtime 较旧的表空间文件来节省空间，也不要让 MySQL 自身日志过期早于归档周期。
 
 本节机制依据：[PXB 8.0 支持版本](https://docs.percona.com/percona-xtrabackup/8.0/supported-versions.html)、[增量 prepare](https://docs.percona.com/percona-xtrabackup/8.0/prepare-incremental-backup.html)、[恢复与权限](https://docs.percona.com/percona-xtrabackup/8.0/restore-a-backup.html)、[PITR](https://docs.percona.com/percona-xtrabackup/8.0/point-in-time-recovery.html)、[MySQL 8.0.33 mysqlbinlog 时间解析](https://github.com/mysql/mysql-server/blob/mysql-8.0.33/client/mysqlbinlog.cc)、[Docker bind mounts](https://docs.docker.com/engine/storage/bind-mounts/)。上游支持条件、工具实现和实验室验收是三个不同层次；本节不承诺零数据损失或未经测量的恢复时长。
+
+## 二进制部署、主从与异步双主
+
+本节适用目标为 AMD64、Rocky Linux 8.10/9.8、MySQL 8.0.33/8.0.46、未加密 InnoDB，拓扑限定二进制单机、一主一从和异步双主。各拓扑分别在两套系统、两个精确 MySQL 版本、GTID OFF/ON 下完成了全备、两级增量、日志归档、在线和停机 PITR、目标身份及数据读回、恢复后新备份周期；复制场景还完成了 donor 重建和重接读回。上述分项证据对应 `tests/tools-test-matrix.yaml` 的 TL-MBK-10～12，最终完整验收另由 TL-MBK-13 判定。它们不替代客户现场演练或变更签署。Galera、Group Replication、多源复制、跨版本恢复、外置 general tablespace/undo/redo 不属于此流程。
+
+二进制安装描述 MySQL 如何安装，systemd 描述谁负责启停，两者不是同一概念。二进制单机必须由真实 systemd unit 管理；仅用 shell、`nohup` 或 `mysqld_safe` 启动且没有 unit 的实例，不能直接使用本工具的完整恢复。工具每次只处理一个本地实例，不自动发现所有节点、选择主库、关闭应用入口或切换流量。
+
+下图区分工具控制路径与数据库复制路径。A、B 各有自己的配置和备份目录；即使字段名称相同，值也必须对应执行所在节点。
+
+```mermaid
+flowchart LR
+  subgraph A[节点 A：二进制 MySQL]
+    direction TB
+    CA[MyBackupCli + A 的 backup.conf] --> SA[A 的 systemd unit]
+    SA --> DA[MySQL A 与本地 data/binlog]
+    CA --> BA[A 的独立备份目录]
+  end
+  subgraph B[节点 B：二进制 MySQL]
+    direction TB
+    CB[MyBackupCli + B 的 backup.conf] --> SB[B 的 systemd unit]
+    SB --> DB[MySQL B 与本地 data/binlog]
+    CB --> BB[B 的独立备份目录]
+  end
+  DA -->|主从或双主：A 的事务| DB
+  DB -.->|仅异步双主：B 的事务| DA
+```
+
+主从通常只有 A 向 B 传播业务事务；异步双主还有反向复制。异步复制不保证写入确认时对端已经持久化，也不自动解决双端写入冲突。备份完成不等于全拓扑一致，恢复一个节点也不等于其它节点已经回到同一恢复点。
+
+### 选择配置及理解空值
+
+完整、可解析的配置见 [mybackup.conf.example](mybackup.conf.example)。它使用标准 JSON：`_comment_*` 是被忽略的说明字段，实际配置在紧随其后的字段中。不要加入 JSON 不支持的 `#`、`//` 行注释，也不要把下面的合并片段当作完整配置覆盖凭据、路径和原生选项。
+
+| 部署/角色 | `mysql_container` | `mysql_service` | `mysql_topology` | 结果 |
+| --- | --- | --- | --- | --- |
+| 二进制单机 | `""` | 真实 unit，例如 `mysqld.service` | `standalone` | 管理本机服务；检测到入站复制通道即拒绝 |
+| 一主一从的主库 | `""` | 本机主库 unit | `primary-replica` | 无入站通道时普通物理备份；恢复仍需隔离确认 |
+| 一主一从的从库 | `""` | 本机从库 unit | `primary-replica` | 对真实单通道检查接收/应用线程，自动增加安全备份及上游坐标选项 |
+| 异步双主的 A、B | `""` | 各自本机 unit | `dual-primary` | 备份要求各自只有一个入站通道；不管理另一端 |
+| 单 MySQL 容器 | 实际目标容器名/ID | 忽略 | `standalone` | 通过 Docker 启停目标；沿用前面的 bind mount 规则 |
+
+`mysql_container` 默认空，表示选择 systemd；它不是“自动判断安装方式”。`mysql_service` 默认 `mysqld`，在 systemd 模式不能为空。`mysql_topology` 默认 `standalone`，空字符串非法；主从两端都必须显式选择 `primary-replica`，不能让主库因为没有入站通道而仍按单机恢复。
+
+路径全部由运行 MyBackupCli 的执行环境解释。二进制部署应与 SQL 查询的实际路径一致。以下为单机的合并示例，所有目录必须实际存在、属于目标实例：
+
+```json
+{
+  "mysql_container": "",
+  "mysql_service": "mysqld.service",
+  "mysql_topology": "standalone",
+  "mysql_socket": "/data/mysql/mysql.sock",
+  "mysql_datadir": "/data/mysql",
+  "mysql_binlog_dir": "/data/mysql-logs",
+  "mysql_binlog_prefix": "mysql-bin",
+  "mysql_binlog_index": "/data/mysql-logs/mysql-bin.index"
+}
+```
+
+主从两端将 `mysql_topology` 改为 `primary-replica`；异步双主两端改为 `dual-primary`，其它值按各节点实值配置。`mysql_binlog_dir` 缺省或空字符串时回落到 `mysql_datadir`，`mysql_binlog_index` 缺省或空字符串时回落到该目录的 `<mysql_binlog_prefix>.index`。外置日志不能留空后期待自动发现。`mysql_password` 空字符串时读取执行端 `MYSQL_BACKUP_PASSWORD`；两者都为空则拒绝。每实例独享 `backup_base`，不能让两个实例共用增量基线或锁。
+
+使用受控账户、交互密码做只读核对；`MYSQL_SOCKET` 必须先设置为目标真实路径，后续归档主线沿用同一个值：
+
+```bash
+: "${MYSQL_SOCKET:?请设置本机目标实例的真实 socket}"
+mysql --socket="$MYSQL_SOCKET" -uroot -p -e \
+  'SELECT VERSION(),@@server_id,@@server_uuid,@@datadir,@@log_bin_basename,@@log_bin_index,@@gtid_mode,@@skip_replica_start,@@log_replica_updates,@@read_only,@@super_read_only; SHOW REPLICA STATUS\G'
+systemctl cat mysqld.service
+```
+
+最后一个命令中的服务名也须替换为配置中的真实 unit。核对 ExecStart/配置文件指向同一数据目录和 socket，不能只看服务名包含 mysql。工具对非容器部署检查 SQL 返回的 data/binlog/index 与配置路径一致；对容器部署使用前文 Docker mount 映射核对。
+
+备份账号除 XtraBackup 的官方备份权限外，需要读取 `performance_schema.replication_connection_configuration`、`replication_connection_status`、`replication_applier_status`、`replication_group_members` 和 `global_variables`；安全从库备份还涉及停止/启动复制线程的权限。恢复账户需要启停服务及本地文件权限、PITR 写入权限，并能设置全局只读状态。不要把主从复制账户、备份读取账户和恢复管理账户当作同一个角色直接复用。
+
+### 备份与复制恢复的控制边界
+
+全备、增量、binlog 归档、校验及恢复审计沿用[物理备份与恢复主线](#物理备份与恢复主线)。从库和双主备份要求 `log_replica_updates=ON`，使复制应用的事务进入本地 binlog，才能使用本地日志完成后续 PITR。GTID OFF 时尤其不能把本机 binlog 坐标误认为上游坐标。
+
+工具根据真实入站通道给 XtraBackup 增加 `--slave-info`、`--safe-slave-backup`。前者保存上游坐标，后者由 XtraBackup 暂停并恢复 SQL 应用线程，等待安全备份条件；它可能使复制短暂落后，需安排备份窗口。它不隔离应用、不证明从库历史数据与主库一致，也不代替恢复时的复制隔离。缺少上游坐标文件的从库备份不能发布成功标志。`.mysql_topology.json` 记录备份来源身份和拓扑；增量来源 UUID、GTID 模式或拓扑变化时，必须重新全备，不续接旧链。
+
+日常复制备份要求接收和应用线程健康。恢复后的节点尚未重接时，只允许一个受限例外：本仓库已有工具恢复产生的 `lock/restore-needs-full`、所有复制线程停止且 `super_read_only=ON`，才可生成恢复后新全备。双主此时可以暂时没有通道，供下面的权威点重建流程使用；新全备完成后恢复日常检查。不要手工创建保护标记、删除通道或关闭只读来套用这个例外。
+
+复制恢复的顺序如下。隔离是执行人的实际运维动作，确认参数只是声明已经完成，工具无法替执行人证明远端应用已经停止写入。
+
+```mermaid
+flowchart TD
+  I[执行人隔离应用写入和复制对端] --> P[持久配置 skip_replica_start=ON 并核对生效]
+  P --> A[校验备份链与恢复计划]
+  A --> C{隔离确认与本地检查通过？}
+  C -->|否| R[拒绝恢复：保留原实例和首错]
+  C -->|是| W[工作副本解压和 prepare]
+  W --> S[停止本地真实服务并 copy-back]
+  S --> U[保留目标 UUID，启动本地服务并等 SQL 就绪]
+  U --> T{复制线程保持停止？}
+  T -->|否| F[拒绝 PITR，保持外部隔离并诊断]
+  T -->|是| B[PITR、数据读回，恢复 super_read_only=ON]
+  B --> D[执行人判断恢复目标并重建或重接复制]
+  D --> V[双端业务摘要、复制追平、错误及 GTID 或位点检查]
+  V --> N[新全备，确认角色和写入策略后开放流量]
+```
+
+`skip_replica_start=ON` 必须写入实例实际读取的 `[mysqld]` 配置并重启确认，不是给 MyBackupCli 的 JSON 参数，也不能用恢复前执行一次 `STOP REPLICA` 替代。后者不会阻止下一次 mysqld 启动时自动复制。对于已有实例，配置重启前先安排维护窗口、停写并停止入站通道；不要在生产上为试参数直接重启。恢复期间也须保证 `read_only=ON`、`super_read_only=ON` 的持久启动策略，防止节点重启时先接受应用写入。
+
+只有上述隔离和当前审计计划真实完成后，复制恢复才使用下面的额外确认；日期和时间仍须来自本次恢复点，完整命令参照前文：
+
+```bash
+sudo MyBackupCli restore -c /etc/mysql/backup-restore.conf --date "$BACKUP_DATE" \
+  --confirm-destructive-restore --confirm-replication-isolated \
+  --binlog-start-time "$RECOVERY_START" --binlog-stop-time "$RECOVERY_STOP"
+```
+
+工具不会自动执行 `START REPLICA`，也不会修改另一端、清理复制元数据或自动解除写入隔离。复制模式下，PITR 窗口仅关闭 `super_read_only`，保留 `read_only=ON`，允许具备管理权限的恢复账户重放；无论重放成功或失败，都尝试恢复 `super_read_only=ON`。具有管理权限的其它账户仍可能写入，因此外部隔离不能省略。失败时保留首错；若只读保护本身设置失败，继续保持流量隔离并人工核对。
+
+恢复 copy-back 保留**目标节点原有** `auto.cnf`，维持该节点 UUID；另一节点必须拥有不同的 `server_id` 和 `server_uuid`。目标节点的 `mysqld-auto.cnf` 也按目标原配置保留；原来没有此文件时，不引入 donor 的持久变量，避免覆盖该节点的启动保护。此行为不授权复制运行中的数据目录来克隆实例。
+
+从另一节点的备份重建本节点时，工具通过备份来源 UUID 与目标 UUID 区分 donor 恢复。目标原数据和 binlog 保留在本次 `.bak_*` / `.before_restore_*` 目录，不能追加到 donor 的归档中；重放只使用已审计的 donor 备份链和对应 binlog。恢复后的新全备必须回到该节点独享的备份目录，不能继续让两个节点共享增量基线。
+
+### 已停机的二进制实例如何恢复
+
+正常在线恢复仍从 SQL 核验版本。实例已经停机、原 SQL 无法查询时，显式加 `--offline-restore`；工具从真实 systemd unit 的 mysqld 二进制获取版本，再用该二进制的 `--verbose --help` 核验有效启动路径。它不会先创建空库或猜测版本。
+
+此入口要求保留原数据目录的普通目录本身及目标 `auto.cnf`，并在工具 JSON 中填写 `mysql_defaults_file`。默认空值不影响在线操作；它指向服务端实际 my.cnf，不能指向 backup.conf。systemd 的 `ExecStart` 必须直接为 `绝对路径/mysqld --defaults-file=绝对路径/my.cnf`；wrapper、额外启动参数和容器暂不支持这个停机入口，应使用已明确验证的对应恢复路径，不能绕过检查。
+
+停机入口还要求该 my.cnf 显式提供与工具配置一致的绝对 `datadir`、`socket`、`log-bin` 和 `log-bin-index`。这里比较的是 mysqld `--verbose --help` 输出的启动选项原值，不推断相对路径、默认文件名或扩展名转换；例如二进制部署应将 `log-bin` 直接写成实际绝对前缀 `/data/mysql-logs/mysql-bin`，不要照搬前面容器示例的 `mysql-bin.log` 写法。相对值或带扩展名的有效 MySQL 配置可能被此保守入口拒绝。上线演练时即核对这一条件；现有实例若需改配置，应按维护流程先核实当前实际日志路径并演练，不能在故障时临时改名或关闭校验。此限制不改变普通在线备份及容器路径映射的含义。
+
+复制节点的有效启动参数还必须包含 `skip_replica_start=ON` 和 `super_read_only=ON`。持久变量文件若覆盖路径或关闭这些保护，工具拒绝执行。先确认应用与对端已隔离，服务已停机，配置与备份的精确 MySQL 版本、GTID 和拓扑一致，再执行：
+
+```bash
+# 在本次恢复的目标节点执行；BACKUP_DATE/RECOVERY_START/RECOVERY_STOP
+# 使用前文已选定的备份日期、快照后的重放起点和业务确认的截止时间。
+sudo MyBackupCli checksum -c /etc/mysql/backup-restore.conf --date "$BACKUP_DATE" --offline-restore
+sudo MyBackupCli restore-dry-run -c /etc/mysql/backup-restore.conf --date "$BACKUP_DATE" --offline-restore
+sudo MyBackupCli restore -c /etc/mysql/backup-restore.conf --date "$BACKUP_DATE" \
+  --offline-restore --confirm-destructive-restore --confirm-replication-isolated \
+  --binlog-start-time "$RECOVERY_START" --binlog-stop-time "$RECOVERY_STOP"
+```
+
+单机省略 `--confirm-replication-isolated`，其它确认、备份审计和数据读回不省略。命令会在 copy-back 完成后启动目标 unit，等待 SQL 就绪，再按恢复点重放；复制线程必须保持停止，结束后仍只读。缺少新备份的拓扑/版本元数据、目标配置无法证明安全、备份链或日志不完整时，应停在拒绝点，保留首错，不切换为一个未经验证的启动方式继续覆盖。
+
+### 选择重接还是按恢复点重建
+
+修复一个从库、并希望它回到健康主库的**当前**状态时，重接会继续接收主库的新事务。GTID 模式要核对来源、已执行集合及是否存在本地额外事务；文件/位点模式必须使用与备份一致的**上游**坐标，不能拿 `xtrabackup_binlog_info` 的本机坐标代替 `xtrabackup_slave_info`。有复制错误、来源不符、缺失上游日志或额外事务时停止重接，保留诊断并从确认的权威备份重建。单独的 `Seconds_Behind_Source=0` 不能证明数据一致。
+
+如果业务目标是让整个系统回到某个历史时刻，直接把已恢复节点接回仍保留新事务的对端，会把截止时间之后的数据重新带回来。应保持两端隔离，由业务与运维确认权威恢复点，以它为依据重建其它成员，再检查复制。异步双主还必须核对两个方向的复制线程、错误、GTID/位点、唯一键及自增策略，验证 A 写入能在 B 读回、B 的许可写入能在 A 读回，并比较业务数据摘要。工具不选择哪端数据为准，不执行双主自动回切。
+
+恢复完成日志仅表示单节点工具流程完成，不表示拓扑恢复完成。下面给出人工控制复制的连续流程。对应主从和双主实测中，恢复边界之前的验证记录存在，之后的记录被排除；重建后两端业务摘要相同，双主两个许可方向的写入均在对端读回，并完成新的 full/incr。这个结果证明所测数据与恢复边界成立，不能外推为任意业务数据量、复制冲突或无停写恢复的保证。
+
+### 从权威恢复点重建一主一从或异步双主
+
+本流程用于两端都保持隔离、A 已恢复到业务确认的状态、以 A 重建 B 的情况。它会丢弃 B 当前数据作为服务数据；B 原目录由工具保存供故障调查和回退，不用于合并两个冲突历史。开始前保存两端的 `SHOW REPLICA STATUS\G`、`SHOW MASTER STATUS`、`@@server_uuid`、`@@server_id`、`@@gtid_executed` 及恢复计划，确认不同的 UUID/server_id，备份与目标精确 patch 版本、GTID 和拓扑相同。不能用本流程在不同 MySQL 版本之间迁移。
+
+以下约定 A/B 都由各自的 systemd unit 管理，管理员在**对应节点**连接其实际 socket。`/etc/mysql/backup.conf` 始终描述本机；只有 B 的临时 donor 配置改为读取 A 的归档。IP、端口、socket、复制账号及业务表均须替换为当前环境实值。SQL 通过受控管理员会话执行，口令不放到 shell 命令行；包含复制凭据的 SQL 不应进入本地命令历史：
+
+```bash
+MYSQL_SOCKET=/data/mysql/mysql.sock
+MYSQL_HISTFILE=/dev/null mysql --socket="$MYSQL_SOCKET" -uroot -p
+```
+
+1. **两端保持只读和复制停止。** 已配置通道的节点先执行 `STOP REPLICA;`；无通道的主库不执行该语句。持久 my.cnf 中保留 `skip-replica-start=ON`、`read-only=ON`、`super-read-only=ON`，按前文维护窗口重启并核对。这时停止应用入口及对端复制连接的外部隔离仍然有效。A 的数据已经按前文恢复、读回并确认后，再在两端执行：
+
+   ```sql
+   SET GLOBAL super_read_only=ON;
+   RESET REPLICA ALL;
+   SELECT @@server_uuid,@@server_id,@@gtid_mode,@@gtid_executed,
+          @@skip_replica_start,@@read_only,@@super_read_only;
+   SHOW REPLICA STATUS\G
+   ```
+
+   `RESET REPLICA ALL` 删除本地通道的连接配置及 relay log；此后需重新填写上游和凭据，因此必须先保存诊断。它不清除 GTID 已执行历史。不要执行 `RESET MASTER`、设置 `gtid_purged` 或跳过复制错误来制造一致。此时 `SHOW REPLICA STATUS` 应无通道；只读/启动保护都应为 ON。任何不符都停在这里。
+
+2. **在 A 生成独立的新全备及归档。** A 保持无业务写入，使用 A 的本地配置：
+
+   ```bash
+   sudo MyBackupCli full -c /etc/mysql/backup.conf
+   mysql --socket="$MYSQL_SOCKET" -uroot -p -e 'FLUSH BINARY LOGS; SHOW MASTER STATUS;'
+   sudo MyBackupCli binlog -c /etc/mysql/backup.conf
+   ```
+
+   记录此次全备日期及刷新后 A 的 `File`/`Position`，作为下面的 `A_FILE`/`A_POS`。A 此后保持无写入直到 B 重建、坐标核对和复制建立完成。GTID OFF 时，这个坐标成立的前提是全备后 A 没有数据变化；不能在 A 继续写入时拿稍后查询的当前位置配旧快照。若不能停写，须另用与快照准确对应的复制建库流程，不套用此简化维护主线。
+
+3. **将 A 的整套归档复制至 B 的独立 donor 目录。** 用受控传输工具复制 A 的 `backup_base`，保留符号链接和文件属性，逐文件核对 SHA256；B 上使用与 A 相同的绝对归档路径，且该路径不得覆盖 B 原备份目录。传输期间 A 不得 purge、写入新增量或修改该归档。这里复制的是完成的备份仓库，绝不是运行中的 datadir。保存 B 原配置，以 B 的 `/etc/mysql/backup-restore.conf` 为基础建立权限 `0600` 的 `/etc/mysql/backup-donor.conf`：保留 B 的服务名、socket、datadir、binlog/index、恢复凭据、topology，仅将 `backup_base` 指向这份 A 仓库。不要把 A 的连接及服务配置整体复制给 B。
+
+4. **在 B 审计并通过工具恢复 donor。** B 若已停机，三个命令均加 `--offline-restore`，并满足前文 direct unit 和 `mysql_defaults_file` 要求。下列在线例子读取步骤 2 新生成的全备；`DONOR_START` 为该全备完成之后、且两端仍无业务写入的实测本地时间，因此只恢复新全备的内容，不引入新业务事务：
+
+   ```bash
+   BACKUP_DATE=2026-11-25
+   DONOR_START='2026-11-25 14:30:00'
+   sudo MyBackupCli checksum -c /etc/mysql/backup-donor.conf --date "$BACKUP_DATE"
+   sudo MyBackupCli restore-dry-run -c /etc/mysql/backup-donor.conf --date "$BACKUP_DATE"
+   sudo MyBackupCli restore -c /etc/mysql/backup-donor.conf --date "$BACKUP_DATE" \
+     --confirm-destructive-restore --confirm-replication-isolated \
+     --binlog-start-time "$DONOR_START"
+   ```
+
+   日期和时间是示意，不能照抄。检查计划确实指向 A 新全备、无旧增量，归档含快照坐标。恢复后核对 B UUID 等于恢复前 B UUID，A/B 的业务内容一致，B 为只读且没有运行的复制线程。B 可能从 donor 获得通道元数据，连接复制前在 B 再执行 `RESET REPLICA ALL;`。任何数据、身份或保护检查失败都继续隔离，不进入下一步。
+
+5. **先建立 B 从 A 的方向。** 在 B 的管理员会话执行下列两种语句之一，不能混用 GTID 和文件/位点参数。复制账户应已存在于 A，授权 B 的真实连接地址；示例使用 `REPLACE_*` 强制标明待替换输入。沿用生产已有 TLS 策略及证书，不能为重建关闭 TLS；若账户使用 caching_sha2_password 且无 TLS，须按 MySQL 官方安全连接要求提供已验证的 RSA 公钥，不能直接套用连接示例。
+
+   ```sql
+   -- GTID ON：先核对两端 @@gtid_executed，B 不应包含 A 没有的额外事务。
+   CHANGE REPLICATION SOURCE TO
+     SOURCE_HOST='REPLACE_A_HOST',SOURCE_PORT=3306,
+     SOURCE_USER='REPLACE_REPLICATION_USER',SOURCE_PASSWORD='REPLACE_SECRET',
+     SOURCE_AUTO_POSITION=1;
+   START REPLICA;
+   SHOW REPLICA STATUS\G
+   ```
+
+   ```sql
+   -- GTID OFF：使用步骤 2 冻结状态记录的 A_FILE/A_POS，替换文件名和位置。
+   CHANGE REPLICATION SOURCE TO
+     SOURCE_HOST='REPLACE_A_HOST',SOURCE_PORT=3306,
+     SOURCE_USER='REPLACE_REPLICATION_USER',SOURCE_PASSWORD='REPLACE_SECRET',
+     SOURCE_AUTO_POSITION=0,SOURCE_LOG_FILE='REPLACE_A_FILE',SOURCE_LOG_POS=REPLACE_A_POS;
+   START REPLICA;
+   SHOW REPLICA STATUS\G
+   ```
+
+   `REPLACE_A_POS` 必须替换为记录的十进制 `A_POS`，例如记录为 `157` 就填 `SOURCE_LOG_POS=157`；未替换的模板故意不能执行，不能任取日志起始位置 4。接收与应用线程均须为 Yes，`Last_IO_Error`、`Last_SQL_Error` 为空，并比较完整业务内容。若上游所需日志已清理、认证失败或存在额外 GTID，应停止并诊断，不能使用跳事务绕过。
+
+6. **仅异步双主增加 A 从 B 的方向。** 两端仍不接受业务写入时，在 B 记录 `SHOW MASTER STATUS` 的 B_FILE/B_POS；在 A 使用与步骤 5 相同的 GTID ON 语句，或 GTID OFF 语句中的 B_HOST/B_FILE/B_POS，建立 A 从 B 的复制。两端 `server_id` 和 UUID 必须不同，`log_replica_updates=ON`，业务唯一键和自增分配策略保持经评审的生产设置。双向复制可用不表示任意双端并发写入都不会冲突。
+
+7. **验收角色、数据和新备份周期。** 主从只在 A 解除只读，B 保持只读；双主按业务既定写入策略，在允许的节点解除只读。先从受控业务验证表提交唯一测试记录：A 提交后在 B 读回；双主再在 B 提交另一唯一记录并在 A 读回。比较关键业务表的条数、主键范围和规范化内容摘要，检查两个方向无复制错误；不能只看延迟为 0。失败时立即恢复只读、停止相关通道并保持外部隔离，保留首错与旧目录，重新判断权威数据，不盲目反向重放。
+
+   最后在**每个节点**切回本机原 `/etc/mysql/backup.conf`，各自执行新 `full`，再按计划执行 `incr`、binlog 归档及审计；不得把 B 的增量继续写入 donor 仓库。新全备和首次增量 LSN 应衔接。角色、业务及新备份都通过后，才按变更单开放流量；持久只读策略按最终角色调整，`skip-replica-start=ON` 是否保留须纳入重启后人工启动复制的运维约定。
+
+单个从库希望追到主库当前状态时，可以省略“整个拓扑历史回退”的权威点选择，但仍要证明恢复快照与上游坐标的对应关系。若对从库做过本地 PITR，本机归档中的事件未必能映射为可直接重接的上游 file/position；不能把 `xtrabackup_slave_info` 的旧位置与 PITR 后的新数据混用。没有这个证明时，采用上面的权威全备重建路径。
+
+国内制品入口也须核对精确版本与 ABI。华为 Downloads 地址不是“所有 MySQL 版本均存在”的保证。只有 EL9 的包不能作为 Rocky 8.10 的兼容证据；下载由固定 runner 以国内 HTTPS 源、可信摘要和原子替换管理，缺包、摘要不符或境外重定向时应在现场变更前拒绝，不关闭校验或换相近版本继续。
+
+机制依据：[固定版本 Percona 复制环境备份](https://github.com/percona/pxb-docs/blob/f8a15e8e73028742f92f63bddb6fe365bca5e311/docs/make-backup-in-replication-env.md)、[固定 PXB 8.0.35-36 复制检查实现](https://github.com/percona/percona-xtrabackup/blob/percona-xtrabackup-8.0.35-36/storage/innobase/xtrabackup/src/backup_mysql.cc)、[MySQL 复制启动参数](https://dev.mysql.com/doc/refman/8.0/en/replication-options-replica.html)、[CHANGE REPLICATION SOURCE TO](https://docs.oracle.com/cd/E17952_01/mysql-8.0-en/change-replication-source-to.html)、[GTID 自动定位](https://docs.oracle.com/cd/E17952_01/mysql-8.0-en/replication-gtids-auto-positioning.html)、[RESET REPLICA](https://docs.oracle.com/cd/E17952_01/mysql-8.0-en/reset-replica.html)、[MySQL 8.0.33 UUID 初始化源码](https://github.com/mysql/mysql-server/blob/mysql-8.0.33/sql/mysqld.cc)。
 
 ## 先选择参数要交给谁
 

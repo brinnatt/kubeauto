@@ -13,6 +13,17 @@ spec.loader.exec_module(GATE)
 
 
 class RetiredCleanupContracts(unittest.TestCase):
+    def test_physical_cleanup_does_not_select_native_binary_runs(self):
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(GATE, 'ROOT', Path(directory)):
+            root = Path(directory)
+            names = ['mysql80-'+stage+'-rocky8-'+'a'*12 for stage in
+                     ('8.0.33', '8.0.46', 'full', 'probe', 'binary-standalone', 'binary-dual-primary')]
+            for name in names:
+                path = root/'logs'/name; path.mkdir(parents=True)
+                (path/'plan.json').write_text('{}')
+            self.assertEqual({path.name for path in GATE.retired_directories('rocky8')}, set(names[:4]))
+            self.assertEqual(GATE.retired_directories('rocky9'), [])
+
     def test_retained_evidence_symlink_keeps_original_logical_run_identity(self):
         with tempfile.TemporaryDirectory() as directory, mock.patch.object(GATE, 'ROOT', Path(directory)):
             root = Path(directory); ident = 'a'*12

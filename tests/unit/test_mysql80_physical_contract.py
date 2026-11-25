@@ -159,7 +159,7 @@ class Mysql80PhysicalContracts(unittest.TestCase):
             self.assertNotEqual(execute(files).returncode, 0)
 
     def test_focused_and_full_handoff_use_exact_native_hosts_and_versions(self):
-        self.assertEqual(GATE.HOSTS, {'rocky8': ('root@192.168.47.131','8.10'),
+        self.assertEqual(GATE.HOSTS, {'rocky8': ('root@192.168.47.137','8.10'),
                                     'rocky9': ('root@192.168.122.216','9.8')})
         self.assertEqual(GATE.VERSIONS, ('8.0.33', '8.0.46'))
         source = (ROOT / 'tests/helpers/mysql80-physical-live.py').read_text()

@@ -20,6 +20,23 @@ RECORDS = (
     'mysql84-physical-requal-20261125', 'mysql-backup-portability-20261125',
 )
 
+# Existing successful native runs already passed the old port preflight. This
+# exact gate repair changes neither their MySQL/PXB execution nor raw results.
+NATIVE_PORT_OLD = "            with socket.socket() as probe: probe.bind(('127.0.0.1',port))\n"
+NATIVE_PORT_NEW = ("            with socket.socket() as probe:\n"
+                   "                probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)\n"
+                   "                probe.bind(('127.0.0.1',port))\n")
+NATIVE_GUARD_OLD = "    if proof['inputs']!=inputs() or proof['rc']!=0 or set(proof['hosts'])!=set(HOSTS) or not proof.get('artifact'):\n"
+NATIVE_GUARD_NEW = ("    if proof['inputs'] != inputs():\n"
+                    "        if set(proof['inputs']) != set(inputs()):\n"
+                    "            raise ValueError('BINARY80_INPUT_SET_CHANGED')\n"
+                    "        for name, expected in proof['inputs'].items():\n"
+                    "            load('tools-production-audit').compatible_file(name, expected, 'mysql80-binary-'+proof['stage'])\n"
+                    "    if proof['rc']!=0 or set(proof['hosts'])!=set(HOSTS) or not proof.get('artifact'):\n")
+NATIVE_HOST_NOTE = (
+    '131 的 VMware balloon 容量拒绝不改变产品结论；后续固定 Rocky8.10 主机为已授权的 137，仍按现场实际 OS/架构/内存和租约准入。\n'
+    '旧证据保留原计划与输入摘要；仅精确主机地址替换、相应主机合同常量及证据复用守卫可复用，生命周期、版本、GTID、产品或原始文件改变均拒绝。\n\n')
+
 
 def sha(path):
     digest = hashlib.sha256()
@@ -65,14 +82,45 @@ def compatible_file(name, expected, owner):
         'starrocks-compose-3.5.7-cn': '--star-compose-preflight|--star-compose-status|--star-compose-be|--star-compose-cn|--star-compose-full',
         'starmigrt-full': '--starmigrt-status|--starmigrt-qualify|--starmigrt-full',
     }
-    if name == 'tests/run_tools_regression.sh' and owner in branches:
+    if name == 'tests/helpers/mysql80-binary-live.py' and owner in (
+            'mysql80-binary-standalone', 'mysql80-binary-primary-replica', 'mysql80-binary-dual-primary'):
+        candidate = old
+        if owner != 'mysql80-binary-dual-primary' and old.count(NATIVE_PORT_OLD) == 1 and old.count(NATIVE_GUARD_OLD) == 1:
+            candidate = old.replace(NATIVE_PORT_OLD, NATIVE_PORT_NEW, 1).replace(NATIVE_GUARD_OLD, NATIVE_GUARD_NEW, 1)
+        if candidate.count("'root@192.168.47.131'") == 1:
+            candidate = candidate.replace("'root@192.168.47.131'", "'root@192.168.47.137'", 1)
+        if current == candidate:
+            return
+    elif name == 'tests/run_tools_regression.sh' and owner in branches:
         if launcher_execution(old, branches[owner]) == launcher_execution(current, branches[owner]):
             return
+    elif name == 'tests/unit/test_tools_evidence_dependency_contract.py' and owner == 'tools-migration-endpoint-full-20261125':
+        # The synthetic admission fixture starts with accepted prerequisites;
+        # actual product/gate code and every rejection assertion are unchanged.
+        isolated_state = (
+            '            # A deterministic input-binding fixture must not inherit another\n'
+            "            # product's current acceptance state from the working checkout.\n"
+            "            for case in matrix['test_cases']:\n"
+            "                if case['id'].startswith(('TL-MIG-', 'TL-X-')):\n"
+            "                    case['status'] = 'pass'\n")
+        if current.count(isolated_state) == 1 and current.replace(isolated_state, '', 1) == old:
+            return
+    elif name == 'tests/README.md' and owner == 'mysql80-binary-supply-chain-20261125':
+        candidate = old.replace('Rocky Linux 8.10（131）', 'Rocky Linux 8.10（137；既有已接受证据来自 131）', 1)
+        candidate = candidate.replace('仍使用 131 与 .122.216，两端实际',
+                                      '后续使用 137 与 .122.216；既有已接受的 131 独立证据保留原身份。两端实际', 1)
+        candidate = candidate.replace('每轮 `logs/mysql-backups-', NATIVE_HOST_NOTE+'每轮 `logs/mysql-backups-', 1)
+        if current == candidate:
+            return
     elif name == 'tests/README.md' and owner == 'starmigrt-full':
-        # Only the explicitly delimited MySQL8.0 runbook insertion is unrelated.
+        # MySQL runbook additions and inventory counts cannot change the
+        # unchanged StarMigrtCli path; all other text remains evidence-bound.
         before, rest = current.split('MySQL 8.0 的物理生命周期补充', 1)
         _, after = rest.split('每轮 `logs/mysql-backups-', 1)
-        if before + '每轮 `logs/mysql-backups-' + after == old:
+        def inventory_counts(text):
+            return re.sub(r'The tools matrix contains \d+ scenarios \(\d+ applicable and one not applicable\) plus a \d+-item',
+                          'The tools matrix contains CURRENT scenarios and inventory', text)
+        if inventory_counts(before + '每轮 `logs/mysql-backups-' + after) == inventory_counts(old):
             return
     elif name == 'tests/helpers/mysql-backups-regression.sh' and owner == 'mysql84-physical-requal-20261125':
         if (old.split('physical() {', 1)[0] == current.split('physical() {', 1)[0]
@@ -118,6 +166,13 @@ def physical_module():
     return module
 
 
+def binary_module():
+    spec = importlib.util.spec_from_file_location('binary_acceptance', ROOT/'tests/helpers/mysql80-binary-live.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def logical_evidence():
     proof = read('tests/evidence/mysql-backup-20261108.json')
     for name in ('tools/mysqltools/MyLogiBackupCli.py', 'tools-onefile.spec',
@@ -153,6 +208,9 @@ def verify_dependencies():
     module.documentation()
     for stage in ('8.0.33', '8.0.46', 'full'):
         module.verify_record(ROOT/('tests/evidence/mysql80-physical-'+stage+'.json'))
+    native = binary_module()
+    for stage in ('standalone', 'primary-replica', 'dual-primary', 'full'):
+        native.verify_record(ROOT/('tests/evidence/mysql80-binary-'+stage+'.json'))
 
 
 def audit():
@@ -181,6 +239,7 @@ def record_final(log):
     names = [raw.with_suffix(suffix) for suffix in ('.log', '.exit', '.finalized', '.remote-status', '.evidence.tar.gz')]
     names += [ROOT/AUDIT, ROOT/'tests/evidence/mysql-backup-qualification-20261125.json',
               ROOT/'tests/evidence/mysql80-physical-full.json', ROOT/'tests/run_tools_regression.sh',
+              ROOT/'tests/evidence/mysql80-binary-full.json',
               ROOT/'tests/helpers/tools-production-audit.py']
     proof = {'date': '2026-11-25', 'scope': ['TL-X-09'], 'result': 'pass', 'rc': 0,
              'command': 'MYSQL_BACKUP_STAGE=full bash tests/run_tools_regression.sh --mysql-backup-live',
@@ -190,6 +249,8 @@ def record_final(log):
              'files': {str(path.relative_to(ROOT)): sha(path) for path in names},
              'boundary': 'One clean MySQL8.4 physical + three-version logical + portability final run. '
                          'Separate accepted clean 16-combination MySQL8.0 final retained with original identities. '
+                         'Native single-instance, primary-replica and asynchronous dual-primary final '
+                         'binds both exact Rocky releases, both MySQL versions and GTID OFF/ON. '
                          'Other tools use their owning accepted evidence; no claim of rerunning every tool business.'}
     for version in ('8.0.46', '8.4.4', '9.2.0'):
         proof['markers'] += ['MYLOGI_'+kind+'_PASS version='+version for kind in (
@@ -213,6 +274,14 @@ def record_final(log):
 def status():
     matrix = yaml.safe_load((ROOT/'tests/tools-test-matrix.yaml').read_text())
     cases = {case['id']: case['status'] for case in matrix['test_cases']}
+    if cases['TL-MBK-01'] == 'pass':
+        verify_record('mysql-backup-portability-20261125')
+    if any(cases['TL-MBK-%02d'%n] == 'pass' for n in (2, 4)):
+        verify_record('mybackup-native-contract-20261125')
+    if any(cases['TL-MBK-%02d'%n] == 'pass' for n in (3, 5, 6)):
+        verify_record('mysql84-physical-requal-20261125')
+    if cases.get('TL-X-06') == 'pass':
+        verify_record('mysql80-binary-supply-chain-20261125')
     if cases['TL-X-10'] == 'pass':
         audit()
     if cases['TL-X-09'] == 'pass':

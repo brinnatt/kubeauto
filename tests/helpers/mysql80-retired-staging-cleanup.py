@@ -31,6 +31,14 @@ def archived_run(directory, host='rocky8'):
     return {'base': plan['base'], 'files': {name: hashlib.sha256((directory/name).read_bytes()).hexdigest() for name in names}}
 
 
+def retired_directories(host):
+    # Native binary runs use /tmp/b80-* and have a different recovery owner.
+    # Their later addition must not broaden this physical-container cleanup.
+    return [path for stage in ('8.0.33', '8.0.46', 'full', 'probe')
+            for path in (ROOT/'logs').glob('mysql80-'+stage+'-'+host+'-*')
+            if (path/'plan.json').is_file()]
+
+
 REMOTE = '''
 import hashlib,json,os,pathlib,shutil,subprocess,sys
 request=json.load(sys.stdin)
@@ -73,7 +81,7 @@ def main():
         reserve = (ROOT/'logs/mysql80-rocky8-capacity-reserve-20261125.log').read_text()
         if not reserve.startswith('active\n'):
             raise ValueError('MYSQL80_ORIGINAL_SERVICE_STATE_MISSING')
-    directories = [p for p in (ROOT/'logs').glob('mysql80-*-'+args.host+'-*') if (p/'plan.json').is_file()]
+    directories = retired_directories(args.host)
     request = {'os': HOSTS[args.host][1], 'restore_tuned': restore_tuned,
                'records': [archived_run(p, args.host) for p in directories]}
     # stdin carries data only. The script is fixed; both original fixture locks

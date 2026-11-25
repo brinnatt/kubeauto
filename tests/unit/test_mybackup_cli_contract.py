@@ -25,6 +25,8 @@ def manager_for(tmpdir):
     config.mysql_binlog_dir = config.mysql_datadir
     config.mysql_binlog_index = config.mysql_binlog_dir / 'mysql-bin.index'
     config.mysql_container = ''
+    config.offline = False
+    config.mysql_topology = 'standalone'
     config.lock_file = config.backup_base / "lock/mysqlbackup.lock"
     config.audit_base = config.backup_base / "restore_audit"
     manager = MOD.BackupManager.__new__(MOD.BackupManager)
@@ -32,6 +34,12 @@ def manager_for(tmpdir):
     manager.today = "2026-09-11"
     manager.now = "120000"
     manager.logger = logging.getLogger("mybackup-contract")
+    # These tests isolate storage/argv handling; real replication checks have
+    # their own rejection and restore-order contracts.
+    manager._replication_backup_options = mock.Mock(return_value=[])
+    manager._replication_restore_check = mock.Mock()
+    manager._replication_state = mock.Mock(return_value={'channels': 0})
+    manager._donor_restore = mock.Mock(return_value=False)
     return manager
 
 
@@ -739,7 +747,12 @@ class NativeAndCapabilityTests(unittest.TestCase):
         import sys
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory); binary=root/'bin'; binary.mkdir()
-            mysql=binary/'mysql'; mysql.write_text('#!/bin/sh\nprintf "8.0.33\\n"\n'); mysql.chmod(0o755)
+            mysql=binary/'mysql'
+            mysql.write_text('#!'+sys.executable+'\nimport sys,json\n'
+                             'print(json.dumps(dict(channels=0,running=0,group_members=0,datadir="/var/lib/mysql",'
+                             'binlog="/var/lib/mysql/mysql-bin",index="/var/lib/mysql/mysql-bin.index")) '
+                             'if any("JSON_OBJECT" in a for a in sys.argv) else "8.0.33")\n')
+            mysql.chmod(0o755)
             xb=binary/'xtrabackup'
             xb.write_text('#!'+sys.executable+'\nimport json,os,pathlib,sys\n'
                           'if "--help" in sys.argv: print("  --lock-ddl Boolean option\\n  --lock-ddl-timeout=# Timeout"); sys.exit(0)\n'

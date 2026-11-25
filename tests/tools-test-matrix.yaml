@@ -142,13 +142,13 @@ execution_boundaries:
     cleanup: "临时凭据/dump/子进程；rollback只允许删除本次专用目标"
     evidence_scope: "TL-MIG-03当前native及完整迁移、读回/回滚/重试/并发隔离通过"
   MyBackupCli:
-    configuration: "mysql_datadir/binlog_dir/binlog_index/socket/container；压缩/线程/内存/DDL锁"
-    namespace: "宿主机或独立工具容器；SQL路径与本地文件路径由真实bind mount核对"
-    identity: "SQL实例+Docker64hex容器ID+映射；systemd不代管容器"
-    commands: "full/incr显式路径→工作副本解压/prepare→真实停库/copy-back/启库→PITR"
+    configuration: "mysql_datadir/binlog_dir/binlog_index/socket/container/service/topology/defaults_file；压缩/线程/内存/DDL锁；配置注释说明默认、空值和执行者"
+    namespace: "二进制实例宿主机、容器实例宿主机或独立工具容器；native路径与SQL一致，容器路径由真实bind mount核对"
+    identity: "SQL实例UUID/版本/GTID/通道；Docker64hex容器ID及映射或真实systemd unit；systemd不代管容器；copy-back保留目标UUID及持久变量"
+    commands: "full/incr显式路径与复制安全坐标→工作副本解压/prepare→真实停库/copy-back/SQL就绪→隔离PITR；native已停机入口核验真实mysqld/defaults文件，不自动重接复制"
     paths: "data/logs/tmp分挂；index写回server可见路径；数字UID/GID保留"
     cleanup: "raw备份不可消耗；copy-back失败回滚原目录/外置binlog；新历史须新full"
-    evidence_scope: "TL-MBK-07/08为双系统双版本host/container×GTID组合，09为独立最终干净回归"
+    evidence_scope: "TL-MBK-07/08双系统双版本host/container×GTID及09容器最终；10/11/12二进制单机/主从/异步双主×双系统双版本GTID OFF/ON及13二进制最终；父项pending不能外推PASS"
   MyLogiBackupCli:
     configuration: "login-path中的显式IPv4/port、库选择、挂载目录、压缩、timer与native options"
     namespace: "执行端TCP客户端；备份文件系统必须真实挂载；timer仅面向真实systemd宿主机"
@@ -232,14 +232,14 @@ test_cases:
   - {id: TL-MIG-04, tool: MigrationCli, category: security, scenario: "SQL/主机参数注入、最小权限和 destructive 操作确认", command: "恶意 schema/table/host 与无确认 destructive 参数", expected: "参数化/白名单生效；无确认不写目标；凭据不落盘", status: pass, evidence: "2026-11-09 tests/evidence/mysql-migration-20261109.json；106 项合同、三工具冻结来源及跨系统验证；Migration 原生 argv/并发/错误传播/回滚重试/读回及 durable 0/0、scoped clean 核验；备份业务按 AST/CLI 等价证明复用。"}
   - {id: TL-MIG-05, tool: MigrationCli, category: recovery, scenario: "迁移中断、回滚标记、临时 dump/gzip 回收和重试", command: "在 dump/import/verify 阶段注入断连", expected: "首错可诊断；目标不被伪装为成功；临时文件与锁清理", status: pass, evidence: "2026-11-09 tests/evidence/mysql-migration-20261109.json；106 项合同、三工具冻结来源及跨系统验证；Migration 原生 argv/并发/错误传播/回滚重试/读回及 durable 0/0、scoped clean 核验；备份业务按 AST/CLI 等价证明复用。"}
 
-  - {id: TL-MBK-01, tool: MyBackupCli, category: build, scenario: "XtraBackup 兼容环境 onefile 构建", command: "python3 -m compileall -q tools/mysqltools/MyBackupCli.py && build tools-only", expected: "产物可执行，XtraBackup 官方版本/ SHA256 已记录", status: pass, evidence: "tests/evidence/tools-boundary-build4-20261125.json；三工具冻结、构建来源和SHA256、durable双0；不签业务生命周期"}
-  - {id: TL-MBK-02, tool: MyBackupCli, category: cli, scenario: "全量/增量/压缩/恢复参数和配置权限合同", command: "python3 tools/mysqltools/MyBackupCli.py --help", expected: "非法目录/配置/选项非 0；密码文件权限受控", status: pass, evidence: "2026-11-09 tests/evidence/mysql-migration-20261109.json；106 项合同、三工具冻结来源及跨系统验证；Migration 原生 argv/并发/错误传播/回滚重试/读回及 durable 0/0、scoped clean 核验；备份业务按 AST/CLI 等价证明复用。"}
-  - {id: TL-MBK-03, tool: MyBackupCli, category: functional, scenario: "Percona XtraBackup 官方兼容组合的全量+增量 prepare/restore 数据校验", command: "使用 TalkEdu Hub 已发布且 digest 固定的 MySQL/XtraBackup 镜像执行 full -> incremental -> prepare -> restore -> readback", expected: "按官方文档 prepare 成功，数据 checksum 一致；未获官方支持的 9.x 组合不伪报 PASS", status: pass, evidence: "tests/evidence/mysql84-physical-requal-20261125.json；当前冻结产物、真实Docker目标、8.4.4全增量/恢复读回、异常恢复及限定清理、durable双0"}
-  - {id: TL-MBK-04, tool: MyBackupCli, category: security, scenario: "备份目录穿越、锁竞争、敏感配置和 destructive restore 保护", command: "恶意路径/并发执行/无确认 restore", expected: "路径限制、单实例锁、敏感信息脱敏、无确认不覆盖", status: pass, evidence: "2026-11-09 tests/evidence/mysql-migration-20261109.json；106 项合同、三工具冻结来源及跨系统验证；Migration 原生 argv/并发/错误传播/回滚重试/读回及 durable 0/0、scoped clean 核验；备份业务按 AST/CLI 等价证明复用。"}
-  - {id: TL-MBK-05, tool: MyBackupCli, category: recovery, scenario: "磁盘满/进程中断后的临时文件和锁回收", command: "在 copy/prepare/restore 阶段注入 ENOSPC/SIGINT", expected: "半成品不冒充备份；锁释放；可从干净边界重试", status: pass, evidence: "2026-11-08 tests/evidence/mysql-backup-20261108.json；当前输入和冻结产物 SHA256 绑定；physical 固定入口、业务读回/参数/清理标记、durable 双0、零未预期失败；其它未变工具证据复用"}
+  - {id: TL-MBK-01, tool: MyBackupCli, category: build, scenario: "XtraBackup 兼容环境 onefile 构建", command: "python3 -m compileall -q tools/mysqltools/MyBackupCli.py && build tools-only", expected: "产物可执行，XtraBackup 官方版本/ SHA256 已记录", status: pass, evidence: "tests/evidence/mysql-backup-portability-20261125.json；当前MyBackupCli native onefile构建、SHA256及依赖、durable双0、三环境实际启动与scoped clean"}
+  - {id: TL-MBK-02, tool: MyBackupCli, category: cli, scenario: "全量/增量/压缩/恢复参数和配置权限合同", command: "python3 tools/mysqltools/MyBackupCli.py --help", expected: "非法目录/配置/选项非 0；密码文件权限受控", status: pass, evidence: "tests/evidence/mybackup-native-contract-20261125.json；当前源码合同与冻结8.4物理聚焦raw、durable双0及scoped clean；8.0/拓扑父项独立验收"}
+  - {id: TL-MBK-03, tool: MyBackupCli, category: functional, scenario: "Percona XtraBackup 官方兼容组合的全量+增量 prepare/restore 数据校验", command: "使用 TalkEdu Hub 已发布且 digest 固定的 MySQL/XtraBackup 镜像执行 full -> incremental -> prepare -> restore -> readback", expected: "按官方文档 prepare 成功，数据 checksum 一致；未获官方支持的 9.x 组合不伪报 PASS", status: pass, evidence: "tests/evidence/mysql84-physical-requal-20261125.json；当前源码合同与冻结8.4物理聚焦raw、durable双0及scoped clean；8.0/拓扑父项独立验收"}
+  - {id: TL-MBK-04, tool: MyBackupCli, category: security, scenario: "备份目录穿越、锁竞争、敏感配置和 destructive restore 保护", command: "恶意路径/并发执行/无确认 restore", expected: "路径限制、单实例锁、敏感信息脱敏、无确认不覆盖", status: pass, evidence: "tests/evidence/mybackup-native-contract-20261125.json；当前源码合同与冻结8.4物理聚焦raw、durable双0及scoped clean；8.0/拓扑父项独立验收"}
+  - {id: TL-MBK-05, tool: MyBackupCli, category: recovery, scenario: "磁盘满/进程中断后的临时文件和锁回收", command: "在 copy/prepare/restore 阶段注入 ENOSPC/SIGINT", expected: "半成品不冒充备份；锁释放；可从干净边界重试", status: pass, evidence: "tests/evidence/mybackup-native-contract-20261125.json；当前源码合同与冻结8.4物理聚焦raw、durable双0及scoped clean；8.0/拓扑父项独立验收"}
 
-  - {id: TL-MBK-07, tool: MyBackupCli, category: functional, scenario: "MySQL 8.0.33 物理备份完整生命周期与时间点恢复", command: "MYSQL_BACKUP_STAGE=physical80-8.0.33 bash tests/run_tools_regression.sh --mysql-backup-live", expected: "MYBACKUP_LIFECYCLE_PASS version=8.0.33 gtid=OFF/ON mode=host/container（逐组合独立标志）；真实全量/两级增量/解压/prepare/copy-back/SQL摘要与PITR边界；拒绝、失败恢复及清理；durable双0", status: pass, official: "Percona XtraBackup 8.0 supported-versions/server-backup-version-comparison/create-incremental-backup/prepare-incremental-backup/point-in-time-recovery；8.0.35-36固定源码", fixture: "131/216原生Rocky8.10/9.8共享池和节点租约；固定digest官方MySQL 8.0.33与PXB8.0；宿主机/独立工具容器执行，data/logs/tmp分挂，真实Unix socket；GTID OFF/ON；仅本轮容器/临时datadir和备份；不连接生产", cleanup: "仅本轮label容器、tools-mbk目录、诊断及durable状态；保留其它服务/镜像", disproof: "MYSQL_BACKUP_STAGE=physical80-8.0.33 bash tests/run_tools_regression.sh --mysql-backup-live", evidence: "tests/evidence/mysql80-physical-8.0.33.json"}
-  - {id: TL-MBK-08, tool: MyBackupCli, category: functional, scenario: "MySQL 8.0.46 物理备份完整生命周期与时间点恢复", command: "MYSQL_BACKUP_STAGE=physical80-8.0.46 bash tests/run_tools_regression.sh --mysql-backup-live", expected: "MYBACKUP_LIFECYCLE_PASS version=8.0.46 gtid=OFF/ON mode=host/container（逐组合独立标志）；真实全量/两级增量/解压/prepare/copy-back/SQL摘要与PITR边界；拒绝、失败恢复及清理；durable双0", status: pass, official: "Percona XtraBackup 8.0 supported-versions/server-backup-version-comparison/create-incremental-backup/prepare-incremental-backup/point-in-time-recovery；8.0.35-36固定源码", fixture: "131/216原生Rocky8.10/9.8共享池和节点租约；固定digest官方MySQL 8.0.46与PXB8.0；宿主机/独立工具容器执行，data/logs/tmp分挂，真实Unix socket；GTID OFF/ON；仅本轮容器/临时datadir和备份；不连接生产", cleanup: "仅本轮label容器、tools-mbk目录、诊断及durable状态；保留其它服务/镜像", disproof: "MYSQL_BACKUP_STAGE=physical80-8.0.46 bash tests/run_tools_regression.sh --mysql-backup-live", evidence: "tests/evidence/mysql80-physical-8.0.46.json"}
+  - {id: TL-MBK-07, tool: MyBackupCli, category: functional, scenario: "MySQL 8.0.33 物理备份完整生命周期与时间点恢复", command: "MYSQL_BACKUP_STAGE=physical80-8.0.33 bash tests/run_tools_regression.sh --mysql-backup-live", expected: "MYBACKUP_LIFECYCLE_PASS version=8.0.33 gtid=OFF/ON mode=host/container（逐组合独立标志）；真实全量/两级增量/解压/prepare/copy-back/SQL摘要与PITR边界；拒绝、失败恢复及清理；durable双0", status: pass, official: "Percona XtraBackup 8.0 supported-versions/server-backup-version-comparison/create-incremental-backup/prepare-incremental-backup/point-in-time-recovery；8.0.35-36固定源码", fixture: "137/216原生Rocky8.10/9.8（既有131独立证据保留原身份）共享池和节点租约；固定digest官方MySQL 8.0.33与PXB8.0；宿主机/独立工具容器执行，data/logs/tmp分挂，真实Unix socket；GTID OFF/ON；仅本轮容器/临时datadir和备份；不连接生产", cleanup: "仅本轮label容器、tools-mbk目录、诊断及durable状态；保留其它服务/镜像", disproof: "MYSQL_BACKUP_STAGE=physical80-8.0.33 bash tests/run_tools_regression.sh --mysql-backup-live", evidence: "tests/evidence/mysql80-physical-8.0.33.json"}
+  - {id: TL-MBK-08, tool: MyBackupCli, category: functional, scenario: "MySQL 8.0.46 物理备份完整生命周期与时间点恢复", command: "MYSQL_BACKUP_STAGE=physical80-8.0.46 bash tests/run_tools_regression.sh --mysql-backup-live", expected: "MYBACKUP_LIFECYCLE_PASS version=8.0.46 gtid=OFF/ON mode=host/container（逐组合独立标志）；真实全量/两级增量/解压/prepare/copy-back/SQL摘要与PITR边界；拒绝、失败恢复及清理；durable双0", status: pass, official: "Percona XtraBackup 8.0 supported-versions/server-backup-version-comparison/create-incremental-backup/prepare-incremental-backup/point-in-time-recovery；8.0.35-36固定源码", fixture: "137/216原生Rocky8.10/9.8（既有131独立证据保留原身份）共享池和节点租约；固定digest官方MySQL 8.0.46与PXB8.0；宿主机/独立工具容器执行，data/logs/tmp分挂，真实Unix socket；GTID OFF/ON；仅本轮容器/临时datadir和备份；不连接生产", cleanup: "仅本轮label容器、tools-mbk目录、诊断及durable状态；保留其它服务/镜像", disproof: "MYSQL_BACKUP_STAGE=physical80-8.0.46 bash tests/run_tools_regression.sh --mysql-backup-live", evidence: "tests/evidence/mysql80-physical-8.0.46.json"}
   - {id: TL-MBK-09, tool: MyBackupCli, category: delivery, scenario: "MySQL 8.0.33/8.0.46 物理生命周期最终干净完整回归", command: "MYSQL_BACKUP_STAGE=physical80-full bash tests/run_tools_regression.sh --mysql-backup-live", expected: "当前前置及文档证据、两版本生命周期与PITR、durable双0、零未预期失败、TOOLS_CLEAN_VERIFY_PASS", status: pass, official: "TL-MBK-07/08相同固定官方依据", fixture: "沿用07/08固定制品与独占租约；两版本顺序运行；不重跑逻辑备份和无关工具", cleanup: "与07/08相同；每版本前后核验范围；最终scoped clean", disproof: "MYSQL_BACKUP_STAGE=physical80-full bash tests/run_tools_regression.sh --mysql-backup-live", evidence: "tests/evidence/mysql80-physical-full.json"}
 
   - {id: TL-MLB-01, tool: MyLogiBackupCli, category: build, scenario: "Rocky 8.10/glibc 2.28 独立 onefile 构建", command: "bash tests/run_tools_regression.sh --build-only", expected: "MyLogiBackupCli-rocky8 可执行；SHA256、构建镜像与 glibc 来源可追溯", status: pass, evidence: "2026-11-09 tests/evidence/mysql-migration-20261109.json；106 项合同、三工具冻结来源及跨系统验证；Migration 原生 argv/并发/错误传播/回滚重试/读回及 durable 0/0、scoped clean 核验；备份业务按 AST/CLI 等价证明复用。"}
@@ -266,15 +266,15 @@ test_cases:
   - {id: TL-X-03, tool: cross-tool, category: portability, scenario: "Rocky 8.10 glibc 2.28 与 Ubuntu/Debian 运行兼容", command: "固定构建后分别执行每个产物 --help/版本", expected: "无 GLIBC/openssl/LD_LIBRARY_PATH ABI 错误", status: pass, evidence: "2026-11-09 tests/evidence/mysql-migration-20261109.json；106 项合同、三工具冻结来源及跨系统验证；Migration 原生 argv/并发/错误传播/回滚重试/读回及 durable 0/0、scoped clean 核验；备份业务按 AST/CLI 等价证明复用。"}
   - {id: TL-X-04, tool: cross-tool, category: security, scenario: "统一敏感信息、shell 注入、路径和权限审计", command: "静态扫描 subprocess 调用 + 每工具恶意 fixture", expected: "参数列表调用或安全 quoting；secret 脱敏；输出权限最小化", status: pass, evidence: "2026-11-09 tests/evidence/mysql-migration-20261109.json；106 项合同、三工具冻结来源及跨系统验证；Migration 原生 argv/并发/错误传播/回滚重试/读回及 durable 0/0、scoped clean 核验；备份业务按 AST/CLI 等价证明复用。"}
   - {id: TL-X-05, tool: cross-tool, category: observability, scenario: "统一退出码、成功/失败 marker、日志和诊断", command: "runner 收集每工具 stdout/stderr/rc/耗时/版本", expected: "首错可定位；零失败 marker 才能 PASS；日志不含凭据", status: pass, evidence: "2026-11-09 tests/evidence/mysql-migration-20261109.json；106 项合同、三工具冻结来源及跨系统验证；Migration 原生 argv/并发/错误传播/回滚重试/读回及 durable 0/0、scoped clean 核验；备份业务按 AST/CLI 等价证明复用。"}
-  - {id: TL-X-06, tool: cross-tool, category: supply_chain, scenario: "构建输入、依赖、官方来源和产物 digest 可复核", command: "记录 Python/依赖 lock、基础镜像 digest、产物 SHA256", expected: "无动态未审计下载；来源失败按固定顺序回退并留证", status: pass, evidence: "2026-11-09 tests/evidence/mysql-migration-20261109.json；106 项合同、三工具冻结来源及跨系统验证；Migration 原生 argv/并发/错误传播/回滚重试/读回及 durable 0/0、scoped clean 核验；备份业务按 AST/CLI 等价证明复用。"}
+  - {id: TL-X-06, tool: cross-tool, category: supply_chain, scenario: "构建输入、依赖、官方来源和产物 digest 可复核", command: "记录 Python/依赖 lock、基础镜像 digest、产物 SHA256", expected: "无动态未审计下载；来源失败按固定顺序回退并留证", status: pass, evidence: "tests/evidence/mysql80-binary-supply-chain-20261125.json；当前MyBackup构建/制品、双OS双版本16RPM实际签名、metadata摘要、原始归档及未变tools所属证据限定复用"}
   - {id: TL-X-07, tool: cross-tool, category: cleanup, scenario: "成功、失败、SIGINT、SSH 断连后的 scoped cleanup", command: "tests/run_tools_regression.sh --cleanup/--verify", expected: "无孤儿进程、容器、端口、临时目录、凭据；TOOLS_CLEAN_VERIFY_PASS", status: pass, evidence: "2026-11-09 tests/evidence/mysql-migration-20261109.json；106 项合同、三工具冻结来源及跨系统验证；Migration 原生 argv/并发/错误传播/回滚重试/读回及 durable 0/0、scoped clean 核验；备份业务按 AST/CLI 等价证明复用。"}
   - {id: TL-X-08, tool: cross-tool, category: delivery, scenario: "独立分路不改变核心/middleware 矩阵和 runner", command: "检查 git diff、矩阵引用和 runner 调用图", expected: "tools runner 可单独执行；核心与 middleware 不反向依赖 tools；六仓无非必要变更", status: pass, evidence: "2026-11-09 tests/evidence/mysql-migration-20261109.json；106 项合同、三工具冻结来源及跨系统验证；Migration 原生 argv/并发/错误传播/回滚重试/读回及 durable 0/0、scoped clean 核验；备份业务按 AST/CLI 等价证明复用。"}
 
 # 对外功能清单：每一项都必须由 case_ids 指向可执行的功能/安全/恢复场景。
 # build/--help 只能证明交付物可启动，不能单独覆盖本清单中的生产功能。
-  - {id: TL-MBK-06, tool: MyBackupCli, category: functional, scenario: "实际 XtraBackup lock-ddl 能力、成功 stderr 和分阶段原生参数透传", command: "MYSQL_BACKUP_STAGE=physical bash tests/run_tools_regression.sh --mysql-backup-live", expected: "8.0 布尔帮助选择 ON；8.4 能力选择 REDUCED；不支持的显式 REDUCED 拒绝；原生 throttle/prepare 参数经 CLI 生效且恢复精确读回", status: pass, evidence: "2026-11-08 tests/evidence/mysql-backup-20261108.json；当前输入和冻结产物 SHA256 绑定；physical 固定入口、业务读回/参数/清理标记、durable 双0、零未预期失败；其它未变工具证据复用"}
+  - {id: TL-MBK-06, tool: MyBackupCli, category: functional, scenario: "实际 XtraBackup lock-ddl 能力、成功 stderr 和分阶段原生参数透传", command: "MYSQL_BACKUP_STAGE=physical bash tests/run_tools_regression.sh --mysql-backup-live", expected: "8.0 布尔帮助选择 ON；8.4 能力选择 REDUCED；不支持的显式 REDUCED 拒绝；原生 throttle/prepare 参数经 CLI 生效且恢复精确读回", status: pass, evidence: "tests/evidence/mysql84-physical-requal-20261125.json；当前源码合同与冻结8.4物理聚焦raw、durable双0及scoped clean；8.0/拓扑父项独立验收"}
   - {id: TL-MLB-13, tool: MyLogiBackupCli, category: functional, scenario: "原生参数、单遍压缩摘要、阶段诊断和定时参数保存", command: "MYSQL_BACKUP_STAGE=logical bash tests/run_tools_regression.sh --mysql-backup-live", expected: "原生 extended-insert 与连接参数传到命令；三版本 SQL/BLOB/程序恢复；gz/bz2/xz 摘要回读；受保护参数拒绝；timer 保存参数", status: pass, evidence: "2026-11-08 tests/evidence/mysql-backup-20261108.json；当前输入和冻结产物 SHA256 绑定；logical 固定入口、业务读回/参数/清理标记、durable 双0、零未预期失败；其它未变工具证据复用"}
-  - {id: TL-X-09, tool: cross-tool, category: delivery, scenario: "两个 MySQL 备份工具变化范围的最终干净完整回归", command: "bash tests/run_tools_regression.sh --mysql-backup-live", expected: "所有当前适用前置 PASS 且输入绑定后才启动；两个工具全部原有场景及新增场景；durable 双0、零未预期失败、TOOLS_CLEAN_VERIFY_PASS", status: pass, evidence: "tests/evidence/mysql-backup-final-20261125.json；当前冻结制品一次干净portability/物理8.4/逻辑三版本与真实timer；另绑定独立8.0生产16组合final；durable双0、零未预期失败及scoped clean；其它工具按审计限定复用"}
+  - {id: TL-X-09, tool: cross-tool, category: delivery, scenario: "两个 MySQL 备份工具变化范围的最终干净完整回归", command: "bash tests/run_tools_regression.sh --mysql-backup-live", expected: "所有当前适用前置 PASS 且输入绑定后才启动；两个工具全部原有场景及新增场景；durable 双0、零未预期失败、TOOLS_CLEAN_VERIFY_PASS", status: pending, evidence: "tests/evidence/mysql-backup-final-20261125.json（本次尚未重签）；最新尝试：logs/mysql80-affected-final-ssh-refused-20261125.json，local rc255、双端No route to host，未启动远端数据库门禁；旧正式记录已另存。"}
 
   # 新迁移工具独立待验收；不继承 StarCli、容器或旧 cross-tool 的 PASS。
   - {id: TL-SD-01, tool: StarMigrtCli, category: build, scenario: "独立导入、Python 3.9+ 与选定单工具 onefile", command: "bash tests/run_tools_regression.sh --starmigrt-qualify", expected: "独立 AST/语法通过；冻结产物 SHA256/依赖/运行平台另留证", status: pass, official: "StarRocks 3.5.7 INSERT/SHOW CREATE TABLE；PyMySQL v1.1.2 connections/cursors；starmigrt_review.official", fixture: "私有 Docker 28.5.2；双 allin1 3.5.7 固定 digest；Python3.9.25/glibc2.34；65536行流式表及多类型/主键/聚合表；TLS协议代理；fixture SQL仅建数和消费导出SQL", cleanup: "只移除本轮label容器/网络、daemon及运行目录；核对防火墙不变、无mount/进程/partial；失败保留私有证据", disproof: "bash tests/run_tools_regression.sh --starmigrt-qualify", evidence: tests/evidence/starmigrt-full.json}
@@ -290,6 +290,11 @@ test_cases:
   - {"id": "TL-KAF-06", "tool": "KafkaCli", "category": "functional", "scenario": "冻结工具经SSH远程bootstrap的二进制/源码交接与路径隔离", "command": "bash tests/run_tools_regression.sh --remote-bootstrap-live", "expected": "执行工具自身入口；冻结产物直接执行、源码由Python执行；真实远程交接和首错拒绝、SHA256、scoped clean；本地合同不签现场PASS", "status": "pass", "official": "PyInstaller v6.16.0 runtime-information sys.executable; Python subprocess", "fixture": "本地确定性合同先行；现场仅固定授权主机的runner专属目录，不部署或重启用户服务", "cleanup": "本轮上传文件与专属工作目录，保留外来文件和服务", "disproof": "KUBEAUTO_LOG_DIR=<temporary> .venv/bin/python -B -m unittest tests.unit.test_tools_execution_boundary_contract", "evidence": "tests/evidence/tools-remote-bootstrap-20261125.json；真实远程源码/冻结交接、预期拒绝、上传SHA、durable双0和限定清理；不签数据库业务"}
 
   - {"id": "TL-SR-06", "tool": "StarCli", "category": "functional", "scenario": "冻结工具经SSH远程bootstrap的二进制/源码交接与路径隔离", "command": "bash tests/run_tools_regression.sh --remote-bootstrap-live", "expected": "执行工具自身入口；冻结产物直接执行、源码由Python执行；真实远程交接和首错拒绝、SHA256、scoped clean；本地合同不签现场PASS", "status": "pass", "official": "PyInstaller v6.16.0 runtime-information sys.executable; Python subprocess", "fixture": "本地确定性合同先行；现场仅固定授权主机的runner专属目录，不部署或重启用户服务", "cleanup": "本轮上传文件与专属工作目录，保留外来文件和服务", "disproof": "KUBEAUTO_LOG_DIR=<temporary> .venv/bin/python -B -m unittest tests.unit.test_tools_execution_boundary_contract", "evidence": "tests/evidence/tools-remote-bootstrap-20261125.json；真实远程源码/冻结交接、预期拒绝、上传SHA、durable双0和限定清理；不签数据库业务"}
+
+  - {"id": "TL-MBK-10", "tool": "MyBackupCli", "category": "functional", "scenario": "二进制单机：双系统双版本完整物理生命周期", "command": "MYSQL_BACKUP_STAGE=binary80-standalone bash tests/run_tools_regression.sh --mysql-backup-live", "expected": "BINARY_LIFECYCLE_PASS topology=standalone；真实systemd/全备/两增量/LSN/PITR/UUID/读回/拒绝/重试", "status": "pass", "official": "PXB8.0.35-36 backup_mysql.cc/slave-info/safe-slave-backup；MySQL8.0复制、GTID、skip_replica_start与二进制安装接口", "fixture": "Rocky8.10 137（既有131独立证据保留原身份）、Rocky9.8 .122.216；AMD64；8.0.33/8.0.46；真实二进制mysqld及独享systemd unit/data/socket/端口；GTID OFF/ON；国内校验制品；不连接生产", "cleanup": "仅runner本轮unit、进程、端口及私有数据/备份目录；安装包校验缓存和正式原始证据保留；禁止覆盖现有mysqld.service", "disproof": "MYSQL_BACKUP_STAGE=binary80-standalone bash tests/run_tools_regression.sh --mysql-backup-live", "evidence": "tests/evidence/mysql80-binary-standalone.json"}
+  - {"id": "TL-MBK-11", "tool": "MyBackupCli", "category": "functional", "scenario": "一主一从：主从备份、隔离恢复和复制追平", "command": "MYSQL_BACKUP_STAGE=binary80-primary-replica bash tests/run_tools_regression.sh --mysql-backup-live", "expected": "BINARY_LIFECYCLE_PASS topology=primary-replica；主从分别备份恢复、上游坐标、GTID与位点重接、复制追平及双端数据摘要", "status": "pass", "official": "PXB8.0.35-36 backup_mysql.cc/slave-info/safe-slave-backup；MySQL8.0复制、GTID、skip_replica_start与二进制安装接口", "fixture": "Rocky8.10 137（既有131独立证据保留原身份）、Rocky9.8 .122.216；AMD64；8.0.33/8.0.46；真实二进制mysqld及独享systemd unit/data/socket/端口；GTID OFF/ON；国内校验制品；不连接生产", "cleanup": "仅runner本轮unit、进程、端口及私有数据/备份目录；安装包校验缓存和正式原始证据保留；禁止覆盖现有mysqld.service", "disproof": "MYSQL_BACKUP_STAGE=binary80-primary-replica bash tests/run_tools_regression.sh --mysql-backup-live", "evidence": "tests/evidence/mysql80-binary-primary-replica.json"}
+  - {"id": "TL-MBK-12", "tool": "MyBackupCli", "category": "functional", "scenario": "异步双主：隔离恢复、重建和双向复制验证", "command": "MYSQL_BACKUP_STAGE=binary80-dual-primary bash tests/run_tools_regression.sh --mysql-backup-live", "expected": "BINARY_LIFECYCLE_PASS topology=dual-primary；两端分别备份、隔离/PITR、保留目标身份、从权威数据重建、双向提交和摘要一致", "status": "pass", "official": "PXB8.0.35-36 backup_mysql.cc/slave-info/safe-slave-backup；MySQL8.0复制、GTID、skip_replica_start与二进制安装接口", "fixture": "Rocky8.10 137（既有131独立证据保留原身份）、Rocky9.8 .122.216；AMD64；8.0.33/8.0.46；真实二进制mysqld及独享systemd unit/data/socket/端口；GTID OFF/ON；国内校验制品；不连接生产", "cleanup": "仅runner本轮unit、进程、端口及私有数据/备份目录；安装包校验缓存和正式原始证据保留；禁止覆盖现有mysqld.service", "disproof": "MYSQL_BACKUP_STAGE=binary80-dual-primary bash tests/run_tools_regression.sh --mysql-backup-live", "evidence": "tests/evidence/mysql80-binary-dual-primary.json"}
+  - {"id": "TL-MBK-13", "tool": "MyBackupCli", "category": "delivery", "scenario": "二进制单机与异步复制最终干净完整回归", "command": "MYSQL_BACKUP_STAGE=binary80-full bash tests/run_tools_regression.sh --mysql-backup-live", "expected": "BINARY_FINAL_PASS；10/11/12及配置文档当前证据为前置；两系统两版本与既有受影响容器回归、durable双0、零未预期失败及限定清理", "status": "pass", "official": "PXB8.0.35-36 backup_mysql.cc/slave-info/safe-slave-backup；MySQL8.0复制、GTID、skip_replica_start与二进制安装接口", "fixture": "Rocky8.10 137（既有131独立证据保留原身份）、Rocky9.8 .122.216；AMD64；8.0.33/8.0.46；真实二进制mysqld及独享systemd unit/data/socket/端口；GTID OFF/ON；国内校验制品；不连接生产", "cleanup": "仅runner本轮unit、进程、端口及私有数据/备份目录；安装包校验缓存和正式原始证据保留；禁止覆盖现有mysqld.service", "disproof": "MYSQL_BACKUP_STAGE=binary80-full bash tests/run_tools_regression.sh --mysql-backup-live", "evidence": "tests/evidence/mysql80-binary-full.json"}
 
 functional_inventory:
   StarMigrtCli:
@@ -388,6 +393,11 @@ functional_inventory:
     - {id: MBK-F-06, operation: "purge backup-days/binlog-days 生命周期清理", case_ids: [TL-MBK-02, TL-MBK-04]}
     - {id: MBK-F-07, operation: "MySQL service start/stop/restart 与锁竞争", case_ids: [TL-MBK-04]}
     - {id: MBK-F-08, operation: "ENOSPC/SIGINT、半成品隔离、锁释放和恢复重试", case_ids: [TL-MBK-05]}
+    - {id: MBK-F-10, operation: "8.0.33/8.0.46宿主机与独立工具容器、data/binlog/index显式映射及完整PITR", case_ids: [TL-MBK-07, TL-MBK-08, TL-MBK-09]}
+    - {id: MBK-F-11, operation: "二进制systemd单机、SQL就绪与恢复后新全备/增量周期", case_ids: [TL-MBK-10]}
+    - {id: MBK-F-12, operation: "一主一从单通道安全备份、上游坐标、隔离恢复与复制重建读回", case_ids: [TL-MBK-11]}
+    - {id: MBK-F-13, operation: "异步双主两端独立备份、权威donor重建、目标UUID/持久变量保留及双向读回", case_ids: [TL-MBK-12]}
+    - {id: MBK-F-14, operation: "offline-restore校验真实mysqld/defaults配置、精确版本/GTID/拓扑、拒绝保护覆盖", case_ids: [TL-MBK-02, TL-MBK-04, TL-MBK-10, TL-MBK-11, TL-MBK-12]}
   MyLogiBackupCli:
     - {id: MLB-F-13, operation: "原生参数透传和大备份单遍压缩摘要/阶段日志", case_ids: [TL-MLB-13]}
     - {id: MLB-F-01, operation: "setup-login 交互创建加密 login-path", case_ids: [TL-MLB-03]}
@@ -417,13 +427,13 @@ functional_inventory:
     - {id: SR-F-12, operation: "FE/BE/CN 部署失败、清理、超时和重试", case_ids: [TL-SR-05]}
 
 coverage_summary:
-  total: 86
-  pass: 85
-  pending: 0
+  total: 90
+  pass: 88
+  pending: 1
   fail: 0
   skip: 0
   na: 1
-  overall_assessment: "2026-11-25 全tools配置消费/执行边界审计及MySQL8.0生产16组合已收证；TL-X-09最终干净回归和限定清理已收证；不代替客户签收"
+  overall_assessment: "当前已有88个适用父项核验通过；容器16组合和二进制三拓扑24组合最终回归、全tools执行边界审计均通过；仅TL-X-09最终干净门禁待验收，最近SSH网络失败rc255未进入数据库场景；不宣称GA。"
 
 mysql_backup_requalification:
   evidence: tests/evidence/mysql-backup-qualification-20261125.json
@@ -619,7 +629,7 @@ mysql80_physical_requalification:
   review_status: approved
   entry: "MYSQL_BACKUP_STAGE=physical80-8.0.33/physical80-8.0.46/physical80-full bash tests/run_tools_regression.sh --mysql-backup-live"
   status_entry: "bash tests/run_tools_regression.sh --status"
-  host: "root@192.168.47.131 Rocky8.10；root@192.168.122.216 Rocky9.8；共享池控制租约和节点互斥；私有Docker28.5.2，不接管系统运行时"
+  host: "root@192.168.47.137 Rocky8.10（旧131证据保持原身份）；root@192.168.122.216 Rocky9.8；共享池控制租约和节点互斥；私有Docker28.5.2，不接管系统运行时"
   scope: "全量恢复、两级增量LSN链、压缩解压、prepare、copy-back、数据摘要、binlog/PITR时间边界、未提交事务、拒绝与失败恢复、保留清理"
   artifact_boundary: "MySQL8.0.33/PXB8.0新固定夹具增量发布；MySQL8.0.46既有digest复用；冻结MyBackupCli和已验收Docker28.5.2归档按输入hash复用"
   production_profile: "用户确认AMD x86_64、Rocky8.10/9.8、单MySQL容器、无加密；GTID ON/OFF均验证"
@@ -629,3 +639,14 @@ mysql80_physical_requalification:
     - "单容器由 Docker/Compose 管理；不得用 systemctl 模拟适配冒称生产容器启停通过；原生 systemd 场景独立保留"
     - "外置 binlog 的全量/增量读取、索引映射、归档、copy-back 与 PITR；恢复前停库，恢复后确认实际 SQL 就绪及 UID/GID 正确"
   hosts_parallel: "两台主机每台顺序运行同版本GTID OFF/ON；最终每台顺序两版本；控制租约由开发端持有"
+
+mysql80_binary_requalification:
+  review_status: approved
+  authorization: "用户本轮明确收敛为Rocky8.10/9.8二进制单机、一主一从、异步双主；使用国内下载，不包含Galera或Group Replication。"
+  entry: "MYSQL_BACKUP_STAGE=binary80-standalone/primary-replica/dual-primary/full bash tests/run_tools_regression.sh --mysql-backup-live"
+  topology_boundary: "每配置只管理本地目标；恢复隔离应用及复制对端，skip_replica_start持久ON；不自动选主、切流量或重接对端。"
+  restore_boundary: "各节点在线及真实停机的checksum/audit/restore；停机入口仅native systemd直接ExecStart mysqld --defaults-file；保留目标UUID及mysqld-auto.cnf；不同UUID donor不能归档目标旧日志到来源仓库。"
+  fixture_boundary: "RPM仅私有解包，目标mysqld为宿主机真实二进制/systemd；客户端和PXB固定工具容器保持原argv与同绝对路径；不替换systemctl，不安装系统MySQL包。"
+  artifact_boundary: "精确版本官方二进制包或官方RPM中的二进制；国内HTTPS来源及可信SHA256/签名；无境外fallback；缺任一适用制品在SSH/变更前拒绝。"
+  pending_dependencies: [TL-MBK-01, TL-MBK-02, TL-MBK-03, TL-MBK-04, TL-MBK-05, TL-MBK-06, TL-MBK-07, TL-MBK-08, TL-MBK-09, TL-X-06, TL-X-09, TL-X-10]
+  disproof: "各所属原固定入口及新增binary80聚焦入口；旧日志不改签；新产品、fixture和冻结产物须当前证据。"

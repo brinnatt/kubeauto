@@ -48,7 +48,7 @@ usage() {
   --mybackup-live 在授权 122.2 控制机运行 MyBackupCli XtraBackup 全功能回归
   --mylogi-backup-live 在 131-134 并行运行 MySQL 8.0.46/8.4.4/9.2.0 逻辑备份回归
   --star-live    在授权 122.2 控制机使用已登记 StarRocks 固定归档运行 StarCli 全功能回归
-  --mysql-backup-live  两个备份工具的聚焦/最终干净回归；MYSQL_BACKUP_STAGE=physical/logical/full
+  --mysql-backup-live  备份聚焦/最终回归；binary80-preflight 为新增本地合同，binary80-plan/prepare 为国内制品准入；新增现场分支待资格通过
   --full       显式批准后依次执行构建、cross-tool 和全部工具 live 门禁
 EOF
 }
@@ -84,6 +84,8 @@ case "${1:---preflight}" in
     KUBEAUTO_LOG_DIR="$tools_test_tmp" KAFKA_LOG_DIR="$tools_test_tmp" STARROCKS_LOG_DIR="$tools_test_tmp" MYSQL_MIGRATION_LOG_DIR="$tools_test_tmp" PYTHONDONTWRITEBYTECODE=1 \
       "$PY" -B -m unittest tests.unit.test_tools_execution_boundary_contract tests.unit.test_tools_config_failure_contract tests.unit.test_tools_matrix_contract \
       tests.unit.test_subprocess_environment_contract tests.unit.test_mysql_backup_gate_contract \
+      tests.unit.test_mybackup_replication_contract tests.unit.test_mysql80_binary_artifact_contract \
+      tests.unit.test_mybackup_offline_contract tests.unit.test_mysql80_binary_live_contract tests.unit.test_mybackup_native_build_contract \
       tests.unit.test_tools_execution_inventory_contract tests.unit.test_tools_evidence_dependency_contract \
       tests.unit.test_mysql80_evidence_dependency_contract tests.unit.test_mybackup_legacy_handoff_contract \
       tests.unit.test_tools_api_fixture_contract \
@@ -102,6 +104,7 @@ case "${1:---preflight}" in
   --status)
     "$PY" "$ROOT/tests/helpers/validate_tools_test_matrix.py" "$MATRIX"
     "$PY" -B "$ROOT/tests/helpers/mysql80-physical-live.py" status
+    "$PY" -B "$ROOT/tests/helpers/mysql80-binary-live.py" status
     "$PY" -B "$ROOT/tests/helpers/tools-production-audit.py" status
     "$PY" - <<'PY_STATUS' "$MATRIX"
 import collections, sys, yaml
@@ -227,6 +230,10 @@ PY_BUILD_PROOF
     echo "TOOLS_BUILD_PASS count=${#TOOLS[@]} glibc=2.28 starcli=$ROOT/dist/StarCli-rocky8 mylogi=$ROOT/dist/MyLogiBackupCli-rocky8"
     ;;
   --mysql-backup-live)
+    if [[ "${MYSQL_BACKUP_STAGE:-}" == binary80-* ]]; then
+      "$PY" -B "$ROOT/tests/helpers/mysql80-binary-artifacts.py" "${MYSQL_BACKUP_STAGE#binary80-}"
+      exit "$?"
+    fi
     if [[ "${MYSQL_BACKUP_STAGE:-}" == physical80-* ]]; then
       "$PY" -B "$ROOT/tests/helpers/mysql80-physical-live.py" "${MYSQL_BACKUP_STAGE#physical80-}"
       exit "$?"

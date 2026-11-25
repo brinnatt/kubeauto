@@ -28,6 +28,11 @@ class MigrationEvidenceContracts(unittest.TestCase):
             write('tests/run_tools_regression.sh', runner)
             proof['launcher']['sha256'] = write(proof['launcher']['snapshot'], runner)
             matrix = yaml.safe_load((ROOT/'tests/tools-test-matrix.yaml').read_text())
+            # A deterministic input-binding fixture must not inherit another
+            # product's current acceptance state from the working checkout.
+            for case in matrix['test_cases']:
+                if case['id'].startswith(('TL-MIG-', 'TL-X-')):
+                    case['status'] = 'pass'
             write('tests/tools-test-matrix.yaml', yaml.safe_dump(matrix))
             record = proof['runs']['native']
             record['sha256'] = write(record['log'], '\n'.join(record['required_markers']))

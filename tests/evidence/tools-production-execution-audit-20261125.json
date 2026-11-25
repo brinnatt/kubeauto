@@ -1410,74 +1410,86 @@
       "finding": "PyMySQL plus mysql/mysqldump explicitly use TCP; localhost and port cannot fall through to socket."
     },
     "tools/mysqltools/MyBackupCli.py": {
-      "sha256": "aa774dbd784750f4af09de8e576f3ab77417e3ffdcc75914328c66f6d98df6f0",
+      "sha256": "66423568f42804e9417d5e4f4b4fab791985d84f3e94fc2114f08cd921a92359",
       "boundary": "MyBackupCli",
       "parser_declarations": [
         {
           "options": [
             "command"
           ],
-          "line": 1610
+          "line": 1848
         },
         {
           "options": [
             "-c",
             "--config"
           ],
-          "line": 1616
+          "line": 1854
         },
         {
           "options": [
             "--date"
           ],
-          "line": 1622
+          "line": 1860
         },
         {
           "options": [
             "--binlog-start-time"
           ],
-          "line": 1628
+          "line": 1866
         },
         {
           "options": [
             "--binlog-stop-time"
           ],
-          "line": 1634
+          "line": 1872
         },
         {
           "options": [
             "--confirm-destructive-restore"
           ],
-          "line": 1640
+          "line": 1878
+        },
+        {
+          "options": [
+            "--confirm-replication-isolated"
+          ],
+          "line": 1883
+        },
+        {
+          "options": [
+            "--offline-restore"
+          ],
+          "line": 1887
         },
         {
           "options": [
             "--backup-days"
           ],
-          "line": 1646
+          "line": 1892
         },
         {
           "options": [
             "--binlog-days"
           ],
-          "line": 1653
+          "line": 1899
         },
         {
           "options": [
             "--help-native"
           ],
-          "line": 1660
+          "line": 1906
         },
         {
           "options": [
             "--native-option"
           ],
-          "line": 1662
+          "line": 1908
         }
       ],
-      "trace_review": "mysql_datadir/binlog_dir/binlog_index/socket/container；压缩/线程/内存/DDL锁 -> full/incr显式路径→工作副本解压/prepare→真实停库/copy-back/启库→PITR",
+      "trace_review": "JSON/CLI→Config：真实socket/data/binlog/index/container或systemd/topology/defaults-file；SQL身份/路径/单通道/线程/GTID→full/incr显式路径与PXB安全复制备份→不可消耗的工作副本prepare→真实启停与SQL就绪→PITR只读finally；offline经真实unit与精确patch启动配置校验；donor保留目标UUID与持久保护、不混入旧目标binlog。",
       "indirect_consumers": "Direct attribute/config value consumption or argparse action; no unexplained destination found in review.",
-      "finding": "Explicit backup/incremental datadir/binlog/index, checked SQL-to-bind mapping and pinned Docker identity; working-copy prepare, chain/physical PITR lower bound, copy-back rollback, ownership, restart readiness and new-full generation."
+      "finding": "原容器路径遗漏已修复并验收；新增二进制单机/一主一从/异步双主通过真实原生mysqld与systemd，不用目标容器自停或systemctl替身冒充。自动切流量、选权威节点及重接复制不属于工具职责；未知多源/GR拒绝。"
     },
     "tools/mysqltools/MyLogiBackupCli.py": {
       "sha256": "df68a6aeb660de6755526f0a49df1478bc1a1715dce46f804740d20d05c88d2c",
@@ -2095,13 +2107,13 @@
       "evidence_scope": "TL-MIG-03当前native及完整迁移、读回/回滚/重试/并发隔离通过"
     },
     "MyBackupCli": {
-      "configuration": "mysql_datadir/binlog_dir/binlog_index/socket/container；压缩/线程/内存/DDL锁",
-      "namespace": "宿主机或独立工具容器；SQL路径与本地文件路径由真实bind mount核对",
-      "identity": "SQL实例+Docker64hex容器ID+映射；systemd不代管容器",
-      "commands": "full/incr显式路径→工作副本解压/prepare→真实停库/copy-back/启库→PITR",
+      "configuration": "mysql_datadir/binlog_dir/binlog_index/socket/container/service/topology/defaults_file；压缩/线程/内存/DDL锁；配置注释说明默认、空值和执行者",
+      "namespace": "二进制实例宿主机、容器实例宿主机或独立工具容器；native路径与SQL一致，容器路径由真实bind mount核对",
+      "identity": "SQL实例UUID/版本/GTID/通道；Docker64hex容器ID及映射或真实systemd unit；systemd不代管容器；copy-back保留目标UUID及持久变量",
+      "commands": "full/incr显式路径与复制安全坐标→工作副本解压/prepare→真实停库/copy-back/SQL就绪→隔离PITR；native已停机入口核验真实mysqld/defaults文件，不自动重接复制",
       "paths": "data/logs/tmp分挂；index写回server可见路径；数字UID/GID保留",
       "cleanup": "raw备份不可消耗；copy-back失败回滚原目录/外置binlog；新历史须新full",
-      "evidence_scope": "TL-MBK-07/08为双系统双版本host/container×GTID组合，09为独立最终干净回归"
+      "evidence_scope": "TL-MBK-07/08双系统双版本host/container×GTID及09容器最终；10/11/12二进制单机/主从/异步双主×双系统双版本GTID OFF/ON及13二进制最终；父项pending不能外推PASS"
     },
     "MyLogiBackupCli": {
       "configuration": "login-path中的显式IPv4/port、库选择、挂载目录、压缩、timer与native options",
@@ -2148,7 +2160,7 @@
     "tools/k8stools/KubePublishCli.py": "ed3c8c138c02fdd3cc69b4f8f7d46127734e029ea334ff2767d1d28c4c6cdb9b",
     "tools/kafka/KafkaCli.py": "b973bd568a6e6f908caa2f7d30873ca213511623349d6816a90c129f726f298f",
     "tools/mysqltools/MigrationCli.py": "1a369e6ef29bf70d332b4dc31fc5bf2a5b7e7fbf50130f434c93c9f385dc87ea",
-    "tools/mysqltools/MyBackupCli.py": "aa774dbd784750f4af09de8e576f3ab77417e3ffdcc75914328c66f6d98df6f0",
+    "tools/mysqltools/MyBackupCli.py": "66423568f42804e9417d5e4f4b4fab791985d84f3e94fc2114f08cd921a92359",
     "tools/mysqltools/MyLogiBackupCli.py": "df68a6aeb660de6755526f0a49df1478bc1a1715dce46f804740d20d05c88d2c",
     "tools/starrocks/StarCli.py": "f8d2d6d2a0e8523327721a64f9fb571dc876483dcd96a57ffdec57f5ab5e6d95",
     "tools/starrocks/starmigration/StarMigrtCli.py": "0e8d474ae0339eacfb050e375daa297b06d8a97c9582603170ee58611a7bb262",
@@ -2156,9 +2168,9 @@
     "tools/starrocks/starrocks-3.5.7/fe-cn/scripts/init-rustfs-cn.sh": "92ec1d25a6a9fd54c4b1db707530ca55b4bd0559d535543b43c4a090a0357453",
     "tools/starrocks/starrocks-3.5.7/fe-cn/scripts/init-storage-volume-cn.sh": "1d1aa652ce24f9284a64bc706d04852da198ae0fd6cbfffc9972733b626d4d0d",
     "tools-onefile.spec": "7bb77b6db73a9c015aff2156120d94f7dc67a7a30e037f105d452bcbded45956",
-    "tests/helpers/tools-production-audit.py": "96fa32ab80f0047f2bc24e7ee22bf4f4b1fe3a06e45f69b6623f80b7e76058ff",
-    "tests/run_tools_regression.sh": "0114d8fb4f08abf85d2456ae89859470a92b15ef79840f94834478eff9aee2b6",
-    "tests/unit/test_tools_production_audit_contract.py": "8c888064e65357a01db17599f1626ad4e83538268fa262e5e176bbd27b7ce8c8",
+    "tests/helpers/tools-production-audit.py": "31df0f4c6f888d47acf3410e5f74a4b8590245bd5191f851150f29f18ab46349",
+    "tests/run_tools_regression.sh": "10e506a3f4bd5af1238687ba89e154696c9ab9717044453cb10ab67bde26c46d",
+    "tests/unit/test_tools_production_audit_contract.py": "574cd8db0177dcdfcc085cce4e93f185c7e7a5da8b0cb48c86fee6f684ac9a8c",
     "tests/unit/test_tools_execution_inventory_contract.py": "0a53452e02b48157769804355bbc52c42981005317c039ec0b4a48ceda74bf5a",
     "tests/unit/test_mysql_portability_contract.py": "e79498c514af50606624c0af2620d35533d9a3615c763472ac98030fcc616449",
     "tests/helpers/mysql-backups-regression.sh": "359cda27fe0b0b6c81871f71604d8becb458ff716133d8cb288ef3925b83c274",
@@ -2168,7 +2180,30 @@
     "tests/unit/test_mysql80_recovery_contract.py": "25e59b1e476b48031f337745f57baa8974b00228a5adf9408f0e018b3dc84947",
     "tests/unit/test_lab_cleanup_process_contract.py": "6bcc49bed2ccae8889a84f69f36c05e8e74843cf3288db910508076bd4b9dd83",
     "tests/helpers/lab-wipe-nodes.sh": "3357793ed351dceaa2615435a8a3f8fda865fa60910e3ea7212d5a17b7d86ac3",
-    "logs/tools-audit-preflight5-20261125.log": "abefd2d9aabb5ee2d70ae30433b6dcb57b1c1c8b656d7038c5c04bf0ce951da3"
+    "logs/tools-audit-preflight5-20261125.log": "abefd2d9aabb5ee2d70ae30433b6dcb57b1c1c8b656d7038c5c04bf0ce951da3",
+    "tests/helpers/mysql80-retired-staging-cleanup.py": "66cd97c8e1d9f8eed1d0eaa805b29c25da819696d26a85f62887d26df883baea",
+    "tests/unit/test_mysql80_retired_cleanup_contract.py": "e73a1a07024482c496a59c65119e3d856ace4d017d28e4d9fe4012d6dcb50ea4",
+    "logs/mysql80-host-relocation-qualification-20261125.json": "0c47f8cccce3f932f1325af4fa193eed8fac41a61e6b394170658870a56469f1",
+    "logs/mysql80-host-relocation-contract2-20261125.log": "8651b761b925b59d8467907e8279785cd4f3a8041feb4699d1cdef14c0ae5e2e",
+    "logs/mysql80-host-relocation-preflight2-20261125.log": "e0e05963659e859a173f18c06ef76f474831a880e2dd1f6b4c784488fa7cf734",
+    "logs/mysql80-tools-reused-dependency-review-20261125.log": "fe75fc2105d2ef77ae844a860d11bcf8b4663124ba90e2d0fac3a8e8ab5d0595",
+    "tests/evidence/mysql80-physical-8.0.33.json": "2115b7213b5a20ae1c065a9e683491deb62a259492523d14ee6bdc91f45433cb",
+    "tests/evidence/mysql80-physical-8.0.46.json": "81f593ef8d4e6b6f316f4e2ad060cc6d928a8f63bf8f897432d8ddb555cbb47c",
+    "tests/evidence/mysql80-physical-full.json": "d8fbffc74a3ff84ee5c8699e3b93be127290ec086e57f36d5e7935b9c312cda6",
+    "tests/evidence/mysql80-binary-standalone.json": "fe822f9bd77944b0101c2f687b0d35b855a67863e26b3015fc633081a6df829e",
+    "tests/evidence/mysql80-binary-primary-replica.json": "b7f30abcef57ab55e6f8e3c44af041df2af93eb38489b53f970ef4e5f4c95ab1",
+    "tests/evidence/mysql80-binary-dual-primary.json": "9aa49eec567a2ad948abd529b5697bec5a3023ee3be3d0aacab24fdce80c93c0",
+    "tests/evidence/mysql80-binary-full.json": "0b3c707b8cc109099149b9eef8807bafb07a28e80b5b7220f89b3ef88f49a59b",
+    "tests/evidence/mysql80-binary-supply-chain-20261125.json": "38f1d0031ce8bdad0b5a6c2793d4c6dc88730170229c884b5bc99893f37ab6c3",
+    "tests/evidence/mybackup-native-contract-20261125.json": "49f4f8a9f76545c404439fd422aa05e957a752a80f5c66216eff979b5f0682b8",
+    "tests/evidence/mysql80-physical-documentation-20261125.json": "d2872fdf1c43784248890817ee2bfbc35a257677e5bb0cf16a499879297db533",
+    "tests/evidence/mysql80-binary-sources.json": "f6f12c5671ebaa08caebb52f5cc654a58f98da135b1b21cb265493f20ac99d55",
+    "logs/mysql80-native-current-dependencies-20261125.log": "52ddf498b7d2a43ae92bca1b66c6ff0d48ad8511f169333531867a6aac3954e8",
+    "logs/mysql80-official-20261125/80-official-records.json": "0cd69703eb6d63da8ae543c5095ae97a8146ef4468093a62a84a98081fc5ff9c",
+    "tools/mysqltools/mybackup.conf.example": "07836fde22223f81e95529a94226fbba8392359e80f46ca0b2740d4fff3474a7",
+    "tools/mysqltools/operations-manual.md": "63042973ad70e2796faaa730d435ed222d1736f708887d2bf9cac534f4a03af6",
+    "dist/mysql-backup-build.json": "4ee8bf09dbd4af5ef33192fc0134091430714e44fe3ffb40bd68f04819a2e44f",
+    "dist/MyBackupCli-rocky8": "635e787bd93a9b86ee4cc3d3119f1c9a4d61d0b9117fb9065e744d0076debbf3"
   },
   "evidence": {
     "tools-remote-bootstrap-20261125": "8123ca063ef7ea7460aa1f7439458d6b12d4aa7157841547cb11fbee1c042547",
@@ -2179,8 +2214,8 @@
     "tools-migration-endpoint-full-20261125": "d71a7bcddd74b1c02470da604c6777dba47bed05bd75f63f5a837b92476d6228",
     "starrocks-compose-3.5.7-cn": "c1747dc5e8b5f51c3c0c2374b6c721f4973c7c07b2ebf64a0932448a82b11f37",
     "starmigrt-full": "15130e03a617fb2adf5f9fbcbad2dc46654b79ea04177454a3709232a894db61",
-    "mysql84-physical-requal-20261125": "faf8c380980b668682fea0b6972e2a2d3a5663d49380063917a0c5863e7f015f",
-    "mysql-backup-portability-20261125": "50f644833df3a0d893dfd56731bbd2d973c042baf4d1da604dd936ff3d0f9272"
+    "mysql84-physical-requal-20261125": "e7d5cfc1a5a02bda14a0637cf842b51e39e6f8cac1b789244a54db96d5e8e8c2",
+    "mysql-backup-portability-20261125": "67e1b1a54c0586471dc9309fd1cbbff3776570145ff88512937f9bffdcabad7d"
   },
   "physical80": "tests/evidence/mysql80-physical-full.json",
   "logical_reuse": {
@@ -2245,18 +2280,65 @@
     "mysql80": "logs/mysql80-official-20261125/80-official-records.json",
     "api": "tests/evidence/tools-api-boundary-20261125.json",
     "openvpn": "tests/evidence/tools-ovpn-config-20261125.json",
-    "nerdctl": "tests/evidence/tools-publish-load-live-20261125.json"
+    "nerdctl": "tests/evidence/tools-publish-load-live-20261125.json",
+    "native80": "Pinned MySQL8.0.33/8.0.46 mysqld/persisted-variable sources plus fixed PXB8.0.35-36 replication backup implementation and CHANGE/RESET/GTID docs; snapshots under logs/mysql80-official-20261125. Dependency-interface research only."
   },
   "reuse_boundaries": [
     "Historical raw is unchanged. SHA-matching snapshots preserve original launcher bytes; compare owning branch and effective global header, ignore only build-only allowlist extensions.",
     "StarMigrt README insertion is MySQL8.0-only; exact original README preserved. Physical8.4 setup/cleanup and physical function unchanged by portability fallback.",
     "NetCheck retains original delivery-owner production acceptance/exemption; static audit is not new live evidence.",
-    "Kafka/Star new SSH proof covers bootstrap only; their unchanged local broker/database business evidence is not relabelled as a new run."
+    "Kafka/Star new SSH proof covers bootstrap only; their unchanged local broker/database business evidence is not relabelled as a new run.",
+    "Native standalone/primary-replica raw proof preserves its old hashes. Only the exact SO_REUSEADDR port-preflight and evidence-verifier edit is accepted against a SHA-matching snapshot; actual lifecycle and all other bytes must remain identical. The repaired dual-primary focused run and native final use current input bytes.",
+    "Capacity-driven relocation of the future Rocky8.10 executor from 131 to authorized 137 preserves prior 131 evidence and inputs. Only the exact reviewed host/contract/admission/runbook differences are accepted; focused 8.0.46 passed on 137 and final runs use current inputs. The fixed retired-staging selector excludes native-binary recovery ownership; its exact-cause contract and scoped cleanup passed."
   ],
   "limits": [
     "No production access or deployment; no zero-defect guarantee.",
     "Physical profile: AMD64 native Rocky8.10/9.8, MySQL8.0.33/8.0.46 in one Docker container, host/independent tool-container execution, GTID OFF/ON, no encryption.",
-    "No target-MySQL-container self-stop/full-restore claim; no replication/keyring/external general tablespace/Windows/ARM native qualification.",
-    "OVPN PKI proof does not certify VPN handshake/OpenSSL3; API proof does not certify Calico dataplane; portability help is startup only."
-  ]
+    "OVPN PKI proof does not certify VPN handshake/OpenSSL3; API proof does not certify Calico dataplane; portability help is startup only.",
+    "No target-MySQL-container self-stop/full-restore, automatic failover/traffic control, Galera/GR/multi-source/keyring/external general tablespace/Windows/ARM native/cross-version qualification. Native asynchronous replication is limited to the separately named exact OS/version/GTID profiles.",
+    "Offline native restore deliberately compares exact raw startup values from mysqld --verbose --help: explicit absolute data/socket/log-bin/log-bin-index and a direct systemd ExecStart are required; valid relative/default/extension-normalized MySQL configurations may be refused. See operations-manual offline prerequisites; this is not arbitrary my.cnf support."
+  ],
+  "native80": {
+    "evidence": [
+      "tests/evidence/mysql80-binary-standalone.json",
+      "tests/evidence/mysql80-binary-primary-replica.json",
+      "tests/evidence/mysql80-binary-dual-primary.json",
+      "tests/evidence/mysql80-binary-full.json"
+    ],
+    "scope": "AMD64 native Rocky8.10/9.8 × MySQL8.0.33/8.0.46 × GTID OFF/ON × native standalone/primary-replica/asynchronous dual-primary; product CLI lifecycle with real systemd; no Galera/GR/multisource/encryption/ARM/cross-version claim.",
+    "final_runs": {
+      "rocky8": "f03df7df7ac5",
+      "rocky9": "4e747763a8cb"
+    },
+    "final_combinations": 24
+  },
+  "execution_environment_qualification": "logs/mysql80-host-relocation-qualification-20261125.json",
+  "current_input_review": {
+    "tests/helpers/tools-production-audit.py": {
+      "previous_sha256": "96fa32ab80f0047f2bc24e7ee22bf4f4b1fe3a06e45f69b6623f80b7e76058ff",
+      "current_sha256": "31df0f4c6f888d47acf3410e5f74a4b8590245bd5191f851150f29f18ab46349",
+      "basis": "Exact port-preflight/host relocation reuse guards and strengthened dependency/final checks reviewed; focused42 and preflight165 contracts passed."
+    },
+    "tests/run_tools_regression.sh": {
+      "previous_sha256": "0114d8fb4f08abf85d2456ae89859470a92b15ef79840f94834478eff9aee2b6",
+      "current_sha256": "10e506a3f4bd5af1238687ba89e154696c9ab9717044453cb10ab67bde26c46d",
+      "basis": "Native branch handoff, scoped preflight/status extension reviewed; actual final launcher admitted current prerequisites and used current frozen CLI."
+    },
+    "tests/unit/test_tools_production_audit_contract.py": {
+      "previous_sha256": "8c888064e65357a01db17599f1626ad4e83538268fa262e5e176bbd27b7ce8c8",
+      "current_sha256": "574cd8db0177dcdfcc085cce4e93f185c7e7a5da8b0cb48c86fee6f684ac9a8c",
+      "basis": "Exact host/port/snapshot/evidence refusal contracts reviewed; focused42 and preflight165 logs."
+    },
+    "tools/mysqltools/MyBackupCli.py": {
+      "previous_sha256": "aa774dbd784750f4af09de8e576f3ab77417e3ffdcc75914328c66f6d98df6f0",
+      "current_sha256": "66423568f42804e9417d5e4f4b4fab791985d84f3e94fc2114f08cd921a92359",
+      "basis": "Current native product contracts and independently accepted container final16; native Rocky8 final12 accepted with original raw evidence; native parent still pending peer."
+    }
+  },
+  "physical80_final_runs": {
+    "rocky8": "6cb1b80351dd",
+    "rocky9": "9c69d41d0e6f"
+  },
+  "physical80_final_combinations": 16,
+  "review_completion": "Current source/configuration trace, exact execution namespace, independently checked owning raw evidence, frozen artifact identity, both final physical profiles and scoped cleanup verified. Author audit only; no customer sign-off or production deployment."
 }
