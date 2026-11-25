@@ -13,6 +13,17 @@ spec.loader.exec_module(GATE)
 
 
 class RetiredCleanupContracts(unittest.TestCase):
+    def test_retained_evidence_symlink_keeps_original_logical_run_identity(self):
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(GATE, 'ROOT', Path(directory)):
+            root = Path(directory); ident = 'a'*12
+            physical = root/'archive'/'run'; physical.mkdir(parents=True)
+            logical = root/'logs'/('mysql80-full-rocky9-'+ident); logical.parent.mkdir()
+            logical.symlink_to(physical, target_is_directory=True)
+            (physical/'plan.json').write_text(json.dumps({'id':ident, 'stage':'full', 'os':'9.8', 'base':'/tmp/mb80-'+ident}))
+            (physical/'console.log').write_text('first failure')
+            for name in ('state.exit','state.finalized'):(physical/name).write_text('1')
+            self.assertEqual(GATE.archived_run(logical,'rocky9')['base'],'/tmp/mb80-'+ident)
+
     def test_wrong_host_scope_and_missing_fence_are_refused(self):
         with tempfile.TemporaryDirectory() as directory, mock.patch.object(GATE, 'ROOT', Path(directory)):
             root = Path(directory); ident = 'a'*12
@@ -28,9 +39,14 @@ class RetiredCleanupContracts(unittest.TestCase):
             (base/'state.finalized').write_text('1'); plan['os']='9.8'
             (base/'plan.json').write_text(json.dumps(plan))
             with self.assertRaisesRegex(ValueError, 'SCOPE_REFUSED'): GATE.archived_run(base)
+            peer = base.with_name('mysql80-full-rocky9-'+ident)
+            base.rename(peer)
+            self.assertEqual(GATE.archived_run(peer, 'rocky9')['base'], plan['base'])
+            with self.assertRaisesRegex(ValueError, 'SCOPE_REFUSED'): GATE.archived_run(peer, 'rocky8')
 
     def test_remote_program_compiles_and_checks_before_removal(self):
         compile(GATE.REMOTE, '<remote-cleanup>', 'exec')
         self.assertLess(GATE.REMOTE.index('hashlib.sha256'), GATE.REMOTE.index('shutil.rmtree'))
         self.assertIn("'/proc/self/mountinfo'", GATE.REMOTE)
         self.assertIn("'systemctl','start','tuned'", GATE.REMOTE)
+        self.assertLess(GATE.REMOTE.index("if request['restore_tuned']:"), GATE.REMOTE.index("'systemctl','start','tuned'"))

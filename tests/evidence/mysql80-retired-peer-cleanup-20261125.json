@@ -1,0 +1,15 @@
+{
+  "date": "2026-11-25",
+  "scope": "Finalized Rocky9.8 peer staging only; no product behavior change",
+  "result": "pass",
+  "command": ".venv/bin/python -B tests/helpers/mysql80-retired-staging-cleanup.py --host rocky9",
+  "tests": 3,
+  "files": {
+    "tests/helpers/mysql80-retired-staging-cleanup.py": "319bee29142c2604bce41a2b5cdbcb33537424ed581ac6c03ad30f2968846c71",
+    "tests/unit/test_mysql80_retired_cleanup_contract.py": "6e72d359ec98d37b66fdae8716ec5d969e6883ce2518e2d1df6ecae812306c01",
+    "logs/mysql80-retired-peer-cleanup-before-20261125.log": "6609950d5b96d2d2d84af936dae986fcf97719fd82883f4756f70b2a65fbfd2e",
+    "logs/mysql80-retired-peer-cleanup-after-20261125.log": "8e88e550f4a0296e6f56f45774e044f5ec03472026c1d287855340dcc26ef96d",
+    "logs/mysql80-retired-peer-cleanup-20261125.log": "1490427cd39d6c12ffc2c8b9231fabaa564def833a3174abc23475262073d751"
+  },
+  "boundary": "Exact local and remote raw hashes and original plan bind the removal; no active process/mount/runtime allowed; tuned state unchanged on Rocky9."
+}
