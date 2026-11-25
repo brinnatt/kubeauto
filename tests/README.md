@@ -998,6 +998,34 @@ portability 在固定 Rocky 8、Debian 12、Ubuntu 24 容器内并行启动两�
 物理回归沿用 MySQL 8.4.4/XtraBackup 8.4.0-5.1。8.0.35-36 的布尔 lock-ddl 与
 8.4.0-5 的 REDUCED 差异来自固定官方源码及确定性合同，不冒称实测了 MySQL 8.0.33 或原生 ARM64。
 
+MySQL 8.0 的物理生命周期补充使用独立范围，矩阵为 `TL-MBK-07/08/09`。
+固定产品入口仍为冻结的 `MyBackupCli`，测试主机为原生 Rocky Linux 8.10（131）和
+9.8（.122.216），AMD64、单 MySQL 容器、无加密；每台主机分别验证 GTID OFF/ON。
+两个主机在共享池控制租约和各自主机锁内并行，主机内按顺序执行，不接管系统 Docker。
+镜像必须先有两端双架构摘要证据；冻结程序和私有 Docker 运行时按 SHA256 复用。
+
+```bash
+MYSQL_BACKUP_STAGE=physical80-preflight bash tests/run_tools_regression.sh --mysql-backup-live
+MYSQL_BACKUP_STAGE=physical80-8.0.33 bash tests/run_tools_regression.sh --mysql-backup-live
+MYSQL_BACKUP_STAGE=physical80-8.0.46 bash tests/run_tools_regression.sh --mysql-backup-live
+# 07/08 的当前证据及文档作者检查通过后，才允许最终完整范围。
+MYSQL_BACKUP_STAGE=physical80-full bash tests/run_tools_regression.sh --mysql-backup-live
+bash tests/run_tools_regression.sh --status
+```
+
+该范围验证压缩全量恢复、两级增量及原始 LSN 连续性、prepare/copy-back、未提交事务回滚、
+真实删除后的完整 SQL 读回、PITR 的包含/排除时间边界、新全量周期切换、保留清理，
+以及空间错误、prepare 前中断、锁冲突和未确认/无审计计划恢复的拒绝路径。
+空间错误和 prepare 前中断由命令适配层注入，不等同于真实磁盘耗尽或 prepare 写盘中断演练。
+原生命令适配层把 CLI 的服务操作映射到实际容器 stop/start，把客户端及 XtraBackup
+放在固定版本容器中执行；这不构成任意生产 systemd/Compose 编排的验收。
+
+每台主机的 `logs/mysql80-<范围>-<系统>-<run-id>/` 保存计划、原始控制台日志、
+durable exit/finalized、容器诊断和数据/LSN/binlog 边界归档；成功主机另有独立
+`accepted.json`。单主机通过不签收父项；对端失败仍须保留真实首错。
+固定状态入口核验这三个新项已登记 PASS 的输入、原始文件摘要、durable 双 0 和业务/清理标记，
+依赖变化时拒绝沿用旧 PASS。没有这套真实证据时，矩阵保持 pending。
+
 每轮 `logs/mysql-backups-<stage>-<time>` 保存本地 durable、远端双退出码、原始日志及 SHA256 校验的
 证据归档。未完成远端工作时监控中断保留现场，先查原 durable，禁止覆盖 staging 目录启动另一轮。
 成功需 `MYSQL_BACKUP_RELEASE_PASS`、双退出码 0、业务恢复读回与 `TOOLS_CLEAN_VERIFY_PASS`；

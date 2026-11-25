@@ -1,0 +1,63 @@
+{
+  "date": "2026-11-25",
+  "scope": [
+    "MyBackupCli",
+    "CalicoPolicyCli",
+    "OvpnUserCli"
+  ],
+  "result": "build-pass",
+  "publication": false,
+  "rc": 0,
+  "files": {
+    "logs/tools-boundary-build4-20261125.log": "b37ef9a3e2b6d43625d00d4d95360f4068ad5da77f6e8730b3bc28755fb020b3",
+    "logs/tools-boundary-build4-20261125.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/tools-boundary-build4-20261125.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "dist/mysql-backup-build.json": "07b97e5923fc9cab628b568d234af4e8d4c9fa718ebe12127c5f8268ecfb6357",
+    "dist/MyBackupCli-rocky8": "ae944d247fc34e193ae4ad7d653c4e14bf9b95224c9f7f164b74bf3a36fa597a",
+    "dist/MyLogiBackupCli-rocky8": "e14afa5703941c1313cefe6c1277f4c80028848cb5f368cd91315d06b6d2ad0a",
+    "dist/calico-build.json": "d73c79023c0579c398727c106cd1f838c86694ad9362842fdf38c5e0e8a5cbfc",
+    "dist/CalicoPolicyCli-rocky8": "f36756a57e02a578906a8f6de15feddb2187078b8e43fdbc62c88b2383d70e26",
+    "dist/ovpn-build.json": "a33469f9ce920e277e2f807883cea8cf81fcb56959bc716f9f627e9a74f2aa8a",
+    "dist/OvpnUserCli-rocky8": "9ee1c43f5f2d7070303b5777a00c17f132f14bdf6a646696c10a898db42f66ad",
+    "logs/tools-build-inputs/ded6c6717bc3bbce6fc64b0c5ab07bc5cbf4aa6cfa78dfec7ed84eea8fca23fa.sh": "ded6c6717bc3bbce6fc64b0c5ab07bc5cbf4aa6cfa78dfec7ed84eea8fca23fa"
+  },
+  "provenance": {
+    "mysql-backup": {
+      "inputs": {
+        "tools/mysqltools/MyBackupCli.py": "aa774dbd784750f4af09de8e576f3ab77417e3ffdcc75914328c66f6d98df6f0",
+        "tools/mysqltools/MyLogiBackupCli.py": "df68a6aeb660de6755526f0a49df1478bc1a1715dce46f804740d20d05c88d2c",
+        "tools-onefile.spec": "7bb77b6db73a9c015aff2156120d94f7dc67a7a30e037f105d452bcbded45956",
+        "tests/helpers/build-tools-rocky8.sh": "ded6c6717bc3bbce6fc64b0c5ab07bc5cbf4aa6cfa78dfec7ed84eea8fca23fa"
+      },
+      "artifacts": {
+        "MyBackupCli": "ae944d247fc34e193ae4ad7d653c4e14bf9b95224c9f7f164b74bf3a36fa597a",
+        "MyLogiBackupCli": "e14afa5703941c1313cefe6c1277f4c80028848cb5f368cd91315d06b6d2ad0a"
+      },
+      "runtime": "Rocky 8.10; glibc 2.28; Python 3.12; PyInstaller 6.16.0"
+    },
+    "calico": {
+      "inputs": {
+        "tools/k8stools/CalicoPolicyCli.py": "fefd0b352611e4b1fe175d72c2939ad15ce5e8afeaa4cfabc02b1262ae125929",
+        "tools-onefile.spec": "7bb77b6db73a9c015aff2156120d94f7dc67a7a30e037f105d452bcbded45956",
+        "tests/helpers/build-tools-rocky8.sh": "ded6c6717bc3bbce6fc64b0c5ab07bc5cbf4aa6cfa78dfec7ed84eea8fca23fa"
+      },
+      "artifacts": {
+        "CalicoPolicyCli": "f36756a57e02a578906a8f6de15feddb2187078b8e43fdbc62c88b2383d70e26"
+      },
+      "runtime": "Rocky 8.10; glibc 2.28; Python 3.12; PyInstaller 6.16.0",
+      "dependencies": []
+    },
+    "ovpn": {
+      "inputs": {
+        "tools/OvpnUserCli.py": "9b2a49c47a6945d40cea87d40bb42192a640b7d3e6880344b0162445f2c491d2",
+        "tools-onefile.spec": "7bb77b6db73a9c015aff2156120d94f7dc67a7a30e037f105d452bcbded45956",
+        "tests/helpers/build-tools-rocky8.sh": "ded6c6717bc3bbce6fc64b0c5ab07bc5cbf4aa6cfa78dfec7ed84eea8fca23fa"
+      },
+      "artifacts": {
+        "OvpnUserCli": "9ee1c43f5f2d7070303b5777a00c17f132f14bdf6a646696c10a898db42f66ad"
+      },
+      "runtime": "Rocky 8.10; glibc 2.28; Python 3.12; PyInstaller 6.16.0",
+      "dependencies": []
+    }
+  }
+}

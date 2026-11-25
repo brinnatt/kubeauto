@@ -3861,7 +3861,7 @@ def _is_local_host(host: str) -> bool:
 
 
 def _build_remote_command(argv: List[str], remote_config_path: Optional[str],
-                          remote_script: Optional[str] = None) -> str:
+                          remote_script: Optional[str] = None, remote_python: bool = True) -> str:
     """构建远程执行命令（过滤本地远程相关参数）"""
     filtered: List[str] = []
     skip_next = False
@@ -3884,7 +3884,8 @@ def _build_remote_command(argv: List[str], remote_config_path: Optional[str],
         filtered.append(arg)
 
     if remote_script:
-        return f"python3 {shlex.quote(remote_script)} " + " ".join(shlex.quote(a) for a in filtered)
+        interpreter = "python3 " if remote_python else ""
+        return interpreter + shlex.quote(remote_script) + " " + " ".join(shlex.quote(a) for a in filtered)
     else:
         return "starcli " + " ".join(shlex.quote(a) for a in filtered)
 
@@ -3924,7 +3925,9 @@ def _run_remote_deploy(
         logger.info(f"远程主机 {host}:{port} 上未找到 starcli 命令，将复制本地脚本到远程", extra={"to_stdout": True})
 
         local_script_path = None
-        if __file__ and Path(__file__).exists():
+        if getattr(sys, "frozen", False):
+            local_script_path = Path(sys.executable).resolve()
+        elif __file__ and Path(__file__).exists():
             local_script_path = Path(__file__).resolve()
         else:
             which_starcli = shutil.which('starcli')
@@ -3937,20 +3940,21 @@ def _run_remote_deploy(
                          extra={"to_stdout": True})
             sys.exit(1)
 
-        success, output = ssh.run_command(f"mkdir -p {remote_workdir}", timeout=20)
+        success, output = ssh.run_command(f"mkdir -p {shlex.quote(remote_workdir)}", timeout=20)
         if not success:
             logger.error(f"创建远程目录失败: {output}", extra={"to_stdout": True})
             sys.exit(1)
 
-        remote_script = f"{remote_workdir}/starrocks_deploy.py"
+        remote_script = f"{remote_workdir}/starrocks_deploy" + ("" if getattr(sys, "frozen", False) else ".py")
         if not ssh.copy_file(str(local_script_path), remote_script):
             logger.error("复制脚本到远程失败", extra={"to_stdout": True})
             sys.exit(1)
 
-        chmod_cmd = f"chmod +x {remote_script}"
+        chmod_cmd = f"chmod +x {shlex.quote(remote_script)}"
         success, _ = ssh.run_command(chmod_cmd, timeout=10)
         if not success:
-            logger.warning(f"设置远程脚本执行权限失败，但继续执行", extra={"to_stdout": True})
+            logger.error("设置远程工具执行权限失败", extra={"to_stdout": True})
+            sys.exit(1)
 
         logger.info(f"已复制脚本到远程: {remote_script}", extra={"to_stdout": True})
     else:
@@ -3964,7 +3968,7 @@ def _run_remote_deploy(
     remote_config_path = None
     if args.config:
         if not remote_script:
-            success, output = ssh.run_command(f"mkdir -p {remote_workdir}", timeout=20)
+            success, output = ssh.run_command(f"mkdir -p {shlex.quote(remote_workdir)}", timeout=20)
             if not success:
                 logger.error(f"创建远程目录失败: {output}", extra={"to_stdout": True})
                 sys.exit(1)
@@ -3974,7 +3978,8 @@ def _run_remote_deploy(
             logger.error("复制配置文件到远程失败", extra={"to_stdout": True})
             sys.exit(1)
 
-    remote_cmd = _build_remote_command(argv, remote_config_path, remote_script)
+    remote_cmd = _build_remote_command(argv, remote_config_path, remote_script,
+                                       remote_python=not getattr(sys, "frozen", False))
     logger.info(f"正在远程主机 {host}:{port} 执行部署...", extra={"to_stdout": True})
     logger.info(f"远程执行命令: {remote_cmd}", extra={"to_stdout": True})
     # 使用 2>&1 确保捕获所有输出（包括错误输出）

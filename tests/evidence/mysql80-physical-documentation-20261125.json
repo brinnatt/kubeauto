@@ -1,0 +1,41 @@
+{
+  "date": "2026-11-25",
+  "result": "author-reviewed",
+  "scope": "Incremental physical container backup/restore section and configuration keys; existing native-option sections preserved. Not customer sign-off.",
+  "checks": [
+    {
+      "topic": "执行命名空间",
+      "review": "路径表分别给出MySQL容器与宿主机；工具容器同绝对路径挂载；目标容器内完整恢复明确不适用。"
+    },
+    {
+      "topic": "操作闭环",
+      "review": "实例SQL/inspect核对、依赖版本、全备/两增量/binlog/checksum/dryrun/restore、真实业务读回及新full。"
+    },
+    {
+      "topic": "失败恢复",
+      "review": "区分停库前、copy-back回滚、启库/PITR部分导入；原数据和外置日志保存位置、保护标记及purge前置。"
+    },
+    {
+      "topic": "时间与坐标",
+      "review": "mysqlbinlog执行端本地时区；zoneinfo实值；物理文件/位置下界与时间过滤的交集。"
+    },
+    {
+      "topic": "证据与范围",
+      "review": "不宣称全部8.0矩阵通过；外置tablespace/redo/undo/keyring/复制及目标MySQL容器内恢复未验收。"
+    },
+    {
+      "topic": "归档前置",
+      "review": "逐命令核对两级增量后显式FLUSH BINARY LOGS；日常归档仅closed，缺物理坐标时停库前拒绝；保留原生参数章节。"
+    }
+  ],
+  "files": {
+    "tools/mysqltools/operations-manual.md": "e64877c2e759530885b98f5403563e6e202eaeae30d2afd1f59b74ec306ea60c",
+    "tools/mysqltools/mybackup.conf.example": "3c70211e3329241c051b38d45849fab9cd1cc50c5295a52afa9ad3088a84e923"
+  },
+  "official_dependency_boundary": {
+    "user_operations": "PXB8.0 docs pinned f8a15e8e73028742f92f63bddb6fe365bca5e311: supported versions, backup/prepare/compression/incremental/copy-back/PITR and option references.",
+    "mechanism_development": "PXB8.0.35-36 pxb80.cc and backup_copy/backup_mysql source; MySQL8.0.33 mysqld.cc/mysqlbinlog.cc; Docker bind/stop/start interface.",
+    "coverage_record": "logs/mysql80-official-20261125/80-official-records.json",
+    "limits": "Incremental dependency-interface review only; no claim of full independent MySQL/PXB manual corpus or customer review."
+  }
+}

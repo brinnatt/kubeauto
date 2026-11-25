@@ -1551,6 +1551,7 @@ class MySQLDumpManager:
         cmd = [
             "mysqldump",
             f"--defaults-extra-file={cnf_path}",
+            "--protocol=TCP",
             f"-h{host}",
             f"-P{config.port}",
             "--single-transaction",
@@ -1595,6 +1596,7 @@ class MySQLDumpManager:
         cmd = [
             "mysql",
             f"--defaults-extra-file={cnf_path}",
+            "--protocol=TCP",
             f"-h{host}",
             f"-P{config.port}",
             "--max-allowed-packet=1G",

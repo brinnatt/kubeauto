@@ -1,0 +1,78 @@
+{
+  "date": "2026-11-25",
+  "scope": [
+    "MyBackupCli",
+    "KafkaCli",
+    "MigrationCli",
+    "StarCli"
+  ],
+  "result": "build-pass",
+  "publication": false,
+  "rc": 0,
+  "files": {
+    "logs/tools-production-audit-build3-20261125.log": "768916da8cd7acb8ee039c1f0acd3a691a711dde891c2cacbc217b601d40e10b",
+    "logs/tools-production-audit-build3-20261125.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/tools-production-audit-build3-20261125.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "dist/mysql-backup-build.json": "8eb44542b5694839f959106c8f208b4b4cf31c4f37f8bf478e767b66acebbd81",
+    "dist/MyBackupCli-rocky8": "d9312a24e7ff5060e66d8388d83fb1a08cd35db88a17d89fbdb61e5afd8d21de",
+    "dist/MyLogiBackupCli-rocky8": "e14afa5703941c1313cefe6c1277f4c80028848cb5f368cd91315d06b6d2ad0a",
+    "dist/mysql-migration-build.json": "00e7d5b5c00fe0312caed0ea2d59df6ece1829cabd619ca6b5a472b01ea8c6d3",
+    "dist/MigrationCli-rocky8": "d95d245910018034be9ff3f073568e8bad9ad3036b7f30de90ca96e0a9ae0335",
+    "dist/kafka-build.json": "99e76be242760bb4c731bf32edfec1e46f0c75e8976a2cec87696958a66f2373",
+    "dist/KafkaCli-rocky8": "31fdec889faa214ad88389c46bacea32f4d2bd9cbc6061fe251fb6b1c1494ea9",
+    "dist/starcli-build.json": "6df0c082a0eae4b57f33b858743d7bd5ad053e5f66be19a6f8420c4440dd6a7f",
+    "dist/StarCli-rocky8": "27f61849d2d2ea84f3508ac7f7102a8e8740cf5844bbdb3d51650ea5bf3989a3"
+  },
+  "provenance": {
+    "mysql-backup": {
+      "inputs": {
+        "tools/mysqltools/MyBackupCli.py": "0f5ac4fee792f5e87d8db46514f3826c07a39e459ea733f9c760c04cd7cbaca6",
+        "tools/mysqltools/MyLogiBackupCli.py": "df68a6aeb660de6755526f0a49df1478bc1a1715dce46f804740d20d05c88d2c",
+        "tools-onefile.spec": "7bb77b6db73a9c015aff2156120d94f7dc67a7a30e037f105d452bcbded45956",
+        "tests/helpers/build-tools-rocky8.sh": "4fe0c3f535a0187555e1aec5a908867a274a8ed944a4351846b2ee4666c16d37"
+      },
+      "artifacts": {
+        "MyBackupCli": "d9312a24e7ff5060e66d8388d83fb1a08cd35db88a17d89fbdb61e5afd8d21de",
+        "MyLogiBackupCli": "e14afa5703941c1313cefe6c1277f4c80028848cb5f368cd91315d06b6d2ad0a"
+      },
+      "runtime": "Rocky 8.10; glibc 2.28; Python 3.12; PyInstaller 6.16.0"
+    },
+    "mysql-migration": {
+      "inputs": {
+        "tools/mysqltools/MigrationCli.py": "1a369e6ef29bf70d332b4dc31fc5bf2a5b7e7fbf50130f434c93c9f385dc87ea",
+        "tools-onefile.spec": "7bb77b6db73a9c015aff2156120d94f7dc67a7a30e037f105d452bcbded45956",
+        "tests/helpers/build-tools-rocky8.sh": "4fe0c3f535a0187555e1aec5a908867a274a8ed944a4351846b2ee4666c16d37"
+      },
+      "artifacts": {
+        "MigrationCli": "d95d245910018034be9ff3f073568e8bad9ad3036b7f30de90ca96e0a9ae0335"
+      },
+      "runtime": "Rocky 8.10; glibc 2.28; Python 3.12; PyInstaller 6.16.0; PyMySQL 1.1.2; cryptography 45.0.5"
+    },
+    "kafka": {
+      "inputs": {
+        "tools/kafka/KafkaCli.py": "b973bd568a6e6f908caa2f7d30873ca213511623349d6816a90c129f726f298f",
+        "tools-onefile.spec": "7bb77b6db73a9c015aff2156120d94f7dc67a7a30e037f105d452bcbded45956",
+        "tests/helpers/build-tools-rocky8.sh": "4fe0c3f535a0187555e1aec5a908867a274a8ed944a4351846b2ee4666c16d37"
+      },
+      "artifacts": {
+        "KafkaCli": "31fdec889faa214ad88389c46bacea32f4d2bd9cbc6061fe251fb6b1c1494ea9"
+      },
+      "runtime": "Rocky 8.10; glibc 2.28; Python 3.12; PyInstaller 6.16.0",
+      "dependencies": []
+    },
+    "starcli": {
+      "inputs": {
+        "tools/starrocks/StarCli.py": "f8d2d6d2a0e8523327721a64f9fb571dc876483dcd96a57ffdec57f5ab5e6d95",
+        "tools-onefile.spec": "7bb77b6db73a9c015aff2156120d94f7dc67a7a30e037f105d452bcbded45956",
+        "tests/helpers/build-tools-rocky8.sh": "4fe0c3f535a0187555e1aec5a908867a274a8ed944a4351846b2ee4666c16d37"
+      },
+      "artifacts": {
+        "StarCli": "27f61849d2d2ea84f3508ac7f7102a8e8740cf5844bbdb3d51650ea5bf3989a3"
+      },
+      "runtime": "Rocky 8.10; glibc 2.28; Python 3.12; PyInstaller 6.16.0",
+      "dependencies": [
+        "distro==1.9.0"
+      ]
+    }
+  }
+}

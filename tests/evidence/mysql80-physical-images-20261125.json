@@ -1,0 +1,102 @@
+{
+  "date": "2026-11-25",
+  "conclusion": "success",
+  "repository": "brinnatt/kubeauto-ext-images-dockerfile",
+  "branch": "dev",
+  "head": "ba5249131c146efbd438f90d270b7c5886fb7889",
+  "images": {
+    "pxb": {
+      "primary": "hub.talkedu.cn/kubeauto/percona-xtrabackup:8.0.35-36",
+      "digest": "sha256:f3f68b33a67a2265a5f69fe7cd5cf6df25f0f2490cbbbc75d59f5ed2e35599e2",
+      "platforms": {
+        "linux/amd64": "sha256:1e7aeaffd38f580bfc358af6b6dc2bf71c0ad3f066d22d75b89dfdb9ebb5fb57",
+        "linux/arm64": "sha256:21b2b64a3f03a6f1cec901a3e1ad0901d5cd535ace51dcce104ebee2e6808da6"
+      },
+      "talkedu": {
+        "digest": "sha256:f3f68b33a67a2265a5f69fe7cd5cf6df25f0f2490cbbbc75d59f5ed2e35599e2",
+        "platforms": {
+          "linux/amd64": "sha256:1e7aeaffd38f580bfc358af6b6dc2bf71c0ad3f066d22d75b89dfdb9ebb5fb57",
+          "linux/arm64": "sha256:21b2b64a3f03a6f1cec901a3e1ad0901d5cd535ace51dcce104ebee2e6808da6"
+        }
+      },
+      "dockerhub": {
+        "digest": "sha256:f3f68b33a67a2265a5f69fe7cd5cf6df25f0f2490cbbbc75d59f5ed2e35599e2",
+        "platforms": {
+          "linux/amd64": "sha256:1e7aeaffd38f580bfc358af6b6dc2bf71c0ad3f066d22d75b89dfdb9ebb5fb57",
+          "linux/arm64": "sha256:21b2b64a3f03a6f1cec901a3e1ad0901d5cd535ace51dcce104ebee2e6808da6"
+        }
+      },
+      "run_id": "45536285206",
+      "verification": "publisher current_pair equals expected at both registries before durable record"
+    },
+    "8.0.33": {
+      "primary": "hub.talkedu.cn/kubeauto/mysql:8.0.33",
+      "digest": "sha256:a50319a95c8645c0c01d5440fa2c178ab249f02e29d81a6f01c66cf98ee16600",
+      "platforms": {
+        "linux/amd64": "sha256:eda8821ca0c65b9ebf4f5115f0c47e4399d351e608c18188fa48fb0c0326339a",
+        "linux/arm64": "sha256:09c78b44a5cfaf8f7bea50faba9d32bceb9411072bb3e4199b2ba0b3cb80460a"
+      },
+      "talkedu": {
+        "digest": "sha256:a50319a95c8645c0c01d5440fa2c178ab249f02e29d81a6f01c66cf98ee16600",
+        "platforms": {
+          "linux/amd64": "sha256:eda8821ca0c65b9ebf4f5115f0c47e4399d351e608c18188fa48fb0c0326339a",
+          "linux/arm64": "sha256:09c78b44a5cfaf8f7bea50faba9d32bceb9411072bb3e4199b2ba0b3cb80460a"
+        }
+      },
+      "dockerhub": {
+        "digest": "sha256:a50319a95c8645c0c01d5440fa2c178ab249f02e29d81a6f01c66cf98ee16600",
+        "platforms": {
+          "linux/amd64": "sha256:eda8821ca0c65b9ebf4f5115f0c47e4399d351e608c18188fa48fb0c0326339a",
+          "linux/arm64": "sha256:09c78b44a5cfaf8f7bea50faba9d32bceb9411072bb3e4199b2ba0b3cb80460a"
+        }
+      },
+      "run_id": "45536285206",
+      "verification": "publisher current_pair equals expected at both registries before durable record"
+    },
+    "8.0.46": {
+      "primary": "hub.talkedu.cn/kubeauto/mysql:8.0.46",
+      "digest": "sha256:84db1032233c5df43651021420de2389c125b0627b5710b1af0ebcb5a48a7deb",
+      "platforms": {
+        "linux/amd64": "sha256:aa1e112c5037b180dd840d2e868f1cf8692251958d4cab073ef150924fb19538",
+        "linux/arm64": "sha256:8e654bb5031f59a1ea57ddc7f35234d9775843489a3a5fcb4719c0f98ec040b8"
+      },
+      "talkedu": {
+        "digest": "sha256:84db1032233c5df43651021420de2389c125b0627b5710b1af0ebcb5a48a7deb",
+        "platforms": {
+          "linux/amd64": "sha256:aa1e112c5037b180dd840d2e868f1cf8692251958d4cab073ef150924fb19538",
+          "linux/arm64": "sha256:8e654bb5031f59a1ea57ddc7f35234d9775843489a3a5fcb4719c0f98ec040b8"
+        }
+      },
+      "dockerhub": {
+        "digest": "sha256:84db1032233c5df43651021420de2389c125b0627b5710b1af0ebcb5a48a7deb",
+        "platforms": {
+          "linux/amd64": "sha256:aa1e112c5037b180dd840d2e868f1cf8692251958d4cab073ef150924fb19538",
+          "linux/arm64": "sha256:8e654bb5031f59a1ea57ddc7f35234d9775843489a3a5fcb4719c0f98ec040b8"
+        }
+      },
+      "run_id": "45536285215"
+    }
+  },
+  "files": {
+    "logs/mysql80-images-45536285206/image-plan.metadata.json": "6e0bdc79a487c60b7b6ead41894569a7ea7ecd108760ba622a2990e22ba3bcd8",
+    "logs/mysql80-images-45536285206/image-plan.zip": "ea72324902d0ec57095796e8892719642db5359225a4de11511e143ea1563f75",
+    "logs/mysql80-images-45536285206/jobs.json": "c561d280eec9f27ce77eb72749c6862db2784af2102f71f4f79eda1ef346ab0b",
+    "logs/mysql80-images-45536285206/plan-evidence-1.metadata.json": "0b2a4b564c949bfd0d1b577f70c42355ee63773b6df83603fcdf8bb018c71182",
+    "logs/mysql80-images-45536285206/plan-evidence-1.zip": "636f63cfe7182d71831ba4f8f082c918f69c76e3bb273e8412f86d68a311c239",
+    "logs/mysql80-images-45536285206/release-evidence-0-1.metadata.json": "c1efbe9cfe69595743ed18584f758146c377dac6a69dc2971daa83302429a2ce",
+    "logs/mysql80-images-45536285206/release-evidence-0-1.zip": "87467f92332526e9b326a42c7e29e4d433714f1235e3ef309276934901598950",
+    "logs/mysql80-images-45536285206/run.json": "e0c72f8480a9db08c3ab5cadae113815f73ce7dc1e71b9db4938be5b0563735c",
+    "logs/mysql80-images-45536285206/workflow-logs.zip": "11ff1a4e172014835a4895a911cb04400cf0b8e1cd63964bc71b7af6f3b557d4",
+    "logs/mysql80-images-45536285215/image-plan.metadata.json": "67210bb1543024e7263ce46370a1dfa0ef54bc9bea8dbd503244b63b809d7311",
+    "logs/mysql80-images-45536285215/image-plan.zip": "f9a8a8beab98714975f55264a53b690d3d47d994aa51fbb2dd65f0c6de83a24c",
+    "logs/mysql80-images-45536285215/jobs.json": "229093a44b6090f1ca3df5293e6a436abc56eed0f61a6d17db99e4c65352653c",
+    "logs/mysql80-images-45536285215/plan-evidence-1.metadata.json": "3985f63ee0c378d3fbc2848ee863dfaa0aba328f9024e4afce2892bd2c5c1833",
+    "logs/mysql80-images-45536285215/plan-evidence-1.zip": "62b04d96f1e4a8fe3871e73bea27f288fd962fa1dc05b37e8e6ba9bbafe53965",
+    "logs/mysql80-images-45536285215/run.json": "3cfb16123f8a6649e668ad2a49d8e37766e9f3d6944e4a0b41de4eeff68e76cc",
+    "logs/mysql80-images-45536285215/workflow-logs.zip": "6b5efb6eaf340d04b9152db0871e2e87099bb74d528b12ba297b79c772311c1a"
+  },
+  "boundaries": [
+    "Dual architecture is manifest admission; lifecycle lab executes AMD64 only.",
+    "Only two missing fixtures published; MySQL 8.0.46 readback reused."
+  ]
+}

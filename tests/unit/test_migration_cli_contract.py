@@ -24,6 +24,27 @@ SPEC.loader.exec_module(MOD)
 
 
 class MigrationCliContractTests(unittest.TestCase):
+    def test_dependency_fallback_keeps_digest_and_refuses_all_unavailable_before_database(self):
+        source=(ROOT/'tests/helpers/migration-live-regression.sh').read_text()
+        function='ensure_image() {'+source.split('ensure_image() {',1)[1].split('\nrocky_image=',1)[0]
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory); calls=root/'calls'
+            docker=root/'docker'
+            docker.write_text('#!/bin/sh\nprintf "%s\\n" "$*" >> "$CALLS"\n'
+                'case "$*" in *mirror/*) exit 41;; esac\n'
+                'if [ "$1" = image ]; then test -f "$CACHE"; else touch "$CACHE"; fi\n')
+            docker.chmod(0o755)
+            digest='sha256:'+'a'*64
+            script=function+'\nensure_image mirror/test@'+digest+' upstream/test@'+digest
+            result=subprocess.run(['bash','-euc',script],env=dict(os.environ,PATH=directory+':'+os.environ['PATH'],CALLS=str(calls),CACHE=str(root/'cached')),capture_output=True,text=True)
+            self.assertEqual(result.returncode,0,result.stderr)
+            self.assertEqual(result.stdout.strip(),'upstream/test@'+digest)
+            docker.write_text('#!/bin/sh\nexit 41\n')
+            result=subprocess.run(['bash','-euc',script],env=dict(os.environ,PATH=directory+':'+os.environ['PATH']),capture_output=True,text=True)
+            self.assertNotEqual(result.returncode,0)
+            self.assertIn('MIGRATION_DEPENDENCY_UNAVAILABLE',result.stderr)
+        self.assertLess(source.index('MIGRATION_DEPENDENCIES_PASS'),source.index('docker run -d --memory=640m'))
+
     def test_full_launcher_refuses_pending_prerequisites_before_remote_mutation(self):
         with tempfile.TemporaryDirectory() as directory:
             directory = Path(directory)
@@ -81,6 +102,20 @@ class MigrationCliContractTests(unittest.TestCase):
             result = subprocess.run(["bash", str(ROOT / "tests/run_tools_regression.sh"), "--build-only"], env=env, capture_output=True, text=True)
             self.assertEqual(result.returncode, 2)
             self.assertIn("TOOLS_SELECTED_SCOPE_REFUSED", result.stderr)
+
+    def test_localhost_port_selects_the_same_tcp_endpoint_for_driver_dump_and_import(self):
+        options = MOD.MigrationOptions()
+        config = MOD.DatabaseConfig('localhost', 13306, 'u', 'p', 'fixture')
+        manager = MOD.MySQLDumpManager(MOD.MigrationLogger(), options, MOD.ProcessRegistry())
+        try:
+            dump = manager.build_mysqldump_command(config, '/tmp/private.cnf', '/tmp/dump.sql')
+            client = manager.build_mysql_command(config, '/tmp/private.cnf')
+            for argv in (dump, client):
+                self.assertIn('--protocol=TCP', argv)
+                self.assertIn('-hlocalhost', argv)
+                self.assertIn('-P13306', argv)
+        finally:
+            manager.cleanup()
 
     def test_native_command_builders_preserve_argv_and_positionals(self):
         options = MOD.MigrationOptions(native_options={

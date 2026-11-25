@@ -25,6 +25,29 @@ class _ListResponse:
 
 
 class KubeBackupCliTests(unittest.TestCase):
+    def test_explicit_context_selects_default_kubeconfig_before_incluster_credentials(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'kubeconfig'
+            path.write_text(json.dumps({
+                'apiVersion': 'v1', 'kind': 'Config', 'current-context': 'wrong',
+                'clusters': [
+                    {'name': 'wrong', 'cluster': {'server': 'https://wrong.invalid'}},
+                    {'name': 'intended', 'cluster': {'server': 'https://intended.invalid'}},
+                ],
+                'contexts': [
+                    {'name': name, 'context': {'cluster': name, 'user': 'fixture'}}
+                    for name in ('wrong', 'intended')
+                ],
+                'users': [{'name': 'fixture', 'user': {'token': 'fixture-token'}}],
+            }))
+            with patch.object(backup_cli.config.kube_config, 'KUBE_CONFIG_DEFAULT_LOCATION', str(path)), \
+                    patch.object(backup_cli.config, 'load_incluster_config') as incluster, \
+                    patch.object(backup_cli, 'DynamicClient'):
+                api = backup_cli.KubernetesClient(context='intended')
+                self.assertEqual(api.api_client.configuration.host, 'https://intended.invalid')
+                incluster.assert_not_called()
+                api.api_client.close()
+
     def run_restore_cli(self, *mapping_args):
         """Exercise parsing, file restore and transforms; replace only the API boundary."""
         with tempfile.TemporaryDirectory(prefix="kube-backup-contract-") as directory:

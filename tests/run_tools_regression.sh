@@ -11,7 +11,7 @@ BUILD_GATE="/tmp/kubeauto-tools-build-gate"
 BUILD_LOG="/tmp/kubeauto-tools-build-live.log"
 TOOLS=(CalicoPolicyCli NetCheckCli KafkaCli MyBackupCli MyLogiBackupCli MigrationCli StarCli KubeBackupCli KubePublishCli OvpnUserCli)
 if [[ -n "${TOOLS_SELECTED:-}" ]]; then
-  [[ ( "$TOOLS_SELECTED" == MyBackupCli,MyLogiBackupCli || "$TOOLS_SELECTED" == MyBackupCli || "$TOOLS_SELECTED" == MyLogiBackupCli || "$TOOLS_SELECTED" == MigrationCli || "$TOOLS_SELECTED" == MyBackupCli,MyLogiBackupCli,MigrationCli ) && "${1:---preflight}" == --build-only ]] || { echo TOOLS_SELECTED_SCOPE_REFUSED >&2; exit 2; }
+  [[ ( "$TOOLS_SELECTED" == MyBackupCli,MyLogiBackupCli || "$TOOLS_SELECTED" == MyBackupCli || "$TOOLS_SELECTED" == MyLogiBackupCli || "$TOOLS_SELECTED" == MigrationCli || "$TOOLS_SELECTED" == MyBackupCli,MyLogiBackupCli,MigrationCli || "$TOOLS_SELECTED" == KubeBackupCli || "$TOOLS_SELECTED" == KubePublishCli || "$TOOLS_SELECTED" == MyBackupCli,KubeBackupCli,KubePublishCli || "$TOOLS_SELECTED" == KafkaCli,StarCli || "$TOOLS_SELECTED" == MyBackupCli,KafkaCli,MigrationCli,StarCli || "$TOOLS_SELECTED" == MyBackupCli,CalicoPolicyCli,OvpnUserCli || "$TOOLS_SELECTED" == CalicoPolicyCli,OvpnUserCli ) && "${1:---preflight}" == --build-only ]] || { echo TOOLS_SELECTED_SCOPE_REFUSED >&2; exit 2; }
   IFS=, read -r -a TOOLS <<<"$TOOLS_SELECTED"
 fi
 BUILD_SUDO="sudo"
@@ -35,6 +35,8 @@ usage() {
   --starmigrt-qualify    仅迁移工具的冻结、真实双实例往返、安全和恢复资格
   --starmigrt-full       前置1–6通过后，迁移工具最终干净完整回归
   --status     输出当前 tools 矩阵状态
+  --production-audit  只读核验11个CLI及3个shell的配置消费、执行边界和原始证据
+  --publish-load-live  仅KubePublish源码/冻结程序的Docker及nerdctl真实SSH加载故障与重试
   --build-only 在固定 Rocky 8.10/glibc 2.28 环境构建并校验十个冻结工具
   --star-artifact-prepare 从官方固定 URL 原子准备并校验 StarRocks 3.5.12 归档
   --cross-live 在 131 的 Rocky 8.10 宿主及固定 Debian/Ubuntu 容器验证兼容性与隔离性
@@ -77,11 +79,30 @@ case "${1:---preflight}" in
     ;;
   --preflight)
     "$PY" "$ROOT/tests/helpers/validate_tools_test_matrix.py" "$MATRIX"
-    "$PY" -m compileall -q "$ROOT/tools"
+    tools_test_tmp="$(mktemp -d /tmp/kubeauto-tools-preflight.XXXXXX)"
+    trap 'rm -rf "$tools_test_tmp"' EXIT
+    KUBEAUTO_LOG_DIR="$tools_test_tmp" KAFKA_LOG_DIR="$tools_test_tmp" STARROCKS_LOG_DIR="$tools_test_tmp" MYSQL_MIGRATION_LOG_DIR="$tools_test_tmp" PYTHONDONTWRITEBYTECODE=1 \
+      "$PY" -B -m unittest tests.unit.test_tools_execution_boundary_contract tests.unit.test_tools_config_failure_contract tests.unit.test_tools_matrix_contract \
+      tests.unit.test_subprocess_environment_contract tests.unit.test_mysql_backup_gate_contract \
+      tests.unit.test_tools_execution_inventory_contract tests.unit.test_tools_evidence_dependency_contract \
+      tests.unit.test_mysql80_evidence_dependency_contract tests.unit.test_mybackup_legacy_handoff_contract \
+      tests.unit.test_tools_api_fixture_contract \
+      tests.unit.test_publish_load_fixture_contract tests.unit.test_mysql80_recovery_contract \
+      tests.unit.test_lab_cleanup_process_contract tests.unit.test_mysql_portability_contract \
+      tests.unit.test_tools_production_audit_contract \
+      tests.unit.test_kube_backup_cli tests.unit.test_kube_publish_cli_contract tests.unit.test_migration_cli_contract -q
     echo TOOLS_PREFLIGHT_PASS
+    ;;
+  --remote-bootstrap-live|--ovpn-config-live|--calico-delete-live|--execution-audit-preflight|--publish-load-live)
+    "$PY" -B "$ROOT/tests/helpers/tools-execution-boundary-live.py" "${1#--}"
+    ;;
+  --production-audit)
+    "$PY" -B "$ROOT/tests/helpers/tools-production-audit.py" audit
     ;;
   --status)
     "$PY" "$ROOT/tests/helpers/validate_tools_test_matrix.py" "$MATRIX"
+    "$PY" -B "$ROOT/tests/helpers/mysql80-physical-live.py" status
+    "$PY" -B "$ROOT/tests/helpers/tools-production-audit.py" status
     "$PY" - <<'PY_STATUS' "$MATRIX"
 import collections, sys, yaml
 data = yaml.safe_load(open(sys.argv[1], encoding="utf-8"))
@@ -102,6 +123,18 @@ PY_STATUS
     exec 9>"$LOCK"
     flock -n 9 || { echo "TOOLS_BUILD_BLOCKED: another tools run owns $LOCK" >&2; exit 2; }
     stage="$(mktemp -d /tmp/kubeauto-tools-artifacts.XXXXXX)"
+    mkdir "$stage/provenance"
+    "$PY" -B - "$ROOT" "$stage/provenance/inputs.json" "${TOOLS[@]}" <<'PY_BUILD_INPUTS'
+import hashlib, json, pathlib, sys
+root = pathlib.Path(sys.argv[1])
+files = ['tools-onefile.spec', 'tests/helpers/build-tools-rocky8.sh', 'tests/run_tools_regression.sh']
+for tool in sys.argv[3:]:
+    matches = list((root/'tools').rglob(tool+'.py'))
+    if len(matches) != 1:
+        raise SystemExit('TOOLS_BUILD_SOURCE_REFUSED '+tool)
+    files.append(str(matches[0].relative_to(root)))
+pathlib.Path(sys.argv[2]).write_text(json.dumps({name: hashlib.sha256((root/name).read_bytes()).hexdigest() for name in files}))
+PY_BUILD_INPUTS
     evidence_log="$ROOT/logs/tools-build-failure-$(date +%Y%m%d-%H%M%S).log"
     cleanup() {
       set +e
@@ -152,11 +185,23 @@ PY_STATUS
     for tool in "${TOOLS[@]}"; do
       install -m 0755 "$stage/$tool" "$ROOT/dist/${tool}-rocky8"
     done
-    sha256sum "$stage"/*
-    "$PY" - "$ROOT" "${TOOLS_SELECTED:-MyBackupCli,MyLogiBackupCli}" <<'PY_BUILD_PROOF'
+    for tool in "${TOOLS[@]}"; do sha256sum "$stage/$tool"; done
+    "$PY" - "$ROOT" "${TOOLS_SELECTED:-MyBackupCli,MyLogiBackupCli}" "$stage/provenance/inputs.json" <<'PY_BUILD_PROOF'
 import hashlib, json, pathlib, sys
 root = pathlib.Path(sys.argv[1])
 selected = set(sys.argv[2].split(','))
+for name, expected in json.loads(pathlib.Path(sys.argv[3]).read_text()).items():
+    if hashlib.sha256((root/name).read_bytes()).hexdigest() != expected:
+        raise SystemExit('TOOLS_BUILD_INPUT_CHANGED '+name)
+for tool, proof_name in (('KubeBackupCli', 'kube-backup-build.json'), ('KubePublishCli', 'kube-publish-build.json'), ('KafkaCli', 'kafka-build.json'), ('StarCli', 'starcli-build.json'), ('CalicoPolicyCli', 'calico-build.json'), ('OvpnUserCli', 'ovpn-build.json')):
+    if tool in selected:
+        directory = {'KafkaCli': 'kafka', 'StarCli': 'starrocks'}.get(tool, 'k8stools')
+        files = [('tools/OvpnUserCli.py' if tool == 'OvpnUserCli' else 'tools/' + directory + '/' + tool + '.py'), 'tools-onefile.spec', 'tests/helpers/build-tools-rocky8.sh']
+        proof = {'inputs': {name: hashlib.sha256((root/name).read_bytes()).hexdigest() for name in files},
+                 'artifacts': {tool: hashlib.sha256((root/'dist'/(tool+'-rocky8')).read_bytes()).hexdigest()},
+                 'runtime': 'Rocky 8.10; glibc 2.28; Python 3.12; PyInstaller 6.16.0',
+                 'dependencies': ['kubernetes==35.0.0', 'PyYAML==6.0.3', 'tenacity==9.1.2'] if tool == 'KubeBackupCli' else ['distro==1.9.0'] if tool == 'StarCli' else []}
+        (root/'dist'/proof_name).write_text(json.dumps(proof, indent=2)+'\n')
 if 'MigrationCli' in selected:
     files = ['tools/mysqltools/MigrationCli.py', 'tools-onefile.spec', 'tests/helpers/build-tools-rocky8.sh']
     proof = {'inputs': {name: hashlib.sha256((root/name).read_bytes()).hexdigest() for name in files},
@@ -165,6 +210,8 @@ if 'MigrationCli' in selected:
     (root/'dist/mysql-migration-build.json').write_text(json.dumps(proof, indent=2)+'\n')
     if selected == {'MigrationCli'}:
         raise SystemExit(0)
+if not selected & {'MyBackupCli', 'MyLogiBackupCli'}:
+    raise SystemExit(0)
 previous_path = root/'dist/mysql-backup-build.json'
 previous = json.loads(previous_path.read_text()) if previous_path.exists() else {}
 for name in {'MyBackupCli', 'MyLogiBackupCli'} - selected:
@@ -180,11 +227,17 @@ PY_BUILD_PROOF
     echo "TOOLS_BUILD_PASS count=${#TOOLS[@]} glibc=2.28 starcli=$ROOT/dist/StarCli-rocky8 mylogi=$ROOT/dist/MyLogiBackupCli-rocky8"
     ;;
   --mysql-backup-live)
+    if [[ "${MYSQL_BACKUP_STAGE:-}" == physical80-* ]]; then
+      "$PY" -B "$ROOT/tests/helpers/mysql80-physical-live.py" "${MYSQL_BACKUP_STAGE#physical80-}"
+      exit "$?"
+    fi
     "$PY" "$ROOT/tests/helpers/validate_tools_test_matrix.py" "$MATRIX"
     stage="${MYSQL_BACKUP_STAGE:-full}"
     [[ "$stage" == physical || "$stage" == logical || "$stage" == portability || "$stage" == full ]] || exit 2
     bash -n "$ROOT/tests/helpers/mysql-backups-regression.sh"
-    "$PY" -m unittest tests.unit.test_mybackup_cli_contract tests.unit.test_mylogi_backup_cli_contract tests.unit.test_mysql_backup_gate_contract tests.unit.test_tools_matrix_contract -q
+    backup_test_tmp="$(mktemp -d /tmp/kubeauto-mysql-backup-contract.XXXXXX)"
+    trap 'rm -rf "$backup_test_tmp"' EXIT
+    KUBEAUTO_LOG_DIR="$backup_test_tmp" PYTHONDONTWRITEBYTECODE=1 "$PY" -m unittest tests.unit.test_mybackup_cli_contract tests.unit.test_mylogi_backup_cli_contract tests.unit.test_mysql_backup_gate_contract tests.unit.test_tools_matrix_contract -q
     if [[ "$stage" == full ]]; then
       "$PY" - "$MATRIX" <<'PYGATE'
 import sys, yaml
@@ -237,6 +290,11 @@ for stage in ('physical', 'logical', 'portability'):
     if re.search(r'FATAL ERROR|Traceback|_FAILED|_FAIL\b|MYSQL_BACKUP_RELEASE_EXIT rc=[^0]', text):
         raise SystemExit('MYSQL_BACKUP_FINAL_FAILURE_MARKER '+stage)
 
+# The qualification is assembled from separately accepted current stages.
+# Recheck their original owning inputs, not only the assembly's file hashes.
+import subprocess
+subprocess.run([sys.executable, '-B', str(root/'tests/helpers/tools-production-audit.py'), 'audit'], check=True)
+
 PYGATE
     fi
     "$PY" - "$ROOT" <<'PY_ARTIFACT_PROOF'
@@ -273,6 +331,9 @@ PY_ARTIFACT_PROOF
     test "$rc" -eq 0
     grep -q "^MYSQL_BACKUP_RELEASE_PASS stage=$stage$" "$state.log"
     grep -q '^TOOLS_CLEAN_VERIFY_PASS scope=mysql-backup-release' "$state.log"
+    if [[ "$stage" == full ]]; then
+      "$PY" -B "$ROOT/tests/helpers/tools-production-audit.py" record-final "$state.log"
+    fi
     ;;
   --star-artifact-prepare)
     star_host=root@192.168.122.2
@@ -590,16 +651,29 @@ required = {'TL-MIG-01', 'TL-MIG-02', 'TL-MIG-04', 'TL-MIG-05'} | {'TL-X-0'+str(
 refused = [c['id'] for c in matrix['test_cases'] if c['id'] in required and c['status'] != 'pass']
 if refused:
     raise SystemExit('MIGRATION_FINAL_PREREQUISITES_REFUSED '+','.join(refused))
-proof = json.loads((root/'tests/evidence/mysql-migration-20261109.json').read_text())
+proof = json.loads((root/'tests/evidence/tools-migration-native-20261125.json').read_text())
 for name, digest in proof['inputs'].items():
     if hashlib.sha256((root/name).read_bytes()).hexdigest() != digest:
         raise SystemExit('MIGRATION_FINAL_STALE_INPUT '+name)
 required_inputs = {'tools/mysqltools/MigrationCli.py', 'tools-onefile.spec',
-    'tests/run_tools_regression.sh', 'tests/helpers/migration-live-regression.sh',
-    'tests/helpers/supervise-migration.py', 'tests/helpers/build-tools-rocky8.sh',
+    'tests/helpers/migration-live-regression.sh', 'tests/helpers/supervise-migration.py',
+    'tests/helpers/run-durable-gate.sh', 'dist/mysql-migration-build.json',
     'dist/MigrationCli-rocky8', 'dist/MyBackupCli-rocky8', 'dist/MyLogiBackupCli-rocky8'}
 if not required_inputs <= proof['inputs'].keys():
     raise SystemExit('MIGRATION_FINAL_INPUT_BINDING_INCOMPLETE')
+# Keep exact historical launcher bytes. Only this branch's execution body and
+# global environment can affect the native fixture; unrelated branches cannot.
+launcher = root/proof['launcher']['snapshot']
+if hashlib.sha256(launcher.read_bytes()).hexdigest() != proof['launcher']['sha256']:
+    raise SystemExit('MIGRATION_FINAL_LAUNCHER_SNAPSHOT_STALE')
+def migration_execution(text):
+    header = text.split('\nusage() {', 1)[0]
+    branch = text.split('  --migration-live)\n', 1)[1].split('\n  --mybackup-live)', 1)[0]
+    before, after = branch.split('    if [[ "$stage" == full ]]; then\n', 1)
+    after = after.split('\n    fi\n', 1)[1]
+    return header, before + after
+if migration_execution(launcher.read_text()) != migration_execution((root/'tests/run_tools_regression.sh').read_text()):
+    raise SystemExit('MIGRATION_FINAL_EXECUTION_CHANGED')
 record = proof['runs']['native']
 for field, digest_field in (('log','sha256'), ('archive','archive_sha256')):
     if hashlib.sha256((root/record[field]).read_bytes()).hexdigest() != record[digest_field]:
@@ -622,7 +696,10 @@ import hashlib, json, pathlib, sys
 root = pathlib.Path(sys.argv[1])
 proof = json.loads((root/'dist/mysql-migration-build.json').read_text())
 for name, digest in proof['inputs'].items():
-    assert hashlib.sha256((root/name).read_bytes()).hexdigest() == digest, name
+    path = root/name
+    if name == 'tests/helpers/build-tools-rocky8.sh' and hashlib.sha256(path.read_bytes()).hexdigest() != digest:
+        path = root/'logs/tools-build-inputs'/(digest+'.sh')
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == digest, name
 assert hashlib.sha256((root/'dist/MigrationCli-rocky8').read_bytes()).hexdigest() == proof['artifacts']['MigrationCli']
 PYMIGBUILD
     lock="${TMPDIR:-/tmp}/kubeauto-tools-migration-run.lock"; exec 9>"$lock"

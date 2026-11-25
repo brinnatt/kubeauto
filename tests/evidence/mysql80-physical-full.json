@@ -1,0 +1,86 @@
+{
+  "date": "2026-11-25",
+  "scope": "full",
+  "inputs": {
+    "tools/mysqltools/MyBackupCli.py": "aa774dbd784750f4af09de8e576f3ab77417e3ffdcc75914328c66f6d98df6f0",
+    "tools-onefile.spec": "7bb77b6db73a9c015aff2156120d94f7dc67a7a30e037f105d452bcbded45956",
+    "tests/evidence/mysql80-physical-images-20261125.json": "02dbed9fe4866e4b91e8774edbf740dd52b3099ca8aac3263a1aee81b8856e49",
+    "tests/helpers/build-tools-rocky8.sh": "ded6c6717bc3bbce6fc64b0c5ab07bc5cbf4aa6cfa78dfec7ed84eea8fca23fa",
+    "tests/run_tools_regression.sh": "26ff1938e8b07fd4aa44951049ba370699220439b31f79de79d9231be4ba49a3",
+    "tests/helpers/mysql80-physical-live.py": "f75dd736e2388c43671abb3f5a1fd4d96b998af1af9fef926a1b65ad05f182cb",
+    "tests/helpers/mybackup-cli-live-regression.sh": "b544632fd36539b7b41f3cde1f5f30df2a67738fcdaef4948547b105e4b0d208",
+    "tests/helpers/mybackup-lifecycle.sh": "9aa6a82a72ccde72f71201b5967aa490225433a1886d776322249e905c6347fe",
+    "tests/helpers/starrocks-compose-live.py": "2b47b114fe23afc9cdc65956637a19690dea822e4f5de560970f896f4c5f8dcf",
+    "tests/helpers/run-durable-gate.sh": "352244f3c876f5f9626c0c21f574de3aecb61642e0be10324623b15b6b9b1843",
+    "tests/unit/test_mysql80_physical_contract.py": "4692bd4ccc920e1c473b62fba81e12144f70c1d0b8e324bbd22fb9dc6e7dc610",
+    "tests/unit/test_mybackup_cli_contract.py": "373b726d77ae72b5b2d55cdf04cd0a9613a12d98a8a2b1fd3c61f8ae14b4f151",
+    "tests/unit/test_mysql_backup_gate_contract.py": "0a56c9c3de626ba7951ed18a19c04aa7e2587cc2920c712bc60f628776dd64ff",
+    "dist/MyBackupCli-rocky8": "ae944d247fc34e193ae4ad7d653c4e14bf9b95224c9f7f164b74bf3a36fa597a",
+    "dist/mysql-backup-build.json": "07b97e5923fc9cab628b568d234af4e8d4c9fa718ebe12127c5f8268ecfb6357"
+  },
+  "rc": 0,
+  "hosts": {
+    "rocky8": {
+      "files": {
+        "logs/mysql80-full-rocky8-100a9b70d24f/evidence.tar.gz": "dd66cf40a435e2455715d75d46856522dd0b1a49f5fc568131e2cbe6a060e0cb",
+        "logs/mysql80-full-rocky8-100a9b70d24f/state.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+        "logs/mysql80-full-rocky8-100a9b70d24f/state.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+        "logs/mysql80-full-rocky8-100a9b70d24f/plan.json": "575a8a348dad060d0666fd106e8e735c4a26bb6489c325e74afd271128a657c9",
+        "logs/mysql80-full-rocky8-100a9b70d24f/result.json": "0214cabf54d8a29a385dd2e9efce722e0cd157c8dd9d6473411439a9f42bcdd9",
+        "logs/mysql80-full-rocky8-100a9b70d24f/console.log": "fdf178213192c4c4a4c926f88903111f8b167ba69a2991ff0e11b732844905f3",
+        "logs/mysql80-full-rocky8-100a9b70d24f/dockerd.log": "aafeb954fbfa066f91af316a8c02e705ecc8f893738fdec6e2f3262b31c7dfff"
+      },
+      "durable": [
+        "logs/mysql80-full-rocky8-100a9b70d24f/state.exit",
+        "logs/mysql80-full-rocky8-100a9b70d24f/state.finalized"
+      ],
+      "log": "logs/mysql80-full-rocky8-100a9b70d24f/console.log",
+      "markers": [
+        "MYSQL80_HOST_PASS os=8.10",
+        "TOOLS_CLEAN_VERIFY_PASS scope=mysql80-physical",
+        "MYSQL80_EXIT rc=0",
+        "MYBACKUP_LIFECYCLE_PASS version=8.0.33 gtid=OFF mode=host",
+        "MYBACKUP_LIFECYCLE_PASS version=8.0.33 gtid=ON mode=host",
+        "MYBACKUP_LIFECYCLE_PASS version=8.0.33 gtid=OFF mode=container",
+        "MYBACKUP_LIFECYCLE_PASS version=8.0.33 gtid=ON mode=container",
+        "MYBACKUP_LIFECYCLE_PASS version=8.0.46 gtid=OFF mode=host",
+        "MYBACKUP_LIFECYCLE_PASS version=8.0.46 gtid=ON mode=host",
+        "MYBACKUP_LIFECYCLE_PASS version=8.0.46 gtid=OFF mode=container",
+        "MYBACKUP_LIFECYCLE_PASS version=8.0.46 gtid=ON mode=container"
+      ]
+    },
+    "rocky9": {
+      "files": {
+        "logs/mysql80-full-rocky9-f186b5d8305e/evidence.tar.gz": "0347779b5e6507fa32993a28af40c466333b17c9d4afbe7a8bde96d4c6994887",
+        "logs/mysql80-full-rocky9-f186b5d8305e/state.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+        "logs/mysql80-full-rocky9-f186b5d8305e/state.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+        "logs/mysql80-full-rocky9-f186b5d8305e/plan.json": "d924b3b71d87d518809c3336f09a21b3cba066922b1c4e31607207b5887c5526",
+        "logs/mysql80-full-rocky9-f186b5d8305e/result.json": "0750b4ee9e8e1864770e3746395cf13a1ddb097e5407d236274b359a436633a6",
+        "logs/mysql80-full-rocky9-f186b5d8305e/console.log": "021118c3fe4c0987ad8c6a727eb66d5d6e40c9faaaffa3522c8cab1c64674811",
+        "logs/mysql80-full-rocky9-f186b5d8305e/dockerd.log": "c221f26768f50089f330a4dfc3bbea9633ccaf4a1da229c4c26bf6a9d46817e2"
+      },
+      "durable": [
+        "logs/mysql80-full-rocky9-f186b5d8305e/state.exit",
+        "logs/mysql80-full-rocky9-f186b5d8305e/state.finalized"
+      ],
+      "log": "logs/mysql80-full-rocky9-f186b5d8305e/console.log",
+      "markers": [
+        "MYSQL80_HOST_PASS os=9.8",
+        "TOOLS_CLEAN_VERIFY_PASS scope=mysql80-physical",
+        "MYSQL80_EXIT rc=0",
+        "MYBACKUP_LIFECYCLE_PASS version=8.0.33 gtid=OFF mode=host",
+        "MYBACKUP_LIFECYCLE_PASS version=8.0.33 gtid=ON mode=host",
+        "MYBACKUP_LIFECYCLE_PASS version=8.0.33 gtid=OFF mode=container",
+        "MYBACKUP_LIFECYCLE_PASS version=8.0.33 gtid=ON mode=container",
+        "MYBACKUP_LIFECYCLE_PASS version=8.0.46 gtid=OFF mode=host",
+        "MYBACKUP_LIFECYCLE_PASS version=8.0.46 gtid=ON mode=host",
+        "MYBACKUP_LIFECYCLE_PASS version=8.0.46 gtid=OFF mode=container",
+        "MYBACKUP_LIFECYCLE_PASS version=8.0.46 gtid=ON mode=container"
+      ]
+    }
+  },
+  "boundaries": [
+    "AMD64; native Rocky 8.10 and 9.8; standalone MySQL containers; unencrypted InnoDB; GTID OFF/ON",
+    "No production access; no replication, encryption/keyring or capacity SLA claim"
+  ]
+}

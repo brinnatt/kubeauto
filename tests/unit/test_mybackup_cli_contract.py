@@ -22,6 +22,9 @@ def manager_for(tmpdir):
     config.backup_base = Path(tmpdir) / "backup"
     config.mysql_datadir = Path(tmpdir) / "mysql"
     config.mysql_binlog_prefix = "mysql-bin"
+    config.mysql_binlog_dir = config.mysql_datadir
+    config.mysql_binlog_index = config.mysql_binlog_dir / 'mysql-bin.index'
+    config.mysql_container = ''
     config.lock_file = config.backup_base / "lock/mysqlbackup.lock"
     config.audit_base = config.backup_base / "restore_audit"
     manager = MOD.BackupManager.__new__(MOD.BackupManager)
@@ -33,6 +36,246 @@ def manager_for(tmpdir):
 
 
 class MyBackupCliContractTest(unittest.TestCase):
+    def test_unusable_binlog_client_refuses_restore_before_service_or_data_changes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manager=manager_for(directory)
+            manager._load_restore_plan=mock.Mock(return_value=({},Path(directory)/'plan.json'))
+            manager.manage_mysql_service=mock.Mock(side_effect=AssertionError('service touched before client check'))
+            manager.run_cmd=mock.Mock(side_effect=RuntimeError('mysqlbinlog unavailable'))
+            with self.assertRaisesRegex(RuntimeError,'mysqlbinlog unavailable'):
+                manager.restore('2026-09-11','2026-09-11 00:00:00',confirm_destructive=True)
+            manager.manage_mysql_service.assert_not_called()
+            manager.run_cmd.assert_called_once_with(['mysqlbinlog','--version'])
+
+    def test_new_full_starts_a_new_incremental_chain(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manager = manager_for(directory)
+            manager.ensure_dirs()
+            old = manager.config.backup_base / 'incr/2026-09-11/115959'
+            old.mkdir(parents=True); (old / '.backup_ok').touch()
+            latest = manager.config.backup_base / 'incr/latest'; latest.symlink_to(old)
+            manager.backup_lock_ddl = mock.Mock(return_value='ON')
+            def backup(argv, check=True):
+                target = Path(next(a.split('=', 1)[1] for a in argv if a.startswith('--target-dir=')))
+                for name in ('xtrabackup_checkpoints', 'xtrabackup_info'):
+                    (target / name).write_text('from_lsn = 0\nto_lsn = 200\n')
+                return ''
+            manager.run_cmd = backup
+            manager.full_backup()
+            manager.now = '120001'
+            manager.run_cmd = mock.Mock(side_effect=RuntimeError('command boundary'))
+            with self.assertRaisesRegex(RuntimeError, 'command boundary'):
+                manager.incr_backup()
+            argv = manager.run_cmd.call_args.args[0]
+            expected = manager.config.backup_base / 'full/2026-09-11/120000/backup'
+            self.assertIn('--incremental-basedir=' + str(expected), argv)
+
+    def test_purge_does_not_delete_old_mtime_files_inside_recent_backup(self):
+        from datetime import timedelta
+        with tempfile.TemporaryDirectory() as directory:
+            manager = manager_for(directory); manager.ensure_dirs()
+            today = MOD.datetime.now().date()
+            full = manager.config.backup_base / 'full' / str(today) / '120000/backup'
+            full.mkdir(parents=True); (full / '.backup_ok').touch()
+            data = full / 'unchanged.ibd'; data.write_bytes(b'valid snapshot of an old table')
+            os.utime(data, (0, 0))
+            expired = manager.config.backup_base / 'full/2000-01-01'; expired.mkdir()
+            manager.purge()
+            self.assertTrue(data.is_file(), 'Retention must apply to backup generations, not table file mtimes')
+            self.assertFalse(expired.exists())
+            base_day = str(today - timedelta(days=18))
+            previous = manager.config.backup_base / 'full' / base_day / '120000/backup'
+            previous.mkdir(parents=True); (previous / '.backup_ok').touch()
+            delta = manager.config.backup_base / 'incr' / str(today-timedelta(days=15)) / '120001'
+            delta.mkdir(parents=True); (delta / '.backup_ok').touch()
+            manager.purge()
+            self.assertTrue(previous.is_dir(), 'Keep the full base needed by increments inside the retention window')
+            self.assertTrue(delta.is_dir())
+
+    def test_new_full_preserves_old_binlogs_and_archives_reused_names_after_restore(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manager = manager_for(directory); manager.ensure_dirs()
+            manager.config.mysql_datadir.mkdir()
+            manager.config.mysql_binlog_index.write_text('mysql-bin.000001\n')
+            source = manager.config.mysql_binlog_dir / 'mysql-bin.000001'
+            manager.backup_lock_ddl = mock.Mock(return_value='ON')
+            def backup(argv, check=True):
+                target = Path(next(a.split('=', 1)[1] for a in argv if a.startswith('--target-dir=')))
+                for name in ('xtrabackup_checkpoints', 'xtrabackup_info'):
+                    (target / name).write_text('from_lsn = 0\nto_lsn = 100\n')
+                return ''
+            manager.run_cmd = backup
+            source.write_bytes(b'before restore')
+            manager.full_backup(); manager.binlog_backup(backall=True)
+            archived = list((manager.config.backup_base / 'binlog').rglob(source.name))
+            self.assertEqual(len(archived), 1)
+            before = archived[0]
+            source.write_bytes(b'new history with the same filename')
+            manager.now = '120001'
+            manager.full_backup(); manager.binlog_backup(backall=True)
+            archived = list((manager.config.backup_base / 'binlog').rglob(source.name))
+            self.assertEqual(len(archived), 2, 'A new full must not reuse an archive cursor from the restored history')
+            self.assertEqual(before.read_bytes(), b'before restore')
+            after = next(path for path in archived if path != before)
+            self.assertEqual(after.read_bytes(), source.read_bytes())
+
+    def test_audit_selects_latest_full_and_only_its_lsn_chain_across_midnight(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manager = manager_for(directory); manager.ensure_dirs()
+            base = manager.config.backup_base
+            records = [('full/2026-09-11/110000/backup', 0, 100),
+                       ('incr/2026-09-11/110001', 100, 150),
+                       ('full/2026-09-11/120000/backup', 0, 200),
+                       ('incr/2026-09-11/120001', 200, 250),
+                       ('incr/2026-09-12/000001', 250, 300)]
+            for name, start, end in records:
+                path = base / name; path.mkdir(parents=True)
+                (path / '.backup_ok').touch()
+                (path / 'xtrabackup_checkpoints').write_text('from_lsn = {}\nto_lsn = {}\n'.format(start, end))
+            (base / 'binlog/mysql-bin.000001').write_bytes(b'log')
+            manager.restore_audit('2026-09-11')
+            plan = json.loads((manager.config.audit_base / '2026-09-11/restore.plan.json').read_text())
+            self.assertEqual(plan['full'], str(base / records[2][0]))
+            self.assertEqual(plan['incr'], [str(base / records[i][0]) for i in (3, 4)])
+
+    def test_copyback_preserves_external_non_binlog_files_and_restores_container_index(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manager = manager_for(directory)
+            data = manager.config.mysql_datadir; data.mkdir()
+            (data / 'original').write_bytes(b'original')
+            owner = data.stat()
+            logs = Path(directory) / 'logs'; logs.mkdir()
+            manager.config.mysql_binlog_dir = logs
+            manager.config.mysql_binlog_index = logs / 'mysql-bin.index'
+            manager.config.mysql_container = 'production-mysql'
+            manager.config.mysql_binlog_index.write_text('/var/lib/mysql-logs/mysql-bin.000009\n')
+            (logs / 'mysql-bin.000009').write_bytes(b'old log')
+            (logs / 'error.log').write_bytes(b'keep error log')
+            commands = []
+            def command(argv, check=True):
+                commands.append(argv)
+                if '--copy-back' in argv:
+                    (data / 'restored').write_bytes(b'restored')
+                    (logs / 'mysql-bin.000001').write_bytes(b'backup log')
+                    manager.config.mysql_binlog_index.write_text(str(logs / 'mysql-bin.000001') + '\n')
+                return ''
+            manager.run_cmd = command
+            manager._restore_datadir({'full': str(Path(directory) / 'backup'),
+                                      'server_binlog_dir': '/var/lib/mysql-logs'})
+            self.assertIn('--log-bin=' + str(logs / 'mysql-bin'), commands[0])
+            self.assertIn('--log-bin-index=' + str(manager.config.mysql_binlog_index), commands[0])
+            self.assertEqual(manager.config.mysql_binlog_index.read_text(), '/var/lib/mysql-logs/mysql-bin.000001\n')
+            self.assertFalse((logs / 'mysql-bin.000009').exists())
+            self.assertEqual((logs / 'error.log').read_bytes(), b'keep error log')
+            self.assertIn(['chown', '-R', '{}:{}'.format(owner.st_uid, owner.st_gid), str(data)], commands)
+
+    def test_failed_copyback_puts_original_datadir_and_external_binlogs_back(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manager = manager_for(directory)
+            data = manager.config.mysql_datadir; data.mkdir()
+            (data / 'original').write_bytes(b'original')
+            logs = Path(directory) / 'logs'; logs.mkdir()
+            manager.config.mysql_binlog_dir = logs
+            manager.config.mysql_binlog_index = logs / 'mysql-bin.index'
+            manager.config.mysql_binlog_index.write_text('/var/lib/mysql-logs/mysql-bin.000009\n')
+            (logs / 'mysql-bin.000009').write_bytes(b'old log')
+            def fail_copyback(argv, check=True):
+                if '--copy-back' in argv:
+                    (data / 'partial').write_bytes(b'partial')
+                    raise RuntimeError('copy-back failed')
+                return ''
+            manager.run_cmd = fail_copyback
+            with self.assertRaisesRegex(RuntimeError, 'copy-back failed'):
+                manager._restore_datadir({'full': str(Path(directory) / 'backup')})
+            self.assertEqual((data / 'original').read_bytes(), b'original')
+            self.assertFalse((data / 'partial').exists())
+            self.assertEqual((logs / 'mysql-bin.000009').read_bytes(), b'old log')
+            self.assertEqual(manager.config.mysql_binlog_index.read_text(), '/var/lib/mysql-logs/mysql-bin.000009\n')
+
+    def test_wrong_container_mapping_blocks_full_and_incremental_before_backup(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manager = manager_for(directory); manager.ensure_dirs()
+            manager.config.mysql_container = 'production-mysql'
+            manager.manage_mysql_service = mock.Mock(return_value=True)
+            manager._verify_container_mounts = mock.Mock(side_effect=RuntimeError('wrong mount'))
+            manager.run_cmd = mock.Mock()
+            for operation in (manager.full_backup, manager.incr_backup):
+                with self.assertRaisesRegex(RuntimeError, 'wrong mount'):
+                    operation()
+            manager.run_cmd.assert_not_called()
+
+    def test_container_stop_uses_pinned_docker_identity_instead_of_systemctl(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manager = manager_for(directory)
+            manager.config.mysql_container = 'production-mysql'
+            identity = 'a' * 64
+            commands = []
+            def command(argv, check=True):
+                commands.append(argv)
+                if argv[:2] == ['docker', 'inspect']:
+                    return identity + (' exited' if any(c[:2] == ['docker', 'stop'] for c in commands) else ' running')
+                return ''
+            manager.run_cmd = command
+            self.assertTrue(manager.manage_mysql_service('stop'))
+            self.assertIn(['docker', 'stop', '--timeout', '30', identity], commands)
+            self.assertTrue(all(c[0] == 'docker' for c in commands))
+
+    def test_container_start_waits_for_mysql_sql_readiness(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manager = manager_for(directory)
+            manager.config.mysql_container = 'production-mysql'
+            manager.run_cmd = mock.Mock(side_effect=['a' * 64 + ' exited', '', 'a' * 64 + ' running', 'a' * 64 + ' running'])
+            manager.mysql_cmd = mock.Mock(side_effect=[RuntimeError('not ready'), '1'])
+            with mock.patch.object(MOD.time, 'sleep'):
+                self.assertTrue(manager.manage_mysql_service('start'))
+            self.assertEqual(manager.mysql_cmd.call_count, 2)
+
+    def test_full_and_incremental_pass_host_visible_datadir_to_xtrabackup(self):
+        class CommandBoundary(Exception):
+            pass
+
+        with tempfile.TemporaryDirectory() as directory:
+            manager = manager_for(directory)
+            manager.config.mysql_datadir = Path(directory) / 'container-bind-source'
+            manager.config.mysql_datadir.mkdir()
+            manager.config.mysql_binlog_dir = Path(directory) / 'separate-logs'
+            manager.config.mysql_binlog_index = manager.config.mysql_binlog_dir / 'mysql-bin.index'
+            manager.backup_lock_ddl = mock.Mock(return_value='ON')
+            manager.run_cmd = mock.Mock(side_effect=CommandBoundary)
+            with self.assertRaises(CommandBoundary):
+                manager.full_backup()
+            full_command = manager.run_cmd.call_args.args[0]
+            expected = '--datadir=' + str(manager.config.mysql_datadir)
+            self.assertIn(expected, full_command)
+            self.assertIn('--log-bin=' + str(manager.config.mysql_binlog_dir / 'mysql-bin'), full_command)
+            self.assertIn('--log-bin-index=' + str(manager.config.mysql_binlog_index), full_command)
+            self.assertEqual(sum(arg.startswith('--datadir') for arg in full_command), 1)
+
+            full = manager.config.backup_base / 'full/2026-09-11/120000/backup'
+            full.mkdir(parents=True)
+            (full / '.backup_ok').touch()
+            (manager.config.backup_base / 'full/latest_raw').symlink_to(full)
+            with self.assertRaises(CommandBoundary):
+                manager.incr_backup()
+            incremental_command = manager.run_cmd.call_args.args[0]
+            self.assertIn(expected, incremental_command)
+            self.assertIn('--log-bin=' + str(manager.config.mysql_binlog_dir / 'mysql-bin'), incremental_command)
+            self.assertIn('--log-bin-index=' + str(manager.config.mysql_binlog_index), incremental_command)
+            self.assertEqual(sum(arg.startswith('--datadir') for arg in incremental_command), 1)
+            self.assertIn('--incremental-basedir=' + str(full), incremental_command)
+
+    def test_archive_reads_host_visible_external_binlog_directory_and_custom_index(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manager = manager_for(directory)
+            manager.ensure_dirs()
+            manager.config.mysql_binlog_dir = Path(directory) / 'host-logs'
+            manager.config.mysql_binlog_dir.mkdir()
+            manager.config.mysql_binlog_index = manager.config.mysql_binlog_dir / 'custom.index'
+            manager.config.mysql_binlog_index.write_text('/var/lib/mysql-logs/mysql-bin.000001\n')
+            (manager.config.mysql_binlog_dir / 'mysql-bin.000001').write_bytes(b'binlog')
+            manager.binlog_backup(backall=True)
+            self.assertEqual((manager.config.backup_base / 'binlog' / manager.today / 'mysql-bin.000001').read_bytes(), b'binlog')
+
     def test_ignore_error_cannot_publish_a_partial_dump(self):
         for target in MOD.NATIVE_TARGETS:
             for token in ("--ignore-error=1146", "--loose-ignore_error=1146", "--ignore-err=1146"):
@@ -168,13 +411,75 @@ class MyBackupCliContractTest(unittest.TestCase):
             (mgr.config.mysql_datadir / "mysql-bin.000001").write_bytes(b"one")
             (mgr.config.mysql_datadir / "mysql-bin.000001.index").write_text("")
             (mgr.config.mysql_datadir / "mysql-bin.index").write_text(
-                "./mysql-bin.000001\n./mysql-bin.000002\n"
+                "./mysql-bin.000001\n./mysql-bin.000002\n./mysql-bin.000003\n"
             )
             mgr.ensure_dirs()
-            mgr.binlog_backup(backall=True)
+            (mgr.config.mysql_datadir / "mysql-bin.000003").write_bytes(b"three")
+            with self.assertRaisesRegex(RuntimeError, "missing"):
+                mgr.binlog_backup(backall=True)
             state = mgr.config.backup_base / "binlog/state/last_archived"
-            self.assertEqual(state.read_text(), "mysql-bin.000001")
+            self.assertFalse(state.exists())
             self.assertTrue((mgr.config.backup_base / "binlog/2026-09-11/mysql-bin.000001").exists())
+
+    def test_binlog_replay_uses_last_incremental_position_and_rejects_missing_archive(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manager = manager_for(directory); manager.ensure_dirs()
+            full, increment = Path(directory) / 'full', Path(directory) / 'increment'
+            full.mkdir(); increment.mkdir()
+            (full / 'xtrabackup_binlog_info').write_text('mysql-bin.000001 10\n')
+            (increment / 'xtrabackup_binlog_info').write_text('mysql-bin.000002 123 uuid:1-5\n')
+            archive = manager.config.backup_base / 'binlog'
+            for number in (1, 2, 3):
+                (archive / ('mysql-bin.%06d' % number)).write_bytes(b'log')
+            plan = {'full': str(full), 'incr': [str(increment)],
+                    'binlog': ['mysql-bin.%06d' % n for n in (1, 2, 3)]}
+            position, files = manager._binlog_replay_files(plan)
+            self.assertEqual(position, 123)
+            self.assertEqual([p.name for p in files], ['mysql-bin.000002', 'mysql-bin.000003'])
+            files[-1].unlink()
+            with self.assertRaisesRegex(RuntimeError, 'missing'):
+                manager._binlog_replay_files(plan)
+            plan['binlog'] = ['mysql-bin.000003']
+            with self.assertRaisesRegex(RuntimeError, 'snapshot'):
+                manager._binlog_replay_files(plan)
+
+    def test_container_mount_verification_rejects_wrong_daemon_readonly_and_prefix(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manager = manager_for(directory)
+            manager.config.mysql_socket = str(manager.config.mysql_datadir / 'mysql.sock')
+            manager._mysql_container_id = 'a' * 64
+            manager.mysql_cmd = mock.Mock(return_value='/var/lib/mysql/\t/var/lib/mysql/mysql-bin\t/var/lib/mysql/mysql-bin.index\t/var/lib/mysql/mysql.sock\n')
+            mounts = [{'Type': 'bind', 'RW': True, 'Source': str(manager.config.mysql_datadir), 'Destination': '/var/lib/mysql'}]
+            manager.run_cmd = lambda *args, **kwargs: json.dumps(mounts)
+            plan = {}; manager._verify_container_mounts(plan)
+            self.assertEqual(plan['server_binlog_dir'], '/var/lib/mysql')
+            mounts[0]['Source'] = str(Path(directory) / 'foreign')
+            with self.assertRaisesRegex(RuntimeError, 'does not match'):
+                manager._verify_container_mounts({})
+            mounts[0]['Source'] = str(manager.config.mysql_datadir); mounts[0]['RW'] = False
+            with self.assertRaisesRegex(RuntimeError, 'writable bind'):
+                manager._verify_container_mounts({})
+            mounts[0]['RW'] = True
+            manager.mysql_cmd.return_value = manager.mysql_cmd.return_value.replace('/mysql-bin\t', '/different-prefix\t')
+            with self.assertRaisesRegex(RuntimeError, 'prefix'):
+                manager._verify_container_mounts({})
+
+    def test_legacy_binlog_lookup_excludes_new_generation_histories(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manager = manager_for(directory); manager.ensure_dirs()
+            archive = manager.config.backup_base / 'binlog'
+            (archive / 'mysql-bin.000001').write_bytes(b'legacy')
+            other = archive / 'generation/2026-09-12/000000/2026-09-12'; other.mkdir(parents=True)
+            (other / 'mysql-bin.000001').write_bytes(b'another history')
+            self.assertEqual(manager.check_binlog_sequence(archive), ['mysql-bin.000001'])
+
+    def test_restored_history_refuses_incremental_and_archival_until_new_full(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manager = manager_for(directory); manager.ensure_dirs()
+            (manager.config.backup_base / 'lock/restore-needs-full').touch()
+            for operation in (manager.incr_backup, manager.binlog_backup):
+                with self.assertRaisesRegex(RuntimeError, 'new full'):
+                    operation()
 
     def test_binlog_sequence_is_numeric_and_rejects_gap(self):
         with tempfile.TemporaryDirectory() as td:
@@ -196,9 +501,28 @@ class MyBackupCliContractTest(unittest.TestCase):
         with self.assertRaises(SystemExit):
             mgr.restore(date="2026-09-11", binlog_start_time="2026-09-11 00:00:00")
 
-    def test_restore_restarts_active_service_after_interrupt(self):
+    def test_restore_refuses_running_mysql_when_configured_service_is_inactive(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manager = manager_for(directory)
+            manager.run_cmd = mock.Mock()
+            manager.config.backup_base.mkdir()
+            full = Path(directory) / 'full'; full.mkdir()
+            manager._load_restore_plan = mock.Mock(return_value=({'full': str(full), 'incr': [], 'binlog': []}, Path(directory) / 'plan.json'))
+            manager.manage_mysql_service = mock.Mock(return_value=False)
+            manager.mysql_cmd = mock.Mock(return_value='1')
+            for name in ('binlog_backup', '_decompress_backup', '_binlog_replay_files', '_prepare_backup', '_restore_datadir', '_apply_binlog', '_update_restore_plan'):
+                setattr(manager, name, mock.Mock())
+            with self.assertRaisesRegex(RuntimeError, 'still accepting SQL'):
+                manager.restore(date='2026-09-11', binlog_start_time='2099-01-01 00:00:00', confirm_destructive=True)
+            manager.binlog_backup.assert_not_called()
+            manager._restore_datadir.assert_not_called()
+
+    def test_prepare_interrupt_preserves_running_service_before_stop(self):
         with tempfile.TemporaryDirectory() as td:
             mgr = manager_for(td)
+            mgr.run_cmd = mock.Mock()
+            mgr.config.backup_base.mkdir()
+            full = Path(td) / 'full'; full.mkdir()
             plan_file = Path(td) / "restore.plan.json"
             service_calls = []
 
@@ -208,8 +532,8 @@ class MyBackupCliContractTest(unittest.TestCase):
                 return [True, True, False, True][len(service_calls) - 1]
 
             with mock.patch.object(
-                mgr, "_load_restore_plan", return_value=({"binlog": []}, plan_file)
-            ), mock.patch.object(mgr, "manage_mysql_service", side_effect=service), mock.patch.object(
+                mgr, "_load_restore_plan", return_value=({'full': str(full), 'incr': [], "binlog": []}, plan_file)
+            ), mock.patch.object(mgr, "manage_mysql_service", side_effect=service), mock.patch.object(mgr, 'mysql_cmd', side_effect=RuntimeError('server stopped')), mock.patch.object(
                 mgr, "binlog_backup"
             ), mock.patch.object(
                 mgr, "_decompress_backup", side_effect=KeyboardInterrupt
@@ -221,7 +545,66 @@ class MyBackupCliContractTest(unittest.TestCase):
                         confirm_destructive=True,
                     )
 
-            self.assertIn(("start", 60), service_calls)
+            self.assertEqual(service_calls, [('status', 30)])
+
+    def test_compressed_binlog_coordinates_are_validated_in_workspace_before_stop(self):
+        for missing_archive in (False, True):
+            with self.subTest(missing=missing_archive), tempfile.TemporaryDirectory() as directory:
+                manager = manager_for(directory); manager.ensure_dirs()
+                manager.run_cmd = mock.Mock()
+                full = manager.config.backup_base / 'full/2026-09-11/120000/backup'; full.mkdir(parents=True)
+                (full / '.backup_ok').touch()
+                (full / 'xtrabackup_checkpoints').write_text('from_lsn = 0\nto_lsn = 100\n')
+                (full / 'xtrabackup_binlog_info.zst').write_bytes(b'compressed fixture')
+                plan = {'date': '2026-09-11', 'status': 'READY', 'full': str(full), 'incr': [], 'binlog': ['mysql-bin.000001']}
+                plan_file = manager.config.audit_base / '2026-09-11/restore.plan.json'
+                plan_file.parent.mkdir(parents=True); plan_file.write_text(json.dumps(plan))
+                if not missing_archive:
+                    (manager.config.backup_base / 'binlog/mysql-bin.000001').write_bytes(b'log')
+                events = []
+                def decompress(working):
+                    events.append('decompress')
+                    path = Path(working['full'])
+                    self.assertNotEqual(path, full)
+                    self.assertTrue((path / 'xtrabackup_binlog_info.zst').is_file())
+                    (path / 'xtrabackup_binlog_info').write_text('mysql-bin.000001 123\n')
+                manager._decompress_backup = decompress
+                manager._prepare_backup = lambda _: events.append('prepare')
+                manager.manage_mysql_service = lambda action, **kwargs: events.append(action) or True
+                manager.mysql_cmd = mock.Mock(side_effect=RuntimeError('stopped'))
+                for name in ('binlog_backup', '_restore_datadir', '_apply_binlog', '_update_restore_plan'):
+                    setattr(manager, name, mock.Mock())
+                if missing_archive:
+                    with self.assertRaisesRegex(RuntimeError, 'missing'):
+                        manager.restore('2026-09-11', '2099-01-01 00:00:00', confirm_destructive=True)
+                    self.assertEqual(events, ['status', 'decompress'])
+                else:
+                    manager.restore('2026-09-11', '2099-01-01 00:00:00', confirm_destructive=True)
+                    self.assertLess(events.index('decompress'), events.index('stop'))
+                    self.assertNotEqual(manager._apply_binlog.call_args.args[0]['full'], str(full))
+                self.assertFalse((full / 'xtrabackup_binlog_info').exists())
+
+    def test_prepare_and_copyback_operate_on_workspace_without_consuming_raw_chain(self):
+        with tempfile.TemporaryDirectory() as directory:
+            manager = manager_for(directory); manager.ensure_dirs()
+            manager.run_cmd = mock.Mock()
+            full = manager.config.backup_base / 'full/raw'; full.mkdir()
+            original = full / 'data'; original.write_bytes(b'raw data')
+            manager._load_restore_plan = mock.Mock(return_value=({'full': str(full), 'incr': [], 'binlog': []}, Path(directory) / 'plan.json'))
+            manager.manage_mysql_service = mock.Mock(return_value=True)
+            manager.mysql_cmd = mock.Mock(side_effect=RuntimeError('stopped'))
+            manager.binlog_backup = mock.Mock()
+            manager._decompress_backup = mock.Mock()
+            manager._binlog_replay_files = mock.Mock()
+            manager._prepare_backup = mock.Mock(side_effect=lambda plan: (Path(plan['full']) / 'data').write_bytes(b'prepared data'))
+            manager._restore_datadir = mock.Mock()
+            manager._apply_binlog = mock.Mock()
+            manager._update_restore_plan = mock.Mock()
+            manager.restore(date='2026-09-11', binlog_start_time='2099-01-01 00:00:00', confirm_destructive=True)
+            self.assertEqual(original.read_bytes(), b'raw data')
+            working = Path(manager._restore_datadir.call_args.args[0]['full'])
+            self.assertNotEqual(working, full)
+            self.assertFalse(working.exists())
 
     def test_restore_plan_rejects_path_outside_backup_base(self):
         with tempfile.TemporaryDirectory() as td:
@@ -273,13 +656,14 @@ class MyBackupCliContractTest(unittest.TestCase):
             proc1 = mock.Mock(returncode=3, stderr=mock.Mock(read=lambda: b"decoder failed"))
             proc2 = mock.Mock(returncode=0)
             proc2.communicate.return_value = (b"", b"")
-            with mock.patch.object(MOD.subprocess, "Popen", side_effect=[proc1, proc2]):
+            with mock.patch.object(mgr, "_binlog_replay_files", return_value=(123, [binlog_dir / "mysql-bin.000001"])), mock.patch.object(MOD.subprocess, "Popen", side_effect=[proc1, proc2]) as popen:
                 with self.assertRaises(RuntimeError):
                     mgr._apply_binlog(
                         {"binlog": ["mysql-bin.000001"]},
                         "2026-09-11 00:00:00",
                         None,
                     )
+                self.assertIn("--start-position=123", popen.call_args_list[0].args[0])
 
     def test_incremental_prepare_follows_official_apply_log_only_order(self):
         with tempfile.TemporaryDirectory() as td:

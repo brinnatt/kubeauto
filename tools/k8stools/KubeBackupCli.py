@@ -1911,7 +1911,7 @@ class KubernetesClient:
 
     def __init__(self, config_path: Optional[str] = None, context: Optional[str] = None):
         try:
-            if config_path:
+            if config_path or context:
                 config.load_kube_config(config_file=config_path, context=context)
             else:
                 try:

@@ -1,0 +1,24 @@
+{
+  "date": "2026-11-25",
+  "result": "pass",
+  "scope": "Task-owned lab and local deterministic verification only; no production mutation.",
+  "deterministic_tests": {
+    "count": 235,
+    "result": "OK",
+    "log": "logs/tools-final-contract-20261125.log"
+  },
+  "retired_cleanup": {
+    "host": "192.168.47.131",
+    "result": "archived staging verified by original plan/raw hashes before removal; original tuned active restored; other runtimes required inactive"
+  },
+  "files": {
+    "logs/tools-final-contract-20261125.log": "67b029bf316292c67e8dee6f76e90ad34596e0772a575ed9e8f686f8aabfae38",
+    "logs/mysql80-retired-cleanup-contract-20261125.log": "d618543eb9aa92cc6157dcb22ac2fda3ea1324a7a13bce6cfed513321faadf70",
+    "logs/mysql80-retired-cleanup-20261125.log": "1c86584c1803989c3dab2a8374cf112eecd77d74cc30703bf4b3e15e0f94753e",
+    "tests/helpers/mysql80-retired-staging-cleanup.py": "2c776396fb84c541c4ef1f67c8af38fe6383b18d0855ee488b9133cf007c9ff0",
+    "tests/unit/test_mysql80_retired_cleanup_contract.py": "bc5fbd0657034923b7b50e0f59a1e49e6060dd81bb24ebb7885b0f9fd40eb3c7",
+    "logs/tools-affected-final-20261125.log": "8212b42df5005dc4af2cdc7c115e551661d105b7c110a2798486f619ded18e39",
+    "logs/tools-affected-final-20261125.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/tools-affected-final-20261125.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+  }
+}

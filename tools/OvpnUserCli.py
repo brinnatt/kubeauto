@@ -28,6 +28,7 @@ import argparse
 import logging
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -79,8 +80,6 @@ EASYRSA_PKI_REQUIRED = (
     "pki/revoked/private_by_serial",
     "pki/revoked/reqs_by_serial",
 )
-# OpenVPN 客户端包依赖（非 easyrsa 生成；openvpn --genkey secret pki/ta.key）
-OPENVPN_PKI_EXTRA = ("pki/ta.key",)
 
 DEFAULT_REMOTE_HOST = "61.187.64.38"
 DEFAULT_REMOTE_PORT = 11940
@@ -114,7 +113,7 @@ STATUS_LABEL = {
     "none": "不存在",
 }
 
-# 目录树说明；硬性检查见 EASYRSA_PKI_REQUIRED / OPENVPN_PKI_EXTRA（须同步维护）
+# 目录树说明；PKI 检查见 EASYRSA_PKI_REQUIRED，TLS 密钥读取 server.conf。
 PKI_LAYOUT = """
 /etc/openvpn/ 标准布局（Easy-RSA {ver} + OpenVPN，上游 {upstream}）
 ├── {ver}/                  Easy-RSA 工作区（EASYRSA=/ GENOVPN_EASYRSA_DIR）
@@ -585,6 +584,9 @@ class ServerConfSummary(TypedDict):
     allow_compression: Optional[str]
     tls_mode: Optional[str]
     tls_key_file: Optional[str]
+    tls_key_direction: Optional[str]
+    tls_crypt_v2: bool
+    working_directory: Optional[str]
 
 
 class CreateLinkOptions(TypedDict):
@@ -793,6 +795,9 @@ def _empty_server_conf_summary() -> ServerConfSummary:
         "allow_compression": None,
         "tls_mode": None,
         "tls_key_file": None,
+        "tls_key_direction": None,
+        "tls_crypt_v2": False,
+        "working_directory": None,
     }
 
 
@@ -809,7 +814,10 @@ def read_server_conf_summary() -> ServerConfSummary:
             line = raw.strip()
             if not line or line.startswith("#") or line.startswith(";"):
                 continue
-            parts = line.split()
+            try:
+                parts = shlex.split(line, comments=True)
+            except ValueError as exc:
+                raise GenovpnError("server.conf 配置引号无效", hint=str(exc))
             if not parts:
                 continue
             key = parts[0]
@@ -843,12 +851,19 @@ def read_server_conf_summary() -> ServerConfSummary:
             elif key == "tls-auth" and len(parts) >= 2:
                 summary["tls_mode"] = "tls-auth"
                 summary["tls_key_file"] = parts[1]
+                if len(parts) > 2:
+                    summary["tls_key_direction"] = parts[2]
             elif key == "tls-crypt-v2" and len(parts) >= 2:
                 summary["tls_mode"] = "tls-crypt-v2"
                 summary["tls_key_file"] = parts[1]
+                summary["tls_crypt_v2"] = True
             elif key == "tls-crypt" and len(parts) >= 2:
                 summary["tls_mode"] = "tls-crypt"
                 summary["tls_key_file"] = parts[1]
+            elif key == "key-direction" and len(parts) == 2:
+                summary["tls_key_direction"] = parts[1]
+            elif key == "cd" and len(parts) == 2:
+                summary["working_directory"] = parts[1]
     return summary
 
 
@@ -918,12 +933,18 @@ def _append_tls_client_directives(
     missing: Optional[List[str]] = None,
 ) -> None:
     tls_mode = server.get("tls_mode")
-    if tls_mode == "tls-crypt-v2":
-        lines.append("tls-crypt-v2 ta.key")
+    if tls_mode == "tls-crypt-v2" or server.get("tls_crypt_v2"):
+        raise GenovpnError(
+            "create 暂不支持 tls-crypt-v2",
+            hint="该模式需要独立的客户端密钥；不得向客户端分发服务端 unwrap 密钥。",
+        )
     elif tls_mode == "tls-crypt":
         lines.append("tls-crypt ta.key")
     elif tls_mode == "tls-auth":
-        lines.append("tls-auth ta.key 1")
+        direction = server.get("tls_key_direction")
+        if direction not in (None, "0", "1"):
+            raise GenovpnError("server.conf tls-auth key-direction 无效")
+        lines.append("tls-auth ta.key" + (" " + str(1 - int(direction)) if direction is not None else ""))
     elif missing is not None:
         missing.append("tls-auth / tls-crypt / tls-crypt-v2")
 
@@ -1048,6 +1069,20 @@ def resolve_client_security_lines(server: ServerConfSummary) -> List[str]:
             hint="请补充: {0}".format(", ".join(missing)),
         )
     return lines
+
+
+def resolve_client_tls_key(server: ServerConfSummary) -> str:
+    """Resolve only a configured absolute path or a path under an explicit cd."""
+    resolve_client_security_lines(server)
+    key = server.get("tls_key_file") or ""
+    if not os.path.isabs(key):
+        directory = server.get("working_directory") or ""
+        if not os.path.isabs(directory):
+            raise GenovpnError("server.conf TLS 密钥路径不明确", hint="请使用绝对密钥路径，或配置绝对 cd 目录。")
+        key = os.path.join(directory, key)
+    if not os.path.isfile(key):
+        raise GenovpnError("server.conf TLS 密钥文件不存在", hint=key)
+    return key
 
 
 def pki_files_for_user(user: str, serial=None) -> Dict[str, Optional[str]]:
@@ -1405,16 +1440,6 @@ def preflight():
         if not os.path.exists(path):
             missing.append("缺少: {0}（CA 是否已 build-ca / init-pki？）".format(rel))
 
-    for rel in OPENVPN_PKI_EXTRA:
-        path = os.path.join(EASYRSA_DIR, rel)
-        if not os.path.isfile(path):
-            missing.append(
-                "缺少: {0}（OpenVPN tls-auth；"
-                "例: openvpn --genkey secret {1}）".format(
-                    rel, os.path.join(EASYRSA_DIR, "pki", "ta.key")
-                )
-            )
-
     easyrsa_bin = easyrsa_bin_path()
     if os.path.exists(easyrsa_bin) and not os.access(easyrsa_bin, os.X_OK):
         missing.append("不可执行: {0}".format(easyrsa_bin))
@@ -1634,6 +1659,8 @@ def bundle_client(
     link: CreateLinkOptions,
     server: ServerConfSummary,
 ) -> Tuple[str, List[str], List[str]]:
+    tls_key = resolve_client_tls_key(server)
+    ovpn_content, security_lines = build_client_ovpn_content(user, host, port, link, server)
     out_dir = client_bundle_dir(user)
     os.makedirs(CLIENT_DIR, exist_ok=True)
 
@@ -1643,7 +1670,7 @@ def bundle_client(
 
     copies = (
         (pki_path("ca.crt"), "ca.crt", "pki/ca.crt"),
-        (pki_path("ta.key"), "ta.key", "pki/ta.key"),
+        (tls_key, "ta.key", "server.conf TLS key"),
         (issued_cert(user), "{0}.crt".format(user), "pki/issued/{0}.crt".format(user)),
         (private_key(user), "{0}.key".format(user), "pki/private/{0}.key".format(user)),
     )
@@ -1658,9 +1685,6 @@ def bundle_client(
         shutil.copy2(src, dst)
         copy_log.append("{0} ← {1}".format(dst_name, src_label))
 
-    ovpn_content, security_lines = build_client_ovpn_content(
-        user, host, port, link, server
-    )
     ovpn_path = os.path.join(out_dir, "client.ovpn")
     with open(ovpn_path, "w") as fh:
         fh.write(ovpn_content)
@@ -1871,6 +1895,7 @@ def cmd_create(args):
     total = 4
     server = read_server_conf_summary()
     link = resolve_create_link_options(server, args.proto, args.dev)
+    resolve_client_tls_key(server)
     log.phase_start("签发用户 {0} 的 VPN 证书".format(user))
     log.meta(_format_create_meta(user, args, link))
 

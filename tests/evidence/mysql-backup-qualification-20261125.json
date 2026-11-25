@@ -1,0 +1,83 @@
+{
+  "date": "2026-11-25",
+  "scope": "Final MySQL-backup release admission; independently verified stage evidence, no relabelling of historical runs.",
+  "inputs": {
+    "tools/mysqltools/MyBackupCli.py": "aa774dbd784750f4af09de8e576f3ab77417e3ffdcc75914328c66f6d98df6f0",
+    "tools/mysqltools/MyLogiBackupCli.py": "df68a6aeb660de6755526f0a49df1478bc1a1715dce46f804740d20d05c88d2c",
+    "tools-onefile.spec": "7bb77b6db73a9c015aff2156120d94f7dc67a7a30e037f105d452bcbded45956",
+    "tests/run_tools_regression.sh": "0114d8fb4f08abf85d2456ae89859470a92b15ef79840f94834478eff9aee2b6",
+    "tests/helpers/build-tools-rocky8.sh": "ded6c6717bc3bbce6fc64b0c5ab07bc5cbf4aa6cfa78dfec7ed84eea8fca23fa",
+    "tests/helpers/mybackup-cli-live-regression.sh": "a04bae7c3123b04f5b9627f5c9e1fdb03d92804136c64a64a5936e35f405b501",
+    "tests/helpers/mylogi-backup-live-regression.sh": "b28f0f84dc7ec531bd8a8b7bc75990f236a7310abc914d81389b77cb7477194d",
+    "tests/helpers/mysql-backups-regression.sh": "359cda27fe0b0b6c81871f71604d8becb458ff716133d8cb288ef3925b83c274",
+    "tests/helpers/supervise-mysql-backups.py": "4b948cff12a5ec8eff47fa9e8ba161428c16fcb48be8ed939c6b04c4e2e72bb6",
+    "tests/helpers/tools-production-audit.py": "96fa32ab80f0047f2bc24e7ee22bf4f4b1fe3a06e45f69b6623f80b7e76058ff",
+    "tests/evidence/tools-production-execution-audit-20261125.json": "ed1fd215490b04696a70dbfe0c8f47945bcf6d5a9ad143f707dd2e7db3ed77c3",
+    "tests/evidence/mysql80-physical-full.json": "0453bbca72bb65a0b8630f42c57e547a8ee61f3408b2da8e8f40a4773250d404",
+    "tests/evidence/mysql80-physical-documentation-20261125.json": "7058c5403f44ce6bfc4aafcc557eb80342bbb1c17ed933432d6665129a9281d3"
+  },
+  "stages": {
+    "physical": {
+      "log": "logs/mysql-backups-physical-20261125-140647.log",
+      "sha256": "53d027c402a63fe6f9f5a4f24eb8719e9603b75ccb39105e791919b2465ea13b",
+      "archive": "logs/mysql-backups-physical-20261125-140647.evidence.tar.gz",
+      "archive_sha256": "40b1e91f60c71e57adde72fc2876092a2251c41f27b2d81e1931773d556b7aea",
+      "remote_status": "logs/mysql-backups-physical-20261125-140647.remote-status",
+      "required_markers": [
+        "MYBACKUP_NATIVE_BACKUP_PASS",
+        "MYBACKUP_NATIVE_PREPARE_PASS",
+        "MYBACKUP_RESTORE_READBACK_PASS",
+        "MYBACKUP_ENOSPC_RECOVERY_PASS",
+        "MYBACKUP_SIGINT_RECOVERY_PASS",
+        "MYBACKUP_CLI_LIVE_REGRESSION_PASS",
+        "TOOLS_CLEAN_VERIFY_PASS scope=mysql-backup-release",
+        "MYSQL_BACKUP_RELEASE_PASS stage=physical",
+        "MYSQL_BACKUP_RELEASE_EXIT rc=0"
+      ],
+      "source_evidence": "tests/evidence/mysql84-physical-requal-20261125.json",
+      "source_evidence_sha256": "faf8c380980b668682fea0b6972e2a2d3a5663d49380063917a0c5863e7f015f"
+    },
+    "portability": {
+      "log": "logs/mysql-backups-portability-20261125-141419.log",
+      "sha256": "862e91136c85f93586cd480bb8644b1c2336c00d7c207a9774e7c5d71d3c024e",
+      "archive": "logs/mysql-backups-portability-20261125-141419.evidence.tar.gz",
+      "archive_sha256": "f114ebc46103745ec4ba7c39ebcd7ea25f2a28e29ae769685d537af084512698",
+      "remote_status": "logs/mysql-backups-portability-20261125-141419.remote-status",
+      "required_markers": [
+        "MYSQL_BACKUP_PORTABILITY_PASS runtime=rocky8 tools=2",
+        "MYSQL_BACKUP_PORTABILITY_PASS runtime=debian12 tools=2",
+        "MYSQL_BACKUP_PORTABILITY_PASS runtime=ubuntu24 tools=2",
+        "TOOLS_CLEAN_VERIFY_PASS scope=mysql-backup-release",
+        "MYSQL_BACKUP_RELEASE_PASS stage=portability",
+        "MYSQL_BACKUP_RELEASE_EXIT rc=0"
+      ],
+      "source_evidence": "tests/evidence/mysql-backup-portability-20261125.json",
+      "source_evidence_sha256": "50f644833df3a0d893dfd56731bbd2d973c042baf4d1da604dd936ff3d0f9272"
+    },
+    "logical": {
+      "log": "logs/mysql-backups-logical-20261108-231754.log",
+      "sha256": "cf64948cf03b06a82153e09f2233c10684c9fd5de0b7ca21d827d74509ee2038",
+      "archive": "logs/mysql-backups-logical-20261108-231754.evidence.tar.gz",
+      "archive_sha256": "f408680d9440a8e05e6a99e469473a727be82c606ca46ea61788ba11f40c8333",
+      "remote_status": "logs/mysql-backups-logical-20261108-231754.remote-status",
+      "required_markers": [
+        "MYSQL_BACKUP_RELEASE_PASS stage=logical",
+        "TOOLS_CLEAN_VERIFY_PASS scope=mysql-backup-release",
+        "MYLOGI_NATIVE_ARCHIVE_DIAGNOSTICS_PASS version=8.0.46",
+        "MYLOGI_REAL_TIMER_EXECUTION_PASS version=8.0.46",
+        "MYLOGI_RESTORE_READBACK_PASS version=8.0.46",
+        "MYLOGI_NATIVE_ARCHIVE_DIAGNOSTICS_PASS version=8.4.4",
+        "MYLOGI_REAL_TIMER_EXECUTION_PASS version=8.4.4",
+        "MYLOGI_RESTORE_READBACK_PASS version=8.4.4",
+        "MYLOGI_NATIVE_ARCHIVE_DIAGNOSTICS_PASS version=9.2.0",
+        "MYLOGI_REAL_TIMER_EXECUTION_PASS version=9.2.0",
+        "MYLOGI_RESTORE_READBACK_PASS version=9.2.0"
+      ],
+      "local_exit": 0,
+      "remote_exit": 0,
+      "remote_finalized": 0,
+      "unexpected_failure_markers": 0
+    }
+  },
+  "logical_scope": "Unchanged source, artifact and execution body; original identity retained and verified by tools-production-audit.py logical_evidence(). Final full still runs actual logical business and real timer again."
+}

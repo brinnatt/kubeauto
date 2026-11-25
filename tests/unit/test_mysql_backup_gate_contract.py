@@ -48,6 +48,41 @@ class MysqlBackupGateTests(unittest.TestCase):
             self.assertEqual(result.returncode, 2)
             self.assertIn('TOOLS_SELECTED_SCOPE_REFUSED', result.stderr)
 
+    def test_selected_kubernetes_tools_build_only_pinned_dependencies_and_separate_provenance(self):
+        helper = (ROOT/'tests/helpers/build-tools-rocky8.sh').read_text()
+        runner = (ROOT/'tests/run_tools_regression.sh').read_text()
+        self.assertIn('"$TOOLS_SELECTED" == MyBackupCli,KubeBackupCli,KubePublishCli', helper)
+        self.assertIn('kubernetes==35.0.0 PyYAML==6.0.3 tenacity==9.1.2', helper)
+        block = runner.split("<<'PY_BUILD_PROOF'\n", 1)[1].split('\nPY_BUILD_PROOF', 1)[0]
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for name in ('tools/k8stools/KubeBackupCli.py', 'tools/k8stools/KubePublishCli.py',
+                         'tools-onefile.spec', 'tests/helpers/build-tools-rocky8.sh',
+                         'dist/KubeBackupCli-rocky8', 'dist/KubePublishCli-rocky8'):
+                path = root/name; path.parent.mkdir(parents=True, exist_ok=True); path.write_text('fixture')
+            manifest = root/'inputs.json'; manifest.write_text('{}')
+            subprocess.run([sys.executable, '-c', block, str(root), 'KubeBackupCli,KubePublishCli', str(manifest)], check=True)
+            manifest.write_text('{"tools-onefile.spec":"stale"}')
+            refused = subprocess.run([sys.executable, '-c', block, str(root), 'KubeBackupCli,KubePublishCli', str(manifest)], capture_output=True, text=True)
+            self.assertNotEqual(refused.returncode, 0)
+            self.assertIn('TOOLS_BUILD_INPUT_CHANGED tools-onefile.spec', refused.stderr)
+            self.assertTrue((root/'dist/kube-backup-build.json').is_file())
+            self.assertTrue((root/'dist/kube-publish-build.json').is_file())
+            self.assertFalse((root/'dist/mysql-backup-build.json').exists())
+
+    def test_build_checksum_boundary_handles_provenance_directory(self):
+        source = (ROOT/'tests/run_tools_regression.sh').read_text()
+        block = source.split('    # Keep the target-built binary', 1)[1]
+        block = '    # Keep the target-built binary' + block.split('    "$PY" - "$ROOT"', 1)[0]
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); stage = root/'stage'; (stage/'provenance').mkdir(parents=True)
+            (root/'dist').mkdir(); binary = stage/'MyBackupCli'; binary.write_text('artifact'); binary.chmod(0o755)
+            result = subprocess.run(['bash', '-euc', 'TOOLS=(MyBackupCli)\n' + block],
+                                    env=dict(os.environ, ROOT=str(root), stage=str(stage)), capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn('MyBackupCli', result.stdout)
+            self.assertNotIn('provenance', result.stdout)
+
     def test_build_sync_excludes_runtime_and_download_caches(self):
         runner = (ROOT/'tests/run_tools_regression.sh').read_text()
         sync = runner[runner.index('    rsync -a --delete'):runner.index('    scp ', runner.index('    rsync -a --delete'))]
@@ -100,7 +135,8 @@ class MysqlBackupGateTests(unittest.TestCase):
                 result=subprocess.run(['bash', str(root/'bin/xtrabackup'), option],
                                       env=dict(os.environ, PATH=str(root/'bin')+':'+os.environ['PATH']),
                                       capture_output=True, text=True, check=True)
-                self.assertEqual('--network' in result.stdout.splitlines(), option=='--backup')
+                self.assertNotIn('--network', result.stdout.splitlines())
+                self.assertNotIn('tools-mbk-mysql', result.stdout.splitlines())
 
     def test_real_timer_branch_reaches_product_cli_and_cleans_units(self):
         source=(ROOT/'tests/helpers/mylogi-backup-live-regression.sh').read_text()
@@ -149,7 +185,7 @@ class MysqlBackupGateTests(unittest.TestCase):
             matrix_path=root/'tests/tools-test-matrix.yaml'; matrix=yaml.safe_load(matrix_path.read_text())
             for case in matrix['test_cases']:
                 if case['status']!='na': case['status']='pass'
-            matrix['coverage_summary'].update({'pass':70,'pending':0,'fail':0,'overall_assessment':'contract fixture'})
+            matrix['coverage_summary'].update({'pass':sum(c['status']=='pass' for c in matrix['test_cases']),'pending':0,'fail':0,'overall_assessment':'contract fixture'})
             matrix['mysql_backup_requalification']['evidence']='qualification.json'
             matrix_path.write_text(yaml.safe_dump(matrix,allow_unicode=True))
             (root/'qualification.json').write_text(json.dumps({'inputs':{},'stages':{}}))

@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import importlib.util
+import os
+import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 
@@ -71,6 +74,42 @@ class KubePublishCliContractTests(unittest.TestCase):
     def test_partial_remote_distribution_is_failure(self):
         source = TOOL.read_text(encoding="utf-8")
         self.assertIn("if success_hosts == len(hosts):", source)
+
+    def test_remote_load_failure_is_not_hidden_by_batch_shell(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            images = root / 'images'; images.mkdir()
+            for name in ('first.tar', 'second.tar'):
+                (images / name).write_bytes(b'fixture archive')
+            binary = root / 'docker'
+            binary.write_text('#!/bin/sh\necho load >>"$LOAD_CALLS"\nexit 23\n')
+            binary.chmod(0o755)
+            calls = root / 'load.calls'
+
+            class RemoteShell:
+                remote_dir = None
+
+                def run_command(self, command, timeout=None):
+                    if command.startswith('mkdir -p '):
+                        self.remote_dir = command.removeprefix('mkdir -p ')
+                    command = command.replace(self.remote_dir, str(root / 'remote'))
+                    result = subprocess.run(['bash', '-c', command], capture_output=True, text=True,
+                        env=dict(os.environ, PATH=str(root) + ':' + os.environ['PATH'], LOAD_CALLS=str(calls)))
+                    return result.returncode == 0, result.stdout + result.stderr
+
+                def copy_file(self, source, destination):
+                    shutil.copy2(source, root / 'remote' / Path(destination).name)
+                    return True
+
+                def close(self):
+                    pass
+
+            with mock.patch.object(self.tool, 'SSHManager', return_value=RemoteShell()), \
+                    mock.patch.object(self.tool, '_remote_ssh_runtime_ready', return_value=True):
+                result = self.tool.distribute_images([('fixture.example', 22)], str(images), 'docker')
+            self.assertFalse(result, 'A failed image load must not report distribution success')
+            self.assertEqual(calls.read_text().splitlines(), ['load'], 'Stop at the first failed archive')
+            self.assertFalse((root / 'remote').exists())
 
     def test_live_fixture_uses_an_immutable_talkedu_image(self):
         fixture = LIVE_FIXTURE.read_text(encoding="utf-8")

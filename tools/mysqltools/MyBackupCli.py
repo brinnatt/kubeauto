@@ -40,11 +40,13 @@ import json
 import shutil
 import subprocess
 import argparse
+import contextlib
+import tempfile
 import time
 import fcntl
 import re
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from logging.handlers import RotatingFileHandler
 from typing import Optional, List
@@ -150,6 +152,7 @@ single-transaction lock-tables lock-all-tables source-data master-data
 set-gtid-purged comments dump-date quick no-data no-create-info ignore-table
 ignore-table-data where delete-source-logs delete-master-logs flush-logs flush-privileges
 backup prepare copy-back move-back decompress decrypt export stats target-dir datadir
+log-bin log-bin-index
 incremental incremental-basedir incremental-dir incremental-lsn incremental-history-name
 incremental-history-uuid apply-log-only stream compress remove-original lock-ddl no-lock
 ignore-error no-backup-locks no-server-version-check start-position stop-position start-datetime
@@ -305,8 +308,27 @@ class Config:
         self.mysql_password = defaults["mysql_password"] or os.getenv("MYSQL_BACKUP_PASSWORD", "")
         self.mysql_socket = defaults["mysql_socket"]
         self.mysql_service = defaults["mysql_service"]
+        self.mysql_container = defaults.get("mysql_container", "")
+        if self.mysql_container and not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", self.mysql_container):
+            self._fail("mysql_container must be a Docker container name or ID")
         self.mysql_datadir = Path(defaults["mysql_datadir"])
         self.mysql_binlog_prefix = defaults["mysql_binlog_prefix"]
+        self.mysql_binlog_dir = Path(defaults.get("mysql_binlog_dir") or self.mysql_datadir)
+        self.mysql_binlog_index = Path(defaults.get("mysql_binlog_index") or
+                                      self.mysql_binlog_dir / (self.mysql_binlog_prefix + ".index"))
+        for path in (self.backup_base, self.mysql_datadir, self.mysql_binlog_dir, self.mysql_binlog_index):
+            if not path.is_absolute():
+                self._fail("MySQL and backup paths must be absolute in the tool's execution namespace")
+        if (self.mysql_datadir.resolve() == Path('/') or
+                self.mysql_binlog_index.parent.resolve() != self.mysql_binlog_dir.resolve() or
+                self.mysql_binlog_index.suffix != '.index' or
+                Path(self.mysql_binlog_prefix).name != self.mysql_binlog_prefix or
+                self.mysql_binlog_prefix in ('', '.', '..')):
+            self._fail("Unsafe datadir, binlog prefix or index location")
+        for source in (self.mysql_datadir.resolve(), self.mysql_binlog_dir.resolve()):
+            target = self.backup_base.resolve()
+            if target == source or source in target.parents or target in source.parents:
+                self._fail("backup_base must not overlap MySQL data or binlog paths")
         self.xtrabackup_parallel = int(defaults.get("xtrabackup_parallel", 4))
         self.xtrabackup_compress_threads = int(defaults.get("xtrabackup_compress_threads", 4))
         self.xtrabackup_use_memory = defaults.get("xtrabackup_use_memory", "1G")
@@ -531,12 +553,19 @@ class BackupManager:
         Reference: https://docs.percona.com/percona-xtrabackup/8.4/
         """
         self.logger.info("START FULL BACKUP ...")
+        if self.config.mysql_container:
+            if not self.manage_mysql_service('status'):
+                raise RuntimeError('MySQL container must be running for backup')
+            self._verify_container_mounts({})
         lock_ddl = self.backup_lock_ddl()
         target = self.config.backup_base / "full" / self.today / self.now / "backup"
         target.mkdir(parents=True)
         
         backup_cmd = [
             "xtrabackup", "--backup",
+            "--datadir={0}".format(self.config.mysql_datadir),
+            "--log-bin={0}".format(self.config.mysql_binlog_dir / self.config.mysql_binlog_prefix),
+            "--log-bin-index={0}".format(self.config.mysql_binlog_index),
             "--target-dir={0}".format(target),
             "--user={0}".format(self.config.mysql_user),
             "--password={0}".format(self.config.mysql_password),
@@ -566,6 +595,7 @@ class BackupManager:
                 if not found:
                     self.fail("Backup incomplete: missing {0} (checked: {0}, {0}.zst, {0}.qp, {0}.lz4)".format(req_file))
             
+            (target / ".binlog_generation").write_text(self.today + "/" + self.now)
             (target / ".backup_ok").touch()
             latest = self.config.backup_base / "full/latest_raw"
             if latest.exists() or latest.is_symlink():
@@ -575,6 +605,10 @@ class BackupManager:
             except (OSError, RuntimeError) as e:
                 self.logger.error("Failed to create symlink: {0}".format(e))
                 raise
+            latest_incr = self.config.backup_base / 'incr/latest'
+            if latest_incr.is_symlink():
+                latest_incr.unlink()
+            (self.config.backup_base / "lock/restore-needs-full").unlink(missing_ok=True)
             self.logger.info("FULL BACKUP DONE SUCCESSFULLY!")
         except Exception as e:
             self.logger.error("FULL BACKUP FAILED: {0}".format(e))
@@ -588,6 +622,11 @@ class BackupManager:
         Reference: https://docs.percona.com/percona-xtrabackup/8.4/
         """
         self.logger.info("START INCREMENTAL BACKUP ...")
+        self._require_fresh_full()
+        if self.config.mysql_container:
+            if not self.manage_mysql_service('status'):
+                raise RuntimeError('MySQL container must be running for backup')
+            self._verify_container_mounts({})
         latest_full = self.config.backup_base / "full/latest_raw"
         if not latest_full.exists():
             self.fail("NO FULL BACKUP, please make sure you have a full backup")
@@ -619,6 +658,9 @@ class BackupManager:
         
         backup_cmd = [
             "xtrabackup", "--backup",
+            "--datadir={0}".format(self.config.mysql_datadir),
+            "--log-bin={0}".format(self.config.mysql_binlog_dir / self.config.mysql_binlog_prefix),
+            "--log-bin-index={0}".format(self.config.mysql_binlog_index),
             "--target-dir={0}".format(target),
             "--incremental-basedir={0}".format(base),
             "--user={0}".format(self.config.mysql_user),
@@ -664,6 +706,27 @@ class BackupManager:
                 shutil.rmtree(str(target))
             raise
     
+    def _require_fresh_full(self):
+        if (self.config.backup_base / 'lock/restore-needs-full').exists():
+            raise RuntimeError('Take a new full backup after restore before incremental or binlog backup')
+
+    def _binlog_root(self, full=None):
+        """A full generation owns its immutable log history and archive cursor."""
+        root = self.config.backup_base / 'binlog'
+        if full is None:
+            latest = self.config.backup_base / 'full/latest_raw'
+            if not latest.exists():
+                return root
+            full = latest.resolve()
+        marker = Path(full) / '.binlog_generation'
+        if not marker.exists():
+            return root  # Previously created backups retain their legacy layout.
+        generation = marker.read_text().strip()
+        expected = Path(full).parent.parent.name + '/' + Path(full).parent.name
+        if generation != expected or not re.fullmatch(r'\d{4}-\d{2}-\d{2}/\d{6}', generation):
+            raise RuntimeError('Backup binlog generation is invalid')
+        return root / 'generation' / generation
+
     def binlog_backup(self, backall=False):
         """
         binlog归档
@@ -674,23 +737,38 @@ class BackupManager:
                 True: 备份所有binlog，包括当前活跃的（手动停mysql服务）
         """
         self.logger.info("CHECK AND ARCHIVE BINLOG ...")
-        state = self.config.backup_base / "binlog/state/last_archived"
+        self._require_fresh_full()
+        archive_root = self._binlog_root()
+        state = archive_root / "state/last_archived"
         state.parent.mkdir(parents=True, exist_ok=True)
         last_archived = None
         if state.exists():
             try:
                 last_archived = state.read_text().strip()
             except (IOError, OSError) as e:
-                self.logger.warning("Failed to read last_archived state: {0}, starting from beginning".format(e))
+                raise RuntimeError("Unable to read binlog archive state") from e
 
-        index = self.config.mysql_datadir / "{0}.index".format(self.config.mysql_binlog_prefix)
+        index = self.config.mysql_binlog_index
         if not index.exists():
             self.fail("{0}.index NOT FOUND".format(self.config.mysql_binlog_prefix))
 
         with open(str(index)) as f:
             # MySQL writes either absolute or relative paths in the .index
-            # file; archive by the datadir-local basename in both cases.
+            # file; resolve basenames in the configured local binlog directory.
             binlogs = [Path(l.strip()).name for l in f if l.strip()]
+
+        pattern = re.compile(re.escape(self.config.mysql_binlog_prefix) + r'\.\d+')
+        if any(not pattern.fullmatch(name) for name in binlogs):
+            raise RuntimeError('Invalid binlog index entry')
+        numbers = [int(name.rsplit('.', 1)[1]) for name in binlogs]
+        if any(right != left + 1 for left, right in zip(numbers, numbers[1:])):
+            raise RuntimeError('Binlog index has a gap or duplicate entry')
+        if last_archived:
+            if not pattern.fullmatch(last_archived):
+                raise RuntimeError('Invalid binlog archive state')
+            last_number = int(last_archived.rsplit('.', 1)[1])
+            if numbers and (numbers[0] > last_number + 1 or numbers[-1] < last_number):
+                raise RuntimeError('Binlog history changed or was purged before archival; take a new full backup')
 
         if len(binlogs) == 0:
             self.logger.info("NO BINLOG FOUND")
@@ -708,24 +786,30 @@ class BackupManager:
             self.logger.info("BACKUP MODE: ONLY CLOSED BINLOGS")
 
         if last_archived:
-            closed = [b for b in closed if b > last_archived]
+            closed = [b for b in closed if int(b.rsplit(".", 1)[1]) > last_number]
 
         if not closed:
             self.logger.info("NO NEW BINLOG")
             return
 
-        dst = self.config.backup_base / "binlog" / self.today
+        dst = archive_root / self.today
         dst.mkdir(parents=True, exist_ok=True)
 
         archived = []
         for b in closed:
-            src_file = self.config.mysql_datadir / b
+            src_file = self.config.mysql_binlog_dir / b
             dst_file = dst / b
             if not src_file.exists():
-                self.logger.warning("Binlog file {0} not found, skipping".format(b))
-                continue
+                raise RuntimeError("Binlog archive source missing: " + b)
             try:
-                shutil.copy2(str(src_file), str(dst_file))
+                with tempfile.NamedTemporaryFile(prefix=".archive-", dir=str(dst), delete=False) as temporary:
+                    temporary_path = Path(temporary.name)
+                try:
+                    shutil.copy2(str(src_file), str(temporary_path))
+                    os.replace(str(temporary_path), str(dst_file))
+                finally:
+                    if temporary_path.exists():
+                        temporary_path.unlink()
                 archived.append(b)
                 self.logger.info("ARCHIVED {0}".format(b))
             except (IOError, OSError, shutil.Error) as e:
@@ -735,12 +819,53 @@ class BackupManager:
             self.fail("NO BINLOG FILES TO ARCHIVE")
         
         try:
-            state.write_text(archived[-1])
+            with tempfile.NamedTemporaryFile(mode="w", prefix=".state-", dir=str(state.parent), delete=False) as temporary:
+                temporary.write(archived[-1])
+                temporary_path = Path(temporary.name)
+            try:
+                os.replace(str(temporary_path), str(state))
+            finally:
+                if temporary_path.exists():
+                    temporary_path.unlink()
         except (IOError, OSError) as e:
             self.logger.error("Failed to write last_archived state: {0}".format(e))
             raise
         self.logger.info("BINLOG ARCHIVE COMPLETE SUCCESSFULLY!")
     
+    def backup_chain(self, date):
+        """Select one full generation and its contiguous raw incremental chain."""
+        root = self.config.backup_base
+        def full_time(path):
+            return path.parent.parent.name, path.parent.name
+        fulls = sorted((p for p in (root / 'full').glob('*/*/backup')
+                        if p.is_dir() and re.fullmatch(r'\d{4}-\d{2}-\d{2}', full_time(p)[0])
+                        and re.fullmatch(r'\d{6}', full_time(p)[1])), key=full_time)
+        matches = [p for p in fulls if full_time(p)[0] == date]
+        if not matches:
+            self.fail('FULL BACKUP DIRECTORY NOT FOUND for date ' + date)
+        full = matches[-1]
+        start = full_time(full)
+        following = [full_time(p) for p in fulls if full_time(p) > start]
+        end = min(following) if following else ('9999-99-99', '999999')
+        increments = sorted(p for p in (root / 'incr').glob('*/*')
+                            if p.is_dir() and start < (p.parent.name, p.name) < end
+                            and re.fullmatch(r'\d{4}-\d{2}-\d{2}', p.parent.name)
+                            and re.fullmatch(r'\d{6}', p.name))
+        previous = 0
+        for path in [full] + increments:
+            if not (path / '.backup_ok').is_file():
+                self.fail('BACKUP INVALID: missing .backup_ok ' + str(path))
+            try:
+                values = dict(line.strip().split(' = ', 1) for line in
+                              (path / 'xtrabackup_checkpoints').read_text().splitlines() if ' = ' in line)
+                first, last = int(values['from_lsn']), int(values['to_lsn'])
+            except (OSError, ValueError, KeyError):
+                self.fail('BACKUP CHECKPOINT INVALID ' + str(path))
+            if first != previous or last < first:
+                self.fail('INCREMENTAL LSN CHAIN INVALID ' + str(path))
+            previous = last
+        return full, increments
+
     def checksum(self, date=None):
         """校验备份完整性"""
         date = date or self.latest_full_date()
@@ -749,28 +874,11 @@ class BackupManager:
         
         self.logger.info("CHECKSUM {0}".format(date))
         
-        # 查找backup目录（可能是文件或目录）
-        full_backup_path = self.config.backup_base / "full" / date
-        if not full_backup_path.exists():
-            self.fail("BACKUP DATE {0} NOT FOUND".format(date))
-        
-        # rglob可能返回文件或目录，需要过滤
-        full = [p for p in full_backup_path.rglob("backup") if p.is_dir()]
-        if not full:
-            self.fail("FULL BACKUP DIRECTORY NOT FOUND for date {0}".format(date))
-        
-        # 检查.backup_ok标记文件（这个文件不会被压缩）
-        if not (full[0] / ".backup_ok").exists():
-            self.fail("FULL INVALID: missing .backup_ok")
-        incr = self.config.backup_base / "incr" / date
-        if incr.exists():
-            for d in incr.iterdir():
-                if d.is_dir() and not (d / ".backup_ok").exists():
-                    self.fail("INCR INVALID {0}".format(d))
-        binlog = self.config.backup_base / "binlog"
+        full, _ = self.backup_chain(date)
+        binlog = self._binlog_root(full)
         # 只检查文件，排除目录
         binlog_files = [f for f in binlog.rglob("{0}.*".format(self.config.mysql_binlog_prefix)) 
-                        if f.is_file() and f.name != "{0}.index".format(self.config.mysql_binlog_prefix)]
+                        if f.is_file() and f.relative_to(binlog).parts[0] != "generation" and f.name != "{0}.index".format(self.config.mysql_binlog_prefix)]
         if not binlog_files:
             self.fail("BINLOG MISSING")
         self.logger.info("CHECKSUM OK")
@@ -789,7 +897,7 @@ class BackupManager:
         prefix = re.escape(self.config.mysql_binlog_prefix)
         files = [
             f for f in directory.rglob("{0}.*".format(self.config.mysql_binlog_prefix))
-            if f.is_file() and re.fullmatch(r"{0}\.\d+".format(prefix), f.name)
+            if f.is_file() and f.relative_to(directory).parts[0] != "generation" and re.fullmatch(r"{0}\.\d+".format(prefix), f.name)
         ]
         
         if not files:
@@ -834,19 +942,17 @@ class BackupManager:
             "status": "READY"
         }
 
-        # 查找backup目录
-        full_backup_path = self.config.backup_base / "full" / date
-        full = [p for p in full_backup_path.rglob("backup") if p.is_dir()]
-        if not full:
-            self.fail("FULL BACKUP DIRECTORY NOT FOUND for date {0}".format(date))
-        plan["full"] = str(full[0])
+        full, increments = self.backup_chain(date)
+        plan['full'] = str(full)
+        plan['incr'] = [str(path) for path in increments]
 
-        incr = self.config.backup_base / "incr" / date
-        if incr.exists():
-            plan["incr"] = [str(d) for d in sorted([d for d in incr.iterdir() if d.is_dir()])]
-
-        binlog_dir = self.config.backup_base / "binlog"
+        binlog_dir = self._binlog_root(full)
+        plan["binlog_root"] = str(binlog_dir)
         plan["binlog"] = self.check_binlog_sequence(binlog_dir)
+        if self.config.mysql_container:
+            if not self.manage_mysql_service('status'):
+                self.fail('MySQL container must be running to audit its storage mapping')
+            self._verify_container_mounts(plan)
 
         audit = self.config.audit_base / date
         audit.mkdir(parents=True, exist_ok=True)
@@ -870,6 +976,9 @@ class BackupManager:
         if action not in valid_actions:
             self.logger.error("Invalid action '{0}'. Valid actions: {1}".format(action, ", ".join(valid_actions)))
             return False
+
+        if self.config.mysql_container:
+            return self._manage_mysql_container(action, timeout)
 
         # 检查服务是否存在
         try:
@@ -934,6 +1043,70 @@ class BackupManager:
 
         self.logger.error("SERVICE {0} TIMEOUT ({1}s). Current state: {2}".format(action.upper(), timeout, current_state))
         return False
+
+    def _verify_container_mounts(self, plan):
+        """Refuse a different daemon/volume mapping before touching MySQL data."""
+        values = self.mysql_cmd('SELECT @@datadir, @@log_bin_basename, @@log_bin_index, @@socket;',
+                                batch=True, skip_column_names=True).strip().split('\t')
+        if len(values) != 4:
+            raise RuntimeError('Unable to read MySQL container storage paths')
+        if Path(values[1]).name != self.config.mysql_binlog_prefix:
+            raise RuntimeError('Configured MySQL binlog prefix does not match the server')
+        mounts = json.loads(self.run_cmd(['docker', 'inspect', '--type', 'container', '--format',
+                                         '{{json .Mounts}}', self._mysql_container_id]))
+        def local_path(server_path):
+            path = Path(server_path)
+            for mount in sorted(mounts, key=lambda m: len(m['Destination']), reverse=True):
+                destination = Path(mount['Destination'])
+                if path == destination or destination in path.parents:
+                    if mount['Type'] != 'bind' or not mount['RW']:
+                        break
+                    return (Path(mount['Source']) / path.relative_to(destination)).resolve()
+            raise RuntimeError('MySQL storage is not backed by a verified writable bind mount: ' + server_path)
+        configured = [self.config.mysql_datadir, self.config.mysql_binlog_dir,
+                      self.config.mysql_binlog_index, Path(self.config.mysql_socket)]
+        server = [values[0], str(Path(values[1]).parent), values[2], values[3]]
+        for remote, local in zip(server, configured):
+            if local_path(remote) != local.resolve():
+                raise RuntimeError('Configured MySQL path does not match container bind mount: ' + str(local))
+        server_dir = str(Path(values[1]).parent)
+        if plan.get('server_binlog_dir', server_dir) != server_dir:
+            raise RuntimeError('Container binlog path changed since restore audit')
+        plan['server_binlog_dir'] = server_dir
+
+    def _manage_mysql_container(self, action, timeout):
+        """Operate on one pinned container and distinguish running from SQL-ready."""
+        target = getattr(self, '_mysql_container_id', self.config.mysql_container)
+        def state():
+            result = self.run_cmd(['docker', 'inspect', '--type', 'container', '--format',
+                                   '{{.Id}} {{.State.Status}}', target]).strip().split()
+            if len(result) != 2 or not re.fullmatch(r'[a-f0-9]{64}', result[0]):
+                raise RuntimeError('Unable to verify MySQL container identity/state')
+            return result
+        identity, current = state()
+        self._mysql_container_id = target = identity
+        if current not in ('running', 'exited', 'created'):
+            raise RuntimeError('MySQL container is not in a manageable state: ' + current)
+        if action == 'status':
+            return current == 'running'
+        command = ['docker', action]
+        if action in ('stop', 'restart'):
+            command.extend(['--timeout', str(timeout)])
+        self.run_cmd(command + [identity])
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            _, current = state()
+            if action == 'stop' and current in ('exited', 'created'):
+                return True
+            if action in ('start', 'restart') and current == 'running':
+                try:
+                    self.mysql_cmd('SELECT 1;')
+                    return True
+                except RuntimeError:
+                    pass
+            time.sleep(1)
+        self.logger.error('MySQL container %s did not reach %s within %ss', identity, action, timeout)
+        return False
     
     def _load_restore_plan(self, date):
         """
@@ -978,6 +1151,11 @@ class BackupManager:
         if any(not re.fullmatch(r"{0}\.\d+".format(prefix), name) for name in plan.get("binlog", [])):
             self.fail("PLAN BINLOG NAME INVALID")
 
+        full, increments = self.backup_chain(date)
+        if Path(plan.get('binlog_root', self.config.backup_base / 'binlog')).resolve() != self._binlog_root(full).resolve():
+            raise RuntimeError('Restore plan binlog generation does not match its full backup')
+        if plan['full'] != str(full) or plan.get('incr', []) != [str(path) for path in increments]:
+            raise RuntimeError('Backup chain changed since restore audit; generate a new plan')
         return plan, plan_file
     
     def _decompress_backup(self, plan):
@@ -1062,69 +1240,104 @@ class BackupManager:
             ])
     
     def _restore_datadir(self, plan):
-        """
-        恢复数据目录
-        Reference: https://docs.percona.com/percona-xtrabackup/8.4/restore-a-backup.html
-        官方最佳实践：使用mv重命名现有数据目录（避免跨盘拷贝的性能问题）
-        
-        Args:
-            plan: 恢复计划字典
-        """
-        self.logger.info("CLEANING DATA DIRECTORY: {0}".format(self.config.mysql_datadir))
-        
-        # 备份现有数据目录（使用mv重命名，避免跨盘拷贝的性能问题）
-        # 官方推荐：mv /var/lib/mysql /var/lib/mysql_old
-        if self.config.mysql_datadir.exists():
-            if self.config.mysql_datadir.is_dir():
-                # 在同目录下重命名为.bak，避免跨盘拷贝
-                datadir_backup = self.config.mysql_datadir.parent / "{0}.bak_{1}".format(
-                    self.config.mysql_datadir.name,
-                    datetime.now().strftime('%Y%m%d_%H%M%S'))
-                
-                # 如果备份目录已存在，先删除
-                if datadir_backup.exists():
-                    self.logger.warning("Backup directory {0} already exists, removing...".format(datadir_backup))
-                    try:
-                        shutil.rmtree(str(datadir_backup))
-                    except (OSError, shutil.Error) as e:
-                        self.logger.error("Failed to remove existing backup directory: {0}".format(e))
-                        raise
-                
-                self.logger.info("RENAMING EXISTING DATADIR TO: {0}".format(datadir_backup))
+        """Copy into empty destinations, retaining a rollback of only owned paths."""
+        data = self.config.mysql_datadir
+        logs = self.config.mysql_binlog_dir
+        index = self.config.mysql_binlog_index
+        if data.is_symlink() or not data.is_dir() or data.resolve() == Path('/'):
+            raise RuntimeError('Restore requires an existing ordinary MySQL datadir')
+        owner = data.stat()
+        suffix = datetime.now().strftime('%Y%m%d_%H%M%S_%f')
+        saved = data.with_name(data.name + '.bak_' + suffix)
+        external = data.resolve() != logs.resolve() and data.resolve() not in logs.resolve().parents
+        saved_logs = logs / ('.' + self.config.mysql_binlog_prefix + '.before_restore_' + suffix)
+        pattern = re.compile(re.escape(self.config.mysql_binlog_prefix) + r'\.\d+')
+        def binlog_files():
+            return [path for path in logs.iterdir() if pattern.fullmatch(path.name)] + ([index] if index.exists() else [])
+        if external and any(p.is_symlink() or not p.is_file() for p in binlog_files()):
+            raise RuntimeError('Refusing non-regular external binlog/index files')
+        moved = copying = False
+        self._restore_restart_safe = False
+        try:
+            if external:
+                saved_logs.mkdir()
+                for path in binlog_files():
+                    path.rename(saved_logs / path.name)
+            data.rename(saved)
+            moved = True
+            data.mkdir(mode=0o750)
+            logs.mkdir(parents=True, exist_ok=True)
+            copying = True
+            self.run_cmd([
+                'xtrabackup', '--copy-back', '--target-dir', plan['full'], '--datadir', str(data),
+                '--log-bin=' + str(logs / self.config.mysql_binlog_prefix),
+                '--log-bin-index=' + str(index),
+            ])
+            # PXB writes the copy-back process's path into an external index.
+            # MySQL must instead read paths visible inside its own container.
+            if self.config.mysql_container:
+                server_dir = plan.get('server_binlog_dir')
+                if not server_dir:
+                    raise RuntimeError('Verified container binlog path is missing')
+                names = [Path(line.strip()).name for line in index.read_text().splitlines() if line.strip()]
+                if not names or any(not pattern.fullmatch(name) or not (logs / name).is_file() for name in names):
+                    raise RuntimeError('Restored binlog index does not reference valid local files')
+                temporary = index.with_name(index.name + '.restore-tmp')
                 try:
-                    # 使用rename（同文件系统内移动，非常快）
-                    self.config.mysql_datadir.rename(datadir_backup)
-                except (OSError, RuntimeError) as e:
-                    # 如果rename失败（可能跨文件系统），使用shutil.move
-                    self.logger.warning("rename failed (possibly cross-filesystem), using shutil.move: {0}".format(e))
-                    try:
-                        shutil.move(str(self.config.mysql_datadir), str(datadir_backup))
-                    except (shutil.Error, OSError) as e2:
-                        self.logger.error("Failed to move existing datadir: {0}".format(e2))
-                        raise
-            else:
-                # 如果是文件而不是目录，直接删除
-                self.logger.warning("datadir is a file, not a directory, removing...")
-                try:
-                    self.config.mysql_datadir.unlink()
-                except OSError as e:
-                    self.fail("Failed to remove existing datadir file: {0}".format(e))
-        
-        # 创建新的空数据目录（官方要求：datadir必须为空）
-        self.config.mysql_datadir.mkdir(parents=True, exist_ok=True)
-        
-        # 复制恢复文件到数据目录
-        self.logger.info("COPYING BACK DATA...")
-        copy_back_cmd = [
-            "xtrabackup", "--copy-back",
-            "--target-dir", plan["full"],
-            "--datadir", str(self.config.mysql_datadir)
-        ]
-        self.run_cmd(copy_back_cmd)
-        
-        # 设置正确的权限
-        self.run_cmd(["chown", "-R", "mysql:mysql", str(self.config.mysql_datadir)])
-    
+                    temporary.write_text(''.join(str(Path(server_dir) / name) + '\n' for name in names))
+                    os.replace(str(temporary), str(index))
+                finally:
+                    if temporary.exists():
+                        temporary.unlink()
+            identity = '{}:{}'.format(owner.st_uid, owner.st_gid)
+            self.run_cmd(['chown', '-R', identity, str(data)])
+            if external:
+                for path in binlog_files():
+                    self.run_cmd(['chown', identity, str(path)])
+        except BaseException:
+            # A failed copy-back must never restart on a partial/empty datadir.
+            # If this rollback fails, the caller leaves MySQL stopped.
+            if moved:
+                if data.exists():
+                    shutil.rmtree(str(data))
+                saved.rename(data)
+            if external and saved_logs.exists():
+                if copying:
+                    for path in binlog_files():
+                        path.unlink()
+                for path in saved_logs.iterdir():
+                    path.rename(logs / path.name)
+                saved_logs.rmdir()
+            self._restore_restart_safe = True
+            raise
+        self._restore_restart_safe = True
+        self.logger.info('Original datadir retained at %s', saved)
+        if external:
+            self.logger.info('Original binary logs retained at %s; other logs unchanged', saved_logs)
+
+    def _binlog_replay_files(self, plan):
+        """Start after the last physical snapshot, with every audited file present."""
+        snapshot = Path((plan.get('incr') or [plan['full']])[-1])
+        try:
+            fields = (snapshot / 'xtrabackup_binlog_info').read_text().split()
+            name, position = fields[0], int(fields[1])
+        except (OSError, ValueError, IndexError) as error:
+            raise RuntimeError('Physical snapshot binlog coordinates are missing or invalid') from error
+        if position < 4 or name not in plan['binlog']:
+            raise RuntimeError('Archived binlogs do not include the physical snapshot position')
+        names = plan['binlog'][plan['binlog'].index(name):]
+        numbers = [int(item.rsplit('.', 1)[1]) for item in names]
+        if any(right != left + 1 for left, right in zip(numbers, numbers[1:])):
+            raise RuntimeError('Archived binlog sequence has a gap after the snapshot')
+        files = []
+        for name in names:
+            archive_root = Path(plan.get('binlog_root', self.config.backup_base / 'binlog'))
+            matches = sorted(path for path in archive_root.rglob(name) if path.is_file() and path.relative_to(archive_root).parts[0] != "generation")
+            if len(matches) != 1:
+                raise RuntimeError('Archived binlog missing or ambiguous: ' + name)
+            files.append(matches[0])
+        return position, files
+
     def _apply_binlog(self, plan, binlog_start_time, binlog_stop_time):
         """
         应用binlog
@@ -1140,29 +1353,16 @@ class BackupManager:
         if not binlog_start_time:
             self.fail("BINLOG START TIME REQUIRED! Use --binlog-start-time 'YYYY-MM-DD HH:MM:SS'")
         
-        # 查找binlog文件
-        binlog_dir = self.config.backup_base / "binlog"
-        binlog_files = []
-        for binlog_name in plan["binlog"]:
-            # 只查找文件，排除目录
-            found_files = [f for f in binlog_dir.rglob(binlog_name) if f.is_file()]
-            if found_files:
-                binlog_files.append(str(found_files[0]))
-            else:
-                self.logger.warning("Binlog file {0} not found, skipping".format(binlog_name))
+        position, binlog_files = self._binlog_replay_files(plan)
 
-        if not binlog_files:
-            self.logger.info("NO BINLOG FILES TO APPLY")
-            return
-        
         # 构建mysqlbinlog命令
-        mysqlbinlog_cmd = ["mysqlbinlog"] + self.command_options("mysqlbinlog")
+        mysqlbinlog_cmd = ["mysqlbinlog", "--start-position=" + str(position)] + self.command_options("mysqlbinlog")
         mysqlbinlog_cmd.extend(["--start-datetime", binlog_start_time])
         
         if binlog_stop_time:
             mysqlbinlog_cmd.extend(["--stop-datetime", binlog_stop_time])
         
-        mysqlbinlog_cmd.extend(sorted(binlog_files))
+        mysqlbinlog_cmd.extend(str(path) for path in binlog_files)
         
         # 执行binlog恢复
         try:
@@ -1219,6 +1419,23 @@ class BackupManager:
         with open(str(plan_file), "w") as f:
             json.dump(plan, f, indent=2)
     
+    @contextlib.contextmanager
+    def restore_workspace(self, plan):
+        """Prepare disposable copies; the raw backup chain remains reusable."""
+        with tempfile.TemporaryDirectory(prefix='restore-work-', dir=str(self.config.backup_base)) as directory:
+            working = dict(plan)
+            paths = [plan['full']] + plan['incr']
+            copies = []
+            for number, original in enumerate(paths):
+                source = Path(original)
+                if any(path.is_symlink() for path in source.rglob('*')):
+                    raise RuntimeError('Refusing symbolic links in the raw backup tree')
+                target = Path(directory) / str(number)
+                shutil.copytree(str(source), str(target))
+                copies.append(str(target))
+            working['full'], working['incr'] = copies[0], copies[1:]
+            yield working
+
     def restore(self, date=None, binlog_start_time=None, binlog_stop_time=None,
                 confirm_destructive=False):
         """
@@ -1239,58 +1456,81 @@ class BackupManager:
         
         # Validate the immutable audit plan before mutating the service/datadir.
         plan, plan_file = self._load_restore_plan(date)
+        # Reject a missing/broken replay client while the original server and
+        # data are still intact, rather than discovering it after copy-back.
+        self.run_cmd(['mysqlbinlog', '--version'])
         was_active = self.manage_mysql_service('status')
-        # Treat an active service as stopped-on-behalf-of-restore before issuing
-        # the stop command, so an interrupt during that command is recoverable.
-        stopped = bool(was_active)
-        try:
-            # 1. 停止MySQL服务
-            if was_active and not self.manage_mysql_service('stop', timeout=30):
-                self.fail("FAILED TO STOP MYSQL SERVICE")
-
-            # 2. 备份最后一个binlog
-            self.binlog_backup(backall=True)
-
-            # 3. 解压压缩的备份文件
-            self._decompress_backup(plan)
-
-            # 4. 准备备份文件
-            self._prepare_backup(plan)
-
-            # 5. 恢复数据目录
-            self._restore_datadir(plan)
-
-            # 6. 启动MySQL服务
-            self.logger.info("STARTING MYSQL SERVICE...")
-            if stopped and not self.manage_mysql_service('start', timeout=60):
-                self.fail("FAILED TO START MYSQL SERVICE")
-
-            # 7. 应用binlog
-            self._apply_binlog(plan, binlog_start_time, binlog_stop_time)
-
-            # 8. 更新恢复计划状态
-            self._update_restore_plan(plan, plan_file, binlog_start_time, binlog_stop_time)
-        except BaseException:
-            # Never leave a previously running server stopped after a failed restore.
-            if stopped and not self.manage_mysql_service('status'):
+        if self.config.mysql_container:
+            self._verify_container_mounts(plan)
+        # Preparing modifies the backup. Keep raw inputs and the live source
+        # intact until the working copy is ready for copy-back.
+        with self.restore_workspace(plan) as working:
+            self._decompress_backup(working)
+            self._binlog_replay_files(working)
+            self._prepare_backup(working)
+            stopped = False
+            try:
+                if was_active:
+                    stopped = True  # An interrupt during stop is recoverable.
+                    if not self.manage_mysql_service('stop', timeout=30):
+                        self.fail('FAILED TO STOP MYSQL SERVICE')
                 try:
-                    self.manage_mysql_service('start', timeout=60)
-                except Exception as restart_error:
-                    self.logger.error("FAILED TO RESTORE MYSQL SERVICE: %s", restart_error)
-            raise
-        
+                    self.mysql_cmd('SELECT 1;')
+                except RuntimeError:
+                    pass
+                else:
+                    raise RuntimeError('MySQL is still accepting SQL; refusing restore with this service configuration')
+                if not (self.config.backup_base / 'lock/restore-needs-full').exists():
+                    self.binlog_backup(backall=True)
+                self._restore_datadir(working)
+                # Copy-back creates a new server history. Do not append it to
+                # the old backup's archive cursor before taking a new full.
+                self._restore_restart_safe = False
+                (self.config.backup_base / 'lock/restore-needs-full').write_text('new full required after restore\n')
+                self._restore_restart_safe = True
+                if stopped and not self.manage_mysql_service('start', timeout=60):
+                    self.fail('FAILED TO START MYSQL SERVICE')
+                self._apply_binlog(working, binlog_start_time, binlog_stop_time)
+                self._update_restore_plan(plan, plan_file, binlog_start_time, binlog_stop_time)
+            except BaseException:
+                if stopped and getattr(self, '_restore_restart_safe', True) and not self.manage_mysql_service('status'):
+                    try:
+                        self.manage_mysql_service('start', timeout=60)
+                    except Exception as restart_error:
+                        self.logger.error('FAILED TO RESTORE MYSQL SERVICE: %s', restart_error)
+                raise
+
         self.logger.info("=" * 60)
         self.logger.info("MYSQL RESTORE COMPLETED SUCCESSFULLY!")
         self.logger.info("=" * 60)
     
     def purge(self, backup_days=15, binlog_days=30):
         """清理旧备份"""
-        self.run_cmd(["find", str(self.config.backup_base / "full"), "-mindepth", "1", "-mtime", "+{0}".format(backup_days),
-             "-exec", "rm", "-rf", "{}", "+"])
-        self.run_cmd(["find", str(self.config.backup_base / "incr"), "-mindepth", "1", "-mtime", "+{0}".format(backup_days), 
-             "-exec", "rm", "-rf", "{}", "+"])
-        self.run_cmd(["find", str(self.config.backup_base / "binlog"), "-mindepth", "1", "-mtime", "+{0}".format(binlog_days), 
-             "-exec", "rm", "-rf", "{}", "+"])
+        cutoff = datetime.now().date() - timedelta(days=backup_days)
+        # Keep the full base preceding the retention window: increments within
+        # the window may still depend on it. Never inspect table-file mtimes.
+        days = [path.parent.parent.parent.name for path in
+                (self.config.backup_base / 'full').glob('*/*/backup/.backup_ok')]
+        prior = sorted(day for day in days if day <= str(cutoff) and re.fullmatch(r'\d{4}-\d{2}-\d{2}', day))
+        keep_from = min(str(cutoff), prior[-1]) if prior else str(cutoff)
+        for kind in ('full', 'incr'):
+            for path in (self.config.backup_base / kind).iterdir():
+                if path.is_dir() and not path.is_symlink() and re.fullmatch(r'\d{4}-\d{2}-\d{2}', path.name) and path.name < keep_from:
+                    shutil.rmtree(str(path))
+            for name in ('latest_raw', 'latest'):
+                link = self.config.backup_base / kind / name
+                if link.is_symlink() and not link.exists():
+                    link.unlink()
+        binlog = self.config.backup_base / 'binlog'
+        candidates = list(binlog.iterdir()) + list((binlog / 'generation').glob('*/*/*'))
+        cutoff_time = time.time() - binlog_days * 86400
+        for path in candidates:
+            if (not path.is_symlink() and path.is_dir() and re.fullmatch(r'\d{4}-\d{2}-\d{2}', path.name)
+                    and path.stat().st_mtime < cutoff_time):
+                if binlog.resolve() not in path.resolve().parents:
+                    raise RuntimeError('Refusing purge outside the binlog archive')
+                shutil.rmtree(str(path))
+
 
 
 def parse_arguments():

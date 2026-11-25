@@ -11,7 +11,7 @@ CONTAINER=kubeauto-rocky8-tools-build
 TOOLS=(CalicoPolicyCli NetCheckCli KafkaCli MyBackupCli MyLogiBackupCli MigrationCli StarCli KubeBackupCli KubePublishCli OvpnUserCli)
 
 if [[ -n "${TOOLS_SELECTED:-}" ]]; then
-  [[ "$TOOLS_SELECTED" == MyBackupCli,MyLogiBackupCli || "$TOOLS_SELECTED" == MyBackupCli || "$TOOLS_SELECTED" == MyLogiBackupCli || "$TOOLS_SELECTED" == MigrationCli || "$TOOLS_SELECTED" == MyBackupCli,MyLogiBackupCli,MigrationCli ]] || { echo TOOLS_BUILD_SCOPE_REFUSED >&2; exit 2; }
+  [[ "$TOOLS_SELECTED" == MyBackupCli,MyLogiBackupCli || "$TOOLS_SELECTED" == MyBackupCli || "$TOOLS_SELECTED" == MyLogiBackupCli || "$TOOLS_SELECTED" == MigrationCli || "$TOOLS_SELECTED" == MyBackupCli,MyLogiBackupCli,MigrationCli || "$TOOLS_SELECTED" == KubeBackupCli || "$TOOLS_SELECTED" == KubePublishCli || "$TOOLS_SELECTED" == MyBackupCli,KubeBackupCli,KubePublishCli || "$TOOLS_SELECTED" == KafkaCli,StarCli || "$TOOLS_SELECTED" == MyBackupCli,KafkaCli,MigrationCli,StarCli || "$TOOLS_SELECTED" == MyBackupCli,CalicoPolicyCli,OvpnUserCli || "$TOOLS_SELECTED" == CalicoPolicyCli,OvpnUserCli ]] || { echo TOOLS_BUILD_SCOPE_REFUSED >&2; exit 2; }
   IFS=, read -r -a TOOLS <<<"$TOOLS_SELECTED"
 fi
 
@@ -68,6 +68,12 @@ docker run --rm --name "$CONTAINER" \
       python3.12 -m pip install pyinstaller==6.16.0
       if [[ ",$TOOLS_SELECTED," == *,MigrationCli,* ]]; then
         python3.12 -m pip install PyMySQL==1.1.2 cryptography==45.0.5
+      fi
+      if [[ ",$TOOLS_SELECTED," == *,KubeBackupCli,* ]]; then
+        python3.12 -m pip install kubernetes==35.0.0 PyYAML==6.0.3 tenacity==9.1.2
+      fi
+      if [[ ",$TOOLS_SELECTED," == *,StarCli,* ]]; then
+        python3.12 -m pip install distro==1.9.0
       fi
       python3.12 -m PyInstaller --clean tools-onefile.spec
     else

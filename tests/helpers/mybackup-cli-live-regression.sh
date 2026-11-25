@@ -9,33 +9,52 @@ MYSQL_IMAGE="${MYBACKUP_MYSQL_IMAGE:-hub.talkedu.cn/kubeauto/mysql-8.4:8.4.4}"
 PXB_DIGEST="${MYBACKUP_PXB_DIGEST:-sha256:6f3f3735320eb77e7bb00300b37efd9a0cc797c34e2c637a2f687c77504d94b5}"
 MYSQL_DIGEST="${MYBACKUP_MYSQL_DIGEST:-sha256:c26ba5d7363cdae3f0a31665b2ab9106397324dde56ed536364776901b924b83}"
 # Tags are mutable; pull the accepted immutable manifests, not today's tag.
-PXB_IMAGE="${PXB_IMAGE%@*}@$PXB_DIGEST"
-MYSQL_IMAGE="${MYSQL_IMAGE%@*}@$MYSQL_DIGEST"
+PXB_IMAGE="${PXB_IMAGE%@*}"
+PXB_IMAGE="${PXB_IMAGE%:*}@$PXB_DIGEST"
+MYSQL_IMAGE="${MYSQL_IMAGE%@*}"
+MYSQL_IMAGE="${MYSQL_IMAGE%:*}@$MYSQL_DIGEST"
+EXPECTED_VERSION="${MYBACKUP_VERSION:-8.4.4}"
+LIFECYCLE="${MYBACKUP_LIFECYCLE:-0}"
+GTID="${MYBACKUP_GTID:-OFF}"
+EXECUTION_MODE="${MYBACKUP_EXECUTION_MODE:-host}"
+[[ "$GTID" == ON || "$GTID" == OFF ]]
+[[ "$EXECUTION_MODE" == host || "$EXECUTION_MODE" == container ]]
 PASSWORD='ToolPass_8_4' ; CONFIG="$ROOT/backup.json"; MARKER='mybackup_fixture'
 cleanup() {
   set +e
+  if [[ -n "${MYBACKUP_EVIDENCE_DIR:-}" ]]; then
+    mkdir -p "$MYBACKUP_EVIDENCE_DIR"
+    cp -a "$ROOT/mysqlbackup.log" "$ROOT/restore.sigint.log" "$ROOT"/*.refusal.log "$ROOT"/*.expected "$ROOT"/*.actual "$ROOT/lsn-chain.txt" "$ROOT/binlog-boundary.txt" "$MYBACKUP_EVIDENCE_DIR/" 2>/dev/null || true
+    docker logs "$MYSQL_CTN" >"$MYBACKUP_EVIDENCE_DIR/mysql.log" 2>&1 || true
+  fi
   # Preserve only this run's scoped product log for the caller; never merge a
   # host-level /var/log/mysqlbackup.log from an earlier gate into evidence.
   cp -f "$ROOT/mysqlbackup.log" /tmp/tools-mybackup-file.log 2>/dev/null || true
   docker ps -aq --filter label=kubeauto.mysql-backup=physical | xargs -r docker rm -f >/dev/null 2>&1 || true
   docker rm -f "$MYSQL_CTN" >/dev/null 2>&1 || true
   rm -rf "$ROOT"
+  rm -f /tmp/mybackup-enospc.out /tmp/mybackup-9x.out
 }
 trap cleanup EXIT INT TERM
-docker rm -f "$MYSQL_CTN" >/dev/null 2>&1 || true; rm -rf "$ROOT"; mkdir -p "$ROOT/mysql" "$ROOT/bin"; chown 999:999 "$ROOT/mysql"
-timeout --signal=TERM --kill-after=15s 20m docker pull "$PXB_IMAGE"
-timeout --signal=TERM --kill-after=15s 20m docker pull "$MYSQL_IMAGE"
+trap 'rc=$?; echo "MYBACKUP_FIXTURE_ERROR rc=$rc line=$LINENO" >&2' ERR
+docker rm -f "$MYSQL_CTN" >/dev/null 2>&1 || true; rm -rf "$ROOT"; mkdir -p "$ROOT/mysql" "$ROOT/logs" "$ROOT/tmp" "$ROOT/bin"; chown 999:999 "$ROOT/mysql" "$ROOT/logs" "$ROOT/tmp"
+if [[ "$LIFECYCLE" != 1 ]]; then
+  timeout --signal=TERM --kill-after=15s 20m docker pull "$PXB_IMAGE"
+  timeout --signal=TERM --kill-after=15s 20m docker pull "$MYSQL_IMAGE"
+fi
+# Lifecycle mode consumes the private runner's already authenticated pulls.
 pxb_repo_digests="$(docker image inspect "$PXB_IMAGE" --format '{{json .RepoDigests}}')"
 mysql_repo_digests="$(docker image inspect "$MYSQL_IMAGE" --format '{{json .RepoDigests}}')"
-[[ "$pxb_repo_digests" == *"hub.talkedu.cn/kubeauto/percona-xtrabackup@$PXB_DIGEST"* ]] || { echo "MYBACKUP_FIXTURE_DIGEST_MISMATCH kind=pxb expected=$PXB_DIGEST actual=$pxb_repo_digests" >&2; exit 3; }
-[[ "$mysql_repo_digests" == *"hub.talkedu.cn/kubeauto/mysql-8.4@$MYSQL_DIGEST"* ]] || { echo "MYBACKUP_FIXTURE_DIGEST_MISMATCH kind=mysql expected=$MYSQL_DIGEST actual=$mysql_repo_digests" >&2; exit 3; }
-echo "MYBACKUP_FIXTURE_PROVENANCE pxb=$PXB_IMAGE@$PXB_DIGEST mysql=$MYSQL_IMAGE@$MYSQL_DIGEST"
-cat >"$ROOT/bin/mysql" <<'EOF'
+[[ "$pxb_repo_digests" == *"${PXB_IMAGE%%@*}@$PXB_DIGEST"* ]] || { echo "MYBACKUP_FIXTURE_DIGEST_MISMATCH kind=pxb expected=$PXB_DIGEST actual=$pxb_repo_digests" >&2; exit 3; }
+[[ "$mysql_repo_digests" == *"${MYSQL_IMAGE%%@*}@$MYSQL_DIGEST"* ]] || { echo "MYBACKUP_FIXTURE_DIGEST_MISMATCH kind=mysql expected=$MYSQL_DIGEST actual=$mysql_repo_digests" >&2; exit 3; }
+echo "MYBACKUP_FIXTURE_PROVENANCE pxb=$PXB_IMAGE mysql=$MYSQL_IMAGE"
+cat >"$ROOT/bin/mysql" <<EOF
 #!/usr/bin/env bash
 set -Eeuo pipefail
-if [[ -f /tmp/tools-mbk-live/mysql-version.override ]] && printf '%s\n' "$*" | grep -q 'SELECT VERSION'; then cat /tmp/tools-mbk-live/mysql-version.override; exit 0; fi
-args=(); for arg in "$@"; do if [[ "$arg" == --socket=* ]]; then args+=(--socket=/var/run/mysqld/mysqld.sock); else args+=("$arg"); fi; done
-exec docker exec -i tools-mbk-mysql mysql "${args[@]}"
+if [[ -f /tmp/tools-mbk-live/mysql-version.override ]] && printf '%s\n' "\$*" | grep -q 'SELECT VERSION'; then cat /tmp/tools-mbk-live/mysql-version.override; exit 0; fi
+# A client fixture supplies the native binary; it must preserve the product's
+# socket/endpoint arguments and use the actual shared Unix socket.
+exec docker run --rm -i --pull=never --label kubeauto.mysql-backup=physical --user 0 -e TZ=Asia/Shanghai -v /usr/share/zoneinfo/Asia/Shanghai:/usr/share/zoneinfo/Asia/Shanghai:ro -v '$ROOT:$ROOT' --entrypoint mysql '$MYSQL_IMAGE' "\$@"
 EOF
 cat >"$ROOT/bin/xtrabackup" <<EOF
 #!/usr/bin/env bash
@@ -50,20 +69,14 @@ if [[ "\${MYBACKUP_INJECT_SIGINT:-0}" == 1 && " \$* " == *" --prepare "* ]]; the
   kill -INT "\$PPID"
   exit 130
 fi
-args=(); for arg in "\$@"; do if [[ "\$arg" == --socket=* ]]; then args+=(--host=127.0.0.1 --port=3306); else args+=("\$arg"); fi; done
-network=(); if [[ " \$* " == *" --backup "* ]]; then network=(--network container:tools-mbk-mysql); fi
-exec docker run --rm --label kubeauto.mysql-backup=physical --user 0 "\${network[@]}" -v '$ROOT:$ROOT' -v '$ROOT/mysql:/var/lib/mysql' '$PXB_IMAGE' xtrabackup "\${args[@]}"
+# The backup process must use the configured host-visible datadir. Mapping it
+# to the server's /var/lib/mysql here would hide a missing product --datadir.
+exec docker run --rm --pull=never --label kubeauto.mysql-backup=physical --user 0 -e TZ=Asia/Shanghai -v /usr/share/zoneinfo/Asia/Shanghai:/usr/share/zoneinfo/Asia/Shanghai:ro -v '$ROOT:$ROOT' '$PXB_IMAGE' xtrabackup "\$@"
 EOF
 cat >"$ROOT/bin/mysqlbinlog" <<EOF
 #!/usr/bin/env bash
 set -Eeuo pipefail
-exec docker run --rm --user 0 -v '$ROOT:$ROOT' -v '$ROOT/mysql:/var/lib/mysql' -v '$ROOT/mysql:/var/run/mysqld' '$PXB_IMAGE' mysqlbinlog "\$@"
-EOF
-cat >"$ROOT/bin/chown" <<EOF
-#!/usr/bin/env bash
-set -Eeuo pipefail
-if [[ "\$*" == *"$ROOT/mysql"* ]]; then exec docker run --rm --user 0 -v '$ROOT/mysql:/var/lib/mysql' --entrypoint chown '$PXB_IMAGE' -R 999:999 /var/lib/mysql; fi
-exec /usr/bin/chown "\$@"
+exec docker run --rm --pull=never --label kubeauto.mysql-backup=physical --user 0 -e TZ=Asia/Shanghai -v /usr/share/zoneinfo/Asia/Shanghai:/usr/share/zoneinfo/Asia/Shanghai:ro -v '$ROOT:$ROOT' --entrypoint mysqlbinlog '$PXB_IMAGE' "\$@"
 EOF
 cat >"$ROOT/bin/systemctl" <<'EOF'
 #!/usr/bin/env bash
@@ -87,10 +100,28 @@ case "$action" in
 esac
 EOF
 chmod 0755 "$ROOT/bin"/*; export PATH="$ROOT/bin:$PATH"
-docker run -d --name "$MYSQL_CTN" -e MYSQL_ROOT_PASSWORD="$PASSWORD" -v "$ROOT/mysql:/var/lib/mysql" -v "$ROOT/mysql:/var/run/mysqld" "$MYSQL_IMAGE" --innodb-buffer-pool-size=64M --performance-schema=OFF --server-id=84 --log-bin=mysql-bin --binlog-format=ROW >/dev/null
+# The official MySQL server-minimal image need not contain mysqlbinlog.
+# Qualify every native adapter before creating or changing any database.
+mysql --version
+mysqlbinlog --version
+client_offset="$(docker run --rm --pull=never --label kubeauto.mysql-backup=physical --user 0 -e TZ=Asia/Shanghai -v /usr/share/zoneinfo/Asia/Shanghai:/usr/share/zoneinfo/Asia/Shanghai:ro --entrypoint date "$PXB_IMAGE" +%z)"
+[[ "$client_offset" == +0800 ]] || { echo "MYBACKUP_CLIENT_TIMEZONE_REFUSED offset=$client_offset" >&2; exit 1; }
+echo 'MYBACKUP_CLIENT_TIMEZONE_PASS offset=+0800'
+xtrabackup --version
+echo MYBACKUP_NATIVE_DEPENDENCIES_PASS
+server_flags=(--log-bin=mysql-bin)
+container_config=''
+if [[ "$LIFECYCLE" == 1 ]]; then
+  server_flags=(--log-bin=/var/lib/mysql-logs/mysql-bin.log --tmpdir=/var/lib/mysql-tmp --lower-case-table-names=1 --default-time-zone=+08:00 --default-authentication-plugin=caching_sha2_password)
+  container_config=",\"mysql_container\":\"$MYSQL_CTN\",\"mysql_binlog_dir\":\"$ROOT/logs\""
+fi
+docker run -d --name "$MYSQL_CTN" --label kubeauto.mysql-backup=physical --network none -e TZ=Asia/Shanghai -e MYSQL_ROOT_PASSWORD="$PASSWORD" -v "$ROOT/mysql:/var/lib/mysql" -v "$ROOT/logs:/var/lib/mysql-logs" -v "$ROOT/tmp:/var/lib/mysql-tmp" "$MYSQL_IMAGE" --socket=/var/lib/mysql/mysql.sock --innodb-buffer-pool-size=64M --performance-schema=OFF --server-id=84 "${server_flags[@]}" --binlog-format=ROW --gtid-mode="$GTID" --enforce-gtid-consistency="$GTID" >/dev/null
 echo active >"$ROOT/mysql.state"
 for _ in $(seq 1 90); do mysql --user=root --password="$PASSWORD" --socket="$ROOT/mysql/mysql.sock" -e 'SELECT 1' >/dev/null 2>&1 && break; sleep 2; done
 mysql --user=root --password="$PASSWORD" --socket="$ROOT/mysql/mysql.sock" -e 'SELECT 1' >/dev/null
+actual_version="$(mysql --user=root --password="$PASSWORD" --socket="$ROOT/mysql/mysql.sock" -N -e 'SELECT VERSION()')"
+[[ "$actual_version" == "$EXPECTED_VERSION"* ]] || { echo "MYBACKUP_VERSION_MISMATCH expected=$EXPECTED_VERSION actual=$actual_version" >&2; exit 3; }
+echo "MYBACKUP_VERSION_VERIFIED version=$actual_version"
 mysql --user=root --password="$PASSWORD" --socket="$ROOT/mysql/mysql.sock" <<SQL
 CREATE DATABASE IF NOT EXISTS $MARKER;
 CREATE TABLE IF NOT EXISTS $MARKER.items(id INT PRIMARY KEY, payload VARCHAR(128));
@@ -98,12 +129,47 @@ INSERT INTO $MARKER.items VALUES (1, 'before-full'), (2, 'before-full-2');
 FLUSH LOGS;
 SQL
 cat >"$CONFIG" <<JSON
-{"backup_base":"$ROOT/backup","mysql_user":"root","mysql_password":"$PASSWORD","mysql_socket":"$ROOT/mysql/mysql.sock","mysql_service":"mysqld","mysql_datadir":"$ROOT/mysql","mysql_binlog_prefix":"mysql-bin","xtrabackup_parallel":1,"xtrabackup_compress_threads":1,"xtrabackup_use_memory":"32M","xtrabackup_lock_ddl":"AUTO","native_options":{"xtrabackup-prepare":["--use-memory=64M"]}}
+{"backup_base":"$ROOT/backup","mysql_user":"root","mysql_password":"$PASSWORD","mysql_socket":"$ROOT/mysql/mysql.sock","mysql_service":"mysqld","mysql_datadir":"$ROOT/mysql","mysql_binlog_prefix":"mysql-bin","xtrabackup_parallel":1,"xtrabackup_compress_threads":1,"xtrabackup_use_memory":"32M","xtrabackup_lock_ddl":"AUTO","native_options":{"xtrabackup-prepare":["--use-memory=64M"]}$container_config}
 JSON
 chmod 0600 "$CONFIG"
 export MYSQLBACKUP_LOG_FILE="$ROOT/mysqlbackup.log"
-run_tool() { if [[ "$TOOL" == *.py ]]; then "$PYTHON_BIN" "$TOOL" "$@"; else "$TOOL" "$@"; fi; }
+run_tool() {
+  if [[ "$EXECUTION_MODE" == container ]]; then
+    local docker_binary socket
+    docker_binary="$(command -v docker)"
+    socket="${DOCKER_HOST#unix://}"
+    [[ "$DOCKER_HOST" == unix://* && -S "$socket" && "$TOOL" != *.py ]]
+    # The tool runs in a separate mount/process namespace. The private daemon
+    # socket controls only this scenario; native-client adapters preserve argv.
+    docker run --rm -i --pull=never --label kubeauto.mysql-backup=physical --user 0 \
+      -v "$ROOT:$ROOT" -v "$TOOL:/tool/MyBackupCli:ro" -v "$docker_binary:/tool/docker:ro" \
+      -v "$socket:$socket" -e DOCKER_HOST="$DOCKER_HOST" -e TZ=Asia/Shanghai \
+      -v /usr/share/zoneinfo/Asia/Shanghai:/usr/share/zoneinfo/Asia/Shanghai:ro \
+      -e PATH="$ROOT/bin:/tool:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
+      -e MYSQLBACKUP_LOG_FILE="$MYSQLBACKUP_LOG_FILE" \
+      -e MYBACKUP_INJECT_ENOSPC="${MYBACKUP_INJECT_ENOSPC:-0}" -e MYBACKUP_INJECT_SIGINT="${MYBACKUP_INJECT_SIGINT:-0}" \
+      --entrypoint /tool/MyBackupCli "$PXB_IMAGE" "$@"
+  elif [[ "$TOOL" == *.py ]]; then
+    "$PYTHON_BIN" "$TOOL" "$@"
+  else
+    "$TOOL" "$@"
+  fi
+}
+if [[ "$LIFECYCLE" == 1 ]]; then
+  source "$(dirname "${BASH_SOURCE[0]}")/mybackup-lifecycle.sh"
+  exit 0
+fi
 echo MYBACKUP_STAGE full
+# This legacy fixture is also a Docker server. Declare that namespace and
+# actual service identity instead of emulating a native mysqld.service.
+python3 - "$CONFIG" "$MYSQL_CTN" <<'PY_LEGACY_CONTAINER'
+import json, sys
+from pathlib import Path
+path = Path(sys.argv[1])
+config = json.loads(path.read_text())
+config['mysql_container'] = sys.argv[2]
+path.write_text(json.dumps(config))
+PY_LEGACY_CONTAINER
 export MYBACKUP_INJECT_ENOSPC=1
 if run_tool full -c "$CONFIG" >/tmp/mybackup-enospc.out 2>&1; then
   echo MYBACKUP_ENOSPC_FALSE_SUCCESS >&2
@@ -121,6 +187,9 @@ grep -q -- "--throttle=100" "$ROOT/mysqlbackup.log"
 echo MYBACKUP_NATIVE_BACKUP_PASS
 mysql --user=root --password="$PASSWORD" --socket="$ROOT/mysql/mysql.sock" -e "INSERT INTO $MARKER.items VALUES (3, 'after-full'); FLUSH LOGS;"
 echo MYBACKUP_STAGE incr; run_tool incr -c "$CONFIG"
+# Only closed binlogs are archived. Close the incremental snapshot's file
+# before constructing a restore plan that must contain that coordinate.
+mysql --user=root --password="$PASSWORD" --socket="$ROOT/mysql/mysql.sock" -e 'FLUSH BINARY LOGS;'
 echo MYBACKUP_STAGE binlog; run_tool binlog -c "$CONFIG"
 echo MYBACKUP_STAGE checksum; run_tool checksum -c "$CONFIG"
 echo MYBACKUP_STAGE restore-dry-run; run_tool restore-dry-run -c "$CONFIG"
