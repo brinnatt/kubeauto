@@ -1050,60 +1050,177 @@ The remote workload must survive a local SSH/tail disconnect. The `.pid` and `.e
 
 ## Failure and root-cause protocol
 
-When a gate fails:
-
-1. Preserve the exact command, current log tail, PID/exit state and cluster events.
-2. Determine whether the failure is in the gate, environment, registry/artifact path, runtime, Kubernetes, controller reconciliation, or product code.
-3. Consult the official source and documentation for the pinned version. Prefer vendored official charts/CRDs/source when external access is limited.
-4. Reproduce from a clean baseline and change one causal layer at a time.
-5. Add a focused unit/contract test for the proven root cause.
-6. Run the focused live gate, then the required full chain.
-7. If the attempted fix does not pass, remove the speculative change and clean its data before continuing.
+Use the [single test-gate change protocol](#test-gate-change-protocol) below for
+failure classification, the cheapest sufficient reproduction, diagnostics,
+repair and verification. Consult the pinned version's official documentation
+and source for the disputed behavior; a deterministic CLI defect does not
+require a live lab merely to establish its cause.
 
 Examples captured by the current gates include registry HTTP readiness instead of container state, SHA256 validation and atomic restaging of Docker runtime artifacts, asynchronous RocketMQ Broker reconciliation, real LVM/NFS read/write, official Nacos schema import with external MySQL, MinIO Tenant health, and 9/9 executed network-check jobs.
 
 ## Test-gate change protocol
 
-Test helpers, runners, fixtures, diagnostics, templates and matrix validators
-are delivery code.  They must be validated before they are allowed to consume a
-clean lab. Preserve every acceptance scenario. Plan dependency/resource
-concurrency, evidence reuse and independent module
-closure under the single authority in [AGENTS.md's execution-efficiency
-contract](../AGENTS.md#test-engineering-and-execution-efficiency-contract).
-For a new middleware branch, first complete the
-[standard onboarding sequence](../docs/middleware/delivery-playbook.md#102-扩展步骤)
-and its [module delivery-path contracts](../docs/middleware/delivery-playbook.md#71-独立测试分路).
-Qualify scope, failure recovery and evidence reuse locally before the first live
-launch; an existing fixed entry point alone does not prove those boundaries.
-Execute the following evidence ladder in order:
+本节是六仓测试执行、证据复用与门禁阶梯的唯一规则正文；主仓 AGENTS.md 与
+各仓入口引用本节，不再各写一套。先按[主仓任务分路](../AGENTS.md#start-here)
+确定所属矩阵与实际授权范围，再执行下述契约。文档/提示词修改只需其内容与静态检查，
+本节不自动触发现场回归。固定命令见本手册对应场景；入口清单不是每次必跑清单。
 
-1. Classify the failure and change as product, test gate, environment,
-   supply-chain, runtime, Kubernetes/controller, or a proven combination.
-   Name the owning matrix scenario, product entry point, terminal marker and
-   smallest disproof command.
-2. Pass the changed artifact's lowest-cost checks first: syntax/import checks,
-   focused unit and contract tests, structured-data parsing, render checks, and
-   resource contracts for names, namespaces, selectors, ports, images,
-   ownership, markers and durable exit state.
-3. Add a deterministic regression test for a proven test-gate defect, then use
-   the narrowest fixed-runner branch that executes the affected product path.
-   A static or focused failure blocks the full middleware gate.
-4. Complete the affected focused module gates, then run one final clean full
-   middleware regression. The runner may reuse healthy owned prerequisites
-   between focused modules; stale faults, foreign resources or unverifiable
-   identities require cleanup of the smallest affected dependency boundary.
-   The final full run requires normal complete cleanup and `LAB_CLEAN_VERIFY_PASS`.
-5. On a live failure, capture the first failed command, durable exit state,
-   rendered inputs, resource state, Pod descriptions/events and controller logs
-   before changing code. Abort after a failed prerequisite within its dependent
-   branch; independently healthy branches follow the referenced isolation rules.
+Test helpers, runners, templates, matrix validators and diagnostics are production
+delivery code. A test-gate bug that consumes a clean lab run is a delivery defect,
+not an acceptable testing cost. Complete the designed matrix and production
+delivery requirements to reach GA readiness; preserve 100% acceptance coverage.
+GA readiness, document acceptance and actual customer sign-off are separate
+claims: submit reviewable evidence and never sign on the customer's behalf.
+Changed test artifacts follow the [single test-gate change ladder](#mandatory-test-gate-change-ladder);
+this section defines scheduling, evidence reuse and acceptance reporting.
 
-For each live launch, the log must identify the completed ladder level, the
-evidence that unlocked it and the next permitted level.  Direct Helm, kubectl
-or SSH remains diagnostic-only unless the test has already exercised the same
-behavior through the documented `config.yml` and `kubecli` product entry point.
-This protocol is an efficiency control, not a coverage waiver: matrix status,
-durable `rc=0`, zero failure markers and final cleanup remain mandatory.
+- New middleware must qualify its delivery path before its first live run.
+  Follow [the standard onboarding sequence](../docs/middleware/delivery-playbook.md#102-扩展步骤):
+  compare the existing mature runners, reuse applicable supervision and recovery
+  contracts, and declare only this product's differences in its existing matrix
+  and tests. Its local contracts must prove actual launch scope, independent
+  module entry points and handoffs, first-failure stopping, scoped recovery,
+  dependency-based evidence invalidation, and the final complete-run path.
+  A runner that can only restart a broad chain is not ready for live testing.
+  Check the actual command plan against the authorized scope before execution;
+  a mode name or an automated request to rebuild/retest is not authorization.
+  A local change that unexpectedly invalidates unrelated evidence blocks the
+  next launch until its impact is explained or the gate is repaired. Use the
+  existing runners, matrix and focused contracts; this is not a requirement to
+  build a new framework or repeat unrelated delivered branches.
+- Plan execution from the matrix capabilities and remaining evidence gaps.
+  Use existing matrix/evidence records to identify prerequisites, owning product
+  entry points, host/disk leases, shared mutable resources, capacity budgets and
+  success/cleanup exits. Serialize actual dependencies and conflicting mutations;
+  run ready independent branches concurrently through fixed runners when their
+  ownership, supervision and cleanup boundaries are proven. Bound concurrency
+  by CPU, memory, disk, network and shared-control capacity. Do not leave an
+  available authorized pool idle merely to follow matrix row order. This does
+  not require a new scheduler, framework or additional agents.
+- Reuse applicable official and project evidence under the delivery playbook's
+  official-evidence rules. Check pinned inputs, dependency identities, scenario
+  coverage and raw/durable evidence before reuse. Return only proven affected
+  items to pending and record the dependency and smallest disproof command;
+  unchanged dependencies retain valid evidence. Unknown dependencies require
+  impact analysis, not automatic reuse or blanket invalidation. Official GA
+  results establish upstream conditions, not a project PASS.
+- Exercise customer behavior through the product entry point (`config.yml` plus
+  the documented `kubecli` workflow); tools and artifacts use their own declared
+  CLI/publisher entry points. Direct Helm, kubectl or SSH may provide
+  diagnostics, fixtures or independent API checks, but cannot replace evidence
+  that the product configuration rendered and converged correctly.
+- Use the runner's durable status, log and focused modes to reuse a validated
+  boundary. A focused repair restores and verifies only the failed module's
+  owned objects, faults, flags and processes; retain healthy shared prerequisites
+  and unchanged completed evidence. Before reuse, verify ownership, dependency
+  identity, shared service health, data integrity and absence of fault residue.
+  Rebuild only the smallest dependent environment when these checks fail or
+  cannot prove isolation. Do not duplicate setup or repeat unrelated scenarios.
+  Complete the clean regression required by the owning matrix after accepted
+  product or test-gate changes; a new middleware requires its complete clean run.
+  Require its terminal marker, durable `rc=0`, zero failure markers, current
+  matrix evidence and final `LAB_CLEAN_VERIFY_PASS`.
+- Isolate a failure to branches whose prerequisites or shared state it invalidates.
+  Continue independent ready work after proving its boundary remains healthy.
+  Mark each completed module pass promptly when its current product success
+  markers, durable module `rc=0`, zero failure markers and scoped cleanup are
+  verified. Preserve a failed parent's real status; bind independently accepted
+  child evidence to its own inputs, logs and cleanup. A passing subcase signs
+  only its declared scope, not an incomplete matrix item or the final delivery.
+- Give every focused qualification or repair a matrix gap, minimal disproof
+  and completion condition. Once satisfied, consume that evidence and advance
+  the owning acceptance path; do not keep adding qualifications, repeat accepted
+  audits or rebuild unrelated prerequisites without a proven gap or change.
+  Continue authorized work toward the remaining matrix and final clean run.
+- 矩阵是验收与汇报的唯一主线。固定汇报为：
+  `矩阵验收 X/N PASS，待验收 Y 项（失败 F 项）；能力阶段 S/T；当前：矩阵 ID、名称、所属子项及执行状态；下一出口：…`。
+  本条是各中间件进度汇报的单一规则；组件手册只补矩阵路径、只读状态命令及产品差异，
+  不复制另一套计数定义。汇报前收取已结束模块的证据，再使用所属矩阵的固定只读入口
+  校验并生成同一份状态快照；总数、分组和明细均取自该快照，不凭记忆、上次回复、
+  摘要或日志 marker 心算。只有已核验的当前完整证据才能支持 PASS。
+  N 是适用父项数，X 是其中 pass 数，Y 是 pending 与 fail 数之和（N=X+Y），
+  F 是 fail 数且包含在 Y 内，不能再加一次。S 是所属父项全部 pass 的能力组数，
+  T 是矩阵能力组总数；对用户解释为“已全部验收的能力组”，不称为本轮完成阶段。
+  校验失败时改报“矩阵校验未通过，当前验收计数待核验”，列出拒绝的 ID、原因及最小
+  修复出口；若引用原计数，必须标成“矩阵登记值，尚未通过当前校验”。不得继续使用
+  正常 PASS 总览、擅自扣减猜测有效数、批量重置状态或为恢复计数修改旧证据。
+  模块结束后立即收取、核验并更新矩阵，不等待父链结束；独立子模块通过不能改签父链结果。
+  启动、阶段切换和异常时，用表格逐组列出已通过及未通过的 ID；能力组保留原 ID 并加中文
+  含义，待验收项保留矩阵原 ID 和名称。表格另列当前子项、实际执行状态及下一出口；
+  较长的已通过清单可压缩为连续 ID 区间，不能隐藏未通过项或用执行模块名替换能力组。
+  子项沿父项原 ID/名称汇报，不增加总分母，未完成父项不能计 PASS；子项独立通过须说明
+  其证据和剩余子项，没有独立记录时只能称“已观察到成功标志，尚待核验”。
+  矩阵状态与最近运行结果分别说明：父项 pending、最近尝试失败时，同时报该 ID 的 pending、
+  失败 run ID/退出码及失败子项；“矩阵失败 F=0”不表示运行从未失败。执行中、未启动、
+  阻塞、子项已完成但父项待验收必须明确区分，不自行向矩阵增加状态字段。
+  最终完整回归仍是矩阵自身的最终项；只有该项运行时，额外标明其 run ID、
+  `最终回归：已完成步骤/本轮计划步骤`，不得以它替换矩阵验收或能力阶段计数。
+  保留旧日志不等于旧证据失效，也不等于当前 PASS；按实际依赖核验后复用。
+  受影响项退回 pending 时，必须列出 ID、变更依赖、最小补测和计数变化；未知依赖先分析，
+  不得整体归零，不以“历史覆盖/当前有效/本轮”三个未解释的总数代替矩阵汇报。
+  每次计数变化同时说明“哪些 ID 从何状态变为何状态、X/S 前后值”；仅换 run ID、
+  续跑或启动最终回归不改变已接受状态。计数未变时说明当前子项的实际进展，不制造增量。
+  每轮执行进度绑定 run ID 和范围，从已接受的 ID 推导；拒绝混用运行或丢失同轮已完成项，
+  保留原状态。实际并行分支、阻塞与下一出口必须据现场说明，尚未启动的分支不得称为并行中。
+  During long waits, provide a heartbeat at least every 60 seconds, even when
+  counts are unchanged. Identify the actual image/scenario, build/compile/test
+  step, elapsed time, recent observable progress and next exit; shard counts or
+  repeated "still running" messages alone are insufficient. Estimate remaining
+  time from comparable measured stage durations, the critical path and elapsed
+  time; state uncertainty and do not extrapolate linearly from stage counts.
+  At a configured timeout, a material overrun against comparable measurements,
+  or loss of observable progress, diagnose the first slow/stalled step and state
+  the evidence for continuing, cancelling or repairing it. Do not shorten a
+  required test window or bypass acceptance to meet an estimate. This reporting
+  rule does not require extra tests, remote polling or a new progress framework.
+- Never optimize by downgrading coverage, accepting incomplete module evidence
+  or treating a running Pod as a business result.
+
+### Mandatory test-gate change ladder
+
+This ladder is mandatory whenever a helper, runner, fixture, test template,
+diagnostic, matrix validator or test assertion changes.  It applies equally to
+new middleware and maintenance of delivered branches.
+
+1. Classify the proposed change before running it: product code, test-gate code,
+   environment/supply-chain, or a combination.  Record the owning scenario, the
+   exact product entry point, the expected success marker, and the smallest
+   command that can disprove the assumption.  Do not describe a test-gate
+   failure as a product failure without that proof.
+2. Complete the static preflight appropriate to every changed file before any
+   remote mutation: shell syntax and strict-mode control flow; Python import and
+   focused unit tests; YAML/JSON parsing; Ansible syntax; Helm/template render;
+   resource name, namespace, selector, port, image, ownership, marker and exit
+   contracts.  Add or update a deterministic unit/contract test for the exact
+   defect before its next live execution. For continuation or composed runners,
+   that contract must also check the invoked modules' real preconditions,
+   postconditions and refusal rules against the actual call order;
+   success-marker stubs alone do not prove the handoff.
+3. Run the narrowest fixed-runner branch that reaches the changed assertion.
+   Its setup, module-scoped cleanup and diagnostics remain runner-owned. A failed preflight
+   or focused gate blocks a full middleware run; fix the single proven causal
+   layer, re-run its contract, then re-run only that focused branch.
+4. Finish the affected module gates before starting one final clean full
+   middleware regression. The fixed final launcher must verify current PASS
+   evidence for every applicable prerequisite matrix item, including documentation;
+   exclude only the final regression item itself. Missing, pending, failed or
+   stale evidence refuses launch before any lab mutation. A contract must prove
+   this refusal through the real launcher. A healthy runner-owned baseline is reusable for
+   focused gates; an existing cluster alone is not residue. The runner must
+   prove no stale fault, foreign resource or failed-module fixture remains.
+   The final full run still requires its normal clean setup and final cleanup.
+5. After a full-chain failure, collect the first failing command, durable exit
+   state, rendered inputs, owned-resource state, Pod descriptions/events and
+   relevant controller logs before editing. Stop the dependent scenario at a failed
+   prerequisite: never spend the remaining stages of that invalid path collecting
+   secondary failures. Independent work follows the branch-isolation rule above.
+
+Every live-launch update must state the completed ladder level, the evidence
+that unlocked it, and the next permitted level.  No test-only shortcut may
+replace the product entry point, and no direct command may silently mutate a
+customer path merely to make a test convenient.  The full acceptance contract
+still requires current clean evidence for every affected matrix item; this
+ladder removes invalid executions, not customer coverage.
 
 ## China image-source contract
 
