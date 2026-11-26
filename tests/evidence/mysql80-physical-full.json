@@ -2,7 +2,7 @@
   "date": "2026-11-25",
   "scope": "full",
   "inputs": {
-    "tools/mysqltools/MyBackupCli.py": "66423568f42804e9417d5e4f4b4fab791985d84f3e94fc2114f08cd921a92359",
+    "tools/mysqltools/MyBackupCli.py": "625ebeea9f9565866b89cfb70449a0de95a9ac1c88f6eff0a57865938719a1f0",
     "tools-onefile.spec": "7bb77b6db73a9c015aff2156120d94f7dc67a7a30e037f105d452bcbded45956",
     "tests/evidence/mysql80-physical-images-20261125.json": "02dbed9fe4866e4b91e8774edbf740dd52b3099ca8aac3263a1aee81b8856e49",
     "tests/helpers/build-tools-rocky8.sh": "ded6c6717bc3bbce6fc64b0c5ab07bc5cbf4aa6cfa78dfec7ed84eea8fca23fa",
@@ -13,28 +13,28 @@
     "tests/helpers/starrocks-compose-live.py": "2b47b114fe23afc9cdc65956637a19690dea822e4f5de560970f896f4c5f8dcf",
     "tests/helpers/run-durable-gate.sh": "352244f3c876f5f9626c0c21f574de3aecb61642e0be10324623b15b6b9b1843",
     "tests/unit/test_mysql80_physical_contract.py": "675d607acde572f426d9cfdf751185835a8b0650751462b2687766547e05b9ff",
-    "tests/unit/test_mybackup_cli_contract.py": "4afe32f324abe7bba04defe5d03b2ed4c069ceaf0bcd4a63ff7e890e3e5a4efe",
+    "tests/unit/test_mybackup_cli_contract.py": "de4ed9c5c841245cbff3fd21a4ad436d7f6531716ff1527a5a184f0387f0ae1e",
     "tests/unit/test_mysql_backup_gate_contract.py": "0a56c9c3de626ba7951ed18a19c04aa7e2587cc2920c712bc60f628776dd64ff",
-    "dist/MyBackupCli-rocky8": "635e787bd93a9b86ee4cc3d3119f1c9a4d61d0b9117fb9065e744d0076debbf3",
-    "dist/mysql-backup-build.json": "4ee8bf09dbd4af5ef33192fc0134091430714e44fe3ffb40bd68f04819a2e44f"
+    "dist/MyBackupCli-rocky8": "f1e5153638c558cb2a6d1ee5c3f68a871a47575917cc8ef3c1196da4163efb68",
+    "dist/mysql-backup-build.json": "633cd67f9578008f18f1dedc79277f35529ab1ccb03fc8a35f004464d38862dc"
   },
   "rc": 0,
   "hosts": {
     "rocky8": {
       "files": {
-        "logs/mysql80-full-rocky8-6cb1b80351dd/evidence.tar.gz": "f91b703e0faab6137047d1aca4e8c8a366d8f0711aad7087f01a8f90f95d7ed4",
-        "logs/mysql80-full-rocky8-6cb1b80351dd/state.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
-        "logs/mysql80-full-rocky8-6cb1b80351dd/state.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
-        "logs/mysql80-full-rocky8-6cb1b80351dd/plan.json": "9999ac6235216b2177802677d249322ed1c3cc7a79a401636224fdbf0ed5483d",
-        "logs/mysql80-full-rocky8-6cb1b80351dd/result.json": "0214cabf54d8a29a385dd2e9efce722e0cd157c8dd9d6473411439a9f42bcdd9",
-        "logs/mysql80-full-rocky8-6cb1b80351dd/console.log": "7448ab9f3af28397e0d736fa78c7da29f367046bd63eb5be96b2abdf101235c4",
-        "logs/mysql80-full-rocky8-6cb1b80351dd/dockerd.log": "207c8a79e0d7f63562bd6eb44f99591eefd010e564533c44ecf3465613c85cd4"
+        "logs/mysql80-full-rocky8-07c538735a2e/evidence.tar.gz": "8767cde8ad51af697ce95b24bf558dd2e38ccc6c17df04868e3d21f59d7344a2",
+        "logs/mysql80-full-rocky8-07c538735a2e/state.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+        "logs/mysql80-full-rocky8-07c538735a2e/state.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+        "logs/mysql80-full-rocky8-07c538735a2e/plan.json": "4e83a7c012ea390471a9c8611cd192691336eb61ac835881eecd65c19d03ba6b",
+        "logs/mysql80-full-rocky8-07c538735a2e/result.json": "0214cabf54d8a29a385dd2e9efce722e0cd157c8dd9d6473411439a9f42bcdd9",
+        "logs/mysql80-full-rocky8-07c538735a2e/console.log": "41e3b490665090fdfc72a7f212a7192e283d4562d73f68a1d02ee34d897db261",
+        "logs/mysql80-full-rocky8-07c538735a2e/dockerd.log": "ce764de662e2e68a7f1a4ca860322c8b4b587a73f12b0a5edfe8661bd21353f8"
       },
       "durable": [
-        "logs/mysql80-full-rocky8-6cb1b80351dd/state.exit",
-        "logs/mysql80-full-rocky8-6cb1b80351dd/state.finalized"
+        "logs/mysql80-full-rocky8-07c538735a2e/state.exit",
+        "logs/mysql80-full-rocky8-07c538735a2e/state.finalized"
       ],
-      "log": "logs/mysql80-full-rocky8-6cb1b80351dd/console.log",
+      "log": "logs/mysql80-full-rocky8-07c538735a2e/console.log",
       "markers": [
         "MYSQL80_HOST_PASS os=8.10",
         "TOOLS_CLEAN_VERIFY_PASS scope=mysql80-physical",
@@ -51,19 +51,19 @@
     },
     "rocky9": {
       "files": {
-        "logs/mysql80-full-rocky9-9c69d41d0e6f/evidence.tar.gz": "57d93c20dae11c49dd324df6be127bb1bda28b7987fdb016a49b17a8fa9fb53f",
-        "logs/mysql80-full-rocky9-9c69d41d0e6f/state.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
-        "logs/mysql80-full-rocky9-9c69d41d0e6f/state.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
-        "logs/mysql80-full-rocky9-9c69d41d0e6f/plan.json": "87f764b5258482c3cc3cd1172c5bfb689ec2f1623421d81fb8ee66494cbd80cc",
-        "logs/mysql80-full-rocky9-9c69d41d0e6f/result.json": "0750b4ee9e8e1864770e3746395cf13a1ddb097e5407d236274b359a436633a6",
-        "logs/mysql80-full-rocky9-9c69d41d0e6f/console.log": "3c366e8917ec02c97431dd3aab8642cbaf114fb6fe34cbadd11f6ffbdf060c9b",
-        "logs/mysql80-full-rocky9-9c69d41d0e6f/dockerd.log": "9289a87f6fc675fd30caaf66ba1be3528d04ea08df3f8311d6e6544c4016c904"
+        "logs/mysql80-full-rocky9-59bc307cc8bd/evidence.tar.gz": "374231a767c02ae0a113742d99ce3ddc83a94e4ade8e2f78a8b3a0666d93c922",
+        "logs/mysql80-full-rocky9-59bc307cc8bd/state.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+        "logs/mysql80-full-rocky9-59bc307cc8bd/state.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+        "logs/mysql80-full-rocky9-59bc307cc8bd/plan.json": "4bc9d9d8feeceedca209b7923659d79e5b6d50db70b45e6d59a5ba547f72614c",
+        "logs/mysql80-full-rocky9-59bc307cc8bd/result.json": "0750b4ee9e8e1864770e3746395cf13a1ddb097e5407d236274b359a436633a6",
+        "logs/mysql80-full-rocky9-59bc307cc8bd/console.log": "0454f40f470ff0a4e6a0b6d77a3002da3193bcaf4a6365f9077a3c2d9f9c6bb4",
+        "logs/mysql80-full-rocky9-59bc307cc8bd/dockerd.log": "abcb2045bbbe1ac1d1614a23cb0ed447882bd905445c3a96f761e9b8f0ed897b"
       },
       "durable": [
-        "logs/mysql80-full-rocky9-9c69d41d0e6f/state.exit",
-        "logs/mysql80-full-rocky9-9c69d41d0e6f/state.finalized"
+        "logs/mysql80-full-rocky9-59bc307cc8bd/state.exit",
+        "logs/mysql80-full-rocky9-59bc307cc8bd/state.finalized"
       ],
-      "log": "logs/mysql80-full-rocky9-9c69d41d0e6f/console.log",
+      "log": "logs/mysql80-full-rocky9-59bc307cc8bd/console.log",
       "markers": [
         "MYSQL80_HOST_PASS os=9.8",
         "TOOLS_CLEAN_VERIFY_PASS scope=mysql80-physical",

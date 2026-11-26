@@ -445,6 +445,20 @@ sudo MyBackupCli full -c /etc/mysql/backup.conf \
 
 `100` 是语法示例，应按实际 XtraBackup 版本的限速定义和备份窗口选择。检查本次日志中的 `RUN:` 是否包含 `--throttle=100`，同时确认命令退出码和备份完成结果；只有参数出现在命令行不能证明数据可恢复。默认日志为 `/var/log/mysqlbackup.log`，以实际 `MYSQLBACKUP_LOG_FILE` 设置为准。
 
+### 观察物理备份与恢复进度
+
+全备、增量、解压、prepare 和 copy-back 默认将 XtraBackup 原生 stdout、stderr 实时写入终端和工具日志，无需新增配置。`RUN:` 显示脱敏后的实际命令与目标目录；`XtraBackup[stderr]:` 或 `XtraBackup[stdout]:` 后面保留原生消息，可据此观察正在复制的文件、检查点和原生完成结果。配置中的密码在输出前替换为 `***`。日志默认按每份 10 MiB 轮转，保留当前文件和 5 份历史文件；定时任务还应保留其服务日志和退出状态。
+
+原生程序连续 30 秒没有输出时，工具报告 `XtraBackup still running`，包含当前阶段、子进程 PID、累计耗时和没有原生输出的时长。这只证明进程仍在运行，不能证明数据正在推进，也不会估算不存在依据的完成百分比。锁等待、存储延迟或程序阻塞均可能出现静默；持续静默时应结合该 PID、MySQL 锁等待及磁盘状态诊断，不因心跳仍在就判定备份正常。
+
+直接运行备份命令即可看到实时输出；需要从另一个终端观察文件时，执行：
+
+```bash
+tail -F /var/log/mysqlbackup.log
+```
+
+若设置了 `MYSQLBACKUP_LOG_FILE`，将上述路径替换为执行端的实际日志路径。工具容器中的该路径属于工具容器，需提前持久化挂载。`XtraBackup finished: ... rc=0` 表示该原生阶段退出成功；全备或增量还必须退出 0、出现 `FULL BACKUP DONE SUCCESSFULLY!` 或 `INCREMENTAL BACKUP DONE SUCCESSFULLY!` 并具备对应 `.backup_ok`。恢复仍以工具的最终恢复完成标志、退出码及业务读回为准，不能把 prepare 的 `completed OK!` 当作完整恢复成功。
+
 路径含空格时，把整个参数值用单引号包住。例如在已经配置好 TLS 的环境中：
 
 ```bash

@@ -1,0 +1,108 @@
+{
+  "date": "2026-11-26",
+  "rc": 0,
+  "result": "pass",
+  "scope": "Current logical owning gate after archive-listing SIGPIPE and temporary-server readiness repairs; unchanged MyLogiBackupCli product/artifact. Three-version CLI restoration, actual timers and cleanup.",
+  "inputs": {
+    "tools/mysqltools/MyLogiBackupCli.py": "df68a6aeb660de6755526f0a49df1478bc1a1715dce46f804740d20d05c88d2c",
+    "tools-onefile.spec": "7bb77b6db73a9c015aff2156120d94f7dc67a7a30e037f105d452bcbded45956",
+    "tests/helpers/mylogi-backup-live-regression.sh": "47cefa23cb77c7b03bfd504af30e28626d8f041e3f2cc3fadaa9e23a5bef547c",
+    "tests/helpers/supervise-mysql-backups.py": "4b948cff12a5ec8eff47fa9e8ba161428c16fcb48be8ed939c6b04c4e2e72bb6",
+    "tests/helpers/mysql-backups-regression.sh": "359cda27fe0b0b6c81871f71604d8becb458ff716133d8cb288ef3925b83c274",
+    "tests/run_tools_regression.sh": "10e506a3f4bd5af1238687ba89e154696c9ab9717044453cb10ab67bde26c46d",
+    "tests/helpers/tools-production-audit.py": "78e7e167b285e3cd79031b60cd25f41146615da14606c45a47ee98a64d6802e9",
+    "tests/unit/test_mylogi_archive_pipe_contract.py": "c5da7f9e111dc2905110746b2c187f91ffd4c25381e82535cbd6eb144db9fa3a"
+  },
+  "build": {
+    "inputs": {
+      "tools/mysqltools/MyBackupCli.py": "625ebeea9f9565866b89cfb70449a0de95a9ac1c88f6eff0a57865938719a1f0",
+      "tools/mysqltools/MyLogiBackupCli.py": "df68a6aeb660de6755526f0a49df1478bc1a1715dce46f804740d20d05c88d2c",
+      "tools-onefile.spec": "7bb77b6db73a9c015aff2156120d94f7dc67a7a30e037f105d452bcbded45956",
+      "tests/helpers/build-tools-rocky8.sh": "ded6c6717bc3bbce6fc64b0c5ab07bc5cbf4aa6cfa78dfec7ed84eea8fca23fa",
+      "tests/helpers/build-mybackup-native.py": "c78faeeaec19bdce4cfb8fdb5ece6428b2bf8f75b1d1422e81733a836e7accec"
+    },
+    "artifacts": {
+      "MyBackupCli": "f1e5153638c558cb2a6d1ee5c3f68a871a47575917cc8ef3c1196da4163efb68",
+      "MyLogiBackupCli": "e14afa5703941c1313cefe6c1277f4c80028848cb5f368cd91315d06b6d2ad0a"
+    },
+    "runtime": "Rocky 8.10; glibc 2.28; Python 3.12; PyInstaller 6.16.0",
+    "native_mybackup_build": "logs/mybackup-native-build-1fcf765765c6/result.json"
+  },
+  "stages": {
+    "logical": {
+      "log": "logs/mysql-backups-logical-20261126-030837.log",
+      "sha256": "e10630b7ea89f2d44dcf1f8d143a65e2dcbb0ab34f1804dd6779530123fe0572",
+      "archive": "logs/mysql-backups-logical-20261126-030837.evidence.tar.gz",
+      "archive_sha256": "f715cbcf6d8201f5f3b7e97c5a6594b63a6abe62ca37773ee46fe8ad98745cbe",
+      "remote_status": "logs/mysql-backups-logical-20261126-030837.remote-status",
+      "required_markers": [
+        "MYSQL_BACKUP_RELEASE_PASS stage=logical",
+        "TOOLS_CLEAN_VERIFY_PASS scope=mysql-backup-release",
+        "MYLOGI_NATIVE_ARCHIVE_DIAGNOSTICS_PASS version=8.0.46",
+        "MYLOGI_REAL_TIMER_EXECUTION_PASS version=8.0.46",
+        "MYLOGI_RESTORE_READBACK_PASS version=8.0.46",
+        "MYLOGI_LIVE_REGRESSION_PASS version=8.0.46",
+        "MYLOGI_NATIVE_ARCHIVE_DIAGNOSTICS_PASS version=8.4.4",
+        "MYLOGI_REAL_TIMER_EXECUTION_PASS version=8.4.4",
+        "MYLOGI_RESTORE_READBACK_PASS version=8.4.4",
+        "MYLOGI_LIVE_REGRESSION_PASS version=8.4.4",
+        "MYLOGI_NATIVE_ARCHIVE_DIAGNOSTICS_PASS version=9.2.0",
+        "MYLOGI_REAL_TIMER_EXECUTION_PASS version=9.2.0",
+        "MYLOGI_RESTORE_READBACK_PASS version=9.2.0",
+        "MYLOGI_LIVE_REGRESSION_PASS version=9.2.0"
+      ]
+    }
+  },
+  "files": {
+    "logs/mybackup-observability-20261125/archive-pipe-reproduction.log": "c7fce8b563b605e1fc866213be56539b0e224cf0f605a3de74dfd2f360e80ea7",
+    "logs/mybackup-observability-20261125/archive-pipe-fixed.log": "d283f5282d33f8b42396cf83bad444c259a5aa853d4dc094e30650a290add6f0",
+    "logs/mybackup-observability-20261125/archive-pipe-admission-contract.log": "091cddd016d78ab4b0285060e9176a77e988ebd10943846f9524e62b24326da6",
+    "logs/mybackup-observability-20261125/pipe-repair-preflight.log": "b2da3f54118e1fa2b71cf9caca3f3947b59786bb4faa4b5f2a3d91efc7a121ea",
+    "logs/mybackup-observability-20261125/gnu-grep-output-control.html": "894d21587ac185974f313ac2d39c30fcb477380bb43ce155a295b8e541119196",
+    "logs/mybackup-observability-20261125/gnu-grep-3.11.c": "9301373afca3183588b15c7cefd72b02393b6d14243f69f02050161c11715d4a",
+    "logs/mysql-backups-logical-20261126-030837.log": "e10630b7ea89f2d44dcf1f8d143a65e2dcbb0ab34f1804dd6779530123fe0572",
+    "logs/mysql-backups-logical-20261126-030837.evidence.tar.gz": "f715cbcf6d8201f5f3b7e97c5a6594b63a6abe62ca37773ee46fe8ad98745cbe",
+    "logs/mysql-backups-logical-20261126-030837.remote-status": "0ccdb5a77ba5bf7687f2565a8ed97dfb9c1af45503c496fb646312239fab5101",
+    "logs/mysql-backups-logical-20261126-030837.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/mysql-backups-logical-20261126-030837.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/mybackup-observability-20261125/socket-readiness-reproduction.log": "a0232ef1c99ffe949430afd994660172e8ac3fe55eeb73af261424908a595259",
+    "logs/mybackup-observability-20261125/logical-readiness-contract.log": "dd2c7d2efde047a830eefed938ee32cb3000b8b083d52aaf1b5656893df5b112",
+    "logs/mybackup-observability-20261125/readiness-repair-preflight.log": "908428ed6e955fb26ce3998979b98ce106b6e2665c8a6c157c2dad0656b90c17",
+    "logs/mybackup-observability-20261125/mysql8.4.4-official-entrypoint.sh": "4f2c4025aa61a674c7f0e2d5daa6143fe7fef6f6a6ac3c69912d25128c1cc760"
+  },
+  "repair": {
+    "root_cause": "Quiet grep exits before tar/decompressor has finished; pipefail reports SIGPIPE 141. Full-drain grep preserves both match rejection and producer failures.",
+    "first_failed_run": "mysql-backups-full-20261126-025133",
+    "local_exit": 1,
+    "remote_exit": 141,
+    "reproduction": "Six deterministic old-command failures across gz/bz2/xz; same commands after fix accept valid large archives and reject missing members and corrupt trailers.",
+    "change": "Two archive-listing assertions, two readiness probes and startup diagnostics only; no MyLogiBackupCli product or artifact change.",
+    "readiness": "Fixed immutable MySQL8.4.4 image entrypoint extracted read-only: temporary initialization uses --skip-networking. Both real readiness loops now require TCP 127.0.0.1:3306 SQL. Deterministic temporary-socket contract fails before repair and passes afterwards. Actual raw startup diagnostics show temporary port0, stop and final port3306.",
+    "failed_attempts": [
+      {
+        "run": "mysql-backups-full-20261126-025133",
+        "files": {
+          "logs/mysql-backups-full-20261126-025133.log": "30e42933aa96f5eec3d993408652e157ea6622e75aa27dc71722a4082f3d00d5",
+          "logs/mysql-backups-full-20261126-025133.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+          "logs/mysql-backups-full-20261126-025133.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+          "logs/mysql-backups-full-20261126-025133.remote-status": "aac1b3626620356e6174717a513ea1110ab8b718ac4f87233b04e30b29af7d7f",
+          "logs/mysql-backups-full-20261126-025133.evidence.tar.gz": "68d0ee1ccb6d05058ad8954276cf901c1533eaabb526ca8061e3d11d42c98b2b"
+        },
+        "classification": "test-gate",
+        "status": "failed; retained without relabeling"
+      },
+      {
+        "run": "mysql-backups-full-20261126-030034",
+        "files": {
+          "logs/mysql-backups-full-20261126-030034.log": "649179abe9fa269dad6028f71f315fd92a9a5ebb8e063b3358ecee87ffe06f49",
+          "logs/mysql-backups-full-20261126-030034.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+          "logs/mysql-backups-full-20261126-030034.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+          "logs/mysql-backups-full-20261126-030034.remote-status": "3f11ad6bbc7ecca0b2416b713dee77f1a635c00aaeaa946e14cde1c2bfae56d5",
+          "logs/mysql-backups-full-20261126-030034.evidence.tar.gz": "3e29e34e2cf98a776bd3b5b4cfd044280a2f75857bdddb696ebf4e9410d588a4"
+        },
+        "classification": "test-gate",
+        "status": "failed; retained without relabeling"
+      }
+    ]
+  }
+}

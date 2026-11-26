@@ -174,7 +174,7 @@ def binary_module():
 
 
 def logical_evidence():
-    proof = read('tests/evidence/mysql-backup-20261108.json')
+    proof = read('tests/evidence/mysql-logical-requal-20261126.json')
     for name in ('tools/mysqltools/MyLogiBackupCli.py', 'tools-onefile.spec',
                  'tests/helpers/mylogi-backup-live-regression.sh', 'tests/helpers/supervise-mysql-backups.py'):
         if sha(ROOT/name) != proof['inputs'][name]:

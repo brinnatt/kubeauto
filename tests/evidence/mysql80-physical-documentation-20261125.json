@@ -119,16 +119,25 @@
       "fix_and_recheck": "明确需显式绝对datadir/socket/binlog/index及实际binlog前缀，给出无扩展名前缀例子与演练/维护前置；未宣称支持任意MySQL配置格式，不改产品准入或外推现场覆盖",
       "reviewer": "Codex author review",
       "result": "closed"
+    },
+    {
+      "requirement": "原生进度可见及静默判断",
+      "section": "operations-manual.md#观察物理备份与恢复进度",
+      "basis": "Python3.12 subprocess/selectors文档和固定运行时源码；当前CLI并发输出/静默/失败/中断合同",
+      "defect": "旧版等XtraBackup退出才输出stderr，终端长时间无进度",
+      "fix_and_recheck": "明确默认终端/文件实时输出、30秒静默心跳、轮转边界、阶段rc和工具最终成功区别；新增命令经bash -n，原有图形未改",
+      "reviewer": "Codex author review",
+      "result": "closed"
     }
   ],
   "files": {
-    "tools/mysqltools/operations-manual.md": "63042973ad70e2796faaa730d435ed222d1736f708887d2bf9cac534f4a03af6",
+    "tools/mysqltools/operations-manual.md": "995f6210e9d9218b8941a2d021fb0b752ae543c8d88c64dfaac03b970d499bd5",
     "tools/mysqltools/mybackup.conf.example": "07836fde22223f81e95529a94226fbba8392359e80f46ca0b2740d4fff3474a7"
   },
   "operational_evidence": {
-    "tests/evidence/mysql80-binary-standalone.json": "fe822f9bd77944b0101c2f687b0d35b855a67863e26b3015fc633081a6df829e",
-    "tests/evidence/mysql80-binary-primary-replica.json": "b7f30abcef57ab55e6f8e3c44af041df2af93eb38489b53f970ef4e5f4c95ab1",
-    "tests/evidence/mysql80-binary-dual-primary.json": "9aa49eec567a2ad948abd529b5697bec5a3023ee3be3d0aacab24fdce80c93c0"
+    "tests/evidence/mysql80-binary-standalone.json": "0084c4a949ff1cb3162b83d347ec7ba73a7e6e33cb4aadbd45151b503d52e55a",
+    "tests/evidence/mysql80-binary-primary-replica.json": "35707b40bcfa16d559f68ac5306c24c04b39ec0397ceb613e1e6fac22c1aaa7f",
+    "tests/evidence/mysql80-binary-dual-primary.json": "31565338f571e04ba0d12c1113e4ac98fdadc534d06c7c6547a052c86f6fcd0e"
   },
   "review_artifacts": {
     "logs/mysql80-documentation-native-20261125/current-static-check.json": "52e9bd4aeefd88e7a35dd6b7161cb3d826cd19c6e5bc7848798d2cf7b2330ce7",
@@ -158,13 +167,18 @@
     "logs/mysql80-official-20261125/mysql80-reset-replica.html": "30539a48b93273c841c64b4187cde4f8d31b8ce94f3174eb26915d70288575ec",
     "logs/mysql80-official-20261125/pxb80-backup_copy.cc": "958d04d6f8549dc633605dcf914bef6b3991d60eb558018308daa9974b897d7b",
     "logs/mysql80-official-20261125/80-docs-supported-versions.md": "ba882c191ba5a994ed301e0b1a0eefc01427c6927a3eba23ff6be24318d484c0",
-    "logs/mysql80-official-20261125/80-docs-make-backup-in-replication-env.md": "bcb9fcb698c1b4b2054100e5621e74f49fa4b6e81d27b88acdcfa1dd2976c500"
+    "logs/mysql80-official-20261125/80-docs-make-backup-in-replication-env.md": "bcb9fcb698c1b4b2054100e5621e74f49fa4b6e81d27b88acdcfa1dd2976c500",
+    "logs/mybackup-observability-20261125/documentation-static.json": "43f23de828c613f89d3ccece557d97f8b0aa0a93e4da4922da791630a52623c4",
+    "logs/mybackup-observability-20261125/python312-subprocess.html": "261534ebc568581e1f63b816b86f126b9fd49d3bc0c187c1b435106a9c0e94b8",
+    "logs/mybackup-observability-20261125/python312-selectors.html": "5ffcb39169585d22fb578c0548d7e22dc5440f4d53990759c799a3da28dfdb39",
+    "logs/mybackup-observability-20261125/cpython-local-run.py": "5917d92a3df46dfda963d39444c771b95e64a49e477656f1e67f2c6a3cbfb1d5"
   },
   "official_dependency_boundary": {
     "user_operations": "PXB8.0 docs pinned f8a15e8e73028742f92f63bddb6fe365bca5e311: supported versions, backup/prepare/compression/incremental/copy-back/PITR and option references.",
     "mechanism_development": "PXB8.0.35-36 pxb80.cc and backup_copy/backup_mysql source; MySQL8.0.33 mysqld.cc/mysqlbinlog.cc; Docker bind/stop/start interface.",
     "coverage_record": "logs/mysql80-official-20261125/80-official-records.json",
-    "limits": "Incremental dependency-interface review only; no claim of full independent MySQL/PXB manual corpus or customer review."
+    "limits": "Incremental dependency-interface review only; no claim of full independent MySQL/PXB manual corpus or customer review.",
+    "logging": "Python 3.12 subprocess/selectors API: concurrent draining, process wait/reaping; exact installed CPython3.12.14 subprocess.run source reviewed. Current streaming uses standard-library selectors and incremental UTF-8 decoding."
   },
   "previous_review": {
     "path": "logs/mysql80-documentation-native-20261125/previous-author-review.json",
@@ -174,6 +188,6 @@
     "Dependency-interface research; not a claim of reading the full MySQL/PXB product manual corpus.",
     "Native topology focused evidence is accepted; final clean run remains separately gated by TL-MBK-13. Current container proof is independently required by TL-MBK-07～09; this author check does not accept it.",
     "Self-provided combined-image template was not executed verbatim; actual test composition and prerequisites are stated explicitly.",
-    "18 bash syntax checks, 4 JSON blocks, local links/anchors, 17 key comments and 2 unchanged rendered diagrams verified; 3 SQL templates read against pinned syntax and require real deployment substitutions."
+    "19 bash syntax checks, 4 JSON blocks, local links/anchors, 17 key comments and 2 unchanged rendered diagrams verified; 3 SQL templates read against pinned syntax and require real deployment substitutions."
   ]
 }

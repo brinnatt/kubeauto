@@ -20,23 +20,29 @@
     "MYBACKUP_CLI_LIVE_REGRESSION_PASS",
     "TOOLS_CLEAN_VERIFY_PASS scope=mysql-backup-release",
     "MYSQL_BACKUP_RELEASE_PASS stage=physical",
-    "MYSQL_BACKUP_RELEASE_EXIT rc=0"
+    "MYSQL_BACKUP_RELEASE_EXIT rc=0",
+    "XtraBackup[stderr]:",
+    "XtraBackup finished: phase=backup rc=0",
+    "XtraBackup finished: phase=prepare rc=0"
   ],
   "files": {
-    "logs/mysql-backups-physical-20261125-192539.log": "53d027c402a63fe6f9f5a4f24eb8719e9603b75ccb39105e791919b2465ea13b",
-    "logs/mysql-backups-physical-20261125-192539.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
-    "logs/mysql-backups-physical-20261125-192539.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
-    "logs/mysql-backups-physical-20261125-192539.remote-status": "0ccdb5a77ba5bf7687f2565a8ed97dfb9c1af45503c496fb646312239fab5101",
-    "logs/mysql-backups-physical-20261125-192539.evidence.tar.gz": "e5e80ada6c4ae40a76404559b2220836bf08df552916019ad6b667ef55e9270d",
-    "tools/mysqltools/MyBackupCli.py": "66423568f42804e9417d5e4f4b4fab791985d84f3e94fc2114f08cd921a92359",
-    "dist/MyBackupCli-rocky8": "635e787bd93a9b86ee4cc3d3119f1c9a4d61d0b9117fb9065e744d0076debbf3",
-    "dist/mysql-backup-build.json": "4ee8bf09dbd4af5ef33192fc0134091430714e44fe3ffb40bd68f04819a2e44f",
+    "logs/mysql-backups-physical-20261125-233851.log": "eb0684996ab9271ba7c84542cd8967f6b24e47561dc7ff6560da92d8906240d1",
+    "logs/mysql-backups-physical-20261125-233851.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/mysql-backups-physical-20261125-233851.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/mysql-backups-physical-20261125-233851.remote-status": "0ccdb5a77ba5bf7687f2565a8ed97dfb9c1af45503c496fb646312239fab5101",
+    "logs/mysql-backups-physical-20261125-233851.evidence.tar.gz": "0f9cb3a03f143b124d547aed9549544c78df0e4899cb682f8d619013a1d20b2b",
+    "tools/mysqltools/MyBackupCli.py": "625ebeea9f9565866b89cfb70449a0de95a9ac1c88f6eff0a57865938719a1f0",
+    "dist/MyBackupCli-rocky8": "f1e5153638c558cb2a6d1ee5c3f68a871a47575917cc8ef3c1196da4163efb68",
+    "dist/mysql-backup-build.json": "633cd67f9578008f18f1dedc79277f35529ab1ccb03fc8a35f004464d38862dc",
     "tests/helpers/mybackup-cli-live-regression.sh": "a04bae7c3123b04f5b9627f5c9e1fdb03d92804136c64a64a5936e35f405b501",
     "tests/helpers/mysql-backups-regression.sh": "359cda27fe0b0b6c81871f71604d8becb458ff716133d8cb288ef3925b83c274",
-    "tests/unit/test_mybackup_legacy_handoff_contract.py": "94a527496c8a3c5d1bb6fe227a58cd2758dadfcbf264c63b1c3335fa5af4e5a6"
+    "tests/unit/test_mybackup_legacy_handoff_contract.py": "94a527496c8a3c5d1bb6fe227a58cd2758dadfcbf264c63b1c3335fa5af4e5a6",
+    "logs/mybackup-observability-20261125/live-native-prefix.log": "24da1979b119637952fbe3640915a850eb3b8974a1de9383c174fc6649e6fe99",
+    "logs/mybackup-observability-20261125/live-native-observation.json": "d5ad36c2797886093e1843516e2cf5fec71376422a0e5a17c5c69c2f726c7991"
   },
   "boundaries": [
     "Current frozen MyBackupCli standalone compatibility: full/incremental/binlog/checksum/audit/prepare/copy-back/real Docker restart/PITR readback/purge; ENOSPC/SIGINT/retry/lock/9.x refusal; scoped cleanup.",
-    "No native topology or MySQL8.0 acceptance from this record; earlier raw runs and previous record retained."
+    "No native topology or MySQL8.0 acceptance from this record; earlier raw runs and previous record retained.",
+    "Observability revision: concurrent native stdout/stderr visible in console during execution; read-only live prefix retained before terminal fence. Full/incremental/decompress/prepare/copy-back, interrupt/retry and readback run with current artifact."
   ]
 }

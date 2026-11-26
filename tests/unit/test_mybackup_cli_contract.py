@@ -340,7 +340,7 @@ class MyBackupCliContractTest(unittest.TestCase):
         proc = mock.Mock(returncode=1, stdout="", stderr="denied")
         with mock.patch.object(MOD.subprocess, "run", return_value=proc), mock.patch("sys.stderr") as err:
             with self.assertRaises(RuntimeError):
-                manager.run_cmd(["xtrabackup", "--password=secret"])
+                manager.run_cmd(["mysql", "--password=secret"])
         err.write.assert_called()
         manager.logger.error.assert_called_once_with("denied")
 
@@ -689,6 +689,140 @@ class MyBackupCliContractTest(unittest.TestCase):
             self.assertEqual(calls[2][calls[2].index("--incremental-dir") + 1], "/backup/inc2")
 
 
+class XtraBackupStreamingTests(unittest.TestCase):
+    """Prove visibility while the native child is still waiting, through the CLI."""
+
+    def test_full_cli_exposes_native_output_before_child_exit(self):
+        import selectors
+        import subprocess
+        import sys
+        import time
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            binary = root / 'bin'
+            binary.mkdir()
+            mysql = binary / 'mysql'
+            mysql.write_text('#!' + sys.executable + '\nimport sys,json\n'
+                             'print(json.dumps(dict(channels=0,running=0,group_members=0,datadir="/var/lib/mysql",'
+                             'binlog="/var/lib/mysql/mysql-bin",index="/var/lib/mysql/mysql-bin.index")) '
+                             'if any("JSON_OBJECT" in a for a in sys.argv) else "8.0.33")\n')
+            mysql.chmod(0o755)
+            xb = binary / 'xtrabackup'
+            xb.write_text('#!' + sys.executable + '\nimport os,pathlib,sys,time\n'
+                          'if "--help" in sys.argv: print("  --lock-ddl Boolean option"); sys.exit(0)\n'
+                          'root=pathlib.Path(os.environ["STREAM_FIXTURE"])\n'
+                          'print("Copying app/items.ibd: secret-with-&-$-chars", file=sys.stderr, flush=True)\n'
+                          '(root/"child-ready").touch()\n'
+                          'deadline=time.monotonic()+12\n'
+                          'while not (root/"release-child").exists() and time.monotonic()<deadline: time.sleep(.02)\n'
+                          'target=pathlib.Path(next(a.split("=",1)[1] for a in sys.argv if a.startswith("--target-dir=")))\n'
+                          'for name in ("xtrabackup_info","xtrabackup_checkpoints"): (target/name).write_text("fixture")\n'
+                          'print("completed OK!",file=sys.stderr,flush=True)\n')
+            xb.chmod(0o755)
+            config = root / 'config.json'
+            config.write_text(json.dumps({'backup_base': str(root / 'backup'),
+                                          'mysql_password': 'secret-with-&-$-chars'}))
+            config.chmod(0o600)
+            env = dict(os.environ, PATH=str(binary) + ':' + os.environ['PATH'],
+                       MYSQLBACKUP_LOG_FILE=str(root / 'product.log'), STREAM_FIXTURE=directory)
+            child = subprocess.Popen([sys.executable, '-B', str(ROOT / 'tools/mysqltools/MyBackupCli.py'),
+                                      'full', '-c', str(config)], stdout=subprocess.PIPE,
+                                     stderr=subprocess.STDOUT, env=env)
+            captured = b''
+            try:
+                with selectors.DefaultSelector() as selector:
+                    selector.register(child.stdout, selectors.EVENT_READ)
+                    deadline = time.monotonic() + 5
+                    while b'Copying app/items.ibd' not in captured and time.monotonic() < deadline:
+                        for key, _ in selector.select(.1):
+                            block = os.read(key.fd, 65536)
+                            if not block:
+                                break
+                            captured += block
+                self.assertIn(b'Copying app/items.ibd', captured,
+                              'Native progress was hidden while the XtraBackup child was running')
+                self.assertIsNone(child.poll())
+                self.assertTrue((root / 'child-ready').exists())
+                self.assertIn('Copying app/items.ibd', (root / 'product.log').read_text())
+            finally:
+                (root / 'release-child').touch()
+                output, _ = child.communicate(timeout=10)
+                captured += output
+            self.assertEqual(child.returncode, 0, captured.decode(errors='replace'))
+            self.assertIn(b'completed OK!', captured)
+            self.assertNotIn(b'secret-with-&-$-chars', captured)
+            self.assertNotIn('secret-with-&-$-chars', (root / 'product.log').read_text())
+            self.assertTrue(list((root / 'backup').rglob('.backup_ok')))
+
+    def native_run(self, code, check=True, password='secret-with-&-$-chars'):
+        import io
+        import sys
+        manager = manager_for('/tmp')
+        manager.config.mysql_password = password
+        output = io.StringIO()
+        manager.logger = logging.Logger('stream-contract')
+        manager.logger.addHandler(logging.StreamHandler(output))
+        command = [sys.executable, '-c', code, '--prepare']
+        result = manager._stream_xtrabackup(command, check)
+        return result, output.getvalue()
+
+    def test_both_pipes_large_output_and_split_utf8_are_drained(self):
+        result, output = self.native_run(
+            'import os,sys\n'
+            'for i in range(2000):\n'
+            ' print("out-%s secret-with-&-$-chars"%i,flush=True)\n'
+            ' print("err-%s secret-with-&-$-chars"%i,file=sys.stderr,flush=True)\n'
+            'os.write(2,b"x"*65530+b"secret-with-&-$-chars"+b"y"*100000)\n'
+            'os.write(2,b"\\nUTF8: \\xe7");os.write(2,b"\\x89\\xa9\\xe7\\x90\\x86\\xff\\n")\n')
+        self.assertIn('out-1999', result)
+        for marker in ('out-0 ', 'out-1999 ', 'err-0 ', 'err-1999 ', '物理', 'rc=0'):
+            self.assertIn(marker, output)
+        self.assertNotIn('secret-with-&-$-chars', output)
+        self.assertNotIn('secret-with-', output)
+
+    def test_silent_child_reports_liveness_without_claiming_progress(self):
+        with mock.patch.object(MOD, 'XTRABACKUP_HEARTBEAT_SECONDS', .1):
+            _, output = self.native_run('import time; time.sleep(1.3)')
+        self.assertIn('still running: phase=prepare pid=', output)
+        self.assertIn('no native log line for', output)
+        self.assertIn('finished: phase=prepare rc=0', output)
+
+    def test_failure_preserves_tail_exit_status_and_redaction(self):
+        code = 'import sys;sys.stderr.write("failed secret-with-&-$-chars tail-without-newline");sys.exit(23)'
+        _, output = self.native_run(code, check=False)
+        self.assertIn('failed *** tail-without-newline', output)
+        self.assertIn('rc=23', output)
+        self.assertNotIn('secret-with-&-$-chars', output)
+        with self.assertRaisesRegex(RuntimeError, 'COMMAND FAILED rc=23'):
+            self.native_run(code)
+
+    def test_multiline_password_is_redacted_on_both_native_lines(self):
+        _, output = self.native_run('print("first-private-line\\nsecond-private-line")',
+                                    password='first-private-line\nsecond-private-line')
+        self.assertNotIn('first-private-line', output)
+        self.assertNotIn('second-private-line', output)
+
+    def test_interrupt_reaps_native_child_before_returning(self):
+        import subprocess
+        import sys
+        manager = manager_for('/tmp')
+        manager.config.mysql_password = 'secret'
+        manager.logger = mock.Mock()
+        real_popen = subprocess.Popen
+        children = []
+
+        def spawn(*args, **kwargs):
+            child = real_popen(*args, **kwargs)
+            children.append(child)
+            return child
+
+        with mock.patch.object(MOD.subprocess, 'Popen', side_effect=spawn):
+            with self.assertRaises(KeyboardInterrupt):
+                manager._stream_xtrabackup([sys.executable, '-c',
+                    'import os,signal,time;os.kill(os.getppid(),signal.SIGINT);time.sleep(60)'], True)
+        self.assertIsNotNone(children[0].poll())
+
+
 class NativeAndCapabilityTests(unittest.TestCase):
     def test_capability_uses_actual_help_and_not_mysql_version(self):
         manager = manager_for('/tmp')
@@ -711,7 +845,7 @@ class NativeAndCapabilityTests(unittest.TestCase):
         manager.config.mysql_password = 's3cret'
         manager.logger = mock.Mock()
         with mock.patch.object(MOD.subprocess, 'run', return_value=mock.Mock(returncode=0, stdout='', stderr='warning s3cret ignored')):
-            manager.run_cmd(['xtrabackup', '--backup'])
+            manager.run_cmd(['mysql', '--version'])
         manager.logger.info.assert_any_call('warning *** ignored')
 
     def test_native_args_kwargs_repeat_and_target_isolation(self):
@@ -722,7 +856,7 @@ class NativeAndCapabilityTests(unittest.TestCase):
         manager = manager_for('/tmp')
         manager.config.mysql_password = 'secret'
         manager.config.native_options = {'xtrabackup-backup': ['--throttle=20'], 'xtrabackup-prepare': ['--use-memory=128M']}
-        with mock.patch.object(MOD.subprocess, 'run', return_value=mock.Mock(returncode=0, stdout='', stderr='')) as run:
+        with mock.patch.object(manager, '_stream_xtrabackup', return_value='') as run:
             manager.run_cmd(['xtrabackup', '--prepare'])
         command = run.call_args.args[0]
         self.assertIn('--use-memory=128M', command)

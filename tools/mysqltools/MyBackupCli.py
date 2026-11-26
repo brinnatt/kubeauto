@@ -48,6 +48,8 @@ import re
 import shlex
 import configparser
 import logging
+import codecs
+import selectors
 from datetime import datetime, timedelta
 from pathlib import Path
 from logging.handlers import RotatingFileHandler
@@ -61,6 +63,7 @@ DEFAULT_LOG_FILE = os.path.join(LOG_DIR, "mysqlbackup.log")
 DEFAULT_LOG_LEVEL = logging.INFO
 DEFAULT_FORMAT = "[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s"
 DEFAULT_DATEFMT = "%Y-%m-%d %H:%M:%S"
+XTRABACKUP_HEARTBEAT_SECONDS = 30
 
 
 def _env_for_system_subprocess():
@@ -562,7 +565,10 @@ class BackupManager:
                 if "--" + mode in cmd:
                     cmd = cmd + self.command_options("xtrabackup-" + mode)
                     break
-        self.logger.info("RUN: {0}".format(self._redact_command(cmd)))
+        self.logger.info("RUN: {0}".format(self._redact_command(cmd)),
+                         extra={'to_stdout': cmd[0] == 'xtrabackup'})
+        if cmd[0] == 'xtrabackup':
+            return self._stream_xtrabackup(cmd, check)
         p = subprocess.run(
             cmd,
             stdout=subprocess.PIPE,
@@ -583,6 +589,83 @@ class BackupManager:
             if check:
                 raise RuntimeError("COMMAND FAILED {0}".format(self._redact_command(cmd)))
         return p.stdout.strip()
+
+    def _stream_xtrabackup(self, cmd, check):
+        """Drain both native pipes concurrently; diagnostics must not wait for exit."""
+        password = self.config.mysql_password
+        phase = next((mode for mode in ('backup', 'decompress', 'prepare', 'copy-back')
+                      if '--' + mode in cmd), 'command')
+        started = last_output = last_heartbeat = time.monotonic()
+        stdout = []
+
+        def emit(stream, line):
+            nonlocal last_output
+            if password:
+                line = line.replace(password, '***')
+                # A configured password may itself contain a line break.
+                for part in password.splitlines():
+                    if part:
+                        line = line.replace(part, '***')
+            self.logger.info('XtraBackup[%s]: %s', stream, line.rstrip('\r'),
+                             extra={'to_stdout': True})
+            last_output = time.monotonic()
+
+        with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                              env=_env_for_system_subprocess()) as process:
+            try:
+                with selectors.DefaultSelector() as selector:
+                    for name in ('stdout', 'stderr'):
+                        selector.register(getattr(process, name), selectors.EVENT_READ,
+                                          [name, codecs.getincrementaldecoder('utf-8')('replace'), ''])
+                    while selector.get_map() or process.poll() is None:
+                        for key, _ in selector.select(timeout=1):
+                            name, decoder, pending = key.data
+                            chunk = os.read(key.fd, 8192)
+                            decoded = decoder.decode(chunk, final=not chunk)
+                            if name == 'stdout':
+                                stdout.append(decoded)
+                            pending += decoded
+                            while '\n' in pending:
+                                line, pending = pending.split('\n', 1)
+                                emit(name, line)
+                            # Bound a native line with no newline, retaining any
+                            # password that straddles the fragment boundary.
+                            limit = max(65536, 2 * len(password))
+                            while len(pending) > limit + len(password):
+                                cut = limit
+                                if password:
+                                    at = pending.rfind(password, 0, cut + len(password))
+                                    if 0 <= at < cut < at + len(password):
+                                        cut = at
+                                emit(name, pending[:cut])
+                                pending = pending[cut:]
+                            key.data[2] = pending
+                            if not chunk:
+                                if pending:
+                                    emit(name, pending)
+                                selector.unregister(key.fileobj)
+                        now = time.monotonic()
+                        if (now - last_output >= XTRABACKUP_HEARTBEAT_SECONDS
+                                and now - last_heartbeat >= XTRABACKUP_HEARTBEAT_SECONDS):
+                            self.logger.info(
+                                'XtraBackup still running: phase=%s pid=%s elapsed=%.0fs; '
+                                'no native log line for %.0fs', phase, process.pid,
+                                now - started, now - last_output, extra={'to_stdout': True})
+                            last_heartbeat = now
+                    returncode = process.wait()
+            except BaseException:
+                # Match subprocess.run's child-reaping guarantee on interrupt
+                # or logging/read failure before the caller releases its lock.
+                process.kill()
+                process.wait()
+                raise
+        self.logger.log(logging.INFO if returncode == 0 else logging.ERROR,
+                        'XtraBackup finished: phase=%s rc=%s elapsed=%.1fs',
+                        phase, returncode, time.monotonic() - started,
+                        extra={'to_stdout': True})
+        if returncode != 0 and check:
+            raise RuntimeError('COMMAND FAILED rc={0} {1}'.format(returncode, self._redact_command(cmd)))
+        return ''.join(stdout).strip()
 
     @staticmethod
     def _redact_command(cmd):
@@ -738,7 +821,7 @@ class BackupManager:
         全量备份 - 遵循Percona XtraBackup官方最佳实践
         Reference: https://docs.percona.com/percona-xtrabackup/8.4/
         """
-        self.logger.info("START FULL BACKUP ...")
+        self.logger.info("START FULL BACKUP ...", extra={'to_stdout': True})
         replica_options = self._replication_backup_options()
         if self.config.mysql_container:
             if not self.manage_mysql_service('status'):
@@ -799,7 +882,7 @@ class BackupManager:
             restore_marker = self.config.backup_base / 'lock/restore-needs-full'
             if restore_marker.exists():
                 restore_marker.unlink()
-            self.logger.info("FULL BACKUP DONE SUCCESSFULLY!")
+            self.logger.info("FULL BACKUP DONE SUCCESSFULLY!", extra={'to_stdout': True})
         except Exception as e:
             self.logger.error("FULL BACKUP FAILED: {0}".format(e))
             if target.exists():
@@ -811,7 +894,7 @@ class BackupManager:
         增量备份 - 遵循Percona XtraBackup官方最佳实践
         Reference: https://docs.percona.com/percona-xtrabackup/8.4/
         """
-        self.logger.info("START INCREMENTAL BACKUP ...")
+        self.logger.info("START INCREMENTAL BACKUP ...", extra={'to_stdout': True})
         self._require_fresh_full()
         replica_options = self._replication_backup_options()
         if self.config.mysql_container:
@@ -899,7 +982,7 @@ class BackupManager:
             except (OSError, RuntimeError) as e:
                 self.logger.error("Failed to create symlink: {0}".format(e))
                 raise
-            self.logger.info("INCREMENTAL BACKUP DONE SUCCESSFULLY!")
+            self.logger.info("INCREMENTAL BACKUP DONE SUCCESSFULLY!", extra={'to_stdout': True})
         except Exception as e:
             self.logger.error("INCREMENTAL BACKUP FAILED: {0}".format(e))
             if target.exists():
@@ -1678,7 +1761,7 @@ class BackupManager:
         date = date or self.latest_full_date()
         
         self.logger.info("=" * 60)
-        self.logger.info("MYSQL RESTORE STARTING...")
+        self.logger.info("MYSQL RESTORE STARTING...", extra={'to_stdout': True})
         self.logger.info("=" * 60)
         
         # Validate the immutable audit plan before mutating the service/datadir.
@@ -1739,7 +1822,7 @@ class BackupManager:
                 raise
 
         self.logger.info("=" * 60)
-        self.logger.info("MYSQL RESTORE COMPLETED SUCCESSFULLY!")
+        self.logger.info("MYSQL RESTORE COMPLETED SUCCESSFULLY!", extra={'to_stdout': True})
         self.logger.info("=" * 60)
     
     def purge(self, backup_days=15, binlog_days=30):
