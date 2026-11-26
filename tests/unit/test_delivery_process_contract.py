@@ -641,7 +641,7 @@ fi
 
     def test_repository_has_root_agent_contract(self):
         self.assertIn("tests/enterprise-test-matrix.yaml", AGENTS)
-        self.assertIn("LAB_CLEAN_VERIFY_PASS", AGENTS)
+        self.assertIn("LAB_CLEAN_VERIFY_PASS", HANDBOOK)
         self.assertIn("完成一次六仓信息审计", AGENTS)
 
     def test_ext_images_rule_preserves_incremental_scope_and_artifact_admission(self):
@@ -667,6 +667,11 @@ fi
             self.assertIn(required, artifacts)
 
     def test_test_gate_change_ladder_is_a_permanent_delivery_contract(self):
+        protocol = HANDBOOK.split("## Test-gate change protocol", 1)[1].split("## China image-source contract", 1)[0]
+        self.assertIn("tests/README.md#test-gate-change-protocol", AGENTS)
+        self.assertIn("tests/README.md#mandatory-test-gate-change-ladder", AGENTS)
+        self.assertNotIn("1. Classify the proposed change", AGENTS)
+        self.assertEqual(protocol.count("1. Classify the proposed change"), 1)
         for required in (
             "Mandatory test-gate change ladder",
             "Classify the proposed change before running it",
@@ -678,16 +683,18 @@ fi
             "prerequisite: never spend the remaining stages",
             "completed ladder level",
         ):
-            self.assertIn(required, AGENTS)
-        for required in (
-            "## Test-gate change protocol",
-            "lowest-cost checks first",
-            "deterministic regression test for a proven test-gate defect",
-            "A static or focused failure blocks the full middleware gate",
-            "Abort after a failed prerequisite",
-            "completed ladder level",
-        ):
-            self.assertIn(required, HANDBOOK)
+            self.assertIn(required, protocol)
+        for name in ("kubeauto-dockerfile", "kubeauto-k8s-bin-dockerfile",
+                     "kubeauto-ext-bin-dockerfile", "kubeauto-ext-bin-sp1-dockerfile",
+                     "kubeauto-ext-images-dockerfile"):
+            path = ROOT.parent / name / "AGENTS.md"
+            if not path.exists():
+                continue
+            instructions = path.read_text()
+            self.assertIn("../kubeauto/AGENTS.md#start-here", instructions, name)
+            self.assertIn("../kubeauto/docs/documentation-quality-standard.md", instructions, name)
+            self.assertNotIn("## 六仓协作与安全边界", instructions, name)
+            self.assertNotIn("## GitHub 认证与发布证据入口", instructions, name)
 
     def test_live_cluster_pass_requires_application_read_write(self):
         jumper = (ROOT / "tests" / "helpers" / "regression-jumper.sh").read_text()
