@@ -695,6 +695,7 @@ class XtraBackupStreamingTests(unittest.TestCase):
                           'if "--help" in sys.argv: print("  --lock-ddl Boolean option"); sys.exit(0)\n'
                           'root=pathlib.Path(os.environ["STREAM_FIXTURE"])\n'
                           'print("Copying app/items.ibd: secret-with-&-$-chars", file=sys.stderr, flush=True)\n'
+                          'print("[Warning] fixture warning secret-with-&-$-chars", file=sys.stderr, flush=True)\n'
                           '(root/"child-ready").touch()\n'
                           'deadline=time.monotonic()+12\n'
                           'while not (root/"release-child").exists() and time.monotonic()<deadline: time.sleep(.02)\n'
@@ -733,6 +734,10 @@ class XtraBackupStreamingTests(unittest.TestCase):
                 captured += output
             self.assertEqual(child.returncode, 0, captured.decode(errors='replace'))
             self.assertIn(b'completed OK!', captured)
+            for text in (captured.decode(errors='replace'), (root / 'product.log').read_text()):
+                self.assertNotIn('XtraBackup[stderr]', text)
+                self.assertIn('XtraBackup 阶段=backup | Copying app/items.ibd: ***', text)
+                self.assertIn('[WARNING] [mysqlbackup.manager] XtraBackup 阶段=backup | [Warning] fixture warning ***', text)
             self.assertNotIn(b'secret-with-&-$-chars', captured)
             self.assertNotIn('secret-with-&-$-chars', (root / 'product.log').read_text())
             self.assertTrue(list((root / 'backup').rglob('.backup_ok')))
@@ -807,6 +812,46 @@ class XtraBackupStreamingTests(unittest.TestCase):
 
 
 class CommandObservabilityTests(unittest.TestCase):
+    def test_native_severity_and_source_do_not_depend_on_output_channel(self):
+        import sys
+        cases = (
+            ('2026-11-26T22:22:07.549265+08:00 1 [Note] [MY-011825] [Xtrabackup] log scanned up to (123)', logging.INFO),
+            ('2026-11-26T22:22:07Z 0 [ERROR] [MY-011825] cannot my_setwd /missing/', logging.ERROR),
+            ('mysql: [Warning] Using a password on the command line interface can be insecure.', logging.WARNING),
+            ('ERROR 2002 (HY000): connection refused', logging.ERROR),
+            ('FATAL ERROR: COMMAND FAILED', logging.ERROR),
+            ('[Warning] original warning', logging.WARNING),
+            ('261126 22:22:07 [Warning] original warning', logging.WARNING),
+            ('[FATAL] explicit native error', logging.ERROR),
+            ('Copying app/ERROR_records.ibd', logging.INFO),
+            ('Copying app/[ERROR].ibd', logging.INFO),
+            ('unclassified diagnostic', logging.INFO),
+        )
+        for channel in ('stdout', 'stderr'):
+            for line, level in cases:
+                with self.subTest(channel=channel, line=line):
+                    logger = logging.Logger('native-severity')
+                    with self.assertLogs(logger, level='INFO') as recorded:
+                        MOD._run_external(
+                            [sys.executable, '-c', 'import sys; print(sys.argv[1], file=sys.' + channel + ')', line],
+                            logger, show_stdout=True, label='XtraBackup', phase='prepare')
+                    diagnostic = [r for r in recorded.records
+                                  if line in r.getMessage() and not r.getMessage().startswith('RUN:')]
+                    self.assertEqual(len(diagnostic), 1)
+                    self.assertEqual(diagnostic[0].levelno, level)
+                    self.assertEqual(diagnostic[0].getMessage(), 'XtraBackup 阶段=prepare | ' + line)
+                    self.assertEqual(diagnostic[0].native_stream, channel)
+
+    def test_native_error_line_does_not_override_exit_status(self):
+        import sys
+        manager, output = self.manager()
+        result = MOD._run_external([sys.executable, '-c', 'print("[ERROR] diagnostic with zero exit")'],
+                                   manager.logger, show_stdout=True)
+        self.assertEqual(result.returncode, 0)
+        with self.assertRaisesRegex(RuntimeError, 'COMMAND FAILED rc=23'):
+            MOD._run_external([sys.executable, '-c', 'import sys;print("completed OK!");sys.exit(23)'],
+                              manager.logger, show_stdout=True)
+
     def test_unwritable_log_falls_back_to_one_console_copy(self):
         import io
         stdout, stderr = io.StringIO(), io.StringIO()
@@ -834,7 +879,9 @@ class CommandObservabilityTests(unittest.TestCase):
         manager.config.mysql_password = 'fixture-secret'
         output = io.StringIO()
         manager.logger = logging.Logger('command-observability')
-        manager.logger.addHandler(logging.StreamHandler(output))
+        handler = logging.StreamHandler(output)
+        handler.setFormatter(logging.Formatter('[%(levelname)s] %(message)s'))
+        manager.logger.addHandler(handler)
         return manager, output
 
     def test_metadata_stdout_is_returned_unchanged_and_never_logged(self):
@@ -892,7 +939,7 @@ class CommandObservabilityTests(unittest.TestCase):
                     raise OSError('copy failed')
         text = output.getvalue()
         self.assertIn('STAGE still running: archive fixture-binlog', text)
-        self.assertIn('STAGE interrupted or failed:', text)
+        self.assertIn('[ERROR] STAGE interrupted or failed:', text)
         self.assertNotIn('STAGE completed:', text)
         self.assertFalse(any(t.name == 'mysqlbackup-progress' for t in threading.enumerate()))
 
@@ -963,11 +1010,16 @@ manager._apply_binlog({},'2099-01-01 00:00:00',None)
                     self.assertNotIn('PRIVATE_SQL_RESULT', text)
                 if case == 'large':
                     self.assertIn('producer ***', data); self.assertIn('consumer ***', data)
+                    self.assertIn('mysqlbinlog 阶段=replay | producer ***', data)
+                    self.assertIn('mysql 阶段=replay | consumer ***', data)
+                    self.assertNotIn('Binlog[', data)
                     self.assertIn('mysqlbinlog_rc=0 mysql_rc=0', data)
                 elif case == 'producer-failure':
                     self.assertIn('decoder tail ***', data); self.assertIn('mysqlbinlog_rc=23', data)
+                    self.assertIn('[ERROR] [mysqlbackup.manager] BINLOG REPLAY finished:', data)
                 elif case == 'consumer-failure':
                     self.assertIn('consumer tail ***', data); self.assertIn('mysql_rc=17', data)
+                    self.assertIn('[ERROR] [mysqlbackup.manager] BINLOG REPLAY finished:', data)
                 elif case == 'silent':
                     self.assertIn('Binlog still running: phase=replay', data)
 

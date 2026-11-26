@@ -1,0 +1,105 @@
+{
+  "date": "2026-11-26",
+  "result": "local-contract-pass",
+  "classification": "product log presentation and focused test coverage",
+  "parent_case": "TL-MBK-06",
+  "parent_status": "pending",
+  "root_cause": "The unified command drain logged every native line at INFO and exposed stdout/stderr as the prominent label. Native warnings/errors, pipeline failure summaries and filesystem failure summaries could therefore be wrapped in INFO.",
+  "reproduction": {
+    "source": "/home/brinnatt/.local/share/kubeauto/tools-evidence/mybackup-log-format-20261126-wqqq7wzc/baseline-MyBackupCli.py",
+    "rc": 1,
+    "scope": "Actual full CLI with temporary mysql/xtrabackup executables plus real subprocess channel/severity cases. Baseline rc1 is expected rejection of the old presentation, not a database lifecycle result."
+  },
+  "changes": [
+    "Preserve redacted native text and display emitting command plus phase; retain channel on the LogRecord for diagnostics.",
+    "Recognize explicit native severity headers on either channel; do not match ERROR inside table/file names. Unknown severity remains informational and does not imply success.",
+    "Report filesystem failures and nonzero replay status summaries at ERROR. Keep existing return-code enforcement, metadata privacy, heartbeat, pipe drainage and child cleanup.",
+    "Wire both command-observability and XtraBackup streaming contracts into the fixed preflight; update the existing manual and pending matrix item."
+  ],
+  "validation": {
+    "focused": {
+      "tests": 95,
+      "rc": 0,
+      "log": "/home/brinnatt/.local/share/kubeauto/tools-evidence/mybackup-log-format-20261126-wqqq7wzc/focused-final.log"
+    },
+    "fixed_preflight": {
+      "command": "bash tests/run_tools_regression.sh --preflight",
+      "tests": 188,
+      "rc": 0,
+      "marker": "TOOLS_PREFLIGHT_PASS",
+      "log": "/home/brinnatt/.local/share/kubeauto/tools-evidence/mybackup-log-format-20261126-wqqq7wzc/preflight.log"
+    },
+    "syntax_schema_import_boundary": "Fixed preflight includes Python compile/import boundary and matrix validation; bash -n and git diff --check passed.",
+    "cases": [
+      "stdout and stderr severity independence, timestamped Note/ERROR, mysql Warning/ERROR, FATAL, legacy timestamp, table/file ERROR false positives",
+      "real CLI terminal and file output before exit, redaction and complete backup fixture marker",
+      "native text cannot override zero or nonzero process status",
+      "pipeline emitter identity, both failure summaries, large output, metadata privacy, timeout/SIGINT and child reaping",
+      "file-stage heartbeat and ERROR on interruption/failure"
+    ]
+  },
+  "official_sources": [
+    {
+      "file": "python36-logging.html",
+      "url": "https://docs.python.org/3.6/library/logging.html",
+      "sha256": "2fc2c6f59833d2a03acfae5eee9784c3e1a54c78d06916d0b0c05b4eb87f7936",
+      "bytes": 138807
+    },
+    {
+      "file": "python36-subprocess.html",
+      "url": "https://docs.python.org/3.6/library/subprocess.html",
+      "sha256": "64a9b46fb44ff546093898755910da532cbdd5ff331aad8cac7f373877ae504c",
+      "bytes": 145505
+    },
+    {
+      "url": "https://raw.githubusercontent.com/percona/percona-xtrabackup/percona-xtrabackup-8.0.35-36/storage/innobase/xtrabackup/src/common.h",
+      "error": "The read operation timed out"
+    },
+    {
+      "url": "https://docs.percona.com/percona-xtrabackup/8.0/create-full-backup.html",
+      "error": "HTTP Error 403: Forbidden"
+    }
+  ],
+  "source_review": {
+    "python": "Read local CPython logging.Logger.log/_log: level is explicit and independent of subprocess channels; snapshot retained. Python 3.6 logging/subprocess official documentation was accessible.",
+    "xtrabackup": "Pinned Percona source fetch timed out and official backup page returned403 in this turn. No new upstream parsing guarantee is claimed; recognized formats are bounded by the observed headers and deterministic fixtures."
+  },
+  "matrix": {
+    "change": "TL-MBK-06 pass -> pending; registration pass89 ->88, pending0 ->1. Other entries preserved.",
+    "status": "Current complete evidence counts unavailable: fixed status still refuses MYSQL80_QUALIFICATION_STALE for mysql80-physical-8.0.33, as before this change. Registration counts are not a validated acceptance summary.",
+    "next_exit": "Review local presentation result, build only affected MyBackupCli frozen artifact, run owning fixed physical scenario and affected final acceptance; do not relabel historical evidence."
+  },
+  "boundary": "Local deterministic subprocess/CLI evidence only. No remote lab or production access, image publication, frozen binary rebuild, lifecycle acceptance, GA or customer sign-off in this change.",
+  "files": {
+    "tools/mysqltools/MyBackupCli.py": "7ae02eb9ddc4d54462f0dc88018db18faaffad0220e9b455aa2a75fe8e0fed21",
+    "tools/mysqltools/operations-manual.md": "bb5ac2752e41a70044c38c72681877dd2c45490e6958235c303113d4cb9f8323",
+    "tests/unit/test_mybackup_cli_contract.py": "9e51b58eaefc5c1251d0c051128bb5b9282696e0a30aa56cf1cf3d22623ae233",
+    "tests/run_tools_regression.sh": "fa60ae00555ed2d85da565c30762f0175ef6b5bbcd466c033ba57e665af74d6b",
+    "tests/tools-test-matrix.yaml": "6031ac5aedf9b57851334d464aaf61c1b36c60d113bb40dbffcb956e0b8e7b83"
+  },
+  "raw": {
+    "/home/brinnatt/.local/share/kubeauto/tools-evidence/mybackup-log-format-20261126-wqqq7wzc/baseline-MyBackupCli.py": "985d22071503e35849b3f6d1cd8058b8fd5bb9c8f431db2659fa52b6d7f9ecfb",
+    "/home/brinnatt/.local/share/kubeauto/tools-evidence/mybackup-log-format-20261126-wqqq7wzc/baseline.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "/home/brinnatt/.local/share/kubeauto/tools-evidence/mybackup-log-format-20261126-wqqq7wzc/baseline.log": "3c7dd2306aca9615021722d35e6962d3a08a45769fc74942af8df5fd5d0c91ee",
+    "/home/brinnatt/.local/share/kubeauto/tools-evidence/mybackup-log-format-20261126-wqqq7wzc/diff-check.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "/home/brinnatt/.local/share/kubeauto/tools-evidence/mybackup-log-format-20261126-wqqq7wzc/diff-check.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/home/brinnatt/.local/share/kubeauto/tools-evidence/mybackup-log-format-20261126-wqqq7wzc/focused-final.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "/home/brinnatt/.local/share/kubeauto/tools-evidence/mybackup-log-format-20261126-wqqq7wzc/focused-final.log": "9c307221b90bdfda4b0129285094e41dd8570bf89a0190c263f93a77c28b6cd9",
+    "/home/brinnatt/.local/share/kubeauto/tools-evidence/mybackup-log-format-20261126-wqqq7wzc/focused.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "/home/brinnatt/.local/share/kubeauto/tools-evidence/mybackup-log-format-20261126-wqqq7wzc/focused.log": "abbe27931d58e86c838a4dc9b2608b6bfd88f406e2ad57d088ad8939f3161cdd",
+    "/home/brinnatt/.local/share/kubeauto/tools-evidence/mybackup-log-format-20261126-wqqq7wzc/inputs/tests/run_tools_regression.sh": "fa60ae00555ed2d85da565c30762f0175ef6b5bbcd466c033ba57e665af74d6b",
+    "/home/brinnatt/.local/share/kubeauto/tools-evidence/mybackup-log-format-20261126-wqqq7wzc/inputs/tests/tools-test-matrix.yaml": "6031ac5aedf9b57851334d464aaf61c1b36c60d113bb40dbffcb956e0b8e7b83",
+    "/home/brinnatt/.local/share/kubeauto/tools-evidence/mybackup-log-format-20261126-wqqq7wzc/inputs/tests/unit/test_mybackup_cli_contract.py": "9e51b58eaefc5c1251d0c051128bb5b9282696e0a30aa56cf1cf3d22623ae233",
+    "/home/brinnatt/.local/share/kubeauto/tools-evidence/mybackup-log-format-20261126-wqqq7wzc/inputs/tools/mysqltools/MyBackupCli.py": "7ae02eb9ddc4d54462f0dc88018db18faaffad0220e9b455aa2a75fe8e0fed21",
+    "/home/brinnatt/.local/share/kubeauto/tools-evidence/mybackup-log-format-20261126-wqqq7wzc/inputs/tools/mysqltools/operations-manual.md": "bb5ac2752e41a70044c38c72681877dd2c45490e6958235c303113d4cb9f8323",
+    "/home/brinnatt/.local/share/kubeauto/tools-evidence/mybackup-log-format-20261126-wqqq7wzc/official-sources.json": "e7633900f4af3b60301aeb8e936f53bd51fc846cfc33550428a7306203a854e8",
+    "/home/brinnatt/.local/share/kubeauto/tools-evidence/mybackup-log-format-20261126-wqqq7wzc/preflight.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "/home/brinnatt/.local/share/kubeauto/tools-evidence/mybackup-log-format-20261126-wqqq7wzc/preflight.log": "e4bbac53b2441a241522d2d2ccc118fd8a8ae8fbb3ba78f99b67bf32aaa7b42b",
+    "/home/brinnatt/.local/share/kubeauto/tools-evidence/mybackup-log-format-20261126-wqqq7wzc/python-logging-source.txt": "55fd122a84b48385cf12402fe09c49a80237fadc31ed2f7dd37a39a5efb422e4",
+    "/home/brinnatt/.local/share/kubeauto/tools-evidence/mybackup-log-format-20261126-wqqq7wzc/python36-logging.html": "2fc2c6f59833d2a03acfae5eee9784c3e1a54c78d06916d0b0c05b4eb87f7936",
+    "/home/brinnatt/.local/share/kubeauto/tools-evidence/mybackup-log-format-20261126-wqqq7wzc/python36-subprocess.html": "64a9b46fb44ff546093898755910da532cbdd5ff331aad8cac7f373877ae504c",
+    "/home/brinnatt/.local/share/kubeauto/tools-evidence/mybackup-log-format-20261126-wqqq7wzc/six-repo-state.json": "4f82188366a5b0c6fab8a104ab589f52cf48c3dd71299d8bb0d3312fe768d284",
+    "/home/brinnatt/.local/share/kubeauto/tools-evidence/mybackup-log-format-20261126-wqqq7wzc/status.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "/home/brinnatt/.local/share/kubeauto/tools-evidence/mybackup-log-format-20261126-wqqq7wzc/status.log": "be9df9a9a6d28a4ac27485ad976f68c9c6797ca32983d74261618c998f6286fb"
+  }
+}

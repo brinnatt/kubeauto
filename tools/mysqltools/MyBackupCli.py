@@ -157,6 +157,25 @@ def _command_description(cmd, password=''):
     return _redact(' '.join(redacted), password)
 
 
+def _native_log_level(line):
+    """Recognize explicit native severity, never infer it from the pipe name.
+
+    Match only a message header, so a table/file named ERROR is not an alarm.
+    Unclassified output stays informational; process status decides success.
+    """
+    header = re.sub(r'^(?:\d{4}-\d{2}-\d{2}[T ]\S+|\d{6}\s+\d{2}:\d{2}:\d{2})\s+',
+                    '', line.lstrip())
+    match = re.match(r'^(?:\d+\s+)?(?:[\w./-]+:\s*)?'
+                     r'(?:\[(NOTE|INFO|SYSTEM|WARNING|WARN|ERROR|FATAL)\]|'
+                     r'(WARNING|ERROR|FATAL ERROR)\b)', header, re.IGNORECASE)
+    severity = (match.group(1) or match.group(2)).upper() if match else ''
+    if severity in ('ERROR', 'FATAL', 'FATAL ERROR'):
+        return logging.ERROR
+    if severity in ('WARNING', 'WARN'):
+        return logging.WARNING
+    return logging.INFO
+
+
 @contextlib.contextmanager
 def _operation_progress(logger, phase):
     """Observe synchronous filesystem work without changing its copy semantics."""
@@ -180,8 +199,9 @@ def _operation_progress(logger, phase):
     finally:
         stopped.set()
         observer.join()
-        logger.info('STAGE %s: %s elapsed=%.1fs', outcome, phase,
-                    time.monotonic() - started, extra={'to_stdout': True})
+        logger.log(logging.INFO if outcome == 'completed' else logging.ERROR,
+                   'STAGE %s: %s elapsed=%.1fs', outcome, phase,
+                   time.monotonic() - started, extra={'to_stdout': True})
 
 
 def _observed_stage(method):
@@ -205,8 +225,13 @@ def _drain_commands(processes, streams, logger, password, label, phase, timeout=
 
     def emit(name, line):
         nonlocal last_output
-        logger.info('%s[%s]: %s', label, name, _redact(line.rstrip('\r'), password),
-                    extra={'to_stdout': True})
+        # Pipeline stream names also identify the emitting client. Keep the
+        # channel as structured diagnostics, rather than a customer error label.
+        source = name.rsplit(' ', 1)[0] if ' ' in name else label
+        line = line.rstrip('\r')
+        logger.log(_native_log_level(line), '%s 阶段=%s | %s', source, phase,
+                   _redact(line, password),
+                   extra={'to_stdout': True, 'native_stream': name.rsplit(' ', 1)[-1]})
         last_output = time.monotonic()
 
     with selectors.DefaultSelector() as selector:
@@ -1729,8 +1754,9 @@ class BackupManager:
                              ('mysql stderr', consumer.stderr, 'log')],
                             self.logger, self.config.mysql_password, 'Binlog', 'replay')
             codes = {name: process.wait() for name, process in processes}
-            self.logger.info('BINLOG REPLAY finished: mysqlbinlog_rc=%s mysql_rc=%s elapsed=%.1fs',
-                             codes['mysqlbinlog'], codes['mysql'], time.monotonic() - started)
+            self.logger.log(logging.ERROR if any(codes.values()) else logging.INFO,
+                            'BINLOG REPLAY finished: mysqlbinlog_rc=%s mysql_rc=%s elapsed=%.1fs',
+                            codes['mysqlbinlog'], codes['mysql'], time.monotonic() - started)
             if any(codes.values()):
                 raise RuntimeError('BINLOG APPLY FAILED mysqlbinlog_rc=%s mysql_rc=%s' %
                                    (codes['mysqlbinlog'], codes['mysql']))

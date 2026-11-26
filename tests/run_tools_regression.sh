@@ -84,6 +84,7 @@ case "${1:---preflight}" in
     KUBEAUTO_LOG_DIR="$tools_test_tmp" KAFKA_LOG_DIR="$tools_test_tmp" STARROCKS_LOG_DIR="$tools_test_tmp" MYSQL_MIGRATION_LOG_DIR="$tools_test_tmp" PYTHONDONTWRITEBYTECODE=1 \
       "$PY" -B -m unittest tests.unit.test_tools_execution_boundary_contract tests.unit.test_tools_config_failure_contract tests.unit.test_tools_matrix_contract \
       tests.unit.test_subprocess_environment_contract tests.unit.test_mysql_backup_gate_contract \
+      tests.unit.test_mybackup_cli_contract.CommandObservabilityTests tests.unit.test_mybackup_cli_contract.XtraBackupStreamingTests \
       tests.unit.test_mybackup_replication_contract tests.unit.test_mysql80_binary_artifact_contract \
       tests.unit.test_mybackup_offline_contract tests.unit.test_mysql80_binary_live_contract tests.unit.test_mybackup_native_build_contract \
       tests.unit.test_tools_execution_inventory_contract tests.unit.test_tools_help_contract tests.unit.test_tools_evidence_dependency_contract \

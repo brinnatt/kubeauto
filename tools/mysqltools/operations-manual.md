@@ -480,7 +480,21 @@ sudo MyBackupCli full -c /etc/mysql/backup.conf \
 
 ### 观察物理备份与恢复进度
 
-全备、增量、解压、prepare 和 copy-back 默认将 XtraBackup 原生 stdout、stderr 实时写入终端和工具日志，无需新增配置。`RUN:` 显示脱敏后的实际命令与目标目录；`XtraBackup[stderr]:` 或 `XtraBackup[stdout]:` 后面保留原生消息，可据此观察正在复制的文件、检查点和原生完成结果。配置中的密码在输出前替换为 `***`。日志默认按每份 10 MiB 轮转，保留当前文件和 5 份历史文件；定时任务还应保留其服务日志和退出状态。
+全备、增量、解压、prepare 和 copy-back 默认将 XtraBackup 原生输出实时写入终端和工具日志，无需新增配置。`RUN:` 显示脱敏后的实际命令与目标目录；后续消息按“来源、阶段、原生内容”显示。例如下面是格式示意，并非一次真实备份的验收结果：
+
+```text
+[2026-11-26 22:22:07] [INFO] [mysqlbackup.manager] XtraBackup 阶段=backup | ... [Note] ... log scanned up to (123)
+[2026-11-26 22:22:08] [WARNING] [mysqlbackup.manager] XtraBackup 阶段=backup | ... [Warning] ...
+[2026-11-26 22:22:09] [ERROR] [mysqlbackup.manager] mysql 阶段=replay | ERROR 2002 (HY000): ...
+```
+
+外层时间是工具记录消息的时间；原生内容中的时间仍属于原生程序。阶段 `backup`、`decompress`、`prepare`、`copy-back`、`replay` 分别表示备份、解压、准备备份、复制回数据目录、binlog 回放；`command` 表示其它外部命令。回放消息分别标明 `mysqlbinlog` 和 `mysql`，便于定位是哪一端报告问题。
+
+原生消息头明确标注的 Note/Info/System 显示为 INFO，Warning/Warn 显示为 WARNING，Error/Fatal 和 MySQL 的 `ERROR 2002 ...` 等错误头显示为 ERROR。原生文本保留，仅将配置中的密码替换为 `***`。没有已识别等级的原生消息以 INFO 转发，**INFO 不保证消息无异常，也不代表任务成功**；工具不根据文件名或正文中偶然出现的 `ERROR` 单词判断错误。WARNING 表示需要检查该消息的原因；ERROR 表示该消息报告了错误，仍需结合所属阶段、退出码和最终结果判断整个任务的状态。SQL 就绪等待期间的一次连接失败与最终恢复失败不能混为一谈。
+
+旧版的 `XtraBackup[stderr]:`、`mysql[stderr]:` 只表示原生程序的标准错误输出通道。XtraBackup 的正常进度也使用该通道，因此新版不再将通道名展示为客户日志标签；stdout、stderr 都按原生消息头识别等级。日志等级不改变命令返回值或成功判据，原生 `completed OK!` 也不能覆盖非零退出码。
+
+日志默认按每份 10 MiB 轮转，保留当前文件和 5 份历史文件；定时任务还应保留其服务日志和退出状态。
 
 日志文件无法打开时，工具改向 stderr 输出单份诊断；这不表示文件日志已保存。定时任务应保留服务日志，或先修复日志目录权限再启动。确认停库与等待 SQL 就绪期间可能出现连接拒绝，应结合该阶段的状态、最终退出码和业务读回判断，不凭一条探测诊断判定整个恢复失败。
 

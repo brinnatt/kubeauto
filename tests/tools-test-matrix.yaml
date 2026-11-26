@@ -272,7 +272,7 @@ test_cases:
 
 # 对外功能清单：每一项都必须由 case_ids 指向可执行的功能/安全/恢复场景。
 # build/--help 只能证明交付物可启动，不能单独覆盖本清单中的生产功能。
-  - {id: TL-MBK-06, tool: MyBackupCli, category: functional, scenario: "实际 XtraBackup lock-ddl、实时原生日志/静默心跳和分阶段参数透传", command: "MYSQL_BACKUP_STAGE=physical bash tests/run_tools_regression.sh --mysql-backup-live", expected: "8.0 布尔帮助选择 ON；8.4 能力选择 REDUCED；不支持的显式 REDUCED 拒绝；原生 throttle/prepare 参数经 CLI 生效且恢复精确读回；子进程退出前终端/文件实时输出、30秒静默心跳、双管道排空、脱敏和中断回收", status: pass, evidence: "tests/evidence/mysql84-physical-requal-20261125.json；当前源码合同与冻结8.4物理聚焦raw、durable双0及scoped clean；8.0/拓扑父项独立验收"}
+  - {id: TL-MBK-06, tool: MyBackupCli, category: functional, scenario: "实际 XtraBackup lock-ddl、实时原生日志/静默心跳和分阶段参数透传", command: "MYSQL_BACKUP_STAGE=physical bash tests/run_tools_regression.sh --mysql-backup-live", expected: "8.0 布尔帮助选择 ON；8.4 能力选择 REDUCED；不支持的显式 REDUCED 拒绝；原生 throttle/prepare 参数经 CLI 生效且恢复精确读回；子进程退出前终端/文件实时输出、明确来源和阶段、原生警告/错误与外层等级一致、通道不冒充等级；30秒静默心跳、双管道排空、脱敏和中断回收", status: pending, evidence: "2026-11-26 日志呈现修复待验收：统一转发入口等级与来源变化；最小补测为CommandObservabilityTests与XtraBackupStreamingTests，随后原固定physical入口验证冻结程序；旧tests/evidence/mysql84-physical-requal-20261125.json保留原身份，不签当前源码"}
   - {id: TL-MLB-13, tool: MyLogiBackupCli, category: functional, scenario: "原生参数、单遍压缩摘要、阶段诊断和定时参数保存", command: "MYSQL_BACKUP_STAGE=logical bash tests/run_tools_regression.sh --mysql-backup-live", expected: "原生 extended-insert 与连接参数传到命令；三版本 SQL/BLOB/程序恢复；gz/bz2/xz 摘要回读；受保护参数拒绝；timer 保存参数", status: pass, evidence: "当前tests/evidence/mysql-logical-requal-20261126.json；历史2026-11-08 tests/evidence/mysql-backup-20261108.json保留；当前输入和冻结产物 SHA256 绑定；logical 固定入口、业务读回/参数/清理标记、durable 双0、零未预期失败；其它未变工具证据复用"}
   - {id: TL-X-09, tool: cross-tool, category: delivery, scenario: "两个 MySQL 备份工具变化范围的最终干净完整回归", command: "bash tests/run_tools_regression.sh --mysql-backup-live", expected: "所有当前适用前置 PASS 且输入绑定后才启动；两个工具全部原有场景及新增场景；durable 双0、零未预期失败、TOOLS_CLEAN_VERIFY_PASS", status: pass, evidence: "tests/evidence/mysql-backup-final-20261125.json；当前run mysql-backups-full-20261126-135915，本轮全命令观测修订后的五阶段干净完整回归、durable双0、归档SHA256和scoped clean通过；绑定当前容器16、二进制24及14脚本审计；025133/030034两次测试门禁失败原始状态保留，未改签。"}
 
@@ -428,12 +428,12 @@ functional_inventory:
 
 coverage_summary:
   total: 90
-  pass: 89
-  pending: 0
+  pass: 88
+  pending: 1
   fail: 0
   skip: 0
   na: 1
-  overall_assessment: "适用89项全部通过、1项不适用。MyBackupCli全命令及文件长阶段观测、回放管道死锁和客户端回收修订，经103合同、原生冻结构建、容器16及二进制24最终干净回归、14脚本执行边界审计及135915五阶段最终门禁核验；实际读回、durable双0和限定清理齐备；未变工具复用已核验依赖，非生产部署或客户签收。"
+  overall_assessment: "登记值为88 pass、1 pending、1 na，不代表当前证据全部有效。2026-11-26 TL-MBK-06因统一日志转发等级/来源变化从pass退回pending；本地合同与冻结程序聚焦验证为补测出口。固定status当前拒绝mysql80-physical-8.0.33输入变化，完整验收计数待核验；保留旧证据身份，不据此签当前源码或客户验收。"
 
 mysql_backup_requalification:
   evidence: tests/evidence/mysql-backup-qualification-20261125.json
@@ -656,9 +656,9 @@ mybackup_command_observability:
   scope: "MyBackupCli所有外部命令与文件系统长阶段；不修改其它工具或镜像"
   parent_cases: [TL-MBK-02, TL-MBK-03, TL-MBK-04, TL-MBK-05, TL-MBK-06]
   product_commands: ["MyBackupCli full/incr/binlog/checksum/restore-dry-run/restore/purge -c <0600 fixture>"]
-  expected: ["mysql[stderr]:", "BINLOG REPLAY finished: mysqlbinlog_rc=0 mysql_rc=0", "STAGE completed:", "TOOLS_CLEAN_VERIFY_PASS"]
+  expected: ["mysql 阶段=command |", "原生Warning/ERROR对应外层WARNING/ERROR；未知等级不保证成功；来源与阶段明确；stdout/stderr不作客户错误标签", "BINLOG REPLAY finished: mysqlbinlog_rc=0 mysql_rc=0", "STAGE completed:", "TOOLS_CLEAN_VERIFY_PASS"]
   official: ["https://docs.python.org/3.12/library/subprocess.html#subprocess.Popen.communicate", "https://docs.python.org/3.12/library/selectors.html", "CPython 3.12 subprocess.run/_communicate", "MySQL 8.0 mysqlbinlog point-in-time recovery"]
   fixture: "本地真实子进程与临时CLI夹具先验证；通过后复用固定138、137、216租约及已批准生命周期；SQL/JSON stdout仅供解析，回放SQL仅在两个子进程间传输"
   cleanup: "本轮临时文件、观察线程、两个回放客户端及锁；现场沿用所属固定runner范围；不连接生产"
   disproof: "临时KUBEAUTO_LOG_DIR与MYSQLBACKUP_LOG_FILE下运行 .venv/bin/python -B -m unittest tests.unit.test_mybackup_cli_contract.CommandObservabilityTests -v"
-  cases: ["配置检测mysql退出前终端和文件均可见诊断", "元数据stdout准确返回且不写日志", "大stdout/stderr与UTF8、跨片密码和未换行尾部", "静默命令及文件操作心跳", "回放双端大stderr不堵塞", "回放任一端失败、中断、第二端启动失败均回收客户端", "命令超时与SIGINT回收", "原生诊断流不在内存累计"]
+  cases: ["配置检测mysql退出前终端和文件均可见诊断", "两通道等级一致、原始内容保留且来源/阶段可辨、文件名ERROR不误报、文本不覆盖退出码", "元数据stdout准确返回且不写日志", "大stdout/stderr与UTF8、跨片密码和未换行尾部", "静默命令及文件操作心跳", "回放双端大stderr不堵塞", "回放任一端失败、中断、第二端启动失败均回收客户端", "命令超时与SIGINT回收", "原生诊断流不在内存累计"]
