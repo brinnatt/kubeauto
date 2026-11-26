@@ -1,0 +1,100 @@
+schema_version: 1
+kind: accepted-maintenance-source-baseline
+recorded_on: '2026-11-26'
+kubernetes: v1.36.6
+status: accepted-scoped-maintenance
+authority: 用户授权dev直接合入v1.36.6，验证影响后对齐dev，保留正式分支和双方历史。
+purpose: 下一跳从本正式版本维护基线的六仓精确source_commit出发；本次不启动下一minor。
+repositories:
+- repository: kubeauto
+  branch: v1.36.6
+  source_commit: c5f0a274763ba348f1635dffebbc75782bd37109
+  source_tree: 41f47d234b8b393965144240828956a0e06eaa35
+  previous_version_tip: 2fc369768f1b312538a8def6a3b9f2eda4b0700f
+  accepted_dev_tip: e5f71001cb1030b4100b9f6dbea2d93c7675e9ae
+  stable_branch: master
+  unchanged_stable_commit: 975181c17adea3daa5f1029bc624dd564f6d83ec
+- repository: kubeauto-dockerfile
+  branch: v1.36.6
+  source_commit: e5fc402bd582d3a5a6d6c329ccbe4a3e6015ae16
+  source_tree: c8ba87cc840f18912beb426b41dffe1b9a93e3c2
+  previous_version_tip: e5fc402bd582d3a5a6d6c329ccbe4a3e6015ae16
+  accepted_dev_tip: e5fc402bd582d3a5a6d6c329ccbe4a3e6015ae16
+  stable_branch: main
+  unchanged_stable_commit: a77be14a4e3a04c65a024bd1eae64c6cfa650626
+- repository: kubeauto-k8s-bin-dockerfile
+  branch: v1.36.6
+  source_commit: bc3dcf6527dcb81613445b1040f2da0caa75141d
+  source_tree: ce35a970f15dcd9169139a4107d273ffd59578c1
+  previous_version_tip: bc3dcf6527dcb81613445b1040f2da0caa75141d
+  accepted_dev_tip: bc3dcf6527dcb81613445b1040f2da0caa75141d
+  stable_branch: main
+  unchanged_stable_commit: 534bdc4c7517e1abbdde0731cf932e72892928f4
+- repository: kubeauto-ext-bin-dockerfile
+  branch: v1.36.6
+  source_commit: 312d41f7c4adba9a86647ad4bc586543ec5d1e9f
+  source_tree: 2d6e7cb5e91377642b8a6e450fef860d84d43d85
+  previous_version_tip: 312d41f7c4adba9a86647ad4bc586543ec5d1e9f
+  accepted_dev_tip: 312d41f7c4adba9a86647ad4bc586543ec5d1e9f
+  stable_branch: main
+  unchanged_stable_commit: 74bd8707c844b3b5154ca31df94beb06788d1420
+- repository: kubeauto-ext-bin-sp1-dockerfile
+  branch: v1.36.6
+  source_commit: cd439d9cb0f6f0b8701b802ac3c37fd4ac420b79
+  source_tree: 7f2788fd9df4daae56dfb46eb9a287b90bd11cfe
+  previous_version_tip: cd439d9cb0f6f0b8701b802ac3c37fd4ac420b79
+  accepted_dev_tip: cd439d9cb0f6f0b8701b802ac3c37fd4ac420b79
+  stable_branch: main
+  unchanged_stable_commit: 340552fcc0c83eb4f980eb4c54dd90eb593483fd
+- repository: kubeauto-ext-images-dockerfile
+  branch: v1.36.6
+  source_commit: 9da12434e4f196327723b8f7c1998175184b12ef
+  source_tree: f51d598ce96b6b100764cd1bb5e12b96a450f1da
+  previous_version_tip: 1c29e9bf8d4755cd056e731815280acb36b2322a
+  accepted_dev_tip: ba5249131c146efbd438f90d270b7c5886fb7889
+  stable_branch: main
+  unchanged_stable_commit: 074c8010810302d7fa3346cff996cbfe7bc3f7a1
+source_identity_boundary:
+  kubeauto: source_commit冻结运行输入；后续记录提交仅修改本维护基线、evidence/maintenance-dev-20261126及upgrade入口导航，不改运行代码。使用正式分支时核对记录提交范围。
+  branch_alignment: 六仓dev/v1.36.6对齐，原master/main及既有tag不变；不新增分支、worktree或专属发布入口。
+accepted_deltas:
+- area: standalone-tools
+  change: 已接受工具功能、执行边界和MySQL物理/逻辑备份修复；含StarMigrt。
+  verification: 复用原dev的89/89矩阵证据及原始身份；当前固定status/audit和165项、46项、13项本地合同通过。
+- area: external-image-catalog
+  change: 合并dev的MySQL8.0/PXB8.0配方与版本分支的六项中间件配方，精确并集238项。
+  verification: 既有catalog validator及消费者版本合同通过；无发布、无重建，不签这些配方的新运行验收。
+evidence:
+  qualification:
+    path: upgrade/v1.36.6/evidence/maintenance-dev-20261126/qualification.json
+    sha256: f5a86934950ca49b666e07df05e3e6c9725a38cf946d19e3ccb37eff25a89358
+    bytes: 10667
+  reuse_manifest:
+    path: upgrade/v1.36.6/evidence/maintenance-dev-20261126/evidence-manifest.json
+    sha256: dc8dff6b902473b3b8d43f0fe361309002ae7b0a469f428b04fb3d0f955620a4
+    bytes: 20420
+historical_delivery:
+  records:
+  - path: upgrade/v1.36.6/release.yaml
+    sha256: 7f28c189975edf9449b6e4a933b55f188ea836e4ae592f4a6f93ec9cd414f708
+    bytes: 71030
+  - path: upgrade/v1.36.6/source-baseline.yaml
+    sha256: 9e5e8ce1480f87b35424182ef2c391cf2f8e65367fad751a81b52f2aad465ef2
+    bytes: 2433
+  - path: upgrade/v1.36.6/artifact-pins.json
+    sha256: 6ceaf94c0fb6657a66017ff1563b9743c754ff1c7282b36242ade029b9a25047
+    bytes: 3071
+  - path: upgrade/v1.36.6/test-matrix.yaml
+    sha256: 430ca49e0e72b52cf24f8950c979fc32777877401d4261a4e43b7b97b349af8b
+    bytes: 27244
+  - path: upgrade/v1.36.6/evidence/product-arm-publication.json
+    sha256: b30f3e1a9be07d969e626d8706913238a16cde5eccd5e75869ac88cc92155d01
+    bytes: 9070
+  matrix: 原升级矩阵15/15 PASS、8/8能力组，按原输入复用；本次没有新的现场运行。
+  product: 已发布v0.1.10仍绑定a36d97a7dbe87022b073d90755f5b0c700f011a6；不将维护后的tools冒称包含于旧镜像。
+publication:
+  build_images: []
+  publish_images: []
+  new_tags: []
+  boundary: 只推送dev与v1.36.6分支；工具或镜像后续发布另按所属增量入口确定集合。
+acceptance_boundary: 本记录确认源码维护合并及既有证据适用性，不代替客户签收、不承诺未来没有新冲突、不保证Kubernetes可原地降级。

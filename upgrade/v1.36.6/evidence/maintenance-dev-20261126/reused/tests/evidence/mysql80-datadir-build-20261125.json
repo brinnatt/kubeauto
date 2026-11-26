@@ -1,0 +1,25 @@
+{
+  "date": "2026-11-25",
+  "scope": "MyBackupCli datadir fix only; Rocky8.10/glibc2.28 build on Ubuntu138; no publication",
+  "rc": 0,
+  "build": {
+    "inputs": {
+      "tools/mysqltools/MyBackupCli.py": "d2eb3df00762c35c784847e25285572088f618e6dfc27d94a2c3ef2c00379400",
+      "tools/mysqltools/MyLogiBackupCli.py": "df68a6aeb660de6755526f0a49df1478bc1a1715dce46f804740d20d05c88d2c",
+      "tools-onefile.spec": "7bb77b6db73a9c015aff2156120d94f7dc67a7a30e037f105d452bcbded45956",
+      "tests/helpers/build-tools-rocky8.sh": "9f65b9c380cb241bbf9d3933eef9500851ddb9a1eb6e548d1deaf102e636a95b"
+    },
+    "artifacts": {
+      "MyBackupCli": "8f175a08d02e28850dc229961ed25f52aff1204780aaac8b14dd1a2fea52e054",
+      "MyLogiBackupCli": "e14afa5703941c1313cefe6c1277f4c80028848cb5f368cd91315d06b6d2ad0a"
+    },
+    "runtime": "Rocky 8.10; glibc 2.28; Python 3.12; PyInstaller 6.16.0"
+  },
+  "files": {
+    "dist/mysql-backup-build.json": "f61cbe39c45ed3544592d99bab1c1fb502040b09cfa2fcc675cd56b976dd7049",
+    "dist/MyBackupCli-rocky8": "8f175a08d02e28850dc229961ed25f52aff1204780aaac8b14dd1a2fea52e054",
+    "logs/mysql80-datadir-build-20261125.log": "26133f6a1ecda864acd0b56e7c2b378ef651c42c208a088c42f4fa0783735fea",
+    "logs/mysql80-datadir-build-20261125.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/mysql80-datadir-build-20261125.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+  }
+}

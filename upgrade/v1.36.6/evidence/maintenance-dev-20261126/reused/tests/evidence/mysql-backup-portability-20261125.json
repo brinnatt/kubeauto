@@ -1,0 +1,50 @@
+{
+  "date": "2026-11-26",
+  "result": "pass",
+  "rc": 0,
+  "scope": [
+    "TL-MBK-01",
+    "current frozen startup and native build provenance"
+  ],
+  "command": "MYSQL_BACKUP_STAGE=binary80-build and portability bash tests/run_tools_regression.sh --mysql-backup-live",
+  "markers": [
+    "MYSQL_BACKUP_PORTABILITY_PASS runtime=rocky8 tools=2",
+    "MYSQL_BACKUP_PORTABILITY_PASS runtime=debian12 tools=2",
+    "MYSQL_BACKUP_PORTABILITY_PASS runtime=ubuntu24 tools=2",
+    "TOOLS_CLEAN_VERIFY_PASS scope=mysql-backup-release",
+    "MYSQL_BACKUP_RELEASE_PASS stage=portability",
+    "MYSQL_BACKUP_RELEASE_EXIT rc=0",
+    "MYBACKUP_NATIVE_BUILD_PASS count=1 tool=MyBackupCli",
+    "MYBACKUP_NATIVE_BUILD_EXIT rc=0",
+    "TOOLS_CLEAN_VERIFY_PASS scope=mybackup-native-build",
+    "TOOLS_PREFLIGHT_PASS",
+    "TOOLS_MYBACKUP_COMMAND_PREFLIGHT_EXIT rc=0"
+  ],
+  "files": {
+    "logs/mysql-backups-portability-20261126-104827.log": "862e91136c85f93586cd480bb8644b1c2336c00d7c207a9774e7c5d71d3c024e",
+    "logs/mysql-backups-portability-20261126-104827.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/mysql-backups-portability-20261126-104827.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/mysql-backups-portability-20261126-104827.remote-status": "0ccdb5a77ba5bf7687f2565a8ed97dfb9c1af45503c496fb646312239fab5101",
+    "logs/mysql-backups-portability-20261126-104827.evidence.tar.gz": "97d3b800109199b7d540829cc1fe39ec00b8b3bda6acb4c94d62223f04ca68f4",
+    "tools/mysqltools/MyBackupCli.py": "ebd5120225a7afef78a5b30f79dcb369c0103a827ec3b1b08180ce6cd08836e1",
+    "dist/MyBackupCli-rocky8": "208d48965cb2528732462e7126556435b528d3b6d19f32bf1470b32478cfb99b",
+    "dist/mysql-backup-build.json": "08c708e9c3f009396fcab0f1aa5882c2c66ed7e41e1d3ba020393000d1e6b57a",
+    "tools/mysqltools/MyLogiBackupCli.py": "df68a6aeb660de6755526f0a49df1478bc1a1715dce46f804740d20d05c88d2c",
+    "dist/MyLogiBackupCli-rocky8": "e14afa5703941c1313cefe6c1277f4c80028848cb5f368cd91315d06b6d2ad0a",
+    "tests/helpers/mysql-backups-regression.sh": "359cda27fe0b0b6c81871f71604d8becb458ff716133d8cb288ef3925b83c274",
+    "tests/unit/test_mysql_portability_contract.py": "e79498c514af50606624c0af2620d35533d9a3615c763472ac98030fcc616449",
+    "tests/unit/test_mybackup_cli_contract.py": "0eeb587f02b68f516f6e790fd451b10dad26fa1b3f7459a2dd291b9af2a5f649",
+    "logs/mybackup-native-build-72792b0ba139/console.log": "563c4c5b4f9d6d889928ead970d528452ce517f7aad506c0025d0193a85bf047",
+    "logs/mybackup-native-build-72792b0ba139/state.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/mybackup-native-build-72792b0ba139/state.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/mybackup-native-build-72792b0ba139/result.json": "d30f1a1d81763dc9341dbcada1ab1d838d735cabae59735565641504ad39f0e6",
+    "logs/mybackup-native-build-72792b0ba139/dependencies.txt": "a228d4484d220f2e8a82b62d675778be0ab6bd4128cb51a7910a6dbb502fa1f8",
+    "logs/mybackup-native-build-72792b0ba139/MyBackupCli": "208d48965cb2528732462e7126556435b528d3b6d19f32bf1470b32478cfb99b",
+    "logs/mybackup-native-build-72792b0ba139/plan.json": "a6da61bba54b02050b0f3e1b8c54d247f1708c7768b3d648f38cfc234674c473",
+    "logs/mybackup-command-observability-20261126/preflight-final-durable.log": "4d288c295593975588c905a24e2ad66f0974557305f9e4a3968d7c332ff85a57",
+    "logs/mybackup-command-observability-20261126/preflight-final-state.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/mybackup-command-observability-20261126/preflight-final-state.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/mybackup-command-observability-20261126/build-final.log": "dde6979dcf8e1107c3c5821b65a63f7691f761f11ed1a1e3a4af677acf12caa7"
+  },
+  "boundary": "Current all-command observability MyBackupCli built on native Rocky8.10/glibc2.28 with pinned dependencies; actual frozen startup on Rocky8, Debian12 and Ubuntu24, durable rc0 and scoped cleanup. Other artifact unchanged. Startup does not sign database lifecycle; prior build/records retained."
+}

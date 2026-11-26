@@ -1,0 +1,39 @@
+{
+  "date": "2026-11-25",
+  "status": "fix-under-verification",
+  "trigger": "Production MySQL8.0.33 container with host XtraBackup8.0.35-36; host datadir differs from server /var/lib/mysql",
+  "confirmed_defect": "full_backup and incr_backup omitted --datadir; restore copy-back alone used mysql_datadir",
+  "official_source": {
+    "url": "https://github.com/percona/percona-xtrabackup/blob/percona-xtrabackup-8.0.35-36/storage/innobase/xtrabackup/src/backup_mysql.cc",
+    "finding": "read_mysql_variables adopts server datadir only when datadir was not explicitly set",
+    "snapshot_sha256": "a946ed53e22b770f56aac5fa592839cfbb081abe193e7ea17f05bf66e8e03b25"
+  },
+  "coverage_defect": "Old backup fixture mapped host datadir at /var/lib/mysql and masked omission. Original log/archive hashes match; success did not qualify this production path boundary.",
+  "minimal_fix": "Pass configured --datadir for full/incr; remove fixture server-path alias",
+  "deterministic_regression": {
+    "before": "FAIL: actual argv lacks configured datadir",
+    "after": "PASS: full/incr each pass configured datadir exactly once",
+    "command": "tests.unit.test_mybackup_cli_contract.MyBackupCliContractTest.test_full_and_incremental_pass_host_visible_datadir_to_xtrabackup"
+  },
+  "live_attempt": {
+    "run": "mysql80-datadir-before-20261125-run",
+    "rc": 1,
+    "classification": "environment",
+    "first_failure": "SSH 192.168.47.130: No route to host; no database test launched"
+  },
+  "returned_to_pending": {
+    "TL-MBK-01": "datadir 修复改变 MyBackupCli 源码，待单工具 Rocky8 冻结构建及来源核验",
+    "TL-MBK-03": "full/incr 漏传 datadir；旧夹具别名掩盖缺陷，待非默认路径全量增量恢复补测",
+    "TL-X-09": "MyBackupCli 产品修复改变最终验收输入；只补受影响物理工具，复用其它工具有效证据"
+  },
+  "files": {
+    "tools/mysqltools/MyBackupCli.py": "d2eb3df00762c35c784847e25285572088f618e6dfc27d94a2c3ef2c00379400",
+    "tests/unit/test_mybackup_cli_contract.py": "5da49ce072cdd9a347f6b573aa26f7b5621a8fa38741fc6f9c17e68dc10eaacc",
+    "tests/helpers/mybackup-cli-live-regression.sh": "ee825d3e35554a85cdaa76046f41a53efe8e9ab4b6e014e99f1d55a06b2b661f",
+    "logs/mysql80-datadir-before-20261125/unit-before.log": "08659f18847c5dbe1e274042f98d19218de0bdd274f6b10e54e4735c9f1b5b9f",
+    "logs/mysql80-datadir-before-20261125/unit-after.log": "e3e66d36783f0ff1498fcfa65bce1ce36ba6e657a29eb28e43c424e89dd53660",
+    "logs/mysql80-datadir-before-20261125/MyBackupCli.py": "1eebf17d054d463a751d24e9c1fcb27bc242bc8063b93c82c08693e50159dfa7",
+    "logs/mysql80-datadir-before-20261125/MyBackupCli-rocky8": "62a78acac634cef7b487e20b1c43a08c2db56d65200dfb250915039b57f06ee0",
+    "logs/mysql80-datadir-before-20261125-run.log": "6e59bc40087d292db5f91ad51d94cda1ab5f820506f7f5ede420f0f1a4fe7458"
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "date": "2026-11-25",
+  "result": "pass",
+  "scope": [
+    "TL-OVPN-03",
+    "TL-OVPN-06"
+  ],
+  "host": "root@192.168.47.130; Rocky8.10; OpenSSL1.1.1k",
+  "rc": 0,
+  "markers": [
+    "OVPN_CONFIG_CREATE_PASS user=authuser directive=tls-auth ta.key 1",
+    "OVPN_CONFIG_CREATE_PASS user=cryptuser directive=tls-crypt ta.key",
+    "OVPN_CONFIG_REFUSAL_REVOKE_PASS user=authuser",
+    "OVPN_CONFIG_REFUSAL_REVOKE_PASS user=cryptuser",
+    "OVPN_CONFIG_LIVE_PASS easyrsa=3.0.7 mode=frozen",
+    "OVPN_PKI_SCOPED_CLEAN_PASS",
+    "TOOLS_OVPN_SCOPED_CLEAN_PASS host=root@192.168.47.130",
+    "TOOLS_OVPN_CONFIG3_EXIT rc=0"
+  ],
+  "official": {
+    "repository": "OpenVPN/easy-rsa",
+    "version": "v3.0.7",
+    "tree": "945c9359f6ae3796df21e2986e49489718e0d5f8",
+    "files": {
+      "vars.example": "7a84dcf9a2fe8d39d91ff906a8144203ba741d31305bb11528c8b0daf36bd476",
+      "openssl-easyrsa.cnf": "1cc6a1de93ca357b5c364aa0fa2c4beaf97425686fa1976d436fa31f550641aa",
+      "easyrsa": "26fe0da69d48893bae9d24dafff28f45c15f67ce8e50cbc49e67fb1b4ce20a91",
+      "x509-types/serverClient": "2cf705653112076efd4f7c60f9474c451f0a1620642dc71f988510967c27f329",
+      "x509-types/server": "98181038dfffbf1f65092dbeae141f729ee83b832cb1e74271a1e8f2eeeb1ccd",
+      "x509-types/kdc": "faf5e69682741855030322707cbb0771896f38ea8da00d6f4220b1c676c761e2",
+      "x509-types/email": "7f6a834051d04af87ac9715a52ec8189d5cdce9ed68b69f0a8698ed154c1b3e6",
+      "x509-types/code-signing": "1c408d6d39a8e7c957ee008450022770334ebefdd96c903b793cef984a4018d3",
+      "x509-types/client": "76dcba93b8989726b98575e799d0bed3b6357e92714b51b32d8912bc299413ba",
+      "x509-types/ca": "fc660c936aa48932f1857902e978e32a8bbc7cbe5ef582a63024d262b50ddbfe",
+      "x509-types/COMMON": "12f3070668427022611b518fb7aaf0f9cd3f7f52d5e5349134a38d1f37bd9c78"
+    }
+  },
+  "boundaries": [
+    "Real Easy-RSA CA/client issue, openssl certificate/CRL verify, client key SHA comparison, status and revoke; no VPN daemon or network handshake.",
+    "tls-crypt-v2, missing key, ambiguous relative key refused with byte-identical PKI and existing bundle.",
+    "Easy-RSA3.0.7/OpenSSL3 incompatibility is not covered as success; preserved failed run logs."
+  ],
+  "files": {
+    "logs/tools-ovpn-config3-20261125.log": "8e7d8bc1470d6d422ae4b46b5ef87d5090f323ea53162cbfc9e0e86672eea85f",
+    "logs/tools-ovpn-config3-20261125.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/tools-ovpn-config3-20261125.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "tools/OvpnUserCli.py": "9b2a49c47a6945d40cea87d40bb42192a640b7d3e6880344b0162445f2c491d2",
+    "dist/OvpnUserCli-rocky8": "9ee1c43f5f2d7070303b5777a00c17f132f14bdf6a646696c10a898db42f66ad",
+    "dist/ovpn-build.json": "a33469f9ce920e277e2f807883cea8cf81fcb56959bc716f9f627e9a74f2aa8a",
+    "tests/helpers/ovpn-config-fixture.py": "5248bd8a32314bcbc3671f76611d9f717934470a641baab24d6c86ed2054d9a1",
+    "tests/unit/test_tools_execution_boundary_contract.py": "944a6b14cfc15cfb7860c71028bf5a65879cfc7ad1816e6ae68b8b650dc5ec0b",
+    "tests/unit/test_tools_config_failure_contract.py": "148232de0f983d64773214b49d4a70311f9ccef1f28635dc00815fa2ec41c6eb",
+    "logs/tools-ovpn-7bc74165f9ca/diagnostics/cryptuser-revoked-status.log": "afff3155cdd2fa271318ff630207496d24d3edb7951516a52e801bfc06a39abe",
+    "logs/tools-ovpn-7bc74165f9ca/diagnostics/cryptuser-create.log": "9ff98f297678c13ff7a4a2c47f2ba4bdf99a3823fdc98adf9403fd35eff31e5f",
+    "logs/tools-ovpn-7bc74165f9ca/diagnostics/authuser-crl.log": "d35a38bf57642d07e0e940451a237cc1aac2f36952ee017e085166d2450bd9f8",
+    "logs/tools-ovpn-7bc74165f9ca/diagnostics/cryptuser-crl.log": "d35a38bf57642d07e0e940451a237cc1aac2f36952ee017e085166d2450bd9f8",
+    "logs/tools-ovpn-7bc74165f9ca/diagnostics/authuser-status.log": "661e54d83c4d52cd3a0597ccfe6e9cfa859261a8ea7a7b31adbeee65f19d86a1",
+    "logs/tools-ovpn-7bc74165f9ca/diagnostics/authuser-create.log": "060ac7461f929bcdef9b2c46b04deba6f528b8384a721fcdf9535480aa1159cf",
+    "logs/tools-ovpn-7bc74165f9ca/diagnostics/authuser-verify.log": "1a6fc4fd05b58a4f6238b6826244fdd04fa15bf07056202012590cb7bbc6cc02",
+    "logs/tools-ovpn-7bc74165f9ca/diagnostics/authuser-revoke.log": "429f5a5d335a7e8a97c2621fc43a670d445b610b4bd0b234592d33c16607b146",
+    "logs/tools-ovpn-7bc74165f9ca/diagnostics/cryptuser-verify.log": "232114042d6a5e834dafd25745c8bdc7e065e7cb1c53803691136e82fc5f7235",
+    "logs/tools-ovpn-7bc74165f9ca/diagnostics/authuser-revoked-status.log": "c4f097b984d3cc22f2f01c5b7e2854612cfabe6871c81f15d7a31f650196204f",
+    "logs/tools-ovpn-7bc74165f9ca/diagnostics/cryptuser-status.log": "6f8279467856ded458ad7eb15b936aec072dc1181b42121282aabd11c902aef4",
+    "logs/tools-ovpn-7bc74165f9ca/diagnostics/cryptuser-revoke.log": "b63be449d759b365d2abc5d66c9c187d606ccadc769110b9234e1b50f4f68998",
+    "logs/tools-ovpn-adc183aba0b4/diagnostics/authuser-create.log": "60056544815c0fed650eec9a496a432d5776a8656a0ce26c76167417a939b65c",
+    "logs/tools-execution-inputs/ea98ccf9e3526d21959298bda5a1e518eef8e5749a91356a03122b66dd5ee7d9.py": "ea98ccf9e3526d21959298bda5a1e518eef8e5749a91356a03122b66dd5ee7d9"
+  },
+  "execution_snapshot": "Exact executed helper bytes preserved before adding independent API fixture branch."
+}

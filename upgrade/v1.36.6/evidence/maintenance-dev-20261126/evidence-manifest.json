@@ -1,0 +1,384 @@
+{
+  "schema_version": 1,
+  "kind": "byte-identical-reused-evidence",
+  "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+  "boundary": "原路径按原仓根解释；副本保留原结论、失败和签署身份，复制不签新现场PASS。原始日志仍在原归档，不提交运行日志。",
+  "files": [
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/tools-test-matrix.yaml",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/tools-test-matrix.yaml",
+      "sha256": "41849c467aec10da1ed5259cce48a33844b2b21f36766cfce31cf6bde7561b87",
+      "bytes": 107107
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/mybackup-command-observability-20261126.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/mybackup-command-observability-20261126.json",
+      "sha256": "969927e0107406e195cf4f9070edb711b3b77fc6d6b42c96c29d10bc10477bc9",
+      "bytes": 12545
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/mybackup-native-build-library.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/mybackup-native-build-library.json",
+      "sha256": "d60595de32f2a258e7605935bcbb6c9aa44a294b82c5ba7b3dbe25ed82dfa8b0",
+      "bytes": 361
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/mybackup-native-contract-20261125.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/mybackup-native-contract-20261125.json",
+      "sha256": "2767d903841a88e6db8ae30fd6dfef8e4f42f1085a7683a8482de8765c0ffddc",
+      "bytes": 2505
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/mybackup-observability-20261125.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/mybackup-observability-20261125.json",
+      "sha256": "46ef38ef87c3091877c85b3d3877588efe0cc1d7760ec3799b784a296a35bae4",
+      "bytes": 4599
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/mysql-backup-final-20261125.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/mysql-backup-final-20261125.json",
+      "sha256": "84f5a8b465a5372be4f400ecfda81d22e2aff691496e9a062d6321cfa4b9a43f",
+      "bytes": 2913
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/mysql-backup-portability-20261125.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/mysql-backup-portability-20261125.json",
+      "sha256": "f93daa9362497ce9792d1bf62370a193ac72edb0f2c4bfeae543f2144382bc66",
+      "bytes": 4199
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/mysql-backup-qualification-20261125.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/mysql-backup-qualification-20261125.json",
+      "sha256": "663485108da8ab3b32e984b249c74174db1e0264668fb3a62e15506eaae65ea6",
+      "bytes": 7787
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/mysql-logical-requal-20261126.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/mysql-logical-requal-20261126.json",
+      "sha256": "4278dda8645955ac95a999dba4b07049a34f4bc2673e6af3caf8ca5b1a23c66f",
+      "bytes": 8205
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/mysql80-binary-dual-primary.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/mysql80-binary-dual-primary.json",
+      "sha256": "16e4a730444db6a19c93199bbb6ce179d44c134fd588523491d5f1d09db4e7a6",
+      "bytes": 4811
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/mysql80-binary-full.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/mysql80-binary-full.json",
+      "sha256": "18ab5fd6fb9ff8eadd5c8079f5c2308cfcd98a9fddf5506bf27bd16f343b536b",
+      "bytes": 4659
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/mysql80-binary-primary-replica.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/mysql80-binary-primary-replica.json",
+      "sha256": "2404f88c13033e717e87c3340a173adb747c28a3f42df89c36b0cdba01c99bd6",
+      "bytes": 4868
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/mysql80-binary-probe.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/mysql80-binary-probe.json",
+      "sha256": "a384a3157d638f8000e23c60c7d2803d9e84e1a9161259d128f207879207e543",
+      "bytes": 2354
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/mysql80-binary-replication-probe.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/mysql80-binary-replication-probe.json",
+      "sha256": "e80cf4a562910328842e456583f879a16bee8e0489f358c8028bf088421d6c12",
+      "bytes": 4410
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/mysql80-binary-sources.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/mysql80-binary-sources.json",
+      "sha256": "f6f12c5671ebaa08caebb52f5cc654a58f98da135b1b21cb265493f20ac99d55",
+      "bytes": 9971
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/mysql80-binary-standalone.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/mysql80-binary-standalone.json",
+      "sha256": "ed88c00d33a627ec42dfc69af00f2fa813af3d92c8ce8a6d8b1b5e97348994ee",
+      "bytes": 4773
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/mysql80-binary-supply-chain-20261125.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/mysql80-binary-supply-chain-20261125.json",
+      "sha256": "958c2bdc266f79f803417944b32c10cfbadbe1fa73674a9ced7b82b720a40032",
+      "bytes": 94226
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/mysql80-datadir-build-20261125.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/mysql80-datadir-build-20261125.json",
+      "sha256": "79033b47f811f7feb8fff27c3b584de9b48d0e6f12958cdae46dbb08d17bc895",
+      "bytes": 1460
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/mysql80-datadir-defect-20261125.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/mysql80-datadir-defect-20261125.json",
+      "sha256": "a838e673048403e6f8e24672f607814c90940a6aaf2aaca98462b635b32b53ca",
+      "bytes": 2869
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/mysql80-physical-8.0.33.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/mysql80-physical-8.0.33.json",
+      "sha256": "9ec4991941ef2bbb8260fbddb05f853d72d03a8fcfda70fb8f1786c7309b5c57",
+      "bytes": 5234
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/mysql80-physical-8.0.46.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/mysql80-physical-8.0.46.json",
+      "sha256": "7d3497644e43914ebada5603db061968ed6a11edb5ca26ab83c48a47d0f934ed",
+      "bytes": 5234
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/mysql80-physical-documentation-20261125.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/mysql80-physical-documentation-20261125.json",
+      "sha256": "10b8a1efe796b5d4e36d207f144acf369fcff1de11cb2a968403cb17a4f9c53c",
+      "bytes": 17363
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/mysql80-physical-full.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/mysql80-physical-full.json",
+      "sha256": "46e609756a83f9fed2c5039dc207df924bd7a55663baa761934c27f848ae5efb",
+      "bytes": 5760
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/mysql80-physical-images-20261125.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/mysql80-physical-images-20261125.json",
+      "sha256": "02dbed9fe4866e4b91e8774edbf740dd52b3099ca8aac3263a1aee81b8856e49",
+      "bytes": 6051
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/mysql80-physical-probe.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/mysql80-physical-probe.json",
+      "sha256": "044095fd8570e9ff60a6a95786e04447ac9ee8ebc6420a8fbf54b402ba91a79b",
+      "bytes": 4783
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/mysql80-retired-peer-cleanup-20261125.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/mysql80-retired-peer-cleanup-20261125.json",
+      "sha256": "6b6d52e919a5dc3b0799a712d89ab0de81a86cebb83d1d9dc2e64d4c755b75a4",
+      "bytes": 1047
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/mysql84-physical-requal-20261125.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/mysql84-physical-requal-20261125.json",
+      "sha256": "9bf76785a1b066662838e222c17c4e0a24f8fd137846ed17317233db64c7705f",
+      "bytes": 3208
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/starmigrt-full.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/starmigrt-full.json",
+      "sha256": "15130e03a617fb2adf5f9fbcbad2dc46654b79ea04177454a3709232a894db61",
+      "bytes": 28498
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/starmigrt-images.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/starmigrt-images.json",
+      "sha256": "873ff3870ef32bc80c7b30e0a56242e4faffe2b3de654afc729e133c2e064f91",
+      "bytes": 563
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/starmigrt-qualify.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/starmigrt-qualify.json",
+      "sha256": "01abcaf86e2a538074569013fe93e3b6fff468960775e61b19f7ea6449649247",
+      "bytes": 3547
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/tools-api-boundary-20261125.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/tools-api-boundary-20261125.json",
+      "sha256": "9ca9bc0b7ab52c411ffac1d215dcdbb2c368423090d1f628fa89a00e71f02f8f",
+      "bytes": 23371
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/tools-boundary-build4-20261125.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/tools-boundary-build4-20261125.json",
+      "sha256": "099633fbd748aeea152dead5578569f06c1a1d99931e737808d777671f239a02",
+      "bytes": 3391
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/tools-config-failure-defects-20261125.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/tools-config-failure-defects-20261125.json",
+      "sha256": "a5e1d4efd38eebc77c4f5fa5cebe4badb14b549b09ad81c8b0bde84cf0b4c24c",
+      "bytes": 1111
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/tools-delivery-cleanup-20261125.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/tools-delivery-cleanup-20261125.json",
+      "sha256": "6ac11c3342475bd05030de990b5f936513a1090ab56605dcf9328344eebf57ff",
+      "bytes": 1735
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/tools-kubebackup-api-full-20261125.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/tools-kubebackup-api-full-20261125.json",
+      "sha256": "049a56e626fef156c03cfab9b6bac8cfee258456e0c6522baa22f83233436c7f",
+      "bytes": 28430
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/tools-kubebackup-context-defect-20261125.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/tools-kubebackup-context-defect-20261125.json",
+      "sha256": "6f162a1f31a83031f872e183586b28de418134c7196e0ab1359a278aafe1c184",
+      "bytes": 1869
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/tools-migration-endpoint-defect-20261125.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/tools-migration-endpoint-defect-20261125.json",
+      "sha256": "6ecc29e540f19dc5f299c65245f58fc2fe1995f52b320359406b69d6725f5ac2",
+      "bytes": 1105
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/tools-migration-endpoint-full-20261125.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/tools-migration-endpoint-full-20261125.json",
+      "sha256": "d71a7bcddd74b1c02470da604c6777dba47bed05bd75f63f5a837b92476d6228",
+      "bytes": 2599
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/tools-migration-native-20261125.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/tools-migration-native-20261125.json",
+      "sha256": "4002abe7efb3ee1b296b8876587ac5e297e9b8bf94e5ae769a3a081b75e9d4b2",
+      "bytes": 2179
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/tools-ovpn-config-20261125.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/tools-ovpn-config-20261125.json",
+      "sha256": "20c405718447924c3f318ea0161aa80e0aed6f164a207573d6136f7e1bf498b2",
+      "bytes": 5289
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/tools-production-audit-build-20261125.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/tools-production-audit-build-20261125.json",
+      "sha256": "35d5da8a68e9816592f8f7cf13d3a8583ced68e3a873162fe45c9653fc5a04a3",
+      "bytes": 3269
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/tools-production-audit-build3-20261125.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/tools-production-audit-build3-20261125.json",
+      "sha256": "d8213bbf641360d813078e47add63a9378143be865faeaa78422bdad86893b6e",
+      "bytes": 4088
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/tools-production-execution-audit-20261125.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/tools-production-execution-audit-20261125.json",
+      "sha256": "d8725db3c85bfc211d5bfba54956274ff86d0bf7b6d9294dbd90391f15d9ad82",
+      "bytes": 72437
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/tools-publish-load-defect-20261125.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/tools-publish-load-defect-20261125.json",
+      "sha256": "76832f09aa1096bf6e5ecf4369b71736ac2d502768c6e4ad10e4fe4549ec2cd3",
+      "bytes": 1789
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/tools-publish-load-live-20261125.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/tools-publish-load-live-20261125.json",
+      "sha256": "4c4a3c7a420c11409f01c5e067c3389df0bd369ea09cf1100f62e0b34a161db5",
+      "bytes": 10632
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/tools-remote-bootstrap-20261125.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/tools-remote-bootstrap-20261125.json",
+      "sha256": "8123ca063ef7ea7460aa1f7439458d6b12d4aa7157841547cb11fbee1c042547",
+      "bytes": 2387
+    },
+    {
+      "source_repository": "kubeauto",
+      "source_commit": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "source_path": "tests/evidence/tools-remote-frozen-defect-20261125.json",
+      "copy_path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/reused/tests/evidence/tools-remote-frozen-defect-20261125.json",
+      "sha256": "3f801084cb923f316d4b8a1ff512dd59e31c62d6d79038a9b51adf67026e196a",
+      "bytes": 1183
+    }
+  ]
+}

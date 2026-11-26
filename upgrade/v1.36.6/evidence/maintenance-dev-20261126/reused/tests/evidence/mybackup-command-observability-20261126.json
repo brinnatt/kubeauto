@@ -1,0 +1,157 @@
+{
+  "date": "2026-11-26",
+  "result": "pass",
+  "rc": 0,
+  "scope": [
+    "TL-MBK-06 all-command observability",
+    "TL-MBK-05 replay error/interrupt subcases"
+  ],
+  "root_causes": [
+    "All non-XtraBackup commands and configuration/offline probes buffered stderr until exit. Normal operational INFO messages were file-only by default.",
+    "Replay waited on mysql.communicate before reading mysqlbinlog.stderr: pipe pressure can block the producer and leave mysql waiting for SQL. Neither second-spawn failure nor interruption reaped both clients.",
+    "Archive/workspace copy/remove and retention tasks lacked visible phase liveness; service percentage represented timeout elapsed, not actual completion.",
+    "When opening the rotating file failed, setup_logger added stderr then stdout handlers; the same message appeared twice. Return after installing the single stderr fallback."
+  ],
+  "commands_reviewed": [
+    "Config online mysql version and offline systemctl/mysqld version/effective help",
+    "XtraBackup help capability, full/incr/decompress/prepare/copy-back",
+    "mysql state/readiness and replication guards; docker inspect/stop/start/restart; systemctl status/is-active/start/stop/restart; chown",
+    "mysqlbinlog version and mysqlbinlog-to-mysql replay pipeline",
+    "archive copy/atomic replace/state; checksum and audit traversal; workspace copy/cleanup; copyback rollback; retention and failed-backup cleanup"
+  ],
+  "tests": "fixed165 preflight, binary80 preflight and focused103; see final durable raw and per-test names",
+  "changes": "One standard-library local command reader for all external commands, raw diagnostics live to terminal/rotating file with password redaction; private metadata capture; bounded diagnostic line fragments and no accumulated native stdout; both pipeline errors drained, both statuses checked and local clients reaped;30s liveness for silent commands/filesystem stages; ordinary phase logs visible by default, no guessed service percentage. Unwritable log files use exactly one stderr handler, with no claim of file persistence.",
+  "reproduction": {
+    "baseline_source_sha256": "625ebeea9f9565866b89cfb70449a0de95a9ac1c88f6eff0a57865938719a1f0",
+    "cli_expected_failure": "before-exit diagnostic missing; same CLI assertion passes on current source",
+    "pipeline_expected_timeout": "old pipeline blocks beyond2s with bounded fixture diagnostic pressure; driver recovers both owned clients after timeout",
+    "proof_scope": "These are deterministic local subprocess fixtures, separate from real database lifecycle evidence.",
+    "fallback_expected_failure": "Before fallback fix: two stderr/stdout messages, expected one; exact real CLI assertion passes on current source."
+  },
+  "official_sources": [
+    "logs/mybackup-observability-20261125/python312-subprocess.html",
+    "logs/mybackup-observability-20261125/python312-selectors.html",
+    "logs/mybackup-observability-20261125/cpython-local-run.py",
+    "logs/mybackup-command-observability-20261126/cpython-runtime-pipe-event-source.py"
+  ],
+  "files": {
+    "tools/mysqltools/MyBackupCli.py": "ebd5120225a7afef78a5b30f79dcb369c0103a827ec3b1b08180ce6cd08836e1",
+    "tests/unit/test_mybackup_cli_contract.py": "0eeb587f02b68f516f6e790fd451b10dad26fa1b3f7459a2dd291b9af2a5f649",
+    "tests/unit/test_mybackup_offline_contract.py": "542b5db5deeceb4b26b9f7988dffb805f1de2b3ccf81d421f714b0cb2c77da9f",
+    "tests/unit/test_mybackup_replication_contract.py": "8fd58256bab85ad3122ecdf89fd7a2b0608ae7d323058d7c1e8dfc5f5ce89abd",
+    "dist/MyBackupCli-rocky8": "208d48965cb2528732462e7126556435b528d3b6d19f32bf1470b32478cfb99b",
+    "dist/mysql-backup-build.json": "08c708e9c3f009396fcab0f1aa5882c2c66ed7e41e1d3ba020393000d1e6b57a",
+    "tests/evidence/mybackup-native-contract-20261125.json": "2767d903841a88e6db8ae30fd6dfef8e4f42f1085a7683a8482de8765c0ffddc",
+    "tests/evidence/mysql84-physical-requal-20261125.json": "9bf76785a1b066662838e222c17c4e0a24f8fd137846ed17317233db64c7705f",
+    "tests/evidence/mysql-backup-portability-20261125.json": "f93daa9362497ce9792d1bf62370a193ac72edb0f2c4bfeae543f2144382bc66",
+    "logs/mybackup-command-observability-20261126/before-MyBackupCli.py": "625ebeea9f9565866b89cfb70449a0de95a9ac1c88f6eff0a57865938719a1f0",
+    "logs/mybackup-command-observability-20261126/initial-reproduction.log": "cab9195a1421268eb06461642fe448697af80184a3af16452c316e5de5a44cc3",
+    "logs/mybackup-command-observability-20261126/old-pipeline-reproduction.log": "52fce7e6fd41f6187a6c2b5a353a9659806b198bf71839d8772d71e98f1f10e3",
+    "logs/mybackup-command-observability-20261126/documentation-static.json": "c892e5919719225247893233b36b8a65f793c6bc37f39749308f8d026f0ebe79",
+    "logs/mybackup-command-observability-20261126/command-callsite-audit.json": "063c71a801f2e100027bb42956676210c5f7ab3a1a8a0fd5256bb10ae1df372a",
+    "logs/mybackup-command-observability-20261126/cpython-runtime-pipe-event-source.py": "29cc371960037462095742d23850b3a22d7efbc17651cbe21f1338d8b858da2a",
+    "logs/mybackup-command-observability-20261126/preflight-final-durable.log": "4d288c295593975588c905a24e2ad66f0974557305f9e4a3968d7c332ff85a57",
+    "logs/mybackup-command-observability-20261126/preflight-final-state.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/mybackup-command-observability-20261126/preflight-final-state.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/mybackup-command-observability-20261126/build-final.log": "dde6979dcf8e1107c3c5821b65a63f7691f761f11ed1a1e3a4af677acf12caa7",
+    "logs/mybackup-command-observability-20261126/before-fallback-fix/MyBackupCli.py": "347a77e47c9348a47a08443a038c2cc9a349cc2dc681bba6d8fdf253e8c64ad6",
+    "logs/mybackup-command-observability-20261126/fallback-initial-reproduction.log": "ae2446d98f086bf20a12db49ab3e07ba6a3065e49633578644983909b707155c",
+    "logs/mybackup-command-observability-20261126/portability-final.log": "9938863257df0d7d68d67c4046b0aec5cbef9a0d476a2fa9ca4d8b28853dfa23",
+    "logs/mybackup-command-observability-20261126/inflight-8033-observation.json": "3f7729abf0ee9b72d34feea6e181769aef7c9eee8413f254f9488771d867667b",
+    "tests/evidence/mysql80-physical-8.0.33.json": "9ec4991941ef2bbb8260fbddb05f853d72d03a8fcfda70fb8f1786c7309b5c57",
+    "tests/evidence/mysql80-physical-8.0.46.json": "7d3497644e43914ebada5603db061968ed6a11edb5ca26ab83c48a47d0f934ed",
+    "tests/evidence/mysql80-physical-full.json": "46e609756a83f9fed2c5039dc207df924bd7a55663baa761934c27f848ae5efb",
+    "tests/evidence/mysql80-binary-standalone.json": "ed88c00d33a627ec42dfc69af00f2fa813af3d92c8ce8a6d8b1b5e97348994ee",
+    "tests/evidence/mysql80-binary-primary-replica.json": "2404f88c13033e717e87c3340a173adb747c28a3f42df89c36b0cdba01c99bd6",
+    "tests/evidence/mysql80-binary-dual-primary.json": "16e4a730444db6a19c93199bbb6ce179d44c134fd588523491d5f1d09db4e7a6",
+    "tests/evidence/mysql80-physical-documentation-20261125.json": "10b8a1efe796b5d4e36d207f144acf369fcff1de11cb2a968403cb17a4f9c53c",
+    "tests/evidence/mysql80-binary-full.json": "18ab5fd6fb9ff8eadd5c8079f5c2308cfcd98a9fddf5506bf27bd16f343b536b"
+  },
+  "boundary": "Current source/frozen8.4/readback/portability, exact8.0.33/8.0.46 bothOS/GTID/execution modes and local before-exit/concurrency/fault contracts accepted. In-flight diagnostics snapshot matches preserved log prefix; its interrupted host run has no lifecycle acceptance claim. Container clean final16, native focused24 and native clean final24 accepted with actual readback, durable0 and scoped cleanup. No production deployment, capacity/RTO or zero-defect claim.",
+  "live_failed_attempts": [
+    {
+      "matrix_id": "TL-MBK-08",
+      "run": "76e3b37928a6",
+      "host": "rocky8 / 192.168.47.137",
+      "rc": 1,
+      "classification": "environment capacity prerequisite",
+      "first_failure": "MYSQL80_CAPACITY_REFUSED; no Docker daemon or MySQL fixture launched",
+      "diagnostic": "First read-only observation MemAvailable1895952kB (below2097152kB threshold); later2706180kB and3056972kB without product/gate/host modification. Disk free57851666432bytes; no mysqld/dockerd owned residue. Exact fluctuation cause unproved; no balloon claim.",
+      "raw": {
+        "logs/mysql80-8.0.46-rocky8-76e3b37928a6/console.log": "c4ede1e42e00a49e968fb728b63a3c60809185950c164803de2955488cd90ad4",
+        "logs/mysql80-8.0.46-rocky8-76e3b37928a6/state.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+        "logs/mysql80-8.0.46-rocky8-76e3b37928a6/state.finalized": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+        "logs/mysql80-8.0.46-rocky8-76e3b37928a6/plan.json": "5ec83fafb9ed17322504d9122233f104338e5e2e27b0923e4e0616c4634a4d27",
+        "logs/mybackup-command-observability-20261126/rocky8-capacity-diagnostics.log": "99a289da86dcf6900f9c38624c652db1f81d4a965b689877b34ea09dbf98c366"
+      },
+      "boundary": "Independent rocky9 continues; parent pending, failed branch is not accepted. Re-entry must use fixed runner, unchanged threshold and current-input reuse guards."
+    },
+    {
+      "matrix_id": "TL-MBK-07",
+      "run": "693fbeadda63",
+      "host": "rocky8 / 192.168.47.137",
+      "rc": null,
+      "parent_rc": 1,
+      "classification": "environment reboot",
+      "first_failure": "SSH tail returned255 during host reboot; original PID gone and remote exit/finalized missing. No manufactured remote rc.",
+      "recovery": "Current8GiB capacity read; original plan and source SHA verified, no active owned processes/mounts, fixed shared/control and host locks acquired. Reused unchanged runner Worker.cleanup for both693fbeadda63 and prior76e3b37928a6 runtime; only proven fixed fixture and exactrun paths removed. Current rocky9 accepted independently; fixed entry retries affected rocky8.",
+      "raw": {
+        "logs/mybackup-command-observability-20261126/physical80-8033-final.log": "0e64c9766d1c3e954857f8a80120030eb844b1559197ba47d8b4bb29162ec110",
+        "logs/mybackup-command-observability-20261126/physical80-8033-attempt.exit": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+        "logs/mybackup-command-observability-20261126/rocky8-reboot-diagnostics.log": "e2c5d3aa6ff9cec8a076ae583f68da33982286b05284581b174a120a9cb6e10a",
+        "logs/mybackup-command-observability-20261126/rocky8-reboot-diagnostics.tar.gz": "a5df023e1df6e5dd35bee91392a93cce8b26463b4af994d01dbbfaec526bc864",
+        "logs/mybackup-command-observability-20261126/rocky8-reboot-recovery.log": "9822a448f6ea5f5a79deabaec41134215846b24094b3b4bfd4b18204697e1f25",
+        "logs/mybackup-command-observability-20261126/inflight-8033-observation.json": "3f7729abf0ee9b72d34feea6e181769aef7c9eee8413f254f9488771d867667b"
+      },
+      "boundary": "No product/gate change. Two observed successful rocky8 subcases before reboot do not sign parent. Failed parent preserved as1; rocky9 independent record remains accepted."
+    }
+  ],
+  "accepted_current_lifecycles": {
+    "8.0.33": {
+      "combinations": 8,
+      "hosts": {
+        "rocky9": "logs/mysql80-8.0.33-rocky9-836ace8d0d0d/console.log",
+        "rocky8": "logs/mysql80-8.0.33-rocky8-154a03aaaafb/console.log"
+      },
+      "evidence": "tests/evidence/mysql80-physical-8.0.33.json"
+    },
+    "8.0.46": {
+      "combinations": 8,
+      "hosts": {
+        "rocky8": "logs/mysql80-8.0.46-rocky8-8d9f830bce19/console.log",
+        "rocky9": "logs/mysql80-8.0.46-rocky9-36e6a973d7de/console.log"
+      },
+      "evidence": "tests/evidence/mysql80-physical-8.0.46.json"
+    },
+    "container_clean_full": {
+      "combinations": 16,
+      "hosts": {
+        "rocky8": "logs/mysql80-full-rocky8-17b93cd42935/console.log",
+        "rocky9": "logs/mysql80-full-rocky9-d2844402f16c/console.log"
+      },
+      "evidence": "tests/evidence/mysql80-physical-full.json"
+    }
+  },
+  "accepted_current_native_lifecycles": {
+    "standalone": {
+      "combinations": 8,
+      "evidence": "tests/evidence/mysql80-binary-standalone.json"
+    },
+    "primary-replica": {
+      "combinations": 8,
+      "evidence": "tests/evidence/mysql80-binary-primary-replica.json"
+    },
+    "dual-primary": {
+      "combinations": 8,
+      "evidence": "tests/evidence/mysql80-binary-dual-primary.json"
+    },
+    "clean_full": {
+      "combinations": 24,
+      "evidence": "tests/evidence/mysql80-binary-full.json",
+      "runs": {
+        "rocky8": "f0c45edce014",
+        "rocky9": "66529f9a2e09"
+      }
+    }
+  }
+}

@@ -12,9 +12,14 @@
 [验收范围](v1.36.6/acceptance-plan.yaml)、[矩阵](v1.36.6/test-matrix.yaml) 与
 [正式产品发布证据](v1.36.6/evidence/product-arm-publication.json)核对当前状态和制品身份。
 原运行验收使用 x86；本轮追加 Harbor 原生 ARM64 补充，选定 IabSDocker 2.14.4
-仅作过渡，最终仍为官方 2.16.0。当前补充尚未验收，见
+仅作过渡，最终仍为官方 2.16.0。原生 ARM64 补充已完成验收，见
 [ARM 补充记录](v1.36.6/evidence/harbor-arm64-supplement.json)，不扩展其它组件回归。
 后续 minor 不因候选路线已列出而自动执行，客户生产签收独立于项目验收。
+
+后续维护源码以 [1.36.6 维护基线](v1.36.6/maintenance-baseline.yaml) 为准：
+六仓已将适用的 dev 增量合入正式版本并对齐，记录固定六仓提交和复用证据。
+下一跳从该已接受组合出发；既有发布仍保持原 tag 与源码身份，新增工具功能
+不因分支合并而自动进入旧镜像。本次未启动下一 minor 或新制品发布。
 
 本跳客户文档入口：[升级与Harbor运维手册](v1.36.6/operations-manual.md)、
 [技术白皮书](v1.36.6/technical-whitepaper.md)、

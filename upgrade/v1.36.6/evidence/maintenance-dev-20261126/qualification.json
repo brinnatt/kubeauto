@@ -1,0 +1,301 @@
+{
+  "schema_version": 1,
+  "kind": "maintenance-delta-qualification",
+  "recorded_on": "2026-11-26",
+  "classification": "branch maintenance; no new runtime implementation",
+  "accepted_scope": "六仓dev增量合入v1.36.6并对齐；当前输入核验及聚焦本地合同；不重签历史现场或发布制品。",
+  "build_images": [],
+  "publish_images": [],
+  "lab_mutation": false,
+  "next_minor_started": false,
+  "source_identities": [
+    {
+      "repository": "kubeauto",
+      "branch": "v1.36.6",
+      "source_commit": "c5f0a274763ba348f1635dffebbc75782bd37109",
+      "source_tree": "41f47d234b8b393965144240828956a0e06eaa35",
+      "previous_version_tip": "2fc369768f1b312538a8def6a3b9f2eda4b0700f",
+      "accepted_dev_tip": "e5f71001cb1030b4100b9f6dbea2d93c7675e9ae",
+      "stable_branch": "master",
+      "unchanged_stable_commit": "975181c17adea3daa5f1029bc624dd564f6d83ec"
+    },
+    {
+      "repository": "kubeauto-dockerfile",
+      "branch": "v1.36.6",
+      "source_commit": "e5fc402bd582d3a5a6d6c329ccbe4a3e6015ae16",
+      "source_tree": "c8ba87cc840f18912beb426b41dffe1b9a93e3c2",
+      "previous_version_tip": "e5fc402bd582d3a5a6d6c329ccbe4a3e6015ae16",
+      "accepted_dev_tip": "e5fc402bd582d3a5a6d6c329ccbe4a3e6015ae16",
+      "stable_branch": "main",
+      "unchanged_stable_commit": "a77be14a4e3a04c65a024bd1eae64c6cfa650626"
+    },
+    {
+      "repository": "kubeauto-k8s-bin-dockerfile",
+      "branch": "v1.36.6",
+      "source_commit": "bc3dcf6527dcb81613445b1040f2da0caa75141d",
+      "source_tree": "ce35a970f15dcd9169139a4107d273ffd59578c1",
+      "previous_version_tip": "bc3dcf6527dcb81613445b1040f2da0caa75141d",
+      "accepted_dev_tip": "bc3dcf6527dcb81613445b1040f2da0caa75141d",
+      "stable_branch": "main",
+      "unchanged_stable_commit": "534bdc4c7517e1abbdde0731cf932e72892928f4"
+    },
+    {
+      "repository": "kubeauto-ext-bin-dockerfile",
+      "branch": "v1.36.6",
+      "source_commit": "312d41f7c4adba9a86647ad4bc586543ec5d1e9f",
+      "source_tree": "2d6e7cb5e91377642b8a6e450fef860d84d43d85",
+      "previous_version_tip": "312d41f7c4adba9a86647ad4bc586543ec5d1e9f",
+      "accepted_dev_tip": "312d41f7c4adba9a86647ad4bc586543ec5d1e9f",
+      "stable_branch": "main",
+      "unchanged_stable_commit": "74bd8707c844b3b5154ca31df94beb06788d1420"
+    },
+    {
+      "repository": "kubeauto-ext-bin-sp1-dockerfile",
+      "branch": "v1.36.6",
+      "source_commit": "cd439d9cb0f6f0b8701b802ac3c37fd4ac420b79",
+      "source_tree": "7f2788fd9df4daae56dfb46eb9a287b90bd11cfe",
+      "previous_version_tip": "cd439d9cb0f6f0b8701b802ac3c37fd4ac420b79",
+      "accepted_dev_tip": "cd439d9cb0f6f0b8701b802ac3c37fd4ac420b79",
+      "stable_branch": "main",
+      "unchanged_stable_commit": "340552fcc0c83eb4f980eb4c54dd90eb593483fd"
+    },
+    {
+      "repository": "kubeauto-ext-images-dockerfile",
+      "branch": "v1.36.6",
+      "source_commit": "9da12434e4f196327723b8f7c1998175184b12ef",
+      "source_tree": "f51d598ce96b6b100764cd1bb5e12b96a450f1da",
+      "previous_version_tip": "1c29e9bf8d4755cd056e731815280acb36b2322a",
+      "accepted_dev_tip": "ba5249131c146efbd438f90d270b7c5886fb7889",
+      "stable_branch": "main",
+      "unchanged_stable_commit": "074c8010810302d7fa3346cff996cbfe7bc3f7a1"
+    }
+  ],
+  "checks": [
+    {
+      "command": "bash tests/run_tools_regression.sh --production-audit",
+      "rc": 0,
+      "expected_marker": "TOOLS_PRODUCTION_EXECUTION_AUDIT_PASS",
+      "test_count": null,
+      "raw_archive": "/home/brinnatt/.local/share/kubeauto/upgrade-workspaces/v1.36.6/upgrade/v1.36.6/private/maintenance-dev-20261126/audit-before.log",
+      "sha256": "6d6e295e128489e32fc110d94b01faa2255e233a40e4e2f7b16d60a4cc401f2d",
+      "bytes": 67
+    },
+    {
+      "command": "bash tests/run_tools_regression.sh --status",
+      "rc": 0,
+      "expected_marker": "矩阵验收 89/89 PASS",
+      "test_count": null,
+      "raw_archive": "/home/brinnatt/.local/share/kubeauto/upgrade-workspaces/v1.36.6/upgrade/v1.36.6/private/maintenance-dev-20261126/tools-status.log",
+      "sha256": "6dbfa8829e78b961ae8872f153d15db91f4aaf6964c4b84cc9d8f1f927fa5c22",
+      "bytes": 1840
+    },
+    {
+      "command": "bash tests/run_tools_regression.sh --preflight",
+      "rc": 0,
+      "expected_marker": "TOOLS_PREFLIGHT_PASS",
+      "test_count": 165,
+      "raw_archive": "/home/brinnatt/.local/share/kubeauto/upgrade-workspaces/v1.36.6/upgrade/v1.36.6/private/maintenance-dev-20261126/tools-preflight.log",
+      "sha256": "6c09ed9cdcf1ad004b221a62fe5f435619770e307d90295c60a6674b7289ab6c",
+      "bytes": 26293
+    },
+    {
+      "command": "bash tests/run_tools_regression.sh --starmigrt-preflight",
+      "rc": 0,
+      "expected_marker": "STARMIGRT_PREFLIGHT_PASS",
+      "test_count": 46,
+      "raw_archive": "/home/brinnatt/.local/share/kubeauto/upgrade-workspaces/v1.36.6/upgrade/v1.36.6/private/maintenance-dev-20261126/starmigrt-preflight.log",
+      "sha256": "a2b4e2756a8397c647192dcb9add06fdf809afe64b55580500dadab09c8a6b26",
+      "bytes": 7899
+    },
+    {
+      "command": "isolated .venv/bin/python -B -m unittest tests.unit.test_six_repo_version_sync -q",
+      "rc": 0,
+      "expected_marker": "OK",
+      "test_count": 13,
+      "raw_archive": "/home/brinnatt/.local/share/kubeauto/upgrade-workspaces/v1.36.6/upgrade/v1.36.6/private/maintenance-dev-20261126/version-sync.log",
+      "sha256": "2d22cb492c588adcb6acf94802c2355b4625716cb1d7f3c512ae9e42a340af4e",
+      "bytes": 98
+    },
+    {
+      "command": "upgrade/validate.py upgrade/v1.36.6/test-matrix.yaml --status (original detached evidence checkout)",
+      "rc": 0,
+      "expected_marker": "\"pass\": 15",
+      "test_count": null,
+      "raw_archive": "/home/brinnatt/.local/share/kubeauto/upgrade-workspaces/v1.36.6/upgrade/v1.36.6/private/maintenance-dev-20261126/upgrade-status.log",
+      "sha256": "1069ac431be81da2c0dcf8d6c67f54ff4220c37238f0da1c158d6b8277d9e10d",
+      "bytes": 2762
+    }
+  ],
+  "tools_matrix": {
+    "pass": 89,
+    "total": 89,
+    "pending_or_fail": 0,
+    "fail": 0,
+    "completed_groups": 12,
+    "total_groups": 12,
+    "source": "tests/tools-test-matrix.yaml",
+    "reuse": "当前sha/原证据/最终记录由固定status入口核验；合并树与已验收dev逐字节相同。"
+  },
+  "upgrade_matrix": {
+    "pass": 15,
+    "total": 15,
+    "pending_or_fail": 0,
+    "fail": 0,
+    "completed_groups": 8,
+    "total_groups": 8,
+    "groups": [
+      {
+        "id": "U0",
+        "name": "源基线与官方组合"
+      },
+      {
+        "id": "U1",
+        "name": "制品与本地合同"
+      },
+      {
+        "id": "U2",
+        "name": "受控迁移"
+      },
+      {
+        "id": "U3",
+        "name": "目标平台集成"
+      },
+      {
+        "id": "U4",
+        "name": "恢复"
+      },
+      {
+        "id": "U5",
+        "name": "新建安装"
+      },
+      {
+        "id": "U6",
+        "name": "文档交付"
+      },
+      {
+        "id": "U7",
+        "name": "最终验收"
+      }
+    ],
+    "cases": [
+      {
+        "id": "UPG-01",
+        "group": "U0",
+        "desc": "已GA源基线的交付与证据身份关联",
+        "status": "pass"
+      },
+      {
+        "id": "UPG-02",
+        "group": "U0",
+        "desc": "官方版本搭配、过渡路径及维护边界",
+        "status": "pass"
+      },
+      {
+        "id": "UPG-03",
+        "group": "U1",
+        "desc": "最小制品集合与双端双架构准入",
+        "status": "pass"
+      },
+      {
+        "id": "UPG-04",
+        "group": "U1",
+        "desc": "升级门禁、产品与六仓静态合同",
+        "status": "pass"
+      },
+      {
+        "id": "UPG-05",
+        "group": "U2",
+        "desc": "源健康、恢复点、资源租约与变更前拒绝",
+        "status": "pass"
+      },
+      {
+        "id": "UPG-06",
+        "group": "U2",
+        "desc": "HA 控制面逐 minor 与混合阶段顺序",
+        "status": "pass"
+      },
+      {
+        "id": "UPG-07",
+        "group": "U2",
+        "desc": "逐节点 drain、运行时及调度恢复",
+        "status": "pass"
+      },
+      {
+        "id": "UPG-08",
+        "group": "U3",
+        "desc": "各支持网络、DNS 与 Service 连续性",
+        "status": "pass"
+      },
+      {
+        "id": "UPG-09",
+        "group": "U3",
+        "desc": "持久存储、CSI 与快照数据保持",
+        "status": "pass"
+      },
+      {
+        "id": "UPG-10",
+        "group": "U3",
+        "desc": "中间件与共享控制器的目标平台集成",
+        "status": "pass"
+      },
+      {
+        "id": "UPG-11",
+        "group": "U3",
+        "desc": "安全、入口、指标与日志目标接口",
+        "status": "pass"
+      },
+      {
+        "id": "UPG-12",
+        "group": "U4",
+        "desc": "升级中断、限定恢复与不可逆边界",
+        "status": "pass"
+      },
+      {
+        "id": "UPG-13",
+        "group": "U5",
+        "desc": "目标干净新建安装与幂等",
+        "status": "pass"
+      },
+      {
+        "id": "UPG-14",
+        "group": "U6",
+        "desc": "客户升级步骤、来源覆盖与交付身份",
+        "status": "pass"
+      },
+      {
+        "id": "UPG-15",
+        "group": "U7",
+        "desc": "下一跳最终干净完整范围验收",
+        "status": "pass"
+      }
+    ]
+  },
+  "invariants": {
+    "main_merge_tree_equals_original_dev": true,
+    "core_pins_and_upgrade_runtime_unchanged": true,
+    "both_original_tips_retained": true,
+    "stable_branches_unchanged": true,
+    "catalog_exact_union": {
+      "version_rows": 236,
+      "dev_rows": 232,
+      "merged_rows": 238,
+      "validator": "IMAGE_CATALOG_VALIDATION_PASS rows=238 dockerfiles=238",
+      "rc": 0
+    }
+  },
+  "evidence_manifest": {
+    "path": "upgrade/v1.36.6/evidence/maintenance-dev-20261126/evidence-manifest.json",
+    "sha256": "dc8dff6b902473b3b8d43f0fe361309002ae7b0a469f428b04fb3d0f955620a4",
+    "bytes": 20420
+  },
+  "historical_raw_boundary": "工具status及production-audit核验其声明的现有原始证据；升级status在原detached证据checkout核验，未将全部历史归档复制或重跑。",
+  "official_reference": {
+    "git_merge": "https://raw.githubusercontent.com/git/git/master/Documentation/merge-options.adoc",
+    "semantics": "--no-ff保留双方合并历史；--ff-only将dev前移到已接受版本tip，拒绝产生另一条合并线。"
+  },
+  "inherited_whitespace_notes": [
+    "tests/unit/test_mysql_portability_contract.py:39: new blank line at EOF",
+    "tests/unit/test_starmigrt_gate_contract.py:81: trailing whitespace; inherited dev bytes retained"
+  ],
+  "customer_signoff": null
+}

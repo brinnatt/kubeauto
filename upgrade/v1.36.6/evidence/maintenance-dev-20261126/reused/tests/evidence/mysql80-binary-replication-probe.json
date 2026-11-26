@@ -1,0 +1,57 @@
+{
+  "date": "2026-11-25",
+  "stage": "replication-probe",
+  "inputs": {
+    "tools/mysqltools/MyBackupCli.py": "66423568f42804e9417d5e4f4b4fab791985d84f3e94fc2114f08cd921a92359",
+    "tests/evidence/mysql80-binary-sources.json": "351d346bea80a8723790d818d915cfcffb8e5325a094568f904ad277855ae9f0",
+    "tests/helpers/mysql80-binary-live.py": "f010e43ef85f4fcecc71a8d087c9782ca85d2f29a2faf261b78a516318824aa5",
+    "tests/helpers/mysql80-binary-artifacts.py": "be7a8e617b57e4644238f4a14d83900ef4dbacef29d939c76e7b69037b2d3388",
+    "tests/helpers/starrocks-compose-live.py": "2b47b114fe23afc9cdc65956637a19690dea822e4f5de560970f896f4c5f8dcf",
+    "tests/helpers/run-durable-gate.sh": "352244f3c876f5f9626c0c21f574de3aecb61642e0be10324623b15b6b9b1843",
+    "tests/unit/test_mysql80_binary_live_contract.py": "8ea41206feaf8356794650ba6b7f990cb5251d166efa2ee400710065b15054ec",
+    "tests/unit/test_mybackup_replication_contract.py": "de5feee62553f2be11eee1d8775c6b051ba6e7ea30b1f466e8db882cba9c13b1",
+    "tests/unit/test_mybackup_offline_contract.py": "da5ae99bb23d8f6321f0963b88a182e01239184982ca8d457e6f20a76159ed13",
+    "tests/run_tools_regression.sh": "10e506a3f4bd5af1238687ba89e154696c9ab9717044453cb10ab67bde26c46d",
+    "tests/helpers/build-mybackup-native.py": "c78faeeaec19bdce4cfb8fdb5ece6428b2bf8f75b1d1422e81733a836e7accec",
+    "tests/evidence/mybackup-native-build-library.json": "d60595de32f2a258e7605935bcbb6c9aa44a294b82c5ba7b3dbe25ed82dfa8b0",
+    "dist/MyBackupCli-rocky8": "635e787bd93a9b86ee4cc3d3119f1c9a4d61d0b9117fb9065e744d0076debbf3",
+    "dist/mysql-backup-build.json": "4ee8bf09dbd4af5ef33192fc0134091430714e44fe3ffb40bd68f04819a2e44f"
+  },
+  "rc": 0,
+  "hosts": {
+    "rocky8": {
+      "execution": "frozen",
+      "files": {
+        "logs/mysql80-binary-replication-probe-rocky8-a51ae11bcad0/evidence.tar.gz": "dfaf31994c32802ac7879a2b5301754debaee1d69475a3e04c1cbf1c94f8f6f8",
+        "logs/mysql80-binary-replication-probe-rocky8-a51ae11bcad0/state.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+        "logs/mysql80-binary-replication-probe-rocky8-a51ae11bcad0/state.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+        "logs/mysql80-binary-replication-probe-rocky8-a51ae11bcad0/plan.json": "27c074ca6004a95221ca23d05df76a2b360f86b13283cf7f6e24917d3e45c050",
+        "logs/mysql80-binary-replication-probe-rocky8-a51ae11bcad0/console.log": "e41f9b4163bce018a03a05b65c460aa0289a2f0b731ae0c40024eadec6d8a2f8",
+        "logs/mysql80-binary-replication-probe-rocky8-a51ae11bcad0/dockerd.log": "7d10dfe97853c6559d7b18bad7580430466f239f118adca4d0b2b0930642e505"
+      },
+      "durable": [
+        "logs/mysql80-binary-replication-probe-rocky8-a51ae11bcad0/state.exit",
+        "logs/mysql80-binary-replication-probe-rocky8-a51ae11bcad0/state.finalized"
+      ],
+      "log": "logs/mysql80-binary-replication-probe-rocky8-a51ae11bcad0/console.log"
+    },
+    "rocky9": {
+      "execution": "frozen",
+      "files": {
+        "logs/mysql80-binary-replication-probe-rocky9-f562358988f2/evidence.tar.gz": "3c6e7ffd2a25b44bb76a7b91cf61cf2a1bc84e2ad8e3fcf9ea96ec233dbe28a6",
+        "logs/mysql80-binary-replication-probe-rocky9-f562358988f2/state.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+        "logs/mysql80-binary-replication-probe-rocky9-f562358988f2/state.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+        "logs/mysql80-binary-replication-probe-rocky9-f562358988f2/plan.json": "22d97af74691e02aeccd5415a93b43444c897c5d6ec6513de2c5817f2ce82cc4",
+        "logs/mysql80-binary-replication-probe-rocky9-f562358988f2/console.log": "74bebcc7b29f8aa0a08b8bc86968bc58649ae9037f212748b2d987649ae8691b",
+        "logs/mysql80-binary-replication-probe-rocky9-f562358988f2/dockerd.log": "001492b7b3452ba9ca9146d9be332138e1a59f4fd74c8a8cbb40983318c758f0"
+      },
+      "durable": [
+        "logs/mysql80-binary-replication-probe-rocky9-f562358988f2/state.exit",
+        "logs/mysql80-binary-replication-probe-rocky9-f562358988f2/state.finalized"
+      ],
+      "log": "logs/mysql80-binary-replication-probe-rocky9-f562358988f2/console.log"
+    }
+  },
+  "artifact": "635e787bd93a9b86ee4cc3d3119f1c9a4d61d0b9117fb9065e744d0076debbf3",
+  "boundary": "native mysqld/systemd; unencrypted InnoDB; GTID OFF/ON; no GR/Galera, multi-source or cross-version restore"
+}

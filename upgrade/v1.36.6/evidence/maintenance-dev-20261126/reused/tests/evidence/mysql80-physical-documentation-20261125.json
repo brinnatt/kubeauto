@@ -1,0 +1,204 @@
+{
+  "date": "2026-11-26",
+  "result": "author-reviewed",
+  "scope": "Incremental MyBackupCli container/native standalone/primary-replica/asynchronous dual-primary configuration and recovery documentation. Author content and reader-path review; not customer sign-off, not product final acceptance, no combined tool image delivery.",
+  "checks": [
+    {
+      "requirement": "配置默认值、空值、消费者和后果",
+      "section": "operations-manual.md#选择配置及理解空值；mybackup.conf.example全部17项",
+      "basis": "Config实际默认值与校验、native_options拒绝集合；本轮165项preflight及103项聚焦合同",
+      "defect": "旧配置缺少topology/defaults-file语义；账号空值、socket不自动推导、threads及use_memory约束不清",
+      "fix_and_recheck": "已补_comment_*与角色表；标准JSON逐项解析，17项实际字段均有相邻注释",
+      "reviewer": "Codex author review",
+      "result": "closed"
+    },
+    {
+      "requirement": "容器和宿主机路径及服务对象",
+      "section": "operations-manual.md#物理备份执行位置与路径",
+      "basis": "PXB datadir/log_bin/log-bin-index源码；Docker writable bind接口；真实容器夹具参数原样传递",
+      "defect": "容易把SQL容器路径当宿主路径，或误由mysqld.service控制容器",
+      "fix_and_recheck": "路径对照表、SQL/inspect核对、实际mysql_container及独立工具容器解释已闭合",
+      "reviewer": "Codex author review",
+      "result": "closed"
+    },
+    {
+      "requirement": "可交付制品和执行环境",
+      "section": "operations-manual.md#物理备份执行位置与路径：独立工具容器段",
+      "basis": "mybackup-cli-live-regression.sh run_tool实际挂载冻结程序、静态Docker及原生客户端适配器",
+      "defect": "原示例可能被理解为已有组合工具镜像",
+      "fix_and_recheck": "明确本次无组合镜像；自备镜像为有前置条件的替代模板；如实说明实际验收组合，不冒称模板镜像已验收",
+      "reviewer": "Codex author review",
+      "result": "closed"
+    },
+    {
+      "requirement": "精确MySQL/PXB兼容条件与DDL锁",
+      "section": "operations-manual.md#物理备份执行位置与路径：宿主机段",
+      "basis": "固定PXB文档commit f8a15e8e73028742f92f63bddb6fe365bca5e311；8.0.35-36源码和8.0.33/46原生生命周期",
+      "defect": "版本检查被移除后，仅启动无错容易被误认为兼容",
+      "fix_and_recheck": "解释AUTO在8.0.35-36选择ON、旧8.0.33锁条件和版本检查限制；未推荐禁用版本保护",
+      "reviewer": "Codex author review",
+      "result": "closed"
+    },
+    {
+      "requirement": "账户与归档连续主线",
+      "section": "operations-manual.md#物理备份与恢复主线",
+      "basis": "full/incr/binlog/checksum/audit/restore真实产品路径及原始坐标",
+      "defect": "备份读取账号可能被错误用于恢复；socket及账号变量未跨部署衔接",
+      "fix_and_recheck": "明确backup.conf与backup-restore.conf、权限0600、实际MYSQL_SOCKET/MYSQL_BACKUP_USER、FLUSH BINARY LOGS再归档；日期与时间必须取实值",
+      "reviewer": "Codex author review",
+      "result": "closed"
+    },
+    {
+      "requirement": "复制备份机制和恢复后新full例外",
+      "section": "operations-manual.md#备份与复制恢复的控制边界",
+      "basis": "固定PXB make-backup-in-replication-env及backup_mysql.cc；TL-MBK-11/12",
+      "defect": "safe-slave-backup不能替代隔离；新full例外容易被错误扩展为日常停复制备份",
+      "fix_and_recheck": "解释暂停售恢复SQL线程、log_replica_updates与上游坐标；例外须真实restore-needs-full、线程停且只读，禁止手工造标记",
+      "reviewer": "Codex author review",
+      "result": "closed"
+    },
+    {
+      "requirement": "隔离确认、PITR与目标身份",
+      "section": "operations-manual.md#备份与复制恢复的控制边界",
+      "basis": "MySQL两patch mysqld/persisted_variable源码；TL-MBK-10～12在线/停机及UUID/PITR读回",
+      "defect": "仅STOP REPLICA不足以阻止重启自动复制；donor持久变量可能覆盖目标",
+      "fix_and_recheck": "持久skip_replica_start/read_only/super_read_only、外部隔离与确认参数、保留目标auto.cnf/mysqld-auto.cnf及PITR finally只读解释闭合",
+      "reviewer": "Codex author review",
+      "result": "closed"
+    },
+    {
+      "requirement": "已停机实例的安全入口",
+      "section": "operations-manual.md#已停机的二进制实例如何恢复",
+      "basis": "两版mysqld --version/--verbose --help、真实direct systemd unit；TL-MBK-10～12 OFFLINE_RESTORE_PASS",
+      "defect": "无法SQL查询时不能猜版本或先建空库；wrapper/额外参数无法证明启动路径",
+      "fix_and_recheck": "明确mysql_defaults_file仅offline消费、保留目标目录和UUID、精确patch/GTID/topology、安全启动覆盖检查；不支持的入口拒绝",
+      "reviewer": "Codex author review",
+      "result": "closed"
+    },
+    {
+      "requirement": "权威点重建、GTID和file-position",
+      "section": "operations-manual.md#从权威恢复点重建一主一从或异步双主",
+      "basis": "固定CHANGE REPLICATION SOURCE TO、GTID auto-position和RESET REPLICA官方页面；TL-MBK-11/12 donor和重接raw",
+      "defect": "仅重接会引入恢复截止后的事务；GTID OFF稍后位置不一定对应旧快照",
+      "fix_and_recheck": "明确停写冻结A_FILE/A_POS、B独立donor配置、两端保留身份、RESET REPLICA ALL不清GTID，禁止RESET MASTER/跳错；三SQL模板的占位符显式替换",
+      "reviewer": "Codex author review",
+      "result": "closed"
+    },
+    {
+      "requirement": "业务读回和恢复后的新周期",
+      "section": "operations-manual.md#选择重接还是按恢复点重建；#从权威恢复点重建一主一从或异步双主",
+      "basis": "TL-MBK-10/11/12两OS×两patch×GTID OFF/ON原始日志、双0与scoped-clean",
+      "defect": "步骤存在或延迟为0不能作为数据验收",
+      "fix_and_recheck": "正文转化PITR包含/排除、摘要相同、双向许可写入读回和新full/incr；明确不是容量、RTO、冲突解决或零缺陷承诺",
+      "reviewer": "Codex author review",
+      "result": "closed"
+    },
+    {
+      "requirement": "异常停止、回滚和保留",
+      "section": "operations-manual.md#物理恢复异常与保留策略",
+      "basis": "_restore_datadir、restore_workspace、finally只读、失败重试/清理的所属证据",
+      "defect": "copy-back失败与PITR部分导入不能混为同一恢复动作",
+      "fix_and_recheck": "按停库前/copy-back/启库与PITR分叉；保留原data/binlog、只读隔离和新full分代，purge不可逆及无dry-run已解释",
+      "reviewer": "Codex author review",
+      "result": "closed"
+    },
+    {
+      "requirement": "首次实施者和熟练运维路径",
+      "section": "手册任务索引→执行位置/角色表→前置查询→公共备份→隔离恢复→按权威点重建→双端读回→新周期；故障表与配置注释反查",
+      "basis": "作者逐段人工检查，不代表非作者或客户参与",
+      "defect": "已定位并修复账户/路径跨场景衔接、组合镜像歧义、过时未验收文字",
+      "fix_and_recheck": "首次路径输入与执行节点明确；熟练路径能独立找到停止、拒绝、回滚及重新备份出口；两张Mermaid实际渲染并目视复核",
+      "reviewer": "Codex author review",
+      "result": "closed"
+    },
+    {
+      "requirement": "停机恢复的明确准入边界",
+      "section": "operations-manual.md#已停机的二进制实例如何恢复",
+      "basis": "Config._offline_version对--verbose --help的原值比较；MySQL mysqld.cc rpl_make_log_name使用MY_REPLACE_EXT生成实际basename",
+      "defect": "只说有效路径一致，未解释相对/缺省/扩展名配置可能被停机保守入口拒绝",
+      "fix_and_recheck": "明确需显式绝对datadir/socket/binlog/index及实际binlog前缀，给出无扩展名前缀例子与演练/维护前置；未宣称支持任意MySQL配置格式，不改产品准入或外推现场覆盖",
+      "reviewer": "Codex author review",
+      "result": "closed"
+    },
+    {
+      "requirement": "原生进度可见及静默判断",
+      "section": "operations-manual.md#观察物理备份与恢复进度",
+      "basis": "Python3.12 subprocess/selectors文档和固定运行时源码；当前CLI并发输出/静默/失败/中断合同",
+      "defect": "旧版等XtraBackup退出才输出stderr，终端长时间无进度",
+      "fix_and_recheck": "明确默认终端/文件实时输出、30秒静默心跳、轮转边界、阶段rc和工具最终成功区别；新增命令经bash -n，原有图形未改",
+      "reviewer": "Codex author review",
+      "result": "closed"
+    },
+    {
+      "requirement": "所有命令、数据管道与文件长阶段观测",
+      "section": "operations-manual.md#观察物理备份与恢复进度",
+      "basis": "CPython3.12 subprocess/selectors原有官方文档与源码；当前103合同；当前冻结8.4恢复证据另由所属记录核验",
+      "defect": "前次仅XtraBackup流式，其它命令诊断缓存；回放错误管道读取顺序可能死锁；文件长阶段无心跳",
+      "fix_and_recheck": "新增逐操作表、SQL与元数据不入日志、双端回放退出码/失败停止、文件心跳及本地客户端中断边界；正文与代码逐项核对，全部原命令和图形逐字未变，复用原静态和渲染依据；文件不可写的单份stderr回退已用真实CLI合同验证，停启探测的连接拒绝须结合阶段及最终读回解释。",
+      "reviewer": "Codex author review",
+      "result": "closed"
+    }
+  ],
+  "files": {
+    "tools/mysqltools/operations-manual.md": "a9b0bb27d02f3d9612a1507ec21b1963d073fbd724c64107d8c305928bf42c42",
+    "tools/mysqltools/mybackup.conf.example": "07836fde22223f81e95529a94226fbba8392359e80f46ca0b2740d4fff3474a7",
+    "logs/mybackup-command-observability-20261126/documentation-static.json": "c892e5919719225247893233b36b8a65f793c6bc37f39749308f8d026f0ebe79"
+  },
+  "operational_evidence": {
+    "tests/evidence/mysql80-binary-standalone.json": "ed88c00d33a627ec42dfc69af00f2fa813af3d92c8ce8a6d8b1b5e97348994ee",
+    "tests/evidence/mysql80-binary-primary-replica.json": "2404f88c13033e717e87c3340a173adb747c28a3f42df89c36b0cdba01c99bd6",
+    "tests/evidence/mysql80-binary-dual-primary.json": "16e4a730444db6a19c93199bbb6ce179d44c134fd588523491d5f1d09db4e7a6"
+  },
+  "review_artifacts": {
+    "logs/mysql80-documentation-native-20261125/current-static-check.json": "52e9bd4aeefd88e7a35dd6b7161cb3d826cd19c6e5bc7848798d2cf7b2330ce7",
+    "logs/mysql80-documentation-native-20261125/render.json": "633a78d0b430bc3c0163c13b676a3039f4a05e277ae5a0d8fe0c836a4eaabecb",
+    "logs/mysql80-official-20261125/mysql80-mysqld.cc": "6ad4ff5aafcf9685a5122068cf32b19adf9b10e605acbd1182977e14481cbda2",
+    "logs/mysql80-official-20261125/80-docs-release-notes-8.0-8.0.35-36.0.md": "4d4e769027e21f5883d39819c9116f31e9b1d42bbcc86de18e3c7676853d24e7",
+    "logs/mysql80-official-20261125/mysql80-replication-gtids-auto-positioning.html": "d0db022ff2ec1fbdf7e7ab8a5724002912cee29e48362ee953694de8dc403797",
+    "logs/mysql80-official-20261125/mysql8046-persisted_variable.cc": "a000e1b9f077c224f518f33210459184b99470b1b3fe9e1d1b202ca94de278f1",
+    "logs/mysql80-official-20261125/80-docs-xtrabackup-option-reference.md": "d836f21f42e5ccaa5fa0c4bdf72b7c764a8b574a401b5ec65d81769ae439295b",
+    "logs/mysql80-official-20261125/mysql80-persisted_variable.cc": "96e825e3be1e9b743a7389b080b9455a77c28d20797f718adfcf34bdd8efcf3a",
+    "logs/mysql80-official-20261125/80-docs-restore-a-backup.md": "1813635cb149a99746b51661fb3edd16c818788f01f3ff73122dc54b83be5f3d",
+    "logs/mysql80-official-20261125/80-docs-prepare-incremental-backup.md": "7769a43d0d622ecf90dffc1df6b1cfa31d8ac6dfcd771986c0d7913fccdb8da0",
+    "logs/mysql80-official-20261125/80-docs-point-in-time-recovery.md": "5ed1aefd3f506630d5115310c97b7ad9f86c3d8c28e2c4dd59adbb2c639beb56",
+    "logs/mysql80-official-20261125/80-mkdocs.yml": "6bd91e783f856e30575605a5598fbd8278d38ec76dfd51c0c7a1ddc3afa4a885",
+    "logs/mysql80-official-20261125/80-mkdocs-base.yml": "c574fabf24d286b0953eb5537181e3dafafe2ec9cbf647959e4e9cde7286d6b5",
+    "logs/mysql80-official-20261125/pxb80-backup_mysql.cc": "a946ed53e22b770f56aac5fa592839cfbb081abe193e7ea17f05bf66e8e03b25",
+    "logs/mysql80-official-20261125/80-docs-prepare-compressed-backup.md": "3c45c3401d6fad8f312d68ae951ee08dce10a07fdbf389070ccd7ad5286d77cb",
+    "logs/mysql80-official-20261125/80-official-records.json": "0cd69703eb6d63da8ae543c5095ae97a8146ef4468093a62a84a98081fc5ff9c",
+    "logs/mysql80-official-20261125/mysql80-change-replication-source-to.html": "534c3e7c24b3ab77dca44f640926d5491a02e6bedcf76a8066ac436aeb143cbd",
+    "logs/mysql80-official-20261125/pxb80.cc": "d5a6f63a98b6467b7de15fb8a86f820b99969c6dc17cf5c2310b4750735ec81b",
+    "logs/mysql80-official-20261125/80-docs-create-compressed-backup.md": "dfbc4f360544d8d78eadc9e4b97b859436650aca00c6b766652668e99ee3ce90",
+    "logs/mysql80-official-20261125/80-docs-prepare-full-backup.md": "0dfa21cfb2dd33b8c34a89156de7ef2d2f47666513ec248cd6b02f6982e740d8",
+    "logs/mysql80-official-20261125/80-docs-create-incremental-backup.md": "92d17d2c63cee310cd51f5c2628fd03951c8afe9e778088c9b114e5b1861c654",
+    "logs/mysql80-official-20261125/80-docs-server-backup-version-comparison.md": "272e43de6f07b4feb439fc7127e1a6b0be67048f91b374bd009e247db71b7e97",
+    "logs/mysql80-official-20261125/cpython-3.12.14-socket-create_server.py": "8acf48dc2f0647ecf1915d48843a1f06c4dc1d874c99810d4370d7f616113a7c",
+    "logs/mysql80-official-20261125/mysql8046-mysqld.cc": "cda59bcbbdc67fb88c3d4f563e2faa83a914d12f3b3202cf63a3b2df48dfd91d",
+    "logs/mysql80-official-20261125/mysql80-reset-replica.html": "30539a48b93273c841c64b4187cde4f8d31b8ce94f3174eb26915d70288575ec",
+    "logs/mysql80-official-20261125/pxb80-backup_copy.cc": "958d04d6f8549dc633605dcf914bef6b3991d60eb558018308daa9974b897d7b",
+    "logs/mysql80-official-20261125/80-docs-supported-versions.md": "ba882c191ba5a994ed301e0b1a0eefc01427c6927a3eba23ff6be24318d484c0",
+    "logs/mysql80-official-20261125/80-docs-make-backup-in-replication-env.md": "bcb9fcb698c1b4b2054100e5621e74f49fa4b6e81d27b88acdcfa1dd2976c500",
+    "logs/mybackup-observability-20261125/documentation-static.json": "43f23de828c613f89d3ccece557d97f8b0aa0a93e4da4922da791630a52623c4",
+    "logs/mybackup-observability-20261125/python312-subprocess.html": "261534ebc568581e1f63b816b86f126b9fd49d3bc0c187c1b435106a9c0e94b8",
+    "logs/mybackup-observability-20261125/python312-selectors.html": "5ffcb39169585d22fb578c0548d7e22dc5440f4d53990759c799a3da28dfdb39",
+    "logs/mybackup-observability-20261125/cpython-local-run.py": "5917d92a3df46dfda963d39444c771b95e64a49e477656f1e67f2c6a3cbfb1d5"
+  },
+  "official_dependency_boundary": {
+    "user_operations": "PXB8.0 docs pinned f8a15e8e73028742f92f63bddb6fe365bca5e311: supported versions, backup/prepare/compression/incremental/copy-back/PITR and option references.",
+    "mechanism_development": "PXB8.0.35-36 pxb80.cc and backup_copy/backup_mysql source; MySQL8.0.33 mysqld.cc/mysqlbinlog.cc; Docker bind/stop/start interface.",
+    "coverage_record": "logs/mysql80-official-20261125/80-official-records.json",
+    "limits": "Incremental dependency-interface review only; no claim of full independent MySQL/PXB manual corpus or customer review.",
+    "logging": "Reuse unchanged Python3.12 subprocess/selectors docs and installedCPython3.12.14 source: pipe capacity/deadlock, concurrent drain, process exit/reaping and non-buffered diagnostics; incrementally review same interface for every command and both replay processes. Thread Event wait/stop keeps filesystem observation separate from copy semantics."
+  },
+  "previous_review": {
+    "path": "logs/mysql80-documentation-native-20261125/previous-author-review.json",
+    "sha256": "7058c5403f44ce6bfc4aafcc557eb80342bbb1c17ed933432d6665129a9281d3"
+  },
+  "limits": [
+    "Dependency-interface research; not a claim of reading the full MySQL/PXB product manual corpus.",
+    "Native topology focused evidence is accepted; final clean run remains separately gated by TL-MBK-13. Current container proof is independently required by TL-MBK-07～09; this author check does not accept it.",
+    "Self-provided combined-image template was not executed verbatim; actual test composition and prerequisites are stated explicitly.",
+    "19 bash syntax checks, 4 JSON blocks, local links/anchors, 17 key comments and 2 unchanged rendered diagrams verified; 3 SQL templates read against pinned syntax and require real deployment substitutions.",
+    "Current local103 all-command observability contracts accepted. Current frozen native standalone, primary-replica and asynchronous dual-primary focused records each accept eight exact OS/version/GTID combinations; operational_evidence hashes bind those owning records. Final clean acceptance is separately gated by TL-MBK-13."
+  ]
+}

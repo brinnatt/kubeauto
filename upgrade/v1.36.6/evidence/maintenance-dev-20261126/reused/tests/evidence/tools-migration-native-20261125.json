@@ -1,0 +1,41 @@
+{
+  "date": "2026-11-25",
+  "scope": "Migration native qualification only; no full business PASS",
+  "inputs": {
+    "tools/mysqltools/MigrationCli.py": "1a369e6ef29bf70d332b4dc31fc5bf2a5b7e7fbf50130f434c93c9f385dc87ea",
+    "tools-onefile.spec": "7bb77b6db73a9c015aff2156120d94f7dc67a7a30e037f105d452bcbded45956",
+    "tests/helpers/migration-live-regression.sh": "337a15aea7e05af926b2fda43ca312a233e11180720e60af10f70a1f9b8df31c",
+    "tests/helpers/supervise-migration.py": "bfddf47bd597cd0996330d87a16441ac47da324f9415ab6c094622ed0f841ab9",
+    "tests/helpers/run-durable-gate.sh": "352244f3c876f5f9626c0c21f574de3aecb61642e0be10324623b15b6b9b1843",
+    "dist/MigrationCli-rocky8": "d95d245910018034be9ff3f073568e8bad9ad3036b7f30de90ca96e0a9ae0335",
+    "dist/MyBackupCli-rocky8": "ae944d247fc34e193ae4ad7d653c4e14bf9b95224c9f7f164b74bf3a36fa597a",
+    "dist/MyLogiBackupCli-rocky8": "e14afa5703941c1313cefe6c1277f4c80028848cb5f368cd91315d06b6d2ad0a",
+    "dist/mysql-migration-build.json": "00e7d5b5c00fe0312caed0ea2d59df6ece1829cabd619ca6b5a472b01ea8c6d3"
+  },
+  "launcher": {
+    "snapshot": "logs/mysql80-execution-inputs/3a0d2b7bdc3a42f522ef510110caf694a98785677ba1699c0f7ae41e02ae8f74.sh",
+    "sha256": "3a0d2b7bdc3a42f522ef510110caf694a98785677ba1699c0f7ae41e02ae8f74"
+  },
+  "runs": {
+    "native": {
+      "log": "logs/tools-migration-native-20261125-125943.log",
+      "sha256": "4c6afd8bf77b0d57b08778c0b30af0b40f65a301bb84f91a2518b5d524888bc6",
+      "archive": "logs/tools-migration-native-20261125-125943.evidence.tar.gz",
+      "archive_sha256": "0e54cdb3e6166b9c773f43c2e459bd83ad83e7113234713c6130e1890ede098f",
+      "remote_status": "logs/tools-migration-native-20261125-125943.remote-status",
+      "status": [
+        0,
+        0
+      ],
+      "required_markers": [
+        "MIGRATION_NATIVE_ARGV_READBACK_PASS",
+        "MIGRATION_NATIVE_FAILURE_RECOVERY_PASS",
+        "MIGRATION_NATIVE_IMPORT_ROLLBACK_RETRY_PASS",
+        "MIGRATION_NATIVE_CONCURRENT_ISOLATION_PASS",
+        "MIGRATION_CLI_LIVE_REGRESSION_PASS stage=native",
+        "TOOLS_CLEAN_VERIFY_PASS scope=migration stage=native",
+        "TOOLS_MIGRATION_EXIT rc=0"
+      ]
+    }
+  }
+}
