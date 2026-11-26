@@ -1,0 +1,17 @@
+{
+  "date": "2026-11-25",
+  "tools": [
+    "MigrationCli"
+  ],
+  "result": "deterministic-red-green; live-pending",
+  "official": "MySQL mysql-8.0.33 sql-common/client.cc blob f66ffd1baa93d13410d894e76196ac30002b82fa; PyMySQL v1.1.2 connections.py",
+  "boundary": "local shell handoff and native argv only; no remote/database business PASS",
+  "files": {
+    "logs/tools-migration-endpoint-before-20261125.log": "dfe5cd529e2879a7b12ca04b56786bc013a957e39dc7591113be4c2d75d41ce0",
+    "logs/tools-migration-endpoint-after-20261125.log": "a79ab95346185d4d25eedbd6b121860bd1d47750402778f733cb78e18a967cd2",
+    "tests/unit/test_migration_cli_contract.py": "61337ecb99b385bbd9190b31a4c8521330e6e5aa6e26ceeb30c763dc7d6a0e92",
+    "tools/mysqltools/MigrationCli.py": "1a369e6ef29bf70d332b4dc31fc5bf2a5b7e7fbf50130f434c93c9f385dc87ea",
+    "logs/tools-execution-audit-20261125/mysql80-client.cc": "9368ccce4cfbcc9cdef9550c022d459643be70e0150a4baaa5a65536954e9394",
+    "logs/tools-execution-audit-20261125/pyinstaller-6.16.0-runtime.rst": "faa7ac53e8d94d2fd4d04565097ec3f9e5f3cc99bef6d834b0475a7fd6691703"
+  }
+}

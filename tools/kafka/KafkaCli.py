@@ -4695,7 +4695,8 @@ def _is_local_host(host: str) -> bool:
 def _build_remote_command(
         argv: List[str],
         remote_config_path: Optional[str],
-        remote_script: Optional[str] = None
+        remote_script: Optional[str] = None,
+        remote_python: bool = True
 ) -> str:
     """
     构建远程执行命令：过滤仅本机有效的参数（如 --target-host、--batch、SSH 相关），
@@ -4722,7 +4723,8 @@ def _build_remote_command(
         filtered.extend(["--config", remote_config_path])
 
     if remote_script:
-        return f"python3 {shlex.quote(remote_script)} " + " ".join(shlex.quote(a) for a in filtered)
+        interpreter = "python3 " if remote_python else ""
+        return interpreter + shlex.quote(remote_script) + " " + " ".join(shlex.quote(a) for a in filtered)
     return "kafkacli " + " ".join(shlex.quote(a) for a in filtered)
 
 
@@ -4792,7 +4794,8 @@ def _run_remote_deploy(
     remote_script = None
     if not success or not (which_out or "").strip():
         logger.info(f"远程 {host}:{port} 未找到 kafkacli，将复制本地脚本到远程", extra={"to_stdout": True})
-        local_script = Path(__file__).resolve() if __file__ and Path(__file__).exists() else None
+        local_script = (Path(sys.executable).resolve() if getattr(sys, "frozen", False) else
+                        Path(__file__).resolve() if __file__ and Path(__file__).exists() else None)
         if not local_script or not local_script.exists():
             which_k = shutil.which("kafkacli")
             local_script = Path(which_k).resolve() if which_k and Path(which_k).exists() else None
@@ -4803,11 +4806,14 @@ def _run_remote_deploy(
         if not ok:
             logger.error(f"创建远程目录失败: {out}", extra={"to_stdout": True})
             sys.exit(EXIT_ERROR)
-        remote_script = f"{remote_workdir}/kafka_deploy.py"
+        remote_script = f"{remote_workdir}/kafka_deploy" + ("" if getattr(sys, "frozen", False) else ".py")
         if not ssh.copy_file(str(local_script), remote_script):
             logger.error("复制脚本到远程失败", extra={"to_stdout": True})
             sys.exit(EXIT_ERROR)
-        ssh.run_command(f"chmod +x {remote_script}", timeout=10)
+        executable, output = ssh.run_command(f"chmod +x {shlex.quote(remote_script)}", timeout=10)
+        if not executable:
+            logger.error("设置远程工具执行权限失败: %s", output, extra={"to_stdout": True})
+            sys.exit(EXIT_ERROR)
         logger.info(f"已复制脚本到远程: {remote_script}", extra={"to_stdout": True})
     else:
         test_cmd = "kafkacli --help 2>&1 | head -5 || true"
@@ -4826,7 +4832,8 @@ def _run_remote_deploy(
             logger.error("复制配置文件到远程失败", extra={"to_stdout": True})
             sys.exit(EXIT_ERROR)
 
-    remote_cmd = _build_remote_command(argv, remote_config_path, remote_script)
+    remote_cmd = _build_remote_command(argv, remote_config_path, remote_script,
+                                       remote_python=not getattr(sys, "frozen", False))
     logger.info(f"正在远程主机 {host}:{port} 执行...", extra={"to_stdout": True})
     logger.info(f"远程命令: {remote_cmd}", extra={"to_stdout": True})
     success, output = ssh.run_command(f"{remote_cmd} 2>&1", timeout=3600)

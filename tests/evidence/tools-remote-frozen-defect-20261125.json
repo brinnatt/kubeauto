@@ -1,0 +1,19 @@
+{
+  "date": "2026-11-25",
+  "tools": [
+    "KafkaCli",
+    "StarCli"
+  ],
+  "result": "deterministic-red-green; live-pending",
+  "official": "PyInstaller v6.16.0 runtime-information.rst blob 828171a9e06b2542ff665fd4cdf5eaf92cec1b4e",
+  "boundary": "local shell handoff and native argv only; no remote/database business PASS",
+  "files": {
+    "logs/tools-remote-frozen-before-20261125.log": "bc17bbedc57f7026b26b5ab4cb456bf4be10d0cc3606fd31e7f6da7ef98ebb09",
+    "logs/tools-remote-frozen-after-20261125.log": "cc20178062e9d244ce80452b902f81664e50b8762e559da502f798f3685ccc91",
+    "tests/unit/test_tools_execution_boundary_contract.py": "2a88cd4256f90bfdb547f6e3b374f8fed938c039b6526dbe0e7fd7ed34947a57",
+    "tools/kafka/KafkaCli.py": "b973bd568a6e6f908caa2f7d30873ca213511623349d6816a90c129f726f298f",
+    "tools/starrocks/StarCli.py": "f8d2d6d2a0e8523327721a64f9fb571dc876483dcd96a57ffdec57f5ab5e6d95",
+    "logs/tools-execution-audit-20261125/mysql80-client.cc": "9368ccce4cfbcc9cdef9550c022d459643be70e0150a4baaa5a65536954e9394",
+    "logs/tools-execution-audit-20261125/pyinstaller-6.16.0-runtime.rst": "faa7ac53e8d94d2fd4d04565097ec3f9e5f3cc99bef6d834b0475a7fd6691703"
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "date": "2026-11-25",
+  "result": "pass",
+  "scope": [
+    "TL-KAF-06",
+    "TL-SR-06"
+  ],
+  "host": "root@192.168.47.141; Anolis 23.3",
+  "command": "bash tests/run_tools_regression.sh --remote-bootstrap-live",
+  "rc": 0,
+  "markers": [
+    "REMOTE_BOOTSTRAP_HANDOFF_PASS tool=KafkaCli mode=source",
+    "REMOTE_BOOTSTRAP_HANDOFF_PASS tool=KafkaCli mode=frozen",
+    "REMOTE_BOOTSTRAP_HANDOFF_PASS tool=StarCli mode=source",
+    "REMOTE_BOOTSTRAP_HANDOFF_PASS tool=StarCli mode=frozen",
+    "TOOLS_BOOTSTRAP_SCOPED_CLEAN_PASS host=root@192.168.47.141",
+    "TOOLS_REMOTE_BOOTSTRAP_PASS",
+    "TOOLS_REMOTE_BOOTSTRAP3_EXIT rc=0"
+  ],
+  "boundaries": [
+    "Real source/frozen product entry point uploads via SSH; uploaded SHA256 checked; remote CLI reaches expected missing-argument refusal.",
+    "No broker or StarRocks deployment or business test; no live claim about a host without Python.",
+    "Local deterministic contract proves frozen execution does not invoke Python."
+  ],
+  "files": {
+    "logs/tools-remote-bootstrap3-20261125.log": "41d51110504f760a226ddb9ff1af1754dedbb5506b3d449f014b32d872311370",
+    "logs/tools-remote-bootstrap3-20261125.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/tools-remote-bootstrap3-20261125.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "tools/kafka/KafkaCli.py": "b973bd568a6e6f908caa2f7d30873ca213511623349d6816a90c129f726f298f",
+    "tools/starrocks/StarCli.py": "f8d2d6d2a0e8523327721a64f9fb571dc876483dcd96a57ffdec57f5ab5e6d95",
+    "dist/KafkaCli-rocky8": "31fdec889faa214ad88389c46bacea32f4d2bd9cbc6061fe251fb6b1c1494ea9",
+    "dist/StarCli-rocky8": "27f61849d2d2ea84f3508ac7f7102a8e8740cf5844bbdb3d51650ea5bf3989a3",
+    "dist/kafka-build.json": "99e76be242760bb4c731bf32edfec1e46f0c75e8976a2cec87696958a66f2373",
+    "dist/starcli-build.json": "6df0c082a0eae4b57f33b858743d7bd5ad053e5f66be19a6f8420c4440dd6a7f",
+    "logs/tools-bootstrap-inputs/tools-execution-boundary-live-20261125.py": "c1548a7bfa5dce1a637d31079aa675ec8ebee0c400b9f8787f9d3b2912c24001",
+    "logs/tools-bootstrap-inputs/test_tools_execution_boundary_contract-20261125.py": "bd8d1e4b237573435a81de686db073c6fda53588bece00b7c4c33a942010a7db"
+  },
+  "executed_input_snapshots": "Preserved exact pre-OpenVPN helper and contract bytes; SHA256 equals the original acceptance binding."
+}

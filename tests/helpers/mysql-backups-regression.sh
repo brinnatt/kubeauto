@@ -46,7 +46,7 @@ trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 physical() {
-  env MYBACKUP_TOOL="$release/MyBackupCli-rocky8" bash ./mybackup-cli-live-regression.sh | tee evidence/physical.log
+  env MYBACKUP_TOOL="$release/MyBackupCli-rocky8" MYBACKUP_EVIDENCE_DIR="$release/evidence/physical-diagnostics" bash ./mybackup-cli-live-regression.sh | tee evidence/physical.log
   grep -q '^MYBACKUP_NATIVE_BACKUP_PASS$' evidence/physical.log
   grep -q '^MYBACKUP_NATIVE_PREPARE_PASS$' evidence/physical.log
   grep -q '^MYBACKUP_RESTORE_READBACK_PASS$' evidence/physical.log
@@ -76,16 +76,36 @@ logical() {
     rm -f "/tmp/mylogi-$version-pull.out" "/tmp/mylogi-$version-negative.out"
   done
 }
+select_digest_image() {
+  local candidate
+  # A verified digest already in the daemon does not need registry access.
+  for candidate in "$@"; do
+    if docker image inspect "$candidate" >/dev/null 2>&1; then
+      printf '%s\n' "$candidate"
+      return
+    fi
+  done
+  for candidate in "$@"; do
+    if docker pull "$candidate" >&2; then
+      printf '%s\n' "$candidate"
+      return
+    fi
+  done
+  echo MYSQL_BACKUP_PORTABILITY_IMAGE_UNAVAILABLE >&2
+  return 1
+}
 portability() {
   local image label
   mkdir -p portability
   for label in rocky8 debian12 ubuntu24; do
     case "$label" in
-      rocky8) image='docker.sparkcr.cn/rockylinux/rockylinux@sha256:e8a49c5403b687db05d4d67333fa45808fbe74f36e683cec7abb1f7d0f2338c6';;
+      rocky8) image="$(select_digest_image \
+        docker.sparkcr.cn/rockylinux/rockylinux@sha256:e8a49c5403b687db05d4d67333fa45808fbe74f36e683cec7abb1f7d0f2338c6 \
+        rockylinux/rockylinux@sha256:e8a49c5403b687db05d4d67333fa45808fbe74f36e683cec7abb1f7d0f2338c6)";;
       debian12) image='swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/library/debian@sha256:9df39a1d5bfac0249f0eef61a3ff74fcf7576c5947f23127c57e92267ad98ced';;
       ubuntu24) image='swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/library/ubuntu@sha256:b0c08a4b639b5fca9aa4943ecec614fe241a0cebd1a7b460093ccaeae70df698';;
     esac
-    docker pull "$image"
+    image="$(select_digest_image "$image")"
     mkdir "portability/$label"
     docker run --rm -v "$release:/tools:ro" -v "$release/portability/$label:/work" --entrypoint /bin/sh "$image" -ec '
       cd /work

@@ -1,0 +1,23 @@
+{
+  "date": "2026-11-25",
+  "status": "fix-under-verification",
+  "tool": "KubeBackupCli",
+  "defect": "Explicit --context without --kubeconfig was ignored. In a pod it could instead select in-cluster credentials; on a host it fell back to current-context.",
+  "official": "kubernetes Python client 35.0.0 config.load_kube_config(context=...) selects active_context; None selects current-context",
+  "reproduction": "Real kubeconfig loader with distinct cluster URLs; dynamic API discovery mocked. An available in-cluster loader was chosen despite explicit requested context. No API requests.",
+  "fix": "Explicit context selects kubeconfig loading even when config path omitted",
+  "verification": "Exact regression red before / focused suite green after; frozen and real context selection/backup/restore pending",
+  "matrix_dependencies": {
+    "TL-KB-01": "Source changed; single-tool rebuild",
+    "TL-KB-03": "Explicit context controls real backup/restore using default kubeconfig",
+    "TL-KB-04": "Explicit context overrides in-cluster credentials; unknown context refused before API mutation"
+  },
+  "files": {
+    "tools/k8stools/KubeBackupCli.py": "bcd8f94ccfc834eda5cdf484d07752f52595b0f062c374c15c062cd1e235b114",
+    "tests/unit/test_kube_backup_cli.py": "d986ef3350ac1937a7468d2628e6122fc8511570f936da204425f5df4666ff2e",
+    "logs/tools-kubebackup-context-before-20261125.log": "f520933a4c4c8e6718fbb6834aa3778b7845c8a0a3b23bf14791860b2a177cf9",
+    "logs/tools-kubebackup-context-after-20261125.log": "063a1ee9d0cf1597c92dfe240fe77572650e1d67ae6e176e9e9f66a76ef19141",
+    "logs/tools-execution-audit-20261125/KubeBackupCli-before.py": "e861fde5e117ea1cc18f3eec59cdf9bdac6bebef112c302a527001a39b97c33d",
+    "logs/tools-execution-audit-20261125/kubernetes-35.0.0-kube_config.py": "2e83e801facb6b5ba7189dac6ddbc5d7260539c3dda57a32293f409434e01b16"
+  }
+}

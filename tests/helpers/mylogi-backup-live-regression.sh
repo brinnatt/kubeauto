@@ -22,6 +22,10 @@ cleanup() {
   set +e
   if [[ -n "${MYLOGI_EVIDENCE_DIR:-}" ]]; then
     docker cp "$TOOL_CTN:/tmp/mysql_backup.log" "$MYLOGI_EVIDENCE_DIR/logical-$VERSION-product.log" 2>/dev/null || true
+    for container in "$DB_CTN" "$RESTORE_CTN"; do
+      docker logs "$container" >"$MYLOGI_EVIDENCE_DIR/$container.log" 2>&1 || true
+      docker inspect --format '{{json .State}}' "$container" >"$MYLOGI_EVIDENCE_DIR/$container-state.json" 2>/dev/null || true
+    done
   fi
   if [[ "$timer_owned" -eq 1 ]]; then
     env MYLOGI_LOG_FILE="$RUN_ROOT/timer-host.log" "$TOOL" timer remove >/dev/null 2>&1
@@ -79,7 +83,8 @@ docker run -d --name "$DB_CTN" -e MYSQL_ROOT_PASSWORD="$PASSWORD" \
   --binlog-format=ROW >/dev/null
 ready=0
 for _ in $(seq 1 90); do
-  if docker exec "$DB_CTN" env MYSQL_PWD="$PASSWORD" mysql -uroot -e 'SELECT 1' >/dev/null 2>&1; then
+  # The entrypoint's temporary initialization server accepts sockets, but disables TCP.
+  if docker exec "$DB_CTN" env MYSQL_PWD="$PASSWORD" mysql --protocol=TCP --host=127.0.0.1 --port=3306 -uroot -e 'SELECT 1' >/dev/null 2>&1; then
     ready=1
     break
   fi
@@ -150,8 +155,9 @@ echo "MYLOGI_PREFLIGHT_OK version=$VERSION"
 tool backup --database app audit --compression "$COMPRESSION" --native-option mysqldump=--extended-insert --native-option mysql=--connect-timeout=12
 archive="$(latest_archive "mysql-selected-*.tar.${COMPRESSION}")"
 test -s "$archive"
-tar -tf "$archive" | grep -Eq '\.sql$'
-tar -tf "$archive" | grep -Eq '\.sql\.sha256$'
+# Drain the listing so pipefail still reports tar/decompressor errors, not SIGPIPE.
+tar -tf "$archive" | grep -E '\.sql$' >/dev/null
+tar -tf "$archive" | grep -E '\.sql\.sha256$' >/dev/null
 archive_contains "$archive" '-- Dump completed'
 archive_contains "$archive" 'CHANGE (REPLICATION SOURCE TO|MASTER TO)'
 echo "MYLOGI_BACKUP_OK version=$VERSION compression=$COMPRESSION archive=$(basename "$archive")"
@@ -191,7 +197,7 @@ docker run -d --name "$RESTORE_CTN" -e MYSQL_ROOT_PASSWORD="$PASSWORD" \
   "$IMAGE_REF" --performance-schema=OFF >/dev/null
 restore_ready=0
 for _ in $(seq 1 90); do
-  if docker exec "$RESTORE_CTN" env MYSQL_PWD="$PASSWORD" mysql -uroot -e 'SELECT 1' >/dev/null 2>&1; then
+  if docker exec "$RESTORE_CTN" env MYSQL_PWD="$PASSWORD" mysql --protocol=TCP --host=127.0.0.1 --port=3306 -uroot -e 'SELECT 1' >/dev/null 2>&1; then
     restore_ready=1
     break
   fi

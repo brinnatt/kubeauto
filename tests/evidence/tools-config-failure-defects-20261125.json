@@ -1,0 +1,20 @@
+{
+  "date": "2026-11-25",
+  "classification": "product",
+  "result": "deterministic-red-green; live-pending",
+  "defects": {
+    "CalicoPolicyCli": "executor nonzero and failed HEP enumeration were reported as success",
+    "OvpnUserCli": "configured TLS key ignored; tls-crypt-v2 server key cannot be distributed as client key"
+  },
+  "official": {
+    "calico": "v3.28.4 delete.go blob e911f7d42d3b4bc6a53d42453bbb34f50df03157",
+    "openvpn": "v2.6.12 tls-options.rst blob 81fdfc9b737fb43d2eb4d8e1a8b47ff419a4c7f8"
+  },
+  "files": {
+    "logs/tools-config-failure-before-20261125.log": "5fbc24398877eacd314a495fe12089cd916433def92cf532777189e2cf76cac5",
+    "logs/tools-config-failure-after-20261125.log": "5ae94e77c38b1cd4841a51644fc15e5318c516e42ecdb6f1ab593f4e9ab30af7",
+    "tests/unit/test_tools_config_failure_contract.py": "266f8c34346b3f4bb3ed7af9dad210ed2e4e4ddbf204bf5dd1e02be3ca5ca6d5",
+    "tools/k8stools/CalicoPolicyCli.py": "fefd0b352611e4b1fe175d72c2939ad15ce5e8afeaa4cfabc02b1262ae125929",
+    "tools/OvpnUserCli.py": "c57c012c40aea061fb2f30ff9ff69aa02807439bfd0205e07bcd685197a62b39"
+  }
+}

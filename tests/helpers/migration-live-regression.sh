@@ -62,12 +62,43 @@ trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
+# Resolve the original immutable dependency before any database is created.
+# A failed mirror is not permission to replace its digest with a newer image.
+ensure_image() {
+  local reference
+  for reference in "$@"; do
+    if docker image inspect "$reference" >/dev/null 2>&1 || timeout --signal=TERM --kill-after=10s 180s docker pull "$reference" >&2; then
+      docker image inspect "$reference" >/dev/null
+      printf '%s\n' "$reference"
+      return 0
+    fi
+  done
+  echo "MIGRATION_DEPENDENCY_UNAVAILABLE $*" >&2
+  return 1
+}
+rocky_image="$(ensure_image \
+  swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/rockylinux/rockylinux@sha256:e8a49c5403b687db05d4d67333fa45808fbe74f36e683cec7abb1f7d0f2338c6 \
+  docker.io/rockylinux/rockylinux@sha256:e8a49c5403b687db05d4d67333fa45808fbe74f36e683cec7abb1f7d0f2338c6)"
+debian_image="$(ensure_image \
+  swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/library/debian@sha256:9df39a1d5bfac0249f0eef61a3ff74fcf7576c5947f23127c57e92267ad98ced \
+  docker.io/library/debian@sha256:9df39a1d5bfac0249f0eef61a3ff74fcf7576c5947f23127c57e92267ad98ced)"
+ubuntu_image="$(ensure_image \
+  swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/library/ubuntu@sha256:b0c08a4b639b5fca9aa4943ecec614fe241a0cebd1a7b460093ccaeae70df698 \
+  docker.io/library/ubuntu@sha256:b0c08a4b639b5fca9aa4943ecec614fe241a0cebd1a7b460093ccaeae70df698)"
+for reference in \
+  hub.talkedu.cn/kubeauto/mysql@sha256:2f27838ce14a31d6e434efb442658c4ce19a7cd0ec834e329ca213569faa7d3c \
+  hub.talkedu.cn/kubeauto/mysql-8.4@sha256:c26ba5d7363cdae3f0a31665b2ab9106397324dde56ed536364776901b924b83 \
+  hub.talkedu.cn/kubeauto/mysql-9.2@sha256:308515a860be3b21aa44ced3d39f7f91d800efe7ff3719c249f19a89a8480740; do
+  ensure_image "$reference" >/dev/null
+done
+echo MIGRATION_DEPENDENCIES_PASS
+
 # The same frozen binaries must start and reject unsafe options on all runtimes.
 for runtime in rocky8 debian12 ubuntu24; do
   case "$runtime" in
-    rocky8) image='docker.sparkcr.cn/rockylinux/rockylinux@sha256:e8a49c5403b687db05d4d67333fa45808fbe74f36e683cec7abb1f7d0f2338c6';;
-    debian12) image='swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/library/debian@sha256:9df39a1d5bfac0249f0eef61a3ff74fcf7576c5947f23127c57e92267ad98ced';;
-    ubuntu24) image='swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/library/ubuntu@sha256:b0c08a4b639b5fca9aa4943ecec614fe241a0cebd1a7b460093ccaeae70df698';;
+    rocky8) image="$rocky_image";;
+    debian12) image="$debian_image";;
+    ubuntu24) image="$ubuntu_image";;
   esac
   docker run --rm --name "tools-mig-portability-$runtime" -v "$RELEASE:/release:ro" --entrypoint /bin/sh "$image" -ec '
     for tool in MyBackupCli MyLogiBackupCli MigrationCli; do
@@ -192,7 +223,7 @@ GRANT ALL ON *.* TO 'mig'@'%' WITH GRANT OPTION;
 SQL
 # The exact CLI path must forward both targets and complete a real readback.
 cat > /tmp/migration-live.json <<'JSON'
-{"options":{"gtid_mode":"off","exact_row_count":true,"native_options":{"mysqldump":["--net-buffer-length=16384"],"mysql":["--connect-timeout=40"]}},"migrations":[{"source":{"host":"127.0.0.1","port":13306,"user":"mig","password":"MigPass!","database":"migsrc"},"target":{"host":"127.0.0.1","port":13307,"user":"mig","password":"MigPass!","database":"mignative"},"options":{"native_options":{"mysqldump":["--net-buffer-length=32768"]}}}]}
+{"options":{"gtid_mode":"off","exact_row_count":true,"native_options":{"mysqldump":["--net-buffer-length=16384"],"mysql":["--connect-timeout=40"]}},"migrations":[{"source":{"host":"localhost","port":13306,"user":"mig","password":"MigPass!","database":"migsrc"},"target":{"host":"localhost","port":13307,"user":"mig","password":"MigPass!","database":"mignative"},"options":{"native_options":{"mysqldump":["--net-buffer-length=32768"]}}}]}
 JSON
 chmod 0600 /tmp/migration-live.json
 run_cli /tmp/migration-live.json --native-option mysql=--connect-timeout=45
@@ -203,6 +234,7 @@ rows = [json.loads(line) for line in open('/tmp/migration-native-trace.jsonl')]
 dumps = [r for r in rows if r[0].endswith('/mysqldump')]
 imports = [r for r in rows if r[0].endswith('/mysql')]
 assert dumps and imports
+assert all('--protocol=TCP' in row and '-hlocalhost' in row for row in dumps + imports)
 assert all('--net-buffer-length=32768' in row and '--net-buffer-length=16384' not in row for row in dumps)
 assert all('--connect-timeout=40' in row and '--connect-timeout=45' in row and row.index('--connect-timeout=40') < row.index('--connect-timeout=45') for row in imports)
 assert all('MigPass!' not in ' '.join(row) for row in rows)

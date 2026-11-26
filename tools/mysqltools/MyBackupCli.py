@@ -40,11 +40,19 @@ import json
 import shutil
 import subprocess
 import argparse
+import contextlib
+import tempfile
 import time
 import fcntl
 import re
+import shlex
+import configparser
 import logging
-from datetime import datetime
+import codecs
+import selectors
+import threading
+import functools
+from datetime import datetime, timedelta
 from pathlib import Path
 from logging.handlers import RotatingFileHandler
 from typing import Optional, List
@@ -57,6 +65,8 @@ DEFAULT_LOG_FILE = os.path.join(LOG_DIR, "mysqlbackup.log")
 DEFAULT_LOG_LEVEL = logging.INFO
 DEFAULT_FORMAT = "[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s"
 DEFAULT_DATEFMT = "%Y-%m-%d %H:%M:%S"
+XTRABACKUP_HEARTBEAT_SECONDS = 30
+OPERATION_HEARTBEAT_SECONDS = 30
 
 
 def _env_for_system_subprocess():
@@ -120,13 +130,14 @@ def setup_logger(
             stderr_handler.setFormatter(formatter)
             stderr_handler.setLevel(level)
             logger.addHandler(stderr_handler)
+            return logger
 
-        # 添加一个默认的 stdout handler 但不启用
+        # Operational messages are visible by default; metadata probes may
+        # explicitly suppress command/exit chatter without hiding diagnostics.
         stdout_handler = logging.StreamHandler(sys.stdout)
         stdout_handler.setFormatter(formatter)
         stdout_handler.setLevel(level)
-        # 传 extra={'to_stdout': True} 才可以标准输出
-        stdout_handler.addFilter(lambda record: getattr(record, 'to_stdout', False))
+        stdout_handler.addFilter(lambda record: getattr(record, 'to_stdout', True))
         logger.addHandler(stdout_handler)
     else:
         for handler in handlers:
@@ -136,6 +147,167 @@ def setup_logger(
             logger.addHandler(handler)
 
     return logger
+
+
+def _redact(text, password):
+    if password:
+        text = text.replace(password, '***')
+        for part in password.splitlines():
+            if part:
+                text = text.replace(part, '***')
+    return text
+
+
+def _command_description(cmd, password=''):
+    redacted = []
+    hide_next = False
+    for arg in map(str, cmd):
+        if hide_next:
+            redacted.append('<SQL>')
+            hide_next = False
+        elif arg in ('-e', '--execute'):
+            redacted.append(arg)
+            hide_next = True
+        elif arg.startswith('--password='):
+            redacted.append('--password=***')
+        else:
+            redacted.append(arg)
+    return _redact(' '.join(redacted), password)
+
+
+@contextlib.contextmanager
+def _operation_progress(logger, phase):
+    """Observe synchronous filesystem work without changing its copy semantics."""
+    started = time.monotonic()
+    stopped = threading.Event()
+    logger.info('STAGE START: %s', phase, extra={'to_stdout': True})
+
+    def heartbeat():
+        while not stopped.wait(OPERATION_HEARTBEAT_SECONDS):
+            logger.info('STAGE still running: %s elapsed=%.0fs; completion not yet confirmed',
+                        phase, time.monotonic() - started, extra={'to_stdout': True})
+
+    observer = threading.Thread(target=heartbeat, name='mysqlbackup-progress', daemon=True)
+    observer.start()
+    outcome = 'completed'
+    try:
+        yield
+    except BaseException:
+        outcome = 'interrupted or failed'
+        raise
+    finally:
+        stopped.set()
+        observer.join()
+        logger.info('STAGE %s: %s elapsed=%.1fs', outcome, phase,
+                    time.monotonic() - started, extra={'to_stdout': True})
+
+
+def _observed_stage(method):
+    @functools.wraps(method)
+    def observed(self, *args, **kwargs):
+        with _operation_progress(self.logger, method.__name__):
+            return method(self, *args, **kwargs)
+    return observed
+
+
+def _drain_commands(processes, streams, logger, password, label, phase, timeout=None):
+    """Drain every diagnostic pipe, including both ends of a SQL pipeline.
+
+    Stream modes are log, capture (metadata for a caller), or discard. SQL
+    flowing between pipeline children never enters this reader or a log.
+    """
+    started = last_output = last_heartbeat = time.monotonic()
+    captured = {name: [] for name, _, mode in streams if mode == 'capture'}
+    interval = (XTRABACKUP_HEARTBEAT_SECONDS if label == 'XtraBackup'
+                else OPERATION_HEARTBEAT_SECONDS)
+
+    def emit(name, line):
+        nonlocal last_output
+        logger.info('%s[%s]: %s', label, name, _redact(line.rstrip('\r'), password),
+                    extra={'to_stdout': True})
+        last_output = time.monotonic()
+
+    with selectors.DefaultSelector() as selector:
+        for name, pipe, mode in streams:
+            selector.register(pipe, selectors.EVENT_READ,
+                              [name, mode, codecs.getincrementaldecoder('utf-8')('replace'), ''])
+        while selector.get_map() or any(p.poll() is None for _, p in processes):
+            for key, _ in selector.select(timeout=.2):
+                name, mode, decoder, pending = key.data
+                chunk = os.read(key.fd, 8192)
+                decoded = decoder.decode(chunk, final=not chunk)
+                if mode == 'capture':
+                    captured[name].append(decoded)
+                elif mode == 'log':
+                    pending += decoded
+                    while '\n' in pending:
+                        line, pending = pending.split('\n', 1)
+                        emit(name, line)
+                    # Retain a secret crossing a fragment boundary. Diagnostics
+                    # without newlines must not grow the process's memory forever.
+                    limit = max(65536, 2 * len(password))
+                    while len(pending) > limit + len(password):
+                        cut = limit
+                        if password:
+                            at = pending.rfind(password, 0, cut + len(password))
+                            if 0 <= at < cut < at + len(password):
+                                cut = at
+                        emit(name, pending[:cut])
+                        pending = pending[cut:]
+                    if not chunk and pending:
+                        emit(name, pending)
+                        pending = ''
+                    key.data[3] = pending
+                if not chunk:
+                    selector.unregister(key.fileobj)
+            # A failed consumer/decoder invalidates the pipeline. Stop its peer
+            # instead of waiting indefinitely for more SQL or an EOF.
+            if len(processes) > 1 and any(p.poll() not in (None, 0) for _, p in processes):
+                for _, process in processes:
+                    if process.poll() is None:
+                        process.kill()
+            now = time.monotonic()
+            if timeout is not None and now - started >= timeout:
+                raise RuntimeError('%s timed out after %ss' % (label, timeout))
+            if now - last_output >= interval and now - last_heartbeat >= interval:
+                logger.info('%s still running: phase=%s pid=%s elapsed=%.0fs; '
+                            'no native log line for %.0fs', label, phase,
+                            ','.join(str(p.pid) for _, p in processes), now - started,
+                            now - last_output, extra={'to_stdout': True})
+                last_heartbeat = now
+    return {name: ''.join(parts) for name, parts in captured.items()}
+
+
+def _run_external(cmd, logger, password='', check=True, show_stdout=False,
+                  capture_stderr=False, timeout=None, label=None, phase='command', quiet=False):
+    label = label or Path(cmd[0]).name
+    logger.info('RUN: %s', _command_description(cmd, password),
+                extra={'to_stdout': not quiet})
+    started = time.monotonic()
+    with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                          env=_env_for_system_subprocess()) as process:
+        try:
+            output = _drain_commands(
+                [(label, process)],
+                [('stdout', process.stdout, 'log' if show_stdout else 'capture'),
+                 ('stderr', process.stderr, 'capture' if capture_stderr else 'log')],
+                logger, password, label, phase, timeout)
+            rc = process.wait()
+        except BaseException:
+            process.kill()
+            process.wait()
+            logger.error('%s interrupted or failed: phase=%s rc=%s elapsed=%.1fs',
+                         label, phase, process.returncode, time.monotonic() - started,
+                         extra={'to_stdout': True})
+            raise
+    logger.log(logging.ERROR if rc and check else logging.INFO,
+               '%s finished: phase=%s rc=%s elapsed=%.1fs', label, phase, rc,
+               time.monotonic() - started, extra={'to_stdout': not quiet or bool(rc and check)})
+    if rc and check:
+        if output.get('stderr', '').strip():
+            logger.error('%s', _redact(output['stderr'].strip(), password), extra={'to_stdout': True})
+        raise RuntimeError('COMMAND FAILED rc=%s %s' % (rc, _command_description(cmd, password)))
+    return subprocess.CompletedProcess(cmd, rc, output.get('stdout', ''), output.get('stderr', ''))
 
 
 NATIVE_TARGETS = frozenset(("mysql", "mysqlbinlog", "xtrabackup-backup", "xtrabackup-prepare", "xtrabackup-decompress", "xtrabackup-copy-back"))
@@ -150,10 +322,12 @@ single-transaction lock-tables lock-all-tables source-data master-data
 set-gtid-purged comments dump-date quick no-data no-create-info ignore-table
 ignore-table-data where delete-source-logs delete-master-logs flush-logs flush-privileges
 backup prepare copy-back move-back decompress decrypt export stats target-dir datadir
+log-bin log-bin-index
 incremental incremental-basedir incremental-dir incremental-lsn incremental-history-name
 incremental-history-uuid apply-log-only stream compress remove-original lock-ddl no-lock
 ignore-error no-backup-locks no-server-version-check start-position stop-position start-datetime
 stop-datetime read-from-remote-server raw to-last-log stop-never
+slave-info safe-slave-backup galera-info
 """.split())
 
 
@@ -247,7 +421,7 @@ def parse_native_options(entries):
 class Config:
     """配置类 - 管理所有配置项"""
     
-    def __init__(self, config_file=None, native_options=None):
+    def __init__(self, config_file=None, native_options=None, offline=False):
         # 初始化logger（在配置加载前使用）
         self.logger = setup_logger("mysqlbackup.config")
         """
@@ -305,8 +479,35 @@ class Config:
         self.mysql_password = defaults["mysql_password"] or os.getenv("MYSQL_BACKUP_PASSWORD", "")
         self.mysql_socket = defaults["mysql_socket"]
         self.mysql_service = defaults["mysql_service"]
+        self.mysql_container = defaults.get("mysql_container", "")
+        if self.mysql_container and not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", self.mysql_container):
+            self._fail("mysql_container must be a Docker container name or ID")
+        if not self.mysql_container and (not isinstance(self.mysql_service, str) or
+                not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.@-]*', self.mysql_service)):
+            self._fail('mysql_service must name the real systemd unit when mysql_container is empty')
+        self.mysql_topology = defaults.get("mysql_topology", "standalone")
+        self.offline = offline
+        self.mysql_defaults_file = defaults.get('mysql_defaults_file', '')
+        if self.mysql_topology not in ('standalone', 'primary-replica', 'dual-primary'):
+            self._fail("mysql_topology must be standalone, primary-replica or dual-primary; empty is invalid")
         self.mysql_datadir = Path(defaults["mysql_datadir"])
         self.mysql_binlog_prefix = defaults["mysql_binlog_prefix"]
+        self.mysql_binlog_dir = Path(defaults.get("mysql_binlog_dir") or self.mysql_datadir)
+        self.mysql_binlog_index = Path(defaults.get("mysql_binlog_index") or
+                                      self.mysql_binlog_dir / (self.mysql_binlog_prefix + ".index"))
+        for path in (self.backup_base, self.mysql_datadir, self.mysql_binlog_dir, self.mysql_binlog_index):
+            if not path.is_absolute():
+                self._fail("MySQL and backup paths must be absolute in the tool's execution namespace")
+        if (self.mysql_datadir.resolve() == Path('/') or
+                self.mysql_binlog_index.parent.resolve() != self.mysql_binlog_dir.resolve() or
+                self.mysql_binlog_index.suffix != '.index' or
+                Path(self.mysql_binlog_prefix).name != self.mysql_binlog_prefix or
+                self.mysql_binlog_prefix in ('', '.', '..')):
+            self._fail("Unsafe datadir, binlog prefix or index location")
+        for source in (self.mysql_datadir.resolve(), self.mysql_binlog_dir.resolve()):
+            target = self.backup_base.resolve()
+            if target == source or source in target.parents or target in source.parents:
+                self._fail("backup_base must not overlap MySQL data or binlog paths")
         self.xtrabackup_parallel = int(defaults.get("xtrabackup_parallel", 4))
         self.xtrabackup_compress_threads = int(defaults.get("xtrabackup_compress_threads", 4))
         self.xtrabackup_use_memory = defaults.get("xtrabackup_use_memory", "1G")
@@ -332,7 +533,7 @@ class Config:
             self.native_options.setdefault(target, []).extend(native_arguments(target, *tokens))
 
         # 检测MySQL版本
-        self.mysql_version = self._detect_mysql_version()
+        self.mysql_version = self._offline_version() if offline else self._detect_mysql_version()
         if self.mysql_version[0] >= 9:
             self._fail(
                 "MySQL {0}.{1} is not supported by the declared XtraBackup "
@@ -375,6 +576,84 @@ class Config:
                 self._fail("Could not parse MySQL version; refusing to assume compatibility")
         except Exception as e:
             self._fail("Could not detect MySQL version; refusing to assume compatibility")
+
+    def _offline_version(self):
+        """Admit one explicit native unit; ask its binary for effective options.
+
+        No guessed server version and no empty temporary database. Wrapper
+        units and containers need their own startup proof and are refused here.
+        """
+        defaults = Path(self.mysql_defaults_file)
+        if (self.mysql_container or not self.mysql_defaults_file or not defaults.is_absolute()
+                or defaults.is_symlink() or not defaults.is_file()):
+            self._fail('Offline restore requires native systemd and an explicit ordinary mysql_defaults_file')
+
+        def output(argv):
+            result = _run_external(argv, self.logger, self.mysql_password, check=False,
+                                   timeout=30, quiet=True)
+            if result.returncode:
+                self._fail('Cannot verify offline MySQL startup configuration')
+            return result.stdout
+
+        execution = output(['systemctl', 'show', '--property=ExecStart', '--value', self.mysql_service])
+        match = re.fullmatch(r'\s*\{ path=([^;]+?) ; argv\[\]=([^;]+?) ; [^{}]*\}\s*', execution)
+        if not match:
+            self._fail('Offline restore requires a direct mysqld ExecStart with --defaults-file')
+        binary = match.group(1)
+        if (not Path(binary).is_absolute() or Path(binary).name != 'mysqld' or
+                shlex.split(match.group(2)) != [binary, '--defaults-file=' + str(defaults)]):
+            self._fail('Offline restore refuses wrapper units or extra ExecStart arguments')
+        status = _run_external(['systemctl', 'is-active', '--quiet', self.mysql_service],
+                               self.logger, self.mysql_password, check=False, timeout=30, quiet=True)
+        if status.returncode == 0:
+            self._fail('Offline restore requires the target unit already stopped')
+        version = output([binary, '--version'])
+        parsed = re.search(r'\bVer (\d+)\.(\d+)\.\d+', version)
+        if not parsed:
+            self._fail('Cannot establish the installed offline MySQL version')
+        self.mysql_version_text = parsed.group(0).split()[1]
+        help_text = output([binary, '--defaults-file=' + str(defaults), '--verbose', '--help'])
+        values = dict(re.findall(r'^([a-z][a-z0-9-]*)\s+([^\r\n]+?)\s*$', help_text, re.M))
+        for key, expected in (('datadir', self.mysql_datadir), ('socket', Path(self.mysql_socket)),
+                              ('log-bin', self.mysql_binlog_dir / self.mysql_binlog_prefix),
+                              ('log-bin-index', self.mysql_binlog_index)):
+            if not values.get(key) or Path(values[key]).resolve() != expected.resolve():
+                self._fail('Offline MySQL startup path mismatch: ' + key)
+        replicated = self.mysql_topology != 'standalone'
+        if replicated and any(values.get(key) != 'TRUE' for key in ('skip-replica-start', 'super-read-only')):
+            self._fail('Offline replication restore requires persistent skip_replica_start=ON and super_read_only=ON')
+        persisted = self.mysql_datadir / 'mysqld-auto.cnf'
+        if persisted.is_symlink():
+            self._fail('Offline restore refuses symlinked persisted configuration')
+        if persisted.exists():
+            try:
+                document = json.loads(persisted.read_text())
+                if document.get('Version') not in (1, 2):
+                    raise ValueError('unsupported format')
+                def inspect(node):
+                    if not isinstance(node, dict):
+                        return
+                    for name, item in node.items():
+                        key = name.replace('_', '-')
+                        if key in ('datadir', 'socket', 'log-bin', 'log-bin-index'):
+                            raise ValueError('persisted path override')
+                        if replicated and key in ('skip-replica-start', 'skip-slave-start', 'super-read-only'):
+                            if not isinstance(item, dict) or str(item.get('Value', '')).upper() not in ('ON', '1', 'TRUE'):
+                                raise ValueError('persisted unsafe startup override')
+                        inspect(item)
+                inspect(document)
+            except (OSError, ValueError, TypeError):
+                self._fail('Offline restore cannot prove persisted startup configuration is safe')
+        self.offline_state = {'channels': 0, 'running': 0, 'skip_start': 'ON' if replicated else 'OFF',
+                              'gtid': values.get('gtid-mode')}
+        identity = self.mysql_datadir / 'auto.cnf'
+        if identity.is_symlink():
+            self._fail('Offline restore refuses symlinked server identity')
+        if identity.is_file():
+            parser = configparser.ConfigParser()
+            parser.read(str(identity))
+            self.offline_state['uuid'] = parser.get('auto', 'server-uuid')
+        return int(parsed.group(1)), int(parsed.group(2))
     
     def _mysql_cmd(self, sql):
         """执行MySQL命令（用于版本检测）"""
@@ -385,15 +664,7 @@ class Config:
             "--socket={0}".format(self.mysql_socket),
             "-e", sql
         ] + self.native_options.get("mysql", [])
-        p = subprocess.run(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            env=_env_for_system_subprocess(),
-        )
-        if p.returncode != 0:
-            raise RuntimeError("MySQL command failed")
+        p = _run_external(cmd, self.logger, self.mysql_password, quiet=True)
         return p.stdout.strip()
     
 
@@ -417,17 +688,16 @@ class BackupManager:
         requested = self.config.xtrabackup_lock_ddl
         if requested in {"ON", "OFF"}:
             return requested
-        probe = subprocess.run(
-            ["xtrabackup", "--no-defaults", "--help"], stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, text=True, timeout=30, env=_env_for_system_subprocess(),
-        )
+        probe = _run_external(["xtrabackup", "--no-defaults", "--help"], self.logger,
+                              self.config.mysql_password, check=False, capture_stderr=True,
+                              timeout=30, quiet=True)
         help_text = probe.stdout + "\n" + probe.stderr
         option = re.search(r"(?m)^\s*--lock-ddl(?:[=\[ \t].*|$)(?:\n(?!\s*--)[^\n]*)*", help_text)
         # PXB 8.4.0-5 prints usage with EXIT_FAILURE when no operation is
         # selected, even for --help. Accept that documented source path only
         # when a complete usage/lock-ddl section is present.
         if probe.returncode not in (0, 1) or not option or (probe.returncode == 1 and "Usage:" not in help_text):
-            detail = probe.stderr.strip().replace(self.config.mysql_password, "***")
+            detail = _redact(probe.stderr.strip(), self.config.mysql_password)
             raise RuntimeError("Unable to inspect XtraBackup lock-ddl capability rc={0}: {1}".format(probe.returncode, detail))
         reduced = bool(re.search(r"\bREDUCED\b", option.group()))
         if requested == "REDUCED" and not reduced:
@@ -450,39 +720,24 @@ class BackupManager:
                 if "--" + mode in cmd:
                     cmd = cmd + self.command_options("xtrabackup-" + mode)
                     break
-        self.logger.info("RUN: {0}".format(self._redact_command(cmd)))
-        p = subprocess.run(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            env=_env_for_system_subprocess(),
-        )
-        if p.returncode == 0 and p.stderr.strip():
-            self.logger.info(p.stderr.strip().replace(self.config.mysql_password, "***"))
-        if p.returncode != 0:
-            if p.stderr.strip():
-                detail = p.stderr.strip().replace(self.config.mysql_password, "***")
-                self.logger.error(detail)
-                # Keep durable CLI runners and operators able to diagnose the
-                # first failing external command even when file logging is
-                # unavailable or not collected.
-                print(detail, file=sys.stderr)
-            if check:
-                raise RuntimeError("COMMAND FAILED {0}".format(self._redact_command(cmd)))
-        return p.stdout.strip()
+        if cmd[0] == 'xtrabackup':
+            return self._stream_xtrabackup(cmd, check)
+        # Query/inspect stdout is program data, never an operational log.
+        metadata = cmd[0] == 'mysql' or (cmd[0] == 'docker' and 'inspect' in cmd) or (
+            cmd[0] == 'systemctl' and any(a in cmd for a in ('is-active', 'show')))
+        return _run_external(cmd, self.logger, self.config.mysql_password, check=check,
+                             show_stdout=not metadata, quiet=metadata).stdout.strip()
+
+    def _stream_xtrabackup(self, cmd, check):
+        phase = next((mode for mode in ('backup', 'decompress', 'prepare', 'copy-back')
+                      if '--' + mode in cmd), 'command')
+        return _run_external(cmd, self.logger, self.config.mysql_password, check=check,
+                             show_stdout=True, label='XtraBackup', phase=phase).stdout.strip()
 
     @staticmethod
     def _redact_command(cmd):
-        """Remove inline credentials before a command is written to logs/errors."""
-        redacted = []
-        for arg in cmd:
-            if arg.startswith("--password="):
-                redacted.append("--password=***")
-            else:
-                redacted.append(arg)
-        return " ".join(redacted)
-    
+        return _command_description(cmd)
+
     def mysql_cmd(self, sql, *args, **kwargs):
         """执行MySQL命令"""
         return self.run_cmd([
@@ -492,6 +747,102 @@ class BackupManager:
             "--socket={0}".format(self.config.mysql_socket),
             "-e", sql
         ] + native_arguments("mysql", *args, **kwargs))
+
+    def _replication_state(self):
+        """Observe local channels; never infer or control remote writers."""
+        sql = """SELECT JSON_OBJECT(
+            'channels', (SELECT COUNT(*) FROM performance_schema.replication_connection_configuration),
+            'running', (SELECT COUNT(*) FROM performance_schema.replication_connection_status WHERE SERVICE_STATE='ON')
+                     + (SELECT COUNT(*) FROM performance_schema.replication_applier_status WHERE SERVICE_STATE='ON'),
+            'skip_start', (SELECT VARIABLE_VALUE FROM performance_schema.global_variables
+                          WHERE VARIABLE_NAME IN ('skip_replica_start','skip_slave_start') LIMIT 1),
+            'log_updates', (SELECT VARIABLE_VALUE FROM performance_schema.global_variables
+                           WHERE VARIABLE_NAME IN ('log_replica_updates','log_slave_updates') LIMIT 1),
+            'group_members', (SELECT COUNT(*) FROM performance_schema.replication_group_members),
+            'uuid', @@GLOBAL.server_uuid, 'gtid', @@GLOBAL.gtid_mode, 'version', VERSION(),
+            'datadir', @@GLOBAL.datadir, 'binlog', @@GLOBAL.log_bin_basename,
+            'index', @@GLOBAL.log_bin_index, 'super_read_only', @@GLOBAL.super_read_only);"""
+        state = json.loads(self.mysql_cmd(sql, batch=True, skip_column_names=True))
+        if not isinstance(state, dict) or not all(isinstance(state.get(k), int) for k in ('channels', 'running', 'group_members')):
+            raise RuntimeError('Unable to establish replication state')
+        if not self.config.mysql_container:
+            paths = {'datadir': self.config.mysql_datadir,
+                     'binlog': self.config.mysql_binlog_dir / self.config.mysql_binlog_prefix,
+                     'index': self.config.mysql_binlog_index}
+            if any(not state.get(key) or Path(state[key]).resolve() != expected.resolve()
+                   for key, expected in paths.items()):
+                raise RuntimeError('Configured local paths do not match the connected MySQL instance')
+        if state['group_members']:
+            raise RuntimeError('Group Replication is outside this asynchronous replication workflow')
+        if state['channels'] > 1:
+            raise RuntimeError('Only one asynchronous replication channel per instance is supported')
+        if self.config.mysql_topology == 'standalone' and state['channels']:
+            raise RuntimeError('Replication detected: configure mysql_topology explicitly')
+        return state
+
+    def _replication_backup_options(self):
+        state = self._replication_state()
+        self._backup_replication_state = state
+        restored_authority = (state['running'] == 0 and state.get('super_read_only') == 1 and
+                              (self.config.backup_base / 'lock/restore-needs-full').is_file())
+        if self.config.mysql_topology == 'dual-primary' and state['channels'] != 1 and not restored_authority:
+            raise RuntimeError('dual-primary backup requires its single configured replication channel')
+        if not state['channels']:
+            return []
+        if state['running'] != 2 and not restored_authority:
+            raise RuntimeError('Replica must have healthy receiver and applier threads before backup')
+        if state['log_updates'] != 'ON':
+            raise RuntimeError('Replica PITR requires log_replica_updates=ON')
+        # PXB owns stopping/resuming the SQL thread and recording upstream coordinates.
+        return ['--slave-info', '--safe-slave-backup']
+
+    def _record_replication_backup(self, target):
+        state = getattr(self, '_backup_replication_state', None)
+        if state is None:
+            return
+        if state['channels'] and not any((target / ('xtrabackup_slave_info' + ext)).is_file()
+                                         for ext in ('', '.zst', '.qp', '.lz4')):
+            raise RuntimeError('Replica backup is missing upstream replication coordinates')
+        (target / '.mysql_topology.json').write_text(json.dumps({
+            'topology': self.config.mysql_topology, 'source': state}, indent=2) + '\n')
+
+    def _replication_restore_check(self, confirmed, restarted=False):
+        if self.config.mysql_topology != 'standalone' and not confirmed:
+            raise RuntimeError('Replication restore requires --confirm-replication-isolated; isolate all application writers and peers first')
+        state = (self.config.offline_state if getattr(self.config, 'offline', False) and not restarted
+                 else self._replication_state())
+        if self.config.mysql_topology != 'standalone':
+            if state['skip_start'] != 'ON':
+                raise RuntimeError('Set persistent skip_replica_start=ON and restart before auditing/restoring this instance')
+            if restarted and state['running']:
+                raise RuntimeError('Restored replication threads are running; refusing PITR')
+        return state
+
+    def _offline_backup_check(self, full):
+        if not getattr(self.config, 'offline', False):
+            return
+        try:
+            metadata = json.loads((Path(full) / '.mysql_topology.json').read_text())
+            source = metadata['source']
+            version = re.match(r'\d+\.\d+\.\d+', source['version']).group(0)
+            if (metadata['topology'] != self.config.mysql_topology or
+                    version != self.config.mysql_version_text or
+                    source['gtid'] != self.config.offline_state['gtid']):
+                raise ValueError('identity mismatch')
+        except (OSError, ValueError, KeyError, TypeError, AttributeError):
+            raise RuntimeError('Offline restore requires current backup metadata matching topology, exact MySQL version and GTID mode')
+
+    def _donor_restore(self, full, target_state):
+        """Never mix the target's old logs into another server's archive."""
+        metadata = Path(full) / '.mysql_topology.json'
+        if not metadata.is_file():
+            if self.config.mysql_topology != 'standalone':
+                raise RuntimeError('Replication restore requires backup source identity metadata')
+            return False
+        source = json.loads(metadata.read_text()).get('source', {})
+        if not source.get('uuid'):
+            raise RuntimeError('Backup source UUID is missing')
+        return source['uuid'] != (target_state or {}).get('uuid')
     
     def ensure_dirs(self):
         """确保必要的目录存在"""
@@ -530,13 +881,21 @@ class BackupManager:
         全量备份 - 遵循Percona XtraBackup官方最佳实践
         Reference: https://docs.percona.com/percona-xtrabackup/8.4/
         """
-        self.logger.info("START FULL BACKUP ...")
+        self.logger.info("START FULL BACKUP ...", extra={'to_stdout': True})
+        replica_options = self._replication_backup_options()
+        if self.config.mysql_container:
+            if not self.manage_mysql_service('status'):
+                raise RuntimeError('MySQL container must be running for backup')
+            self._verify_container_mounts({})
         lock_ddl = self.backup_lock_ddl()
         target = self.config.backup_base / "full" / self.today / self.now / "backup"
         target.mkdir(parents=True)
         
         backup_cmd = [
             "xtrabackup", "--backup",
+            "--datadir={0}".format(self.config.mysql_datadir),
+            "--log-bin={0}".format(self.config.mysql_binlog_dir / self.config.mysql_binlog_prefix),
+            "--log-bin-index={0}".format(self.config.mysql_binlog_index),
             "--target-dir={0}".format(target),
             "--user={0}".format(self.config.mysql_user),
             "--password={0}".format(self.config.mysql_password),
@@ -549,7 +908,7 @@ class BackupManager:
         ]
         
         try:
-            self.run_cmd(backup_cmd)
+            self.run_cmd(backup_cmd + replica_options)
             
             # 验证备份完整性（压缩备份的文件会有.zst、.qp或.lz4后缀）
             # Reference: https://docs.percona.com/percona-xtrabackup/8.4/prepare-compressed-backup.html
@@ -566,6 +925,8 @@ class BackupManager:
                 if not found:
                     self.fail("Backup incomplete: missing {0} (checked: {0}, {0}.zst, {0}.qp, {0}.lz4)".format(req_file))
             
+            self._record_replication_backup(target)
+            (target / ".binlog_generation").write_text(self.today + "/" + self.now)
             (target / ".backup_ok").touch()
             latest = self.config.backup_base / "full/latest_raw"
             if latest.exists() or latest.is_symlink():
@@ -575,11 +936,18 @@ class BackupManager:
             except (OSError, RuntimeError) as e:
                 self.logger.error("Failed to create symlink: {0}".format(e))
                 raise
-            self.logger.info("FULL BACKUP DONE SUCCESSFULLY!")
+            latest_incr = self.config.backup_base / 'incr/latest'
+            if latest_incr.is_symlink():
+                latest_incr.unlink()
+            restore_marker = self.config.backup_base / 'lock/restore-needs-full'
+            if restore_marker.exists():
+                restore_marker.unlink()
+            self.logger.info("FULL BACKUP DONE SUCCESSFULLY!", extra={'to_stdout': True})
         except Exception as e:
             self.logger.error("FULL BACKUP FAILED: {0}".format(e))
             if target.exists():
-                shutil.rmtree(str(target))
+                with _operation_progress(self.logger, 'remove failed backup ' + str(target)):
+                    shutil.rmtree(str(target))
             raise
     
     def incr_backup(self):
@@ -587,7 +955,13 @@ class BackupManager:
         增量备份 - 遵循Percona XtraBackup官方最佳实践
         Reference: https://docs.percona.com/percona-xtrabackup/8.4/
         """
-        self.logger.info("START INCREMENTAL BACKUP ...")
+        self.logger.info("START INCREMENTAL BACKUP ...", extra={'to_stdout': True})
+        self._require_fresh_full()
+        replica_options = self._replication_backup_options()
+        if self.config.mysql_container:
+            if not self.manage_mysql_service('status'):
+                raise RuntimeError('MySQL container must be running for backup')
+            self._verify_container_mounts({})
         latest_full = self.config.backup_base / "full/latest_raw"
         if not latest_full.exists():
             self.fail("NO FULL BACKUP, please make sure you have a full backup")
@@ -612,6 +986,14 @@ class BackupManager:
             except (OSError, RuntimeError) as e:
                 self.logger.warning("Failed to resolve latest_incr symlink: {0}, using latest_full".format(e))
                 # base 保持为 latest_full.resolve() 的值
+
+        state = getattr(self, '_backup_replication_state', None)
+        if state is not None:
+            metadata = base / '.mysql_topology.json'
+            previous = json.loads(metadata.read_text()) if metadata.is_file() else {}
+            if (previous.get('topology') != self.config.mysql_topology or
+                    any(previous.get('source', {}).get(key) != state.get(key) for key in ('uuid', 'gtid'))):
+                raise RuntimeError('Incremental source identity/topology changed or metadata is missing; take a new full backup')
         
         lock_ddl = self.backup_lock_ddl()
         target = self.config.backup_base / "incr" / self.today / self.now
@@ -619,6 +1001,9 @@ class BackupManager:
         
         backup_cmd = [
             "xtrabackup", "--backup",
+            "--datadir={0}".format(self.config.mysql_datadir),
+            "--log-bin={0}".format(self.config.mysql_binlog_dir / self.config.mysql_binlog_prefix),
+            "--log-bin-index={0}".format(self.config.mysql_binlog_index),
             "--target-dir={0}".format(target),
             "--incremental-basedir={0}".format(base),
             "--user={0}".format(self.config.mysql_user),
@@ -632,7 +1017,7 @@ class BackupManager:
         ]
         
         try:
-            self.run_cmd(backup_cmd)
+            self.run_cmd(backup_cmd + replica_options)
             
             # 验证备份完整性（压缩备份的文件会有.zst、.qp或.lz4后缀）
             # Reference: https://docs.percona.com/percona-xtrabackup/8.4/prepare-compressed-backup.html
@@ -648,7 +1033,8 @@ class BackupManager:
                         break
                 if not found:
                     self.fail("Incremental backup incomplete: missing {0} (checked: {0}, {0}.zst, {0}.qp, {0}.lz4)".format(req_file))
-            
+
+            self._record_replication_backup(target)
             (target / ".backup_ok").touch()
             if latest_incr.exists() or latest_incr.is_symlink():
                 latest_incr.unlink()
@@ -657,13 +1043,36 @@ class BackupManager:
             except (OSError, RuntimeError) as e:
                 self.logger.error("Failed to create symlink: {0}".format(e))
                 raise
-            self.logger.info("INCREMENTAL BACKUP DONE SUCCESSFULLY!")
+            self.logger.info("INCREMENTAL BACKUP DONE SUCCESSFULLY!", extra={'to_stdout': True})
         except Exception as e:
             self.logger.error("INCREMENTAL BACKUP FAILED: {0}".format(e))
             if target.exists():
-                shutil.rmtree(str(target))
+                with _operation_progress(self.logger, 'remove failed backup ' + str(target)):
+                    shutil.rmtree(str(target))
             raise
     
+    def _require_fresh_full(self):
+        if (self.config.backup_base / 'lock/restore-needs-full').exists():
+            raise RuntimeError('Take a new full backup after restore before incremental or binlog backup')
+
+    def _binlog_root(self, full=None):
+        """A full generation owns its immutable log history and archive cursor."""
+        root = self.config.backup_base / 'binlog'
+        if full is None:
+            latest = self.config.backup_base / 'full/latest_raw'
+            if not latest.exists():
+                return root
+            full = latest.resolve()
+        marker = Path(full) / '.binlog_generation'
+        if not marker.exists():
+            return root  # Previously created backups retain their legacy layout.
+        generation = marker.read_text().strip()
+        expected = Path(full).parent.parent.name + '/' + Path(full).parent.name
+        if generation != expected or not re.fullmatch(r'\d{4}-\d{2}-\d{2}/\d{6}', generation):
+            raise RuntimeError('Backup binlog generation is invalid')
+        return root / 'generation' / generation
+
+    @_observed_stage
     def binlog_backup(self, backall=False):
         """
         binlog归档
@@ -674,23 +1083,38 @@ class BackupManager:
                 True: 备份所有binlog，包括当前活跃的（手动停mysql服务）
         """
         self.logger.info("CHECK AND ARCHIVE BINLOG ...")
-        state = self.config.backup_base / "binlog/state/last_archived"
+        self._require_fresh_full()
+        archive_root = self._binlog_root()
+        state = archive_root / "state/last_archived"
         state.parent.mkdir(parents=True, exist_ok=True)
         last_archived = None
         if state.exists():
             try:
                 last_archived = state.read_text().strip()
             except (IOError, OSError) as e:
-                self.logger.warning("Failed to read last_archived state: {0}, starting from beginning".format(e))
+                raise RuntimeError("Unable to read binlog archive state") from e
 
-        index = self.config.mysql_datadir / "{0}.index".format(self.config.mysql_binlog_prefix)
+        index = self.config.mysql_binlog_index
         if not index.exists():
             self.fail("{0}.index NOT FOUND".format(self.config.mysql_binlog_prefix))
 
         with open(str(index)) as f:
             # MySQL writes either absolute or relative paths in the .index
-            # file; archive by the datadir-local basename in both cases.
+            # file; resolve basenames in the configured local binlog directory.
             binlogs = [Path(l.strip()).name for l in f if l.strip()]
+
+        pattern = re.compile(re.escape(self.config.mysql_binlog_prefix) + r'\.\d+')
+        if any(not pattern.fullmatch(name) for name in binlogs):
+            raise RuntimeError('Invalid binlog index entry')
+        numbers = [int(name.rsplit('.', 1)[1]) for name in binlogs]
+        if any(right != left + 1 for left, right in zip(numbers, numbers[1:])):
+            raise RuntimeError('Binlog index has a gap or duplicate entry')
+        if last_archived:
+            if not pattern.fullmatch(last_archived):
+                raise RuntimeError('Invalid binlog archive state')
+            last_number = int(last_archived.rsplit('.', 1)[1])
+            if numbers and (numbers[0] > last_number + 1 or numbers[-1] < last_number):
+                raise RuntimeError('Binlog history changed or was purged before archival; take a new full backup')
 
         if len(binlogs) == 0:
             self.logger.info("NO BINLOG FOUND")
@@ -708,26 +1132,33 @@ class BackupManager:
             self.logger.info("BACKUP MODE: ONLY CLOSED BINLOGS")
 
         if last_archived:
-            closed = [b for b in closed if b > last_archived]
+            closed = [b for b in closed if int(b.rsplit(".", 1)[1]) > last_number]
 
         if not closed:
             self.logger.info("NO NEW BINLOG")
             return
 
-        dst = self.config.backup_base / "binlog" / self.today
+        dst = archive_root / self.today
         dst.mkdir(parents=True, exist_ok=True)
 
         archived = []
         for b in closed:
-            src_file = self.config.mysql_datadir / b
+            src_file = self.config.mysql_binlog_dir / b
             dst_file = dst / b
             if not src_file.exists():
-                self.logger.warning("Binlog file {0} not found, skipping".format(b))
-                continue
+                raise RuntimeError("Binlog archive source missing: " + b)
             try:
-                shutil.copy2(str(src_file), str(dst_file))
+                with tempfile.NamedTemporaryFile(prefix=".archive-", dir=str(dst), delete=False) as temporary:
+                    temporary_path = Path(temporary.name)
+                try:
+                    with _operation_progress(self.logger, 'archive binlog ' + b):
+                        shutil.copy2(str(src_file), str(temporary_path))
+                    os.replace(str(temporary_path), str(dst_file))
+                finally:
+                    if temporary_path.exists():
+                        temporary_path.unlink()
                 archived.append(b)
-                self.logger.info("ARCHIVED {0}".format(b))
+                self.logger.info("ARCHIVED %s bytes=%s", b, dst_file.stat().st_size)
             except (IOError, OSError, shutil.Error) as e:
                 self.fail("Failed to copy binlog {0}: {1}".format(b, e))
 
@@ -735,12 +1166,54 @@ class BackupManager:
             self.fail("NO BINLOG FILES TO ARCHIVE")
         
         try:
-            state.write_text(archived[-1])
+            with tempfile.NamedTemporaryFile(mode="w", prefix=".state-", dir=str(state.parent), delete=False) as temporary:
+                temporary.write(archived[-1])
+                temporary_path = Path(temporary.name)
+            try:
+                os.replace(str(temporary_path), str(state))
+            finally:
+                if temporary_path.exists():
+                    temporary_path.unlink()
         except (IOError, OSError) as e:
             self.logger.error("Failed to write last_archived state: {0}".format(e))
             raise
         self.logger.info("BINLOG ARCHIVE COMPLETE SUCCESSFULLY!")
     
+    def backup_chain(self, date):
+        """Select one full generation and its contiguous raw incremental chain."""
+        root = self.config.backup_base
+        def full_time(path):
+            return path.parent.parent.name, path.parent.name
+        fulls = sorted((p for p in (root / 'full').glob('*/*/backup')
+                        if p.is_dir() and re.fullmatch(r'\d{4}-\d{2}-\d{2}', full_time(p)[0])
+                        and re.fullmatch(r'\d{6}', full_time(p)[1])), key=full_time)
+        matches = [p for p in fulls if full_time(p)[0] == date]
+        if not matches:
+            self.fail('FULL BACKUP DIRECTORY NOT FOUND for date ' + date)
+        full = matches[-1]
+        start = full_time(full)
+        following = [full_time(p) for p in fulls if full_time(p) > start]
+        end = min(following) if following else ('9999-99-99', '999999')
+        increments = sorted(p for p in (root / 'incr').glob('*/*')
+                            if p.is_dir() and start < (p.parent.name, p.name) < end
+                            and re.fullmatch(r'\d{4}-\d{2}-\d{2}', p.parent.name)
+                            and re.fullmatch(r'\d{6}', p.name))
+        previous = 0
+        for path in [full] + increments:
+            if not (path / '.backup_ok').is_file():
+                self.fail('BACKUP INVALID: missing .backup_ok ' + str(path))
+            try:
+                values = dict(line.strip().split(' = ', 1) for line in
+                              (path / 'xtrabackup_checkpoints').read_text().splitlines() if ' = ' in line)
+                first, last = int(values['from_lsn']), int(values['to_lsn'])
+            except (OSError, ValueError, KeyError):
+                self.fail('BACKUP CHECKPOINT INVALID ' + str(path))
+            if first != previous or last < first:
+                self.fail('INCREMENTAL LSN CHAIN INVALID ' + str(path))
+            previous = last
+        return full, increments
+
+    @_observed_stage
     def checksum(self, date=None):
         """校验备份完整性"""
         date = date or self.latest_full_date()
@@ -749,28 +1222,11 @@ class BackupManager:
         
         self.logger.info("CHECKSUM {0}".format(date))
         
-        # 查找backup目录（可能是文件或目录）
-        full_backup_path = self.config.backup_base / "full" / date
-        if not full_backup_path.exists():
-            self.fail("BACKUP DATE {0} NOT FOUND".format(date))
-        
-        # rglob可能返回文件或目录，需要过滤
-        full = [p for p in full_backup_path.rglob("backup") if p.is_dir()]
-        if not full:
-            self.fail("FULL BACKUP DIRECTORY NOT FOUND for date {0}".format(date))
-        
-        # 检查.backup_ok标记文件（这个文件不会被压缩）
-        if not (full[0] / ".backup_ok").exists():
-            self.fail("FULL INVALID: missing .backup_ok")
-        incr = self.config.backup_base / "incr" / date
-        if incr.exists():
-            for d in incr.iterdir():
-                if d.is_dir() and not (d / ".backup_ok").exists():
-                    self.fail("INCR INVALID {0}".format(d))
-        binlog = self.config.backup_base / "binlog"
+        full, _ = self.backup_chain(date)
+        binlog = self._binlog_root(full)
         # 只检查文件，排除目录
         binlog_files = [f for f in binlog.rglob("{0}.*".format(self.config.mysql_binlog_prefix)) 
-                        if f.is_file() and f.name != "{0}.index".format(self.config.mysql_binlog_prefix)]
+                        if f.is_file() and f.relative_to(binlog).parts[0] != "generation" and f.name != "{0}.index".format(self.config.mysql_binlog_prefix)]
         if not binlog_files:
             self.fail("BINLOG MISSING")
         self.logger.info("CHECKSUM OK")
@@ -789,7 +1245,7 @@ class BackupManager:
         prefix = re.escape(self.config.mysql_binlog_prefix)
         files = [
             f for f in directory.rglob("{0}.*".format(self.config.mysql_binlog_prefix))
-            if f.is_file() and re.fullmatch(r"{0}\.\d+".format(prefix), f.name)
+            if f.is_file() and f.relative_to(directory).parts[0] != "generation" and re.fullmatch(r"{0}\.\d+".format(prefix), f.name)
         ]
         
         if not files:
@@ -817,12 +1273,15 @@ class BackupManager:
         
         return [f.name for _, f in numbered]
     
+    @_observed_stage
     def restore_audit(self, date=None):
         """生成恢复计划（dry-run）"""
         date = date or self.latest_full_date()
         if not date or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date):
             self.fail("INVALID BACKUP DATE")
         self.logger.info("RESTORE AUDITION {0}".format(date))
+        if not getattr(self.config, 'offline', False):
+            self._replication_state()
         self.checksum(date)
 
         plan = {
@@ -834,19 +1293,18 @@ class BackupManager:
             "status": "READY"
         }
 
-        # 查找backup目录
-        full_backup_path = self.config.backup_base / "full" / date
-        full = [p for p in full_backup_path.rglob("backup") if p.is_dir()]
-        if not full:
-            self.fail("FULL BACKUP DIRECTORY NOT FOUND for date {0}".format(date))
-        plan["full"] = str(full[0])
+        full, increments = self.backup_chain(date)
+        self._offline_backup_check(full)
+        plan['full'] = str(full)
+        plan['incr'] = [str(path) for path in increments]
 
-        incr = self.config.backup_base / "incr" / date
-        if incr.exists():
-            plan["incr"] = [str(d) for d in sorted([d for d in incr.iterdir() if d.is_dir()])]
-
-        binlog_dir = self.config.backup_base / "binlog"
+        binlog_dir = self._binlog_root(full)
+        plan["binlog_root"] = str(binlog_dir)
         plan["binlog"] = self.check_binlog_sequence(binlog_dir)
+        if self.config.mysql_container:
+            if not self.manage_mysql_service('status'):
+                self.fail('MySQL container must be running to audit its storage mapping')
+            self._verify_container_mounts(plan)
 
         audit = self.config.audit_base / date
         audit.mkdir(parents=True, exist_ok=True)
@@ -855,6 +1313,7 @@ class BackupManager:
 
         self.logger.info("RESTORE AUDITION IS OK, PLAN GENERATED")
     
+    @_observed_stage
     def manage_mysql_service(self, action, timeout=30):
         """
         统一的MySQL服务管理函数（Linux/Unix only）
@@ -870,6 +1329,9 @@ class BackupManager:
         if action not in valid_actions:
             self.logger.error("Invalid action '{0}'. Valid actions: {1}".format(action, ", ".join(valid_actions)))
             return False
+
+        if self.config.mysql_container:
+            return self._manage_mysql_container(action, timeout)
 
         # 检查服务是否存在
         try:
@@ -897,31 +1359,31 @@ class BackupManager:
             self.logger.info("SERVICE STATUS: {0}".format(current_state))
             return current_state == "active"
 
-        # 检查状态变化，带进度条
-        start_time = time.time()
+        # Report observed state. Elapsed/timeout is not completion percentage.
+        start_time = time.monotonic()
         check_interval = 1
 
-        while time.time() - start_time < timeout:
-            elapsed = int(time.time() - start_time)
-            progress = min(100, int((elapsed / timeout) * 100))
-
-            bar = "[" + "=" * (progress // 5) + " " * (20 - progress // 5) + "]"
-            status_text = "{0}PING".format(action.upper()) if action.endswith('p') else "{0}ING".format(action.upper())
-            sys.stdout.write("\rChecking: {0} {1}% ({2}/{3}s) - {4}...".format(bar, progress, elapsed, timeout, status_text))
-            sys.stdout.flush()
-
+        while time.monotonic() - start_time < timeout:
+            elapsed = int(time.monotonic() - start_time)
             result = self.run_cmd(["systemctl", "is-active", self.config.mysql_service], check=False)
             current_state = result.strip()
+            if elapsed == 0 or elapsed % 5 == 0:
+                self.logger.info('Waiting for service %s: action=%s state=%s elapsed=%ss timeout=%ss',
+                                 self.config.mysql_service, action, current_state, elapsed, timeout)
 
             if current_state == expected_state:
-                sys.stdout.write("\n")
+                if action in ('start', 'restart'):
+                    try:
+                        self.mysql_cmd('SELECT 1;')
+                    except RuntimeError:
+                        time.sleep(check_interval)
+                        continue
                 self.logger.info("SERVICE {0} SUCCESSFUL in {1}s (state: {2})".format(action.upper(), elapsed, current_state))
                 return True
 
             time.sleep(check_interval)
 
         # 超时处理
-        sys.stdout.write("\n")
         result = self.run_cmd(["systemctl", "is-active", self.config.mysql_service], check=False)
         current_state = result.strip()
 
@@ -929,10 +1391,79 @@ class BackupManager:
             self.logger.info("SERVICE STOPPED (timed out but reached inactive state)")
             return True
         elif action in ['start', 'restart'] and current_state == 'active':
-            self.logger.info("SERVICE {0}ED (timed out but reached active state)".format(action.upper()))
+            try:
+                self.mysql_cmd('SELECT 1;')
+            except RuntimeError:
+                self.logger.error('MySQL service is active but SQL readiness timed out')
+                return False
             return True
 
         self.logger.error("SERVICE {0} TIMEOUT ({1}s). Current state: {2}".format(action.upper(), timeout, current_state))
+        return False
+
+    def _verify_container_mounts(self, plan):
+        """Refuse a different daemon/volume mapping before touching MySQL data."""
+        values = self.mysql_cmd('SELECT @@datadir, @@log_bin_basename, @@log_bin_index, @@socket;',
+                                batch=True, skip_column_names=True).strip().split('\t')
+        if len(values) != 4:
+            raise RuntimeError('Unable to read MySQL container storage paths')
+        if Path(values[1]).name != self.config.mysql_binlog_prefix:
+            raise RuntimeError('Configured MySQL binlog prefix does not match the server')
+        mounts = json.loads(self.run_cmd(['docker', 'inspect', '--type', 'container', '--format',
+                                         '{{json .Mounts}}', self._mysql_container_id]))
+        def local_path(server_path):
+            path = Path(server_path)
+            for mount in sorted(mounts, key=lambda m: len(m['Destination']), reverse=True):
+                destination = Path(mount['Destination'])
+                if path == destination or destination in path.parents:
+                    if mount['Type'] != 'bind' or not mount['RW']:
+                        break
+                    return (Path(mount['Source']) / path.relative_to(destination)).resolve()
+            raise RuntimeError('MySQL storage is not backed by a verified writable bind mount: ' + server_path)
+        configured = [self.config.mysql_datadir, self.config.mysql_binlog_dir,
+                      self.config.mysql_binlog_index, Path(self.config.mysql_socket)]
+        server = [values[0], str(Path(values[1]).parent), values[2], values[3]]
+        for remote, local in zip(server, configured):
+            if local_path(remote) != local.resolve():
+                raise RuntimeError('Configured MySQL path does not match container bind mount: ' + str(local))
+        server_dir = str(Path(values[1]).parent)
+        if plan.get('server_binlog_dir', server_dir) != server_dir:
+            raise RuntimeError('Container binlog path changed since restore audit')
+        plan['server_binlog_dir'] = server_dir
+
+    def _manage_mysql_container(self, action, timeout):
+        """Operate on one pinned container and distinguish running from SQL-ready."""
+        target = getattr(self, '_mysql_container_id', self.config.mysql_container)
+        def state():
+            result = self.run_cmd(['docker', 'inspect', '--type', 'container', '--format',
+                                   '{{.Id}} {{.State.Status}}', target]).strip().split()
+            if len(result) != 2 or not re.fullmatch(r'[a-f0-9]{64}', result[0]):
+                raise RuntimeError('Unable to verify MySQL container identity/state')
+            return result
+        identity, current = state()
+        self._mysql_container_id = target = identity
+        self.logger.info('MySQL container: id=%s action=%s state=%s', identity, action, current)
+        if current not in ('running', 'exited', 'created'):
+            raise RuntimeError('MySQL container is not in a manageable state: ' + current)
+        if action == 'status':
+            return current == 'running'
+        command = ['docker', action]
+        if action in ('stop', 'restart'):
+            command.extend(['--timeout', str(timeout)])
+        self.run_cmd(command + [identity])
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            _, current = state()
+            if action == 'stop' and current in ('exited', 'created'):
+                return True
+            if action in ('start', 'restart') and current == 'running':
+                try:
+                    self.mysql_cmd('SELECT 1;')
+                    return True
+                except RuntimeError:
+                    pass
+            time.sleep(1)
+        self.logger.error('MySQL container %s did not reach %s within %ss', identity, action, timeout)
         return False
     
     def _load_restore_plan(self, date):
@@ -978,6 +1509,11 @@ class BackupManager:
         if any(not re.fullmatch(r"{0}\.\d+".format(prefix), name) for name in plan.get("binlog", [])):
             self.fail("PLAN BINLOG NAME INVALID")
 
+        full, increments = self.backup_chain(date)
+        if Path(plan.get('binlog_root', self.config.backup_base / 'binlog')).resolve() != self._binlog_root(full).resolve():
+            raise RuntimeError('Restore plan binlog generation does not match its full backup')
+        if plan['full'] != str(full) or plan.get('incr', []) != [str(path) for path in increments]:
+            raise RuntimeError('Backup chain changed since restore audit; generate a new plan')
         return plan, plan_file
     
     def _decompress_backup(self, plan):
@@ -1061,70 +1597,120 @@ class BackupManager:
                 "--target-dir", plan["full"]
             ])
     
+    @_observed_stage
     def _restore_datadir(self, plan):
-        """
-        恢复数据目录
-        Reference: https://docs.percona.com/percona-xtrabackup/8.4/restore-a-backup.html
-        官方最佳实践：使用mv重命名现有数据目录（避免跨盘拷贝的性能问题）
-        
-        Args:
-            plan: 恢复计划字典
-        """
-        self.logger.info("CLEANING DATA DIRECTORY: {0}".format(self.config.mysql_datadir))
-        
-        # 备份现有数据目录（使用mv重命名，避免跨盘拷贝的性能问题）
-        # 官方推荐：mv /var/lib/mysql /var/lib/mysql_old
-        if self.config.mysql_datadir.exists():
-            if self.config.mysql_datadir.is_dir():
-                # 在同目录下重命名为.bak，避免跨盘拷贝
-                datadir_backup = self.config.mysql_datadir.parent / "{0}.bak_{1}".format(
-                    self.config.mysql_datadir.name,
-                    datetime.now().strftime('%Y%m%d_%H%M%S'))
-                
-                # 如果备份目录已存在，先删除
-                if datadir_backup.exists():
-                    self.logger.warning("Backup directory {0} already exists, removing...".format(datadir_backup))
-                    try:
-                        shutil.rmtree(str(datadir_backup))
-                    except (OSError, shutil.Error) as e:
-                        self.logger.error("Failed to remove existing backup directory: {0}".format(e))
-                        raise
-                
-                self.logger.info("RENAMING EXISTING DATADIR TO: {0}".format(datadir_backup))
+        """Copy into empty destinations, retaining a rollback of only owned paths."""
+        data = self.config.mysql_datadir
+        logs = self.config.mysql_binlog_dir
+        index = self.config.mysql_binlog_index
+        if data.is_symlink() or not data.is_dir() or data.resolve() == Path('/'):
+            raise RuntimeError('Restore requires an existing ordinary MySQL datadir')
+        owner = data.stat()
+        for name in ('auto.cnf', 'mysqld-auto.cnf'):
+            identity_file = data / name
+            if identity_file.is_symlink() or (identity_file.exists() and not identity_file.is_file()):
+                raise RuntimeError('Refusing non-regular server identity or persisted configuration file')
+        suffix = datetime.now().strftime('%Y%m%d_%H%M%S_%f')
+        saved = data.with_name(data.name + '.bak_' + suffix)
+        external = data.resolve() != logs.resolve() and data.resolve() not in logs.resolve().parents
+        saved_logs = logs / ('.' + self.config.mysql_binlog_prefix + '.before_restore_' + suffix)
+        pattern = re.compile(re.escape(self.config.mysql_binlog_prefix) + r'\.\d+')
+        def binlog_files():
+            return [path for path in logs.iterdir() if pattern.fullmatch(path.name)] + ([index] if index.exists() else [])
+        if external and any(p.is_symlink() or not p.is_file() for p in binlog_files()):
+            raise RuntimeError('Refusing non-regular external binlog/index files')
+        moved = copying = False
+        self._restore_restart_safe = False
+        try:
+            if external:
+                saved_logs.mkdir()
+                for path in binlog_files():
+                    path.rename(saved_logs / path.name)
+            data.rename(saved)
+            moved = True
+            data.mkdir(mode=0o750)
+            logs.mkdir(parents=True, exist_ok=True)
+            copying = True
+            self.run_cmd([
+                'xtrabackup', '--copy-back', '--target-dir', plan['full'], '--datadir', str(data),
+                '--log-bin=' + str(logs / self.config.mysql_binlog_prefix),
+                '--log-bin-index=' + str(index),
+            ])
+            # PXB excludes auto.cnf. Keep the target's UUID when restoring this
+            # instance, rather than generating a new identity on every restore.
+            if (saved / 'auto.cnf').is_file():
+                shutil.copy2(str(saved / 'auto.cnf'), str(data / 'auto.cnf'))
+            # Persisted variables are target configuration. A donor's startup
+            # settings must not override this node's skip-start/read-only guard.
+            if (saved / 'mysqld-auto.cnf').is_file():
+                shutil.copy2(str(saved / 'mysqld-auto.cnf'), str(data / 'mysqld-auto.cnf'))
+            elif (data / 'mysqld-auto.cnf').exists():
+                (data / 'mysqld-auto.cnf').unlink()
+            # PXB writes the copy-back process's path into an external index.
+            # MySQL must instead read paths visible inside its own container.
+            if self.config.mysql_container:
+                server_dir = plan.get('server_binlog_dir')
+                if not server_dir:
+                    raise RuntimeError('Verified container binlog path is missing')
+                names = [Path(line.strip()).name for line in index.read_text().splitlines() if line.strip()]
+                if not names or any(not pattern.fullmatch(name) or not (logs / name).is_file() for name in names):
+                    raise RuntimeError('Restored binlog index does not reference valid local files')
+                temporary = index.with_name(index.name + '.restore-tmp')
                 try:
-                    # 使用rename（同文件系统内移动，非常快）
-                    self.config.mysql_datadir.rename(datadir_backup)
-                except (OSError, RuntimeError) as e:
-                    # 如果rename失败（可能跨文件系统），使用shutil.move
-                    self.logger.warning("rename failed (possibly cross-filesystem), using shutil.move: {0}".format(e))
-                    try:
-                        shutil.move(str(self.config.mysql_datadir), str(datadir_backup))
-                    except (shutil.Error, OSError) as e2:
-                        self.logger.error("Failed to move existing datadir: {0}".format(e2))
-                        raise
-            else:
-                # 如果是文件而不是目录，直接删除
-                self.logger.warning("datadir is a file, not a directory, removing...")
-                try:
-                    self.config.mysql_datadir.unlink()
-                except OSError as e:
-                    self.fail("Failed to remove existing datadir file: {0}".format(e))
-        
-        # 创建新的空数据目录（官方要求：datadir必须为空）
-        self.config.mysql_datadir.mkdir(parents=True, exist_ok=True)
-        
-        # 复制恢复文件到数据目录
-        self.logger.info("COPYING BACK DATA...")
-        copy_back_cmd = [
-            "xtrabackup", "--copy-back",
-            "--target-dir", plan["full"],
-            "--datadir", str(self.config.mysql_datadir)
-        ]
-        self.run_cmd(copy_back_cmd)
-        
-        # 设置正确的权限
-        self.run_cmd(["chown", "-R", "mysql:mysql", str(self.config.mysql_datadir)])
-    
+                    temporary.write_text(''.join(str(Path(server_dir) / name) + '\n' for name in names))
+                    os.replace(str(temporary), str(index))
+                finally:
+                    if temporary.exists():
+                        temporary.unlink()
+            identity = '{}:{}'.format(owner.st_uid, owner.st_gid)
+            self.run_cmd(['chown', '-R', identity, str(data)])
+            if external:
+                for path in binlog_files():
+                    self.run_cmd(['chown', identity, str(path)])
+        except BaseException:
+            # A failed copy-back must never restart on a partial/empty datadir.
+            # If this rollback fails, the caller leaves MySQL stopped.
+            if moved:
+                if data.exists():
+                    shutil.rmtree(str(data))
+                saved.rename(data)
+            if external and saved_logs.exists():
+                if copying:
+                    for path in binlog_files():
+                        path.unlink()
+                for path in saved_logs.iterdir():
+                    path.rename(logs / path.name)
+                saved_logs.rmdir()
+            self._restore_restart_safe = True
+            raise
+        self._restore_restart_safe = True
+        self.logger.info('Original datadir retained at %s', saved)
+        if external:
+            self.logger.info('Original binary logs retained at %s; other logs unchanged', saved_logs)
+
+    def _binlog_replay_files(self, plan):
+        """Start after the last physical snapshot, with every audited file present."""
+        snapshot = Path((plan.get('incr') or [plan['full']])[-1])
+        try:
+            fields = (snapshot / 'xtrabackup_binlog_info').read_text().split()
+            name, position = fields[0], int(fields[1])
+        except (OSError, ValueError, IndexError) as error:
+            raise RuntimeError('Physical snapshot binlog coordinates are missing or invalid') from error
+        if position < 4 or name not in plan['binlog']:
+            raise RuntimeError('Archived binlogs do not include the physical snapshot position')
+        names = plan['binlog'][plan['binlog'].index(name):]
+        numbers = [int(item.rsplit('.', 1)[1]) for item in names]
+        if any(right != left + 1 for left, right in zip(numbers, numbers[1:])):
+            raise RuntimeError('Archived binlog sequence has a gap after the snapshot')
+        files = []
+        for name in names:
+            archive_root = Path(plan.get('binlog_root', self.config.backup_base / 'binlog'))
+            matches = sorted(path for path in archive_root.rglob(name) if path.is_file() and path.relative_to(archive_root).parts[0] != "generation")
+            if len(matches) != 1:
+                raise RuntimeError('Archived binlog missing or ambiguous: ' + name)
+            files.append(matches[0])
+        return position, files
+
     def _apply_binlog(self, plan, binlog_start_time, binlog_stop_time):
         """
         应用binlog
@@ -1140,67 +1726,65 @@ class BackupManager:
         if not binlog_start_time:
             self.fail("BINLOG START TIME REQUIRED! Use --binlog-start-time 'YYYY-MM-DD HH:MM:SS'")
         
-        # 查找binlog文件
-        binlog_dir = self.config.backup_base / "binlog"
-        binlog_files = []
-        for binlog_name in plan["binlog"]:
-            # 只查找文件，排除目录
-            found_files = [f for f in binlog_dir.rglob(binlog_name) if f.is_file()]
-            if found_files:
-                binlog_files.append(str(found_files[0]))
-            else:
-                self.logger.warning("Binlog file {0} not found, skipping".format(binlog_name))
+        position, binlog_files = self._binlog_replay_files(plan)
 
-        if not binlog_files:
-            self.logger.info("NO BINLOG FILES TO APPLY")
-            return
-        
         # 构建mysqlbinlog命令
-        mysqlbinlog_cmd = ["mysqlbinlog"] + self.command_options("mysqlbinlog")
+        mysqlbinlog_cmd = ["mysqlbinlog", "--start-position=" + str(position)] + self.command_options("mysqlbinlog")
         mysqlbinlog_cmd.extend(["--start-datetime", binlog_start_time])
         
         if binlog_stop_time:
             mysqlbinlog_cmd.extend(["--stop-datetime", binlog_stop_time])
         
-        mysqlbinlog_cmd.extend(sorted(binlog_files))
+        mysqlbinlog_cmd.extend(str(path) for path in binlog_files)
         
-        # 执行binlog恢复
+        mysql_cmd = [
+            'mysql', '--user=' + self.config.mysql_user,
+            '--password=' + self.config.mysql_password,
+            '--socket=' + self.config.mysql_socket,
+        ] + self.command_options('mysql')
+        self.logger.info('BINLOG REPLAY: files=%s first=%s position=%s start=%s stop=%s',
+                         len(binlog_files), binlog_files[0].name, position,
+                         binlog_start_time, binlog_stop_time or 'end of archive')
+        for command in (mysqlbinlog_cmd, mysql_cmd):
+            self.logger.info('RUN: %s', _command_description(command, self.config.mysql_password))
+        processes = []
+        started = time.monotonic()
         try:
-            child_env = _env_for_system_subprocess()
-            p1 = subprocess.Popen(
-                mysqlbinlog_cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                env=child_env,
-            )
-            p2 = subprocess.Popen(
-                [
-                    "mysql",
-                    "--user={0}".format(self.config.mysql_user),
-                    "--password={0}".format(self.config.mysql_password),
-                    "--socket={0}".format(self.config.mysql_socket)
-                ] + self.command_options("mysql"),
-                stdin=p1.stdout,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                env=child_env,
-            )
-            # Parent must close its duplicate writer so mysqlbinlog observes SIGPIPE
-            # when the mysql client exits early.
-            if p1.stdout:
-                p1.stdout.close()
-            stdout, stderr = p2.communicate()
-            p1_stderr = p1.stderr.read() if p1.stderr else b""
-            p1_rc = p1.wait()
-            if p1_rc != 0 or p2.returncode != 0:
-                details = (p1_stderr + (stderr or b"")).decode(errors="replace").strip()
-                raise RuntimeError("BINLOG APPLY FAILED{0}".format(": " + details if details else ""))
-            self.logger.info("BINLOG APPLIED SUCCESSFULLY")
-        
-        except Exception as e:
-            self.logger.error("BINLOG APPLY ERROR: {0}".format(str(e)))
+            decoder = subprocess.Popen(mysqlbinlog_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                       env=_env_for_system_subprocess())
+            processes.append(('mysqlbinlog', decoder))
+            consumer = subprocess.Popen(mysql_cmd, stdin=decoder.stdout,
+                                        stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+                                        env=_env_for_system_subprocess())
+            processes.append(('mysql', consumer))
+            # Drop the parent's duplicate so consumer failure reaches the writer.
+            decoder.stdout.close()
+            _drain_commands(processes,
+                            [('mysqlbinlog stderr', decoder.stderr, 'log'),
+                             ('mysql stderr', consumer.stderr, 'log')],
+                            self.logger, self.config.mysql_password, 'Binlog', 'replay')
+            codes = {name: process.wait() for name, process in processes}
+            self.logger.info('BINLOG REPLAY finished: mysqlbinlog_rc=%s mysql_rc=%s elapsed=%.1fs',
+                             codes['mysqlbinlog'], codes['mysql'], time.monotonic() - started)
+            if any(codes.values()):
+                raise RuntimeError('BINLOG APPLY FAILED mysqlbinlog_rc=%s mysql_rc=%s' %
+                                   (codes['mysqlbinlog'], codes['mysql']))
+            self.logger.info('BINLOG APPLIED SUCCESSFULLY')
+        except BaseException:
+            self.logger.error('BINLOG REPLAY interrupted or failed; stopping both local clients')
             raise
-    
+        finally:
+            # Includes failure to spawn the second child, SIGINT and I/O/logging errors.
+            # Kill every owned client before waiting for either one.
+            for _, process in processes:
+                if process.poll() is None:
+                    process.kill()
+            for _, process in processes:
+                process.wait()
+                for pipe in (process.stdout, process.stderr):
+                    if pipe and not pipe.closed:
+                        pipe.close()
+
     def _update_restore_plan(self, plan, plan_file, binlog_start_time, binlog_stop_time):
         """
         更新恢复计划状态
@@ -1219,8 +1803,30 @@ class BackupManager:
         with open(str(plan_file), "w") as f:
             json.dump(plan, f, indent=2)
     
+    @contextlib.contextmanager
+    def restore_workspace(self, plan):
+        """Prepare disposable copies; the raw backup chain remains reusable."""
+        directory = tempfile.TemporaryDirectory(prefix='restore-work-', dir=str(self.config.backup_base))
+        try:
+            working = dict(plan)
+            paths = [plan['full']] + plan['incr']
+            copies = []
+            for number, original in enumerate(paths):
+                source = Path(original)
+                target = Path(directory.name) / str(number)
+                with _operation_progress(self.logger, 'copy restore workspace ' + str(source)):
+                    if any(path.is_symlink() for path in source.rglob('*')):
+                        raise RuntimeError('Refusing symbolic links in the raw backup tree')
+                    shutil.copytree(str(source), str(target))
+                copies.append(str(target))
+            working['full'], working['incr'] = copies[0], copies[1:]
+            yield working
+        finally:
+            with _operation_progress(self.logger, 'remove restore workspace ' + directory.name):
+                directory.cleanup()
+
     def restore(self, date=None, binlog_start_time=None, binlog_stop_time=None,
-                confirm_destructive=False):
+                confirm_destructive=False, confirm_replication_isolated=False):
         """
         执行恢复（强制要求dry-run计划）
 
@@ -1234,63 +1840,100 @@ class BackupManager:
         date = date or self.latest_full_date()
         
         self.logger.info("=" * 60)
-        self.logger.info("MYSQL RESTORE STARTING...")
+        self.logger.info("MYSQL RESTORE STARTING...", extra={'to_stdout': True})
         self.logger.info("=" * 60)
         
         # Validate the immutable audit plan before mutating the service/datadir.
         plan, plan_file = self._load_restore_plan(date)
+        self._offline_backup_check(plan.get('full'))
+        target_state = self._replication_restore_check(confirm_replication_isolated)
+        donor_restore = self._donor_restore(plan.get('full'), target_state)
+        # Reject a missing/broken replay client while the original server and
+        # data are still intact, rather than discovering it after copy-back.
+        self.run_cmd(['mysqlbinlog', '--version'])
         was_active = self.manage_mysql_service('status')
-        # Treat an active service as stopped-on-behalf-of-restore before issuing
-        # the stop command, so an interrupt during that command is recoverable.
-        stopped = bool(was_active)
-        try:
-            # 1. 停止MySQL服务
-            if was_active and not self.manage_mysql_service('stop', timeout=30):
-                self.fail("FAILED TO STOP MYSQL SERVICE")
-
-            # 2. 备份最后一个binlog
-            self.binlog_backup(backall=True)
-
-            # 3. 解压压缩的备份文件
-            self._decompress_backup(plan)
-
-            # 4. 准备备份文件
-            self._prepare_backup(plan)
-
-            # 5. 恢复数据目录
-            self._restore_datadir(plan)
-
-            # 6. 启动MySQL服务
-            self.logger.info("STARTING MYSQL SERVICE...")
-            if stopped and not self.manage_mysql_service('start', timeout=60):
-                self.fail("FAILED TO START MYSQL SERVICE")
-
-            # 7. 应用binlog
-            self._apply_binlog(plan, binlog_start_time, binlog_stop_time)
-
-            # 8. 更新恢复计划状态
-            self._update_restore_plan(plan, plan_file, binlog_start_time, binlog_stop_time)
-        except BaseException:
-            # Never leave a previously running server stopped after a failed restore.
-            if stopped and not self.manage_mysql_service('status'):
+        if self.config.mysql_container:
+            self._verify_container_mounts(plan)
+        # Preparing modifies the backup. Keep raw inputs and the live source
+        # intact until the working copy is ready for copy-back.
+        with self.restore_workspace(plan) as working:
+            self._decompress_backup(working)
+            self._binlog_replay_files(working)
+            self._prepare_backup(working)
+            stopped = bool(getattr(self.config, 'offline', False))
+            try:
+                if was_active:
+                    stopped = True  # An interrupt during stop is recoverable.
+                    if not self.manage_mysql_service('stop', timeout=30):
+                        self.fail('FAILED TO STOP MYSQL SERVICE')
                 try:
-                    self.manage_mysql_service('start', timeout=60)
-                except Exception as restart_error:
-                    self.logger.error("FAILED TO RESTORE MYSQL SERVICE: %s", restart_error)
-            raise
-        
+                    self.mysql_cmd('SELECT 1;')
+                except RuntimeError:
+                    pass
+                else:
+                    raise RuntimeError('MySQL is still accepting SQL; refusing restore with this service configuration')
+                if not donor_restore and not (self.config.backup_base / 'lock/restore-needs-full').exists():
+                    self.binlog_backup(backall=True)
+                self._restore_datadir(working)
+                # Copy-back creates a new server history. Do not append it to
+                # the old backup's archive cursor before taking a new full.
+                self._restore_restart_safe = False
+                (self.config.backup_base / 'lock/restore-needs-full').write_text('new full required after restore\n')
+                self._restore_restart_safe = True
+                if stopped and not self.manage_mysql_service('start', timeout=60):
+                    self.fail('FAILED TO START MYSQL SERVICE')
+                self._replication_restore_check(confirm_replication_isolated, restarted=True)
+                replicated = self.config.mysql_topology != 'standalone'
+                if replicated:
+                    self.mysql_cmd('SET GLOBAL read_only=ON; SET GLOBAL super_read_only=OFF;')
+                try:
+                    self._apply_binlog(working, binlog_start_time, binlog_stop_time)
+                finally:
+                    if replicated:
+                        self.mysql_cmd('SET GLOBAL super_read_only=ON;')
+                self._update_restore_plan(plan, plan_file, binlog_start_time, binlog_stop_time)
+            except BaseException:
+                if stopped and getattr(self, '_restore_restart_safe', True) and not self.manage_mysql_service('status'):
+                    try:
+                        self.manage_mysql_service('start', timeout=60)
+                    except Exception as restart_error:
+                        self.logger.error('FAILED TO RESTORE MYSQL SERVICE: %s', restart_error)
+                raise
+
         self.logger.info("=" * 60)
-        self.logger.info("MYSQL RESTORE COMPLETED SUCCESSFULLY!")
+        self.logger.info("MYSQL RESTORE COMPLETED SUCCESSFULLY!", extra={'to_stdout': True})
         self.logger.info("=" * 60)
     
+    @_observed_stage
     def purge(self, backup_days=15, binlog_days=30):
         """清理旧备份"""
-        self.run_cmd(["find", str(self.config.backup_base / "full"), "-mindepth", "1", "-mtime", "+{0}".format(backup_days),
-             "-exec", "rm", "-rf", "{}", "+"])
-        self.run_cmd(["find", str(self.config.backup_base / "incr"), "-mindepth", "1", "-mtime", "+{0}".format(backup_days), 
-             "-exec", "rm", "-rf", "{}", "+"])
-        self.run_cmd(["find", str(self.config.backup_base / "binlog"), "-mindepth", "1", "-mtime", "+{0}".format(binlog_days), 
-             "-exec", "rm", "-rf", "{}", "+"])
+        cutoff = datetime.now().date() - timedelta(days=backup_days)
+        # Keep the full base preceding the retention window: increments within
+        # the window may still depend on it. Never inspect table-file mtimes.
+        days = [path.parent.parent.parent.name for path in
+                (self.config.backup_base / 'full').glob('*/*/backup/.backup_ok')]
+        prior = sorted(day for day in days if day <= str(cutoff) and re.fullmatch(r'\d{4}-\d{2}-\d{2}', day))
+        keep_from = min(str(cutoff), prior[-1]) if prior else str(cutoff)
+        for kind in ('full', 'incr'):
+            for path in (self.config.backup_base / kind).iterdir():
+                if path.is_dir() and not path.is_symlink() and re.fullmatch(r'\d{4}-\d{2}-\d{2}', path.name) and path.name < keep_from:
+                    with _operation_progress(self.logger, 'purge ' + str(path)):
+                        shutil.rmtree(str(path))
+            for name in ('latest_raw', 'latest'):
+                link = self.config.backup_base / kind / name
+                if link.is_symlink() and not link.exists():
+                    link.unlink()
+        binlog = self.config.backup_base / 'binlog'
+        candidates = list(binlog.iterdir()) + list((binlog / 'generation').glob('*/*/*'))
+        cutoff_time = time.time() - binlog_days * 86400
+        for path in candidates:
+            if (not path.is_symlink() and path.is_dir() and re.fullmatch(r'\d{4}-\d{2}-\d{2}', path.name)
+                    and path.stat().st_mtime < cutoff_time):
+                if binlog.resolve() not in path.resolve().parents:
+                    raise RuntimeError('Refusing purge outside the binlog archive')
+                with _operation_progress(self.logger, 'purge ' + str(path)):
+                    shutil.rmtree(str(path))
+
 
 
 def parse_arguments():
@@ -1402,6 +2045,14 @@ def parse_arguments():
         action='store_true',
         help='确认停止服务并覆盖数据目录（restore 必须显式指定）'
     )
+    parser.add_argument(
+        '--confirm-replication-isolated', action='store_true',
+        help='复制拓扑恢复：确认已隔离应用及对端；要求持久 skip_replica_start=ON，工具不自动重接复制'
+    )
+    parser.add_argument(
+        '--offline-restore', action='store_true',
+        help='已停机的二进制实例：仅用于 checksum/restore-dry-run/restore；须填写 mysql_defaults_file，核验真实 systemd ExecStart 和启动参数'
+    )
     
     parser.add_argument(
         '--backup-days',
@@ -1422,6 +2073,8 @@ def parse_arguments():
     parser.add_argument("--native-option", action="append", default=[], metavar="TARGET=--OPTION[=VALUE]",
                         help="给指定命令或阶段追加一个原生长参数；可重复。完整阶段名和示例见 --help-native")
     args = parser.parse_args()
+    if args.offline_restore and args.command not in ('checksum', 'restore-dry-run', 'restore'):
+        parser.error('--offline-restore is only valid for checksum, restore-dry-run and restore')
     try:
         args.native_options = parse_native_options(args.native_option)
     except ValueError as exc:
@@ -1435,7 +2088,7 @@ def main():
         args = parse_arguments()
         
         # 加载配置
-        config = Config(args.config, native_options=args.native_options)
+        config = Config(args.config, native_options=args.native_options, offline=args.offline_restore)
         manager = BackupManager(config)
         
         # 确保目录存在并获取锁
@@ -1459,7 +2112,8 @@ def main():
                     manager.fail("--binlog-start-time is required for restore command")
                 manager.restore(
                     args.date, args.binlog_start_time, args.binlog_stop_time,
-                    confirm_destructive=args.confirm_destructive_restore
+                    confirm_destructive=args.confirm_destructive_restore,
+                    confirm_replication_isolated=args.confirm_replication_isolated
                 )
             elif args.command == 'purge':
                 manager.purge(args.backup_days, args.binlog_days)

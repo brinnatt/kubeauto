@@ -113,7 +113,7 @@ if test -e /run/calico; then echo "residue=/run/calico"; bad=1; fi
 # `pgrep -x` only matches the kernel 15-character comm field on some
 # distributions.  `ps comm` plus an exact awk comparison is portable and
 # cannot match this verification command itself.
-shim_count=$(ps -eo comm= | awk "\$1 == \"containerd-shim-runc-v2\" {count++} END {print count+0}")
+shim_count=$(ps -eo comm= | awk "(\$1 == \"containerd-shim\" || \$1 == \"containerd-shim-runc-v2\") {count++} END {print count+0}")
 echo "containerd_shim_count=$shim_count"
 test "$shim_count" -eq 0 || bad=1
 # Pod scopes are separate from runtime services and can outlive their shims.
@@ -151,7 +151,7 @@ if findmnt -rn -o TARGET | grep -E "^/run/(cilium|calico)(/|$)" | grep -q .; the
 fi
 if test -e /run/cilium; then echo "residue=/run/cilium"; bad=1; fi
 if test -e /run/calico; then echo "residue=/run/calico"; bad=1; fi
-shim_count=$(ps -eo comm= | awk "\$1 == \"containerd-shim-runc-v2\" {count++} END {print count+0}")
+shim_count=$(ps -eo comm= | awk "(\$1 == \"containerd-shim\" || \$1 == \"containerd-shim-runc-v2\") {count++} END {print count+0}")
 echo "containerd_shim_count=$shim_count"
 test "$shim_count" -eq 0 || bad=1
 docker_state=$(systemctl is-active snap.docker.dockerd.service 2>/dev/null || systemctl is-active docker 2>/dev/null || true)
@@ -227,6 +227,9 @@ systemctl disable kubelet kube-proxy kube-apiserver kube-controller-manager kube
 # different: every shim is test residue and must be terminated before deleting
 # its state, otherwise orphaned shims consume the host PID cgroup across runs.
 systemctl kill --kill-who=all --signal=SIGKILL containerd docker cri-dockerd 2>/dev/null
+# Deleted runtime binaries can leave detached shims outside the removed unit.
+# Linux comm for these processes is containerd-shim on the Rocky 8 kernel.
+ps -eo pid=,comm= | awk "\$2 == \"containerd-shim\" || \$2 == \"containerd-shim-runc-v2\" {print \$1}" | xargs -r kill -KILL 2>/dev/null
 # Stop the owned Kubernetes slices, including their separate container scopes.
 systemctl stop kubepods.slice podruntime.slice 2>/dev/null
 # Cilium auto-mounts cgroup2 on the host at /run/cilium/cgroupv2. Detach

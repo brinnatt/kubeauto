@@ -1,0 +1,10 @@
+{
+  "run_id": 45087993933,
+  "url": "https://github.com/brinnatt/kubeauto-ext-images-dockerfile/actions/runs/45087993933",
+  "files": {
+    "logs/sr-dump-images-45087993933/run.json": "1c3d3197f3a5bfa4215fe7d2e43fbe97049bab0086df2d8d72a155ebd384a8cb",
+    "logs/sr-dump-images-45087993933/image-plan.zip": "b90c861d418cd56939580d893d547fcef6b5c643d05b9011e08465be3c5b7970",
+    "logs/sr-dump-images-45087993933/image-plan.json": "0dd4ffa0f7b6168fa71461be43e9e2a7a1764f931a381f15c3bc4da7014c51c7"
+  },
+  "plan": "logs/sr-dump-images-45087993933/image-plan.json"
+}

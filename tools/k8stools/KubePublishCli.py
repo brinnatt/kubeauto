@@ -1045,9 +1045,9 @@ def distribute_images(
             # 批量加载镜像
             logger.info(f"在远程主机加载镜像...")
             if remote_runtime == "nerdctl":
-                load_cmd = f"find {remote_dir} -name '*.tar' -exec {remote_runtime} -n {namespace} load -i {{}} \\;"
+                load_cmd = f'for archive in {remote_dir}/*.tar; do {remote_runtime} -n {namespace} load -i "$archive" || exit $?; done'
             else:
-                load_cmd = f"find {remote_dir} -name '*.tar' -exec {remote_runtime} load -i {{}} \\;"
+                load_cmd = f'for archive in {remote_dir}/*.tar; do {remote_runtime} load -i "$archive" || exit $?; done'
 
             load_ok, load_out = ssh.run_command(load_cmd, timeout=3600)
             if load_ok:

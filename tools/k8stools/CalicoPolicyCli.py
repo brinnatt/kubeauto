@@ -1319,18 +1319,20 @@ def _calicoctl_managed_hostendpoint_names(
     calicoctl: str, context: Optional[str] = None
 ) -> List[str]:
     """从 calicoctl JSON 列出带本工具标签的 HostEndpoint 名（不依赖 kubectl -l）。"""
+    errors: List[str] = []
     for kind in ("hostendpoints", "hep"):
         r = run_cmd(
             [*_calicoctl_argv(calicoctl, context), "get", kind, "-o", "json"],
             timeout=_timeout_sec(),
         )
         if r.returncode != 0 or not (r.stdout or "").strip():
+            errors.append((r.stderr or r.stdout or "空响应").strip())
             continue
         try:
             data = json.loads(r.stdout)
         except json.JSONDecodeError:
             continue
-        items = data.get("items")
+        items = data.get("items") if isinstance(data, dict) else None
         if not isinstance(items, list):
             continue
         out: List[str] = []
@@ -1345,11 +1347,9 @@ def _calicoctl_managed_hostendpoint_names(
             if name:
                 out.append(name)
         return sorted(out)
-    logger.warning(
-        "calicoctl get hostendpoints -o json 未得到可用清单，无法自动枚举本工具 HostEndpoint；"
-        "请手工执行 calicoctl get hep 后逐个 calicoctl delete hep <NAME>。"
+    raise CalicoHostFwError(
+        "无法枚举本工具 HostEndpoint，删除未完成: " + ("; ".join(errors) or "无效 JSON 清单")
     )
-    return []
 
 
 def _backup_dir_path(base: Optional[str]) -> str:
@@ -2158,14 +2158,14 @@ def cmd_delete(args: argparse.Namespace) -> int:
                 timeout=_timeout_sec(),
             )
             if r1.returncode != 0:
-                logger.warning("calicoctl 删除 GlobalNetworkPolicy: %s", (r1.stderr or r1.stdout or "").strip())
+                raise CalicoHostFwError("calicoctl 删除 GlobalNetworkPolicy 失败: " + (r1.stderr or r1.stdout or "").strip())
             else:
                 logger.info("%s", (r1.stdout or r1.stderr or "").strip() or "GlobalNetworkPolicy 已处理")
 
             if args.delete_hostendpoints:
                 names = _calicoctl_managed_hostendpoint_names(args.calicoctl, args.context)
                 if not names:
-                    logger.warning("未找到待删除的本工具 HostEndpoint（或枚举失败）。")
+                    logger.info("未找到待删除的本工具 HostEndpoint。")
                 else:
                     r2 = run_cmd(
                         [
@@ -2178,9 +2178,8 @@ def cmd_delete(args: argparse.Namespace) -> int:
                         timeout=_timeout_sec(),
                     )
                     if r2.returncode != 0:
-                        logger.warning(
-                            "calicoctl 删除 HostEndpoint: %s",
-                            (r2.stderr or r2.stdout or "").strip(),
+                        raise CalicoHostFwError(
+                            "calicoctl 删除 HostEndpoint 失败: " + (r2.stderr or r2.stdout or "").strip()
                         )
                     else:
                         logger.info("%s", (r2.stdout or r2.stderr or "").strip() or "HostEndpoint 已处理")
@@ -2193,7 +2192,7 @@ def cmd_delete(args: argparse.Namespace) -> int:
                 timeout=_timeout_sec(),
             )
             if r1.returncode != 0:
-                logger.warning("删除 GlobalNetworkPolicy: %s", (r1.stderr or r1.stdout or "").strip())
+                raise CalicoHostFwError("删除 GlobalNetworkPolicy 失败: " + (r1.stderr or r1.stdout or "").strip())
             else:
                 logger.info("%s", (r1.stdout or r1.stderr or "").strip() or "GlobalNetworkPolicy 已处理")
 
@@ -2209,9 +2208,8 @@ def cmd_delete(args: argparse.Namespace) -> int:
                     f"{MANAGED_LABEL_KEY}={MANAGED_LABEL_VAL}",
                 )
                 if r2.returncode != 0:
-                    logger.warning(
-                        "按标签删除 HostEndpoint 失败: %s",
-                        (r2.stderr or r2.stdout or "").strip(),
+                    raise CalicoHostFwError(
+                        "按标签删除 HostEndpoint 失败: " + (r2.stderr or r2.stdout or "").strip()
                     )
                 else:
                     logger.info("%s", (r2.stdout or r2.stderr or "").strip() or "HostEndpoint 已处理")
@@ -2225,7 +2223,7 @@ def cmd_delete(args: argparse.Namespace) -> int:
             timeout=_timeout_sec(),
         )
         if r3.returncode != 0:
-            logger.warning("删除 NetworkPolicy: %s", (r3.stderr or r3.stdout or "").strip())
+            raise CalicoHostFwError("删除 NetworkPolicy 失败: " + (r3.stderr or r3.stdout or "").strip())
         else:
             logger.info("%s", (r3.stdout or r3.stderr or "").strip() or "NetworkPolicy 已处理")
     return 0

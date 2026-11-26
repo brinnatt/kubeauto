@@ -1,0 +1,53 @@
+{
+  "date": "2026-11-26",
+  "result": "pass",
+  "scope": [
+    "TL-MBK-03",
+    "TL-MBK-05",
+    "TL-MBK-06"
+  ],
+  "rc": 0,
+  "command": "MYSQL_BACKUP_STAGE=physical bash tests/run_tools_regression.sh --mysql-backup-live",
+  "host": "ubuntu@192.168.47.138; MySQL8.4.4/PXB8.4.0-5.1 fixed manifests",
+  "markers": [
+    "MYBACKUP_NATIVE_BACKUP_PASS",
+    "MYBACKUP_NATIVE_PREPARE_PASS",
+    "MYBACKUP_RESTORE_READBACK_PASS",
+    "MYBACKUP_ENOSPC_RECOVERY_PASS",
+    "MYBACKUP_SIGINT_RECOVERY_PASS",
+    "MYBACKUP_LOCK_CONFLICT_PASS",
+    "MYBACKUP_9X_REJECTION_PASS",
+    "MYBACKUP_CLI_LIVE_REGRESSION_PASS",
+    "TOOLS_CLEAN_VERIFY_PASS scope=mysql-backup-release",
+    "MYSQL_BACKUP_RELEASE_PASS stage=physical",
+    "MYSQL_BACKUP_RELEASE_EXIT rc=0",
+    "XtraBackup[stderr]:",
+    "XtraBackup finished: phase=backup rc=0",
+    "XtraBackup finished: phase=prepare rc=0",
+    "mysql[stderr]:",
+    "docker[stdout]:",
+    "chown finished: phase=command rc=0",
+    "BINLOG REPLAY finished: mysqlbinlog_rc=0 mysql_rc=0",
+    "STAGE completed: binlog_backup",
+    "STAGE completed: purge"
+  ],
+  "files": {
+    "logs/mysql-backups-physical-20261126-104627.log": "df4d0ffca53b5181ef8d038432307dba27f801dc9ab6cedeb58995743219b172",
+    "logs/mysql-backups-physical-20261126-104627.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/mysql-backups-physical-20261126-104627.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/mysql-backups-physical-20261126-104627.remote-status": "0ccdb5a77ba5bf7687f2565a8ed97dfb9c1af45503c496fb646312239fab5101",
+    "logs/mysql-backups-physical-20261126-104627.evidence.tar.gz": "54a299a3a1be600581e12e4daac29f85e1ce9db07206a8f285b2c76d0e5522b4",
+    "tools/mysqltools/MyBackupCli.py": "ebd5120225a7afef78a5b30f79dcb369c0103a827ec3b1b08180ce6cd08836e1",
+    "dist/MyBackupCli-rocky8": "208d48965cb2528732462e7126556435b528d3b6d19f32bf1470b32478cfb99b",
+    "dist/mysql-backup-build.json": "08c708e9c3f009396fcab0f1aa5882c2c66ed7e41e1d3ba020393000d1e6b57a",
+    "tests/unit/test_mybackup_cli_contract.py": "0eeb587f02b68f516f6e790fd451b10dad26fa1b3f7459a2dd291b9af2a5f649",
+    "tests/unit/test_mybackup_replication_contract.py": "8fd58256bab85ad3122ecdf89fd7a2b0608ae7d323058d7c1e8dfc5f5ce89abd",
+    "tests/unit/test_mybackup_offline_contract.py": "542b5db5deeceb4b26b9f7988dffb805f1de2b3ccf81d421f714b0cb2c77da9f",
+    "tests/helpers/mybackup-cli-live-regression.sh": "a04bae7c3123b04f5b9627f5c9e1fdb03d92804136c64a64a5936e35f405b501",
+    "tests/helpers/mysql-backups-regression.sh": "359cda27fe0b0b6c81871f71604d8becb458ff716133d8cb288ef3925b83c274"
+  },
+  "boundaries": [
+    "Current frozen MyBackupCli all-command observability revision: full/incr/binlog/checksum/audit/restore/purge, real SQL readback and native stdout/stderr from XtraBackup/mysql/docker/chown, pipeline dual exit codes; failure/retry and scoped cleanup.",
+    "MySQL8.4 physical owning record only. Prior records and raw retained under logs/mybackup-command-observability-20261126/prior-records. No claim that post-completion log observation proves before-exit visibility; real CLI before-exit contracts provide that proof."
+  ]
+}

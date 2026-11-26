@@ -1,0 +1,22 @@
+{
+  "date": "2026-11-25",
+  "status": "fix-under-verification",
+  "tool": "KubePublishCli",
+  "defect": "Remote find -exec runtime load ... \\; reports success although child load exits 23. Both Docker/nerdctl branches use this command shape.",
+  "reference": "GNU findutils 4.10.0 official installed find(1): -exec command ; expression tests child status; find exit status does not aggregate these child failures",
+  "reproduction": "test_remote_load_failure_is_not_hidden_by_batch_shell runs the actual remote shell batch with a docker executable returning 23; old code falsely returns True",
+  "fix": "Explicit shell loop propagates first failing runtime exit status; existing scoped cleanup remains",
+  "verification": "Before regression red; entire focused publisher contract suite green. Frozen rebuild and real scoped integration pending.",
+  "matrix_dependencies": {
+    "TL-KP-01": "Product source changed; single-tool rebuild required",
+    "TL-KP-03": "Remote distribution child error propagation changed; real save/load/distribution + injected remote load error required",
+    "TL-KP-05": "First-failure remote cleanup/retry needs current verification"
+  },
+  "files": {
+    "tools/k8stools/KubePublishCli.py": "ed3c8c138c02fdd3cc69b4f8f7d46127734e029ea334ff2767d1d28c4c6cdb9b",
+    "tests/unit/test_kube_publish_cli_contract.py": "3023d6af96674a8daefb220fe13fe0cb2bc2fbd63e782e4513a54c768c0db8c9",
+    "logs/tools-execution-audit-20261125/KubePublishCli-before.py": "df122fe8d2d0a02258085bfe9818c923cd6ddb4ce65b68e6a34417452af8187b",
+    "logs/tools-publish-load-before-20261125.log": "d66fd11e975f6b06df743c0211843de88d126a4e1038fb9c16f424bc86c41bd8",
+    "logs/tools-publish-load-after-20261125.log": "24b6d9dfa1f4d8c8aac4b9fa8f30893849b7c2b3996bc3cc790371b6f5929708"
+  }
+}
