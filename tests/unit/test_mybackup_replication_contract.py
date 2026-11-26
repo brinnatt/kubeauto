@@ -104,7 +104,7 @@ class ReplicationContracts(unittest.TestCase):
             manager.config.mysql_service = 'fixture-mysql.service'
             manager.run_cmd = mock.Mock(return_value='active')
             manager.mysql_cmd = mock.Mock(side_effect=RuntimeError('not ready'))
-            with mock.patch.object(MOD.time, 'monotonic', side_effect=[0, 31]):
+            with mock.patch.object(MOD.time, 'monotonic', side_effect=iter([0, 0, 31, 31])):
                 self.assertFalse(manager.manage_mysql_service('start', timeout=30))
 
     def test_pitr_failure_restores_super_read_only_and_preserves_failure(self):

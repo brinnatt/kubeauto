@@ -50,6 +50,8 @@ import configparser
 import logging
 import codecs
 import selectors
+import threading
+import functools
 from datetime import datetime, timedelta
 from pathlib import Path
 from logging.handlers import RotatingFileHandler
@@ -64,6 +66,7 @@ DEFAULT_LOG_LEVEL = logging.INFO
 DEFAULT_FORMAT = "[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s"
 DEFAULT_DATEFMT = "%Y-%m-%d %H:%M:%S"
 XTRABACKUP_HEARTBEAT_SECONDS = 30
+OPERATION_HEARTBEAT_SECONDS = 30
 
 
 def _env_for_system_subprocess():
@@ -127,13 +130,14 @@ def setup_logger(
             stderr_handler.setFormatter(formatter)
             stderr_handler.setLevel(level)
             logger.addHandler(stderr_handler)
+            return logger
 
-        # 添加一个默认的 stdout handler 但不启用
+        # Operational messages are visible by default; metadata probes may
+        # explicitly suppress command/exit chatter without hiding diagnostics.
         stdout_handler = logging.StreamHandler(sys.stdout)
         stdout_handler.setFormatter(formatter)
         stdout_handler.setLevel(level)
-        # 传 extra={'to_stdout': True} 才可以标准输出
-        stdout_handler.addFilter(lambda record: getattr(record, 'to_stdout', False))
+        stdout_handler.addFilter(lambda record: getattr(record, 'to_stdout', True))
         logger.addHandler(stdout_handler)
     else:
         for handler in handlers:
@@ -143,6 +147,167 @@ def setup_logger(
             logger.addHandler(handler)
 
     return logger
+
+
+def _redact(text, password):
+    if password:
+        text = text.replace(password, '***')
+        for part in password.splitlines():
+            if part:
+                text = text.replace(part, '***')
+    return text
+
+
+def _command_description(cmd, password=''):
+    redacted = []
+    hide_next = False
+    for arg in map(str, cmd):
+        if hide_next:
+            redacted.append('<SQL>')
+            hide_next = False
+        elif arg in ('-e', '--execute'):
+            redacted.append(arg)
+            hide_next = True
+        elif arg.startswith('--password='):
+            redacted.append('--password=***')
+        else:
+            redacted.append(arg)
+    return _redact(' '.join(redacted), password)
+
+
+@contextlib.contextmanager
+def _operation_progress(logger, phase):
+    """Observe synchronous filesystem work without changing its copy semantics."""
+    started = time.monotonic()
+    stopped = threading.Event()
+    logger.info('STAGE START: %s', phase, extra={'to_stdout': True})
+
+    def heartbeat():
+        while not stopped.wait(OPERATION_HEARTBEAT_SECONDS):
+            logger.info('STAGE still running: %s elapsed=%.0fs; completion not yet confirmed',
+                        phase, time.monotonic() - started, extra={'to_stdout': True})
+
+    observer = threading.Thread(target=heartbeat, name='mysqlbackup-progress', daemon=True)
+    observer.start()
+    outcome = 'completed'
+    try:
+        yield
+    except BaseException:
+        outcome = 'interrupted or failed'
+        raise
+    finally:
+        stopped.set()
+        observer.join()
+        logger.info('STAGE %s: %s elapsed=%.1fs', outcome, phase,
+                    time.monotonic() - started, extra={'to_stdout': True})
+
+
+def _observed_stage(method):
+    @functools.wraps(method)
+    def observed(self, *args, **kwargs):
+        with _operation_progress(self.logger, method.__name__):
+            return method(self, *args, **kwargs)
+    return observed
+
+
+def _drain_commands(processes, streams, logger, password, label, phase, timeout=None):
+    """Drain every diagnostic pipe, including both ends of a SQL pipeline.
+
+    Stream modes are log, capture (metadata for a caller), or discard. SQL
+    flowing between pipeline children never enters this reader or a log.
+    """
+    started = last_output = last_heartbeat = time.monotonic()
+    captured = {name: [] for name, _, mode in streams if mode == 'capture'}
+    interval = (XTRABACKUP_HEARTBEAT_SECONDS if label == 'XtraBackup'
+                else OPERATION_HEARTBEAT_SECONDS)
+
+    def emit(name, line):
+        nonlocal last_output
+        logger.info('%s[%s]: %s', label, name, _redact(line.rstrip('\r'), password),
+                    extra={'to_stdout': True})
+        last_output = time.monotonic()
+
+    with selectors.DefaultSelector() as selector:
+        for name, pipe, mode in streams:
+            selector.register(pipe, selectors.EVENT_READ,
+                              [name, mode, codecs.getincrementaldecoder('utf-8')('replace'), ''])
+        while selector.get_map() or any(p.poll() is None for _, p in processes):
+            for key, _ in selector.select(timeout=.2):
+                name, mode, decoder, pending = key.data
+                chunk = os.read(key.fd, 8192)
+                decoded = decoder.decode(chunk, final=not chunk)
+                if mode == 'capture':
+                    captured[name].append(decoded)
+                elif mode == 'log':
+                    pending += decoded
+                    while '\n' in pending:
+                        line, pending = pending.split('\n', 1)
+                        emit(name, line)
+                    # Retain a secret crossing a fragment boundary. Diagnostics
+                    # without newlines must not grow the process's memory forever.
+                    limit = max(65536, 2 * len(password))
+                    while len(pending) > limit + len(password):
+                        cut = limit
+                        if password:
+                            at = pending.rfind(password, 0, cut + len(password))
+                            if 0 <= at < cut < at + len(password):
+                                cut = at
+                        emit(name, pending[:cut])
+                        pending = pending[cut:]
+                    if not chunk and pending:
+                        emit(name, pending)
+                        pending = ''
+                    key.data[3] = pending
+                if not chunk:
+                    selector.unregister(key.fileobj)
+            # A failed consumer/decoder invalidates the pipeline. Stop its peer
+            # instead of waiting indefinitely for more SQL or an EOF.
+            if len(processes) > 1 and any(p.poll() not in (None, 0) for _, p in processes):
+                for _, process in processes:
+                    if process.poll() is None:
+                        process.kill()
+            now = time.monotonic()
+            if timeout is not None and now - started >= timeout:
+                raise RuntimeError('%s timed out after %ss' % (label, timeout))
+            if now - last_output >= interval and now - last_heartbeat >= interval:
+                logger.info('%s still running: phase=%s pid=%s elapsed=%.0fs; '
+                            'no native log line for %.0fs', label, phase,
+                            ','.join(str(p.pid) for _, p in processes), now - started,
+                            now - last_output, extra={'to_stdout': True})
+                last_heartbeat = now
+    return {name: ''.join(parts) for name, parts in captured.items()}
+
+
+def _run_external(cmd, logger, password='', check=True, show_stdout=False,
+                  capture_stderr=False, timeout=None, label=None, phase='command', quiet=False):
+    label = label or Path(cmd[0]).name
+    logger.info('RUN: %s', _command_description(cmd, password),
+                extra={'to_stdout': not quiet})
+    started = time.monotonic()
+    with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                          env=_env_for_system_subprocess()) as process:
+        try:
+            output = _drain_commands(
+                [(label, process)],
+                [('stdout', process.stdout, 'log' if show_stdout else 'capture'),
+                 ('stderr', process.stderr, 'capture' if capture_stderr else 'log')],
+                logger, password, label, phase, timeout)
+            rc = process.wait()
+        except BaseException:
+            process.kill()
+            process.wait()
+            logger.error('%s interrupted or failed: phase=%s rc=%s elapsed=%.1fs',
+                         label, phase, process.returncode, time.monotonic() - started,
+                         extra={'to_stdout': True})
+            raise
+    logger.log(logging.ERROR if rc and check else logging.INFO,
+               '%s finished: phase=%s rc=%s elapsed=%.1fs', label, phase, rc,
+               time.monotonic() - started, extra={'to_stdout': not quiet or bool(rc and check)})
+    if rc and check:
+        if output.get('stderr', '').strip():
+            logger.error('%s', _redact(output['stderr'].strip(), password), extra={'to_stdout': True})
+        raise RuntimeError('COMMAND FAILED rc=%s %s' % (rc, _command_description(cmd, password)))
+    return subprocess.CompletedProcess(cmd, rc, output.get('stdout', ''), output.get('stderr', ''))
 
 
 NATIVE_TARGETS = frozenset(("mysql", "mysqlbinlog", "xtrabackup-backup", "xtrabackup-prepare", "xtrabackup-decompress", "xtrabackup-copy-back"))
@@ -424,8 +589,8 @@ class Config:
             self._fail('Offline restore requires native systemd and an explicit ordinary mysql_defaults_file')
 
         def output(argv):
-            result = subprocess.run(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                    text=True, env=_env_for_system_subprocess())
+            result = _run_external(argv, self.logger, self.mysql_password, check=False,
+                                   timeout=30, quiet=True)
             if result.returncode:
                 self._fail('Cannot verify offline MySQL startup configuration')
             return result.stdout
@@ -438,9 +603,8 @@ class Config:
         if (not Path(binary).is_absolute() or Path(binary).name != 'mysqld' or
                 shlex.split(match.group(2)) != [binary, '--defaults-file=' + str(defaults)]):
             self._fail('Offline restore refuses wrapper units or extra ExecStart arguments')
-        status = subprocess.run(['systemctl', 'is-active', '--quiet', self.mysql_service],
-                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                                env=_env_for_system_subprocess())
+        status = _run_external(['systemctl', 'is-active', '--quiet', self.mysql_service],
+                               self.logger, self.mysql_password, check=False, timeout=30, quiet=True)
         if status.returncode == 0:
             self._fail('Offline restore requires the target unit already stopped')
         version = output([binary, '--version'])
@@ -500,15 +664,7 @@ class Config:
             "--socket={0}".format(self.mysql_socket),
             "-e", sql
         ] + self.native_options.get("mysql", [])
-        p = subprocess.run(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            env=_env_for_system_subprocess(),
-        )
-        if p.returncode != 0:
-            raise RuntimeError("MySQL command failed")
+        p = _run_external(cmd, self.logger, self.mysql_password, quiet=True)
         return p.stdout.strip()
     
 
@@ -532,17 +688,16 @@ class BackupManager:
         requested = self.config.xtrabackup_lock_ddl
         if requested in {"ON", "OFF"}:
             return requested
-        probe = subprocess.run(
-            ["xtrabackup", "--no-defaults", "--help"], stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, text=True, timeout=30, env=_env_for_system_subprocess(),
-        )
+        probe = _run_external(["xtrabackup", "--no-defaults", "--help"], self.logger,
+                              self.config.mysql_password, check=False, capture_stderr=True,
+                              timeout=30, quiet=True)
         help_text = probe.stdout + "\n" + probe.stderr
         option = re.search(r"(?m)^\s*--lock-ddl(?:[=\[ \t].*|$)(?:\n(?!\s*--)[^\n]*)*", help_text)
         # PXB 8.4.0-5 prints usage with EXIT_FAILURE when no operation is
         # selected, even for --help. Accept that documented source path only
         # when a complete usage/lock-ddl section is present.
         if probe.returncode not in (0, 1) or not option or (probe.returncode == 1 and "Usage:" not in help_text):
-            detail = probe.stderr.strip().replace(self.config.mysql_password, "***")
+            detail = _redact(probe.stderr.strip(), self.config.mysql_password)
             raise RuntimeError("Unable to inspect XtraBackup lock-ddl capability rc={0}: {1}".format(probe.returncode, detail))
         reduced = bool(re.search(r"\bREDUCED\b", option.group()))
         if requested == "REDUCED" and not reduced:
@@ -565,119 +720,24 @@ class BackupManager:
                 if "--" + mode in cmd:
                     cmd = cmd + self.command_options("xtrabackup-" + mode)
                     break
-        self.logger.info("RUN: {0}".format(self._redact_command(cmd)),
-                         extra={'to_stdout': cmd[0] == 'xtrabackup'})
         if cmd[0] == 'xtrabackup':
             return self._stream_xtrabackup(cmd, check)
-        p = subprocess.run(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            env=_env_for_system_subprocess(),
-        )
-        if p.returncode == 0 and p.stderr.strip():
-            self.logger.info(p.stderr.strip().replace(self.config.mysql_password, "***"))
-        if p.returncode != 0:
-            if p.stderr.strip():
-                detail = p.stderr.strip().replace(self.config.mysql_password, "***")
-                self.logger.error(detail)
-                # Keep durable CLI runners and operators able to diagnose the
-                # first failing external command even when file logging is
-                # unavailable or not collected.
-                print(detail, file=sys.stderr)
-            if check:
-                raise RuntimeError("COMMAND FAILED {0}".format(self._redact_command(cmd)))
-        return p.stdout.strip()
+        # Query/inspect stdout is program data, never an operational log.
+        metadata = cmd[0] == 'mysql' or (cmd[0] == 'docker' and 'inspect' in cmd) or (
+            cmd[0] == 'systemctl' and any(a in cmd for a in ('is-active', 'show')))
+        return _run_external(cmd, self.logger, self.config.mysql_password, check=check,
+                             show_stdout=not metadata, quiet=metadata).stdout.strip()
 
     def _stream_xtrabackup(self, cmd, check):
-        """Drain both native pipes concurrently; diagnostics must not wait for exit."""
-        password = self.config.mysql_password
         phase = next((mode for mode in ('backup', 'decompress', 'prepare', 'copy-back')
                       if '--' + mode in cmd), 'command')
-        started = last_output = last_heartbeat = time.monotonic()
-        stdout = []
-
-        def emit(stream, line):
-            nonlocal last_output
-            if password:
-                line = line.replace(password, '***')
-                # A configured password may itself contain a line break.
-                for part in password.splitlines():
-                    if part:
-                        line = line.replace(part, '***')
-            self.logger.info('XtraBackup[%s]: %s', stream, line.rstrip('\r'),
-                             extra={'to_stdout': True})
-            last_output = time.monotonic()
-
-        with subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                              env=_env_for_system_subprocess()) as process:
-            try:
-                with selectors.DefaultSelector() as selector:
-                    for name in ('stdout', 'stderr'):
-                        selector.register(getattr(process, name), selectors.EVENT_READ,
-                                          [name, codecs.getincrementaldecoder('utf-8')('replace'), ''])
-                    while selector.get_map() or process.poll() is None:
-                        for key, _ in selector.select(timeout=1):
-                            name, decoder, pending = key.data
-                            chunk = os.read(key.fd, 8192)
-                            decoded = decoder.decode(chunk, final=not chunk)
-                            if name == 'stdout':
-                                stdout.append(decoded)
-                            pending += decoded
-                            while '\n' in pending:
-                                line, pending = pending.split('\n', 1)
-                                emit(name, line)
-                            # Bound a native line with no newline, retaining any
-                            # password that straddles the fragment boundary.
-                            limit = max(65536, 2 * len(password))
-                            while len(pending) > limit + len(password):
-                                cut = limit
-                                if password:
-                                    at = pending.rfind(password, 0, cut + len(password))
-                                    if 0 <= at < cut < at + len(password):
-                                        cut = at
-                                emit(name, pending[:cut])
-                                pending = pending[cut:]
-                            key.data[2] = pending
-                            if not chunk:
-                                if pending:
-                                    emit(name, pending)
-                                selector.unregister(key.fileobj)
-                        now = time.monotonic()
-                        if (now - last_output >= XTRABACKUP_HEARTBEAT_SECONDS
-                                and now - last_heartbeat >= XTRABACKUP_HEARTBEAT_SECONDS):
-                            self.logger.info(
-                                'XtraBackup still running: phase=%s pid=%s elapsed=%.0fs; '
-                                'no native log line for %.0fs', phase, process.pid,
-                                now - started, now - last_output, extra={'to_stdout': True})
-                            last_heartbeat = now
-                    returncode = process.wait()
-            except BaseException:
-                # Match subprocess.run's child-reaping guarantee on interrupt
-                # or logging/read failure before the caller releases its lock.
-                process.kill()
-                process.wait()
-                raise
-        self.logger.log(logging.INFO if returncode == 0 else logging.ERROR,
-                        'XtraBackup finished: phase=%s rc=%s elapsed=%.1fs',
-                        phase, returncode, time.monotonic() - started,
-                        extra={'to_stdout': True})
-        if returncode != 0 and check:
-            raise RuntimeError('COMMAND FAILED rc={0} {1}'.format(returncode, self._redact_command(cmd)))
-        return ''.join(stdout).strip()
+        return _run_external(cmd, self.logger, self.config.mysql_password, check=check,
+                             show_stdout=True, label='XtraBackup', phase=phase).stdout.strip()
 
     @staticmethod
     def _redact_command(cmd):
-        """Remove inline credentials before a command is written to logs/errors."""
-        redacted = []
-        for arg in cmd:
-            if arg.startswith("--password="):
-                redacted.append("--password=***")
-            else:
-                redacted.append(arg)
-        return " ".join(redacted)
-    
+        return _command_description(cmd)
+
     def mysql_cmd(self, sql, *args, **kwargs):
         """执行MySQL命令"""
         return self.run_cmd([
@@ -886,7 +946,8 @@ class BackupManager:
         except Exception as e:
             self.logger.error("FULL BACKUP FAILED: {0}".format(e))
             if target.exists():
-                shutil.rmtree(str(target))
+                with _operation_progress(self.logger, 'remove failed backup ' + str(target)):
+                    shutil.rmtree(str(target))
             raise
     
     def incr_backup(self):
@@ -986,7 +1047,8 @@ class BackupManager:
         except Exception as e:
             self.logger.error("INCREMENTAL BACKUP FAILED: {0}".format(e))
             if target.exists():
-                shutil.rmtree(str(target))
+                with _operation_progress(self.logger, 'remove failed backup ' + str(target)):
+                    shutil.rmtree(str(target))
             raise
     
     def _require_fresh_full(self):
@@ -1010,6 +1072,7 @@ class BackupManager:
             raise RuntimeError('Backup binlog generation is invalid')
         return root / 'generation' / generation
 
+    @_observed_stage
     def binlog_backup(self, backall=False):
         """
         binlog归档
@@ -1088,13 +1151,14 @@ class BackupManager:
                 with tempfile.NamedTemporaryFile(prefix=".archive-", dir=str(dst), delete=False) as temporary:
                     temporary_path = Path(temporary.name)
                 try:
-                    shutil.copy2(str(src_file), str(temporary_path))
+                    with _operation_progress(self.logger, 'archive binlog ' + b):
+                        shutil.copy2(str(src_file), str(temporary_path))
                     os.replace(str(temporary_path), str(dst_file))
                 finally:
                     if temporary_path.exists():
                         temporary_path.unlink()
                 archived.append(b)
-                self.logger.info("ARCHIVED {0}".format(b))
+                self.logger.info("ARCHIVED %s bytes=%s", b, dst_file.stat().st_size)
             except (IOError, OSError, shutil.Error) as e:
                 self.fail("Failed to copy binlog {0}: {1}".format(b, e))
 
@@ -1149,6 +1213,7 @@ class BackupManager:
             previous = last
         return full, increments
 
+    @_observed_stage
     def checksum(self, date=None):
         """校验备份完整性"""
         date = date or self.latest_full_date()
@@ -1208,6 +1273,7 @@ class BackupManager:
         
         return [f.name for _, f in numbered]
     
+    @_observed_stage
     def restore_audit(self, date=None):
         """生成恢复计划（dry-run）"""
         date = date or self.latest_full_date()
@@ -1247,6 +1313,7 @@ class BackupManager:
 
         self.logger.info("RESTORE AUDITION IS OK, PLAN GENERATED")
     
+    @_observed_stage
     def manage_mysql_service(self, action, timeout=30):
         """
         统一的MySQL服务管理函数（Linux/Unix only）
@@ -1292,21 +1359,17 @@ class BackupManager:
             self.logger.info("SERVICE STATUS: {0}".format(current_state))
             return current_state == "active"
 
-        # 检查状态变化，带进度条
+        # Report observed state. Elapsed/timeout is not completion percentage.
         start_time = time.monotonic()
         check_interval = 1
 
         while time.monotonic() - start_time < timeout:
             elapsed = int(time.monotonic() - start_time)
-            progress = min(100, int((elapsed / timeout) * 100))
-
-            bar = "[" + "=" * (progress // 5) + " " * (20 - progress // 5) + "]"
-            status_text = "{0}PING".format(action.upper()) if action.endswith('p') else "{0}ING".format(action.upper())
-            sys.stdout.write("\rChecking: {0} {1}% ({2}/{3}s) - {4}...".format(bar, progress, elapsed, timeout, status_text))
-            sys.stdout.flush()
-
             result = self.run_cmd(["systemctl", "is-active", self.config.mysql_service], check=False)
             current_state = result.strip()
+            if elapsed == 0 or elapsed % 5 == 0:
+                self.logger.info('Waiting for service %s: action=%s state=%s elapsed=%ss timeout=%ss',
+                                 self.config.mysql_service, action, current_state, elapsed, timeout)
 
             if current_state == expected_state:
                 if action in ('start', 'restart'):
@@ -1315,14 +1378,12 @@ class BackupManager:
                     except RuntimeError:
                         time.sleep(check_interval)
                         continue
-                sys.stdout.write("\n")
                 self.logger.info("SERVICE {0} SUCCESSFUL in {1}s (state: {2})".format(action.upper(), elapsed, current_state))
                 return True
 
             time.sleep(check_interval)
 
         # 超时处理
-        sys.stdout.write("\n")
         result = self.run_cmd(["systemctl", "is-active", self.config.mysql_service], check=False)
         current_state = result.strip()
 
@@ -1381,6 +1442,7 @@ class BackupManager:
             return result
         identity, current = state()
         self._mysql_container_id = target = identity
+        self.logger.info('MySQL container: id=%s action=%s state=%s', identity, action, current)
         if current not in ('running', 'exited', 'created'):
             raise RuntimeError('MySQL container is not in a manageable state: ' + current)
         if action == 'status':
@@ -1535,6 +1597,7 @@ class BackupManager:
                 "--target-dir", plan["full"]
             ])
     
+    @_observed_stage
     def _restore_datadir(self, plan):
         """Copy into empty destinations, retaining a rollback of only owned paths."""
         data = self.config.mysql_datadir
@@ -1674,43 +1737,54 @@ class BackupManager:
         
         mysqlbinlog_cmd.extend(str(path) for path in binlog_files)
         
-        # 执行binlog恢复
+        mysql_cmd = [
+            'mysql', '--user=' + self.config.mysql_user,
+            '--password=' + self.config.mysql_password,
+            '--socket=' + self.config.mysql_socket,
+        ] + self.command_options('mysql')
+        self.logger.info('BINLOG REPLAY: files=%s first=%s position=%s start=%s stop=%s',
+                         len(binlog_files), binlog_files[0].name, position,
+                         binlog_start_time, binlog_stop_time or 'end of archive')
+        for command in (mysqlbinlog_cmd, mysql_cmd):
+            self.logger.info('RUN: %s', _command_description(command, self.config.mysql_password))
+        processes = []
+        started = time.monotonic()
         try:
-            child_env = _env_for_system_subprocess()
-            p1 = subprocess.Popen(
-                mysqlbinlog_cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                env=child_env,
-            )
-            p2 = subprocess.Popen(
-                [
-                    "mysql",
-                    "--user={0}".format(self.config.mysql_user),
-                    "--password={0}".format(self.config.mysql_password),
-                    "--socket={0}".format(self.config.mysql_socket)
-                ] + self.command_options("mysql"),
-                stdin=p1.stdout,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                env=child_env,
-            )
-            # Parent must close its duplicate writer so mysqlbinlog observes SIGPIPE
-            # when the mysql client exits early.
-            if p1.stdout:
-                p1.stdout.close()
-            stdout, stderr = p2.communicate()
-            p1_stderr = p1.stderr.read() if p1.stderr else b""
-            p1_rc = p1.wait()
-            if p1_rc != 0 or p2.returncode != 0:
-                details = (p1_stderr + (stderr or b"")).decode(errors="replace").strip()
-                raise RuntimeError("BINLOG APPLY FAILED{0}".format(": " + details if details else ""))
-            self.logger.info("BINLOG APPLIED SUCCESSFULLY")
-        
-        except Exception as e:
-            self.logger.error("BINLOG APPLY ERROR: {0}".format(str(e)))
+            decoder = subprocess.Popen(mysqlbinlog_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                       env=_env_for_system_subprocess())
+            processes.append(('mysqlbinlog', decoder))
+            consumer = subprocess.Popen(mysql_cmd, stdin=decoder.stdout,
+                                        stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+                                        env=_env_for_system_subprocess())
+            processes.append(('mysql', consumer))
+            # Drop the parent's duplicate so consumer failure reaches the writer.
+            decoder.stdout.close()
+            _drain_commands(processes,
+                            [('mysqlbinlog stderr', decoder.stderr, 'log'),
+                             ('mysql stderr', consumer.stderr, 'log')],
+                            self.logger, self.config.mysql_password, 'Binlog', 'replay')
+            codes = {name: process.wait() for name, process in processes}
+            self.logger.info('BINLOG REPLAY finished: mysqlbinlog_rc=%s mysql_rc=%s elapsed=%.1fs',
+                             codes['mysqlbinlog'], codes['mysql'], time.monotonic() - started)
+            if any(codes.values()):
+                raise RuntimeError('BINLOG APPLY FAILED mysqlbinlog_rc=%s mysql_rc=%s' %
+                                   (codes['mysqlbinlog'], codes['mysql']))
+            self.logger.info('BINLOG APPLIED SUCCESSFULLY')
+        except BaseException:
+            self.logger.error('BINLOG REPLAY interrupted or failed; stopping both local clients')
             raise
-    
+        finally:
+            # Includes failure to spawn the second child, SIGINT and I/O/logging errors.
+            # Kill every owned client before waiting for either one.
+            for _, process in processes:
+                if process.poll() is None:
+                    process.kill()
+            for _, process in processes:
+                process.wait()
+                for pipe in (process.stdout, process.stderr):
+                    if pipe and not pipe.closed:
+                        pipe.close()
+
     def _update_restore_plan(self, plan, plan_file, binlog_start_time, binlog_stop_time):
         """
         更新恢复计划状态
@@ -1732,19 +1806,24 @@ class BackupManager:
     @contextlib.contextmanager
     def restore_workspace(self, plan):
         """Prepare disposable copies; the raw backup chain remains reusable."""
-        with tempfile.TemporaryDirectory(prefix='restore-work-', dir=str(self.config.backup_base)) as directory:
+        directory = tempfile.TemporaryDirectory(prefix='restore-work-', dir=str(self.config.backup_base))
+        try:
             working = dict(plan)
             paths = [plan['full']] + plan['incr']
             copies = []
             for number, original in enumerate(paths):
                 source = Path(original)
-                if any(path.is_symlink() for path in source.rglob('*')):
-                    raise RuntimeError('Refusing symbolic links in the raw backup tree')
-                target = Path(directory) / str(number)
-                shutil.copytree(str(source), str(target))
+                target = Path(directory.name) / str(number)
+                with _operation_progress(self.logger, 'copy restore workspace ' + str(source)):
+                    if any(path.is_symlink() for path in source.rglob('*')):
+                        raise RuntimeError('Refusing symbolic links in the raw backup tree')
+                    shutil.copytree(str(source), str(target))
                 copies.append(str(target))
             working['full'], working['incr'] = copies[0], copies[1:]
             yield working
+        finally:
+            with _operation_progress(self.logger, 'remove restore workspace ' + directory.name):
+                directory.cleanup()
 
     def restore(self, date=None, binlog_start_time=None, binlog_stop_time=None,
                 confirm_destructive=False, confirm_replication_isolated=False):
@@ -1825,6 +1904,7 @@ class BackupManager:
         self.logger.info("MYSQL RESTORE COMPLETED SUCCESSFULLY!", extra={'to_stdout': True})
         self.logger.info("=" * 60)
     
+    @_observed_stage
     def purge(self, backup_days=15, binlog_days=30):
         """清理旧备份"""
         cutoff = datetime.now().date() - timedelta(days=backup_days)
@@ -1837,7 +1917,8 @@ class BackupManager:
         for kind in ('full', 'incr'):
             for path in (self.config.backup_base / kind).iterdir():
                 if path.is_dir() and not path.is_symlink() and re.fullmatch(r'\d{4}-\d{2}-\d{2}', path.name) and path.name < keep_from:
-                    shutil.rmtree(str(path))
+                    with _operation_progress(self.logger, 'purge ' + str(path)):
+                        shutil.rmtree(str(path))
             for name in ('latest_raw', 'latest'):
                 link = self.config.backup_base / kind / name
                 if link.is_symlink() and not link.exists():
@@ -1850,7 +1931,8 @@ class BackupManager:
                     and path.stat().st_mtime < cutoff_time):
                 if binlog.resolve() not in path.resolve().parents:
                     raise RuntimeError('Refusing purge outside the binlog archive')
-                shutil.rmtree(str(path))
+                with _operation_progress(self.logger, 'purge ' + str(path)):
+                    shutil.rmtree(str(path))
 
 
 

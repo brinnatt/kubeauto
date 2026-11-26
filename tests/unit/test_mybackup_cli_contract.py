@@ -333,16 +333,17 @@ class MyBackupCliContractTest(unittest.TestCase):
             )
 
     def test_failed_external_command_stderr_is_visible(self):
-        manager = MOD.BackupManager.__new__(MOD.BackupManager)
-        manager.config = mock.Mock()
-        manager.config.mysql_password = "secret"
-        manager.logger = mock.Mock()
-        proc = mock.Mock(returncode=1, stdout="", stderr="denied")
-        with mock.patch.object(MOD.subprocess, "run", return_value=proc), mock.patch("sys.stderr") as err:
-            with self.assertRaises(RuntimeError):
-                manager.run_cmd(["mysql", "--password=secret"])
-        err.write.assert_called()
-        manager.logger.error.assert_called_once_with("denied")
+        import io
+        import sys
+        manager = manager_for('/tmp')
+        manager.config.mysql_password = 'secret'
+        output = io.StringIO()
+        manager.logger = logging.Logger('failed-external')
+        manager.logger.addHandler(logging.StreamHandler(output))
+        with self.assertRaisesRegex(RuntimeError, 'rc=17'):
+            manager.run_cmd([sys.executable, '-c', 'import sys;print("denied secret",file=sys.stderr);sys.exit(17)'])
+        self.assertIn('denied ***', output.getvalue())
+        self.assertNotIn('secret', output.getvalue())
 
     def test_config_rejects_group_or_world_readable_password_file(self):
         with tempfile.TemporaryDirectory() as td:
@@ -655,24 +656,6 @@ class MyBackupCliContractTest(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 mgr._load_restore_plan("2026-09-11")
 
-    def test_binlog_apply_failure_is_propagated(self):
-        with tempfile.TemporaryDirectory() as td:
-            mgr = manager_for(td)
-            binlog_dir = mgr.config.backup_base / "binlog"
-            binlog_dir.mkdir(parents=True)
-            (binlog_dir / "mysql-bin.000001").write_bytes(b"x")
-            proc1 = mock.Mock(returncode=3, stderr=mock.Mock(read=lambda: b"decoder failed"))
-            proc2 = mock.Mock(returncode=0)
-            proc2.communicate.return_value = (b"", b"")
-            with mock.patch.object(mgr, "_binlog_replay_files", return_value=(123, [binlog_dir / "mysql-bin.000001"])), mock.patch.object(MOD.subprocess, "Popen", side_effect=[proc1, proc2]) as popen:
-                with self.assertRaises(RuntimeError):
-                    mgr._apply_binlog(
-                        {"binlog": ["mysql-bin.000001"]},
-                        "2026-09-11 00:00:00",
-                        None,
-                    )
-                self.assertIn("--start-position=123", popen.call_args_list[0].args[0])
-
     def test_incremental_prepare_follows_official_apply_log_only_order(self):
         with tempfile.TemporaryDirectory() as td:
             mgr = manager_for(td)
@@ -774,7 +757,7 @@ class XtraBackupStreamingTests(unittest.TestCase):
             ' print("err-%s secret-with-&-$-chars"%i,file=sys.stderr,flush=True)\n'
             'os.write(2,b"x"*65530+b"secret-with-&-$-chars"+b"y"*100000)\n'
             'os.write(2,b"\\nUTF8: \\xe7");os.write(2,b"\\x89\\xa9\\xe7\\x90\\x86\\xff\\n")\n')
-        self.assertIn('out-1999', result)
+        self.assertEqual(result, '', 'Native diagnostics must not be accumulated as return data')
         for marker in ('out-0 ', 'out-1999 ', 'err-0 ', 'err-1999 ', '物理', 'rc=0'):
             self.assertIn(marker, output)
         self.assertNotIn('secret-with-&-$-chars', output)
@@ -823,6 +806,220 @@ class XtraBackupStreamingTests(unittest.TestCase):
         self.assertIsNotNone(children[0].poll())
 
 
+class CommandObservabilityTests(unittest.TestCase):
+    def test_unwritable_log_falls_back_to_one_console_copy(self):
+        import io
+        stdout, stderr = io.StringIO(), io.StringIO()
+        with tempfile.TemporaryDirectory() as directory:
+            with mock.patch('sys.stdout', stdout), mock.patch('sys.stderr', stderr):
+                logger = MOD.setup_logger('mysqlbackup-fallback-contract', log_file=directory)
+                try:
+                    logger.info('one fallback diagnostic', extra={'to_stdout': True})
+                finally:
+                    for handler in logger.handlers[:]:
+                        logger.removeHandler(handler)
+                        handler.close()
+        self.assertEqual((stdout.getvalue() + stderr.getvalue()).count('one fallback diagnostic'), 1)
+
+    def test_logged_command_masks_sql_and_password(self):
+        result = MOD._command_description(['mysql', '--password=fixture-secret', '-e',
+                                           "SELECT 'PRIVATE_SQL_DATA';"], 'fixture-secret')
+        self.assertIn('--password=*** -e <SQL>', result)
+        self.assertNotIn('PRIVATE_SQL_DATA', result)
+        self.assertNotIn('fixture-secret', result)
+
+    def manager(self):
+        import io
+        manager = manager_for('/tmp')
+        manager.config.mysql_password = 'fixture-secret'
+        output = io.StringIO()
+        manager.logger = logging.Logger('command-observability')
+        manager.logger.addHandler(logging.StreamHandler(output))
+        return manager, output
+
+    def test_metadata_stdout_is_returned_unchanged_and_never_logged(self):
+        import sys
+        manager, output = self.manager()
+        with tempfile.TemporaryDirectory() as directory:
+            script = Path(directory) / 'metadata.py'
+            script.write_text('import sys;print("PRIVATE_SQL_DATA");print("warning fixture-secret",file=sys.stderr)')
+            result = MOD._run_external([sys.executable, str(script)], manager.logger,
+                                       manager.config.mysql_password, quiet=True)
+        self.assertEqual(result.stdout, 'PRIVATE_SQL_DATA\n')
+        self.assertIn('warning ***', output.getvalue())
+        self.assertNotIn('PRIVATE_SQL_DATA', output.getvalue())
+        self.assertNotIn('fixture-secret', output.getvalue())
+
+    def test_all_non_metadata_commands_stream_both_pipes_and_silent_commands_heartbeat(self):
+        import sys
+        manager, output = self.manager()
+        manager.run_cmd([sys.executable, '-c',
+                         'import os;os.write(1,b"stdout fixture-secret\\n"*6000);'
+                         'os.write(2,b"stderr fixture-secret\\n"*6000+b"tail")'])
+        self.assertIn('stdout ***', output.getvalue())
+        self.assertIn('stderr ***', output.getvalue())
+        self.assertIn('tail', output.getvalue())
+        self.assertNotIn('fixture-secret', output.getvalue())
+        with mock.patch.object(MOD, 'OPERATION_HEARTBEAT_SECONDS', .1):
+            manager.run_cmd([sys.executable, '-c', 'import time;time.sleep(.35)'])
+        self.assertIn('still running: phase=command pid=', output.getvalue())
+
+    def test_timeout_and_interrupt_reap_external_client(self):
+        import subprocess
+        import sys
+        manager, output = self.manager()
+        real_popen = subprocess.Popen
+        children = []
+        def spawn(*args, **kwargs):
+            child = real_popen(*args, **kwargs); children.append(child); return child
+        with mock.patch.object(MOD.subprocess, 'Popen', side_effect=spawn):
+            with self.assertRaisesRegex(RuntimeError, 'timed out'):
+                MOD._run_external([sys.executable, '-c', 'import time;time.sleep(60)'],
+                                  manager.logger, timeout=.1)
+            with self.assertRaises(KeyboardInterrupt):
+                manager.run_cmd([sys.executable, '-c',
+                                 'import os,signal,time;os.kill(os.getppid(),signal.SIGINT);time.sleep(60)'])
+        self.assertTrue(all(child.poll() is not None for child in children))
+
+    def test_filesystem_phase_heartbeat_and_failure_never_report_completion(self):
+        import time
+        import threading
+        manager, output = self.manager()
+        with mock.patch.object(MOD, 'OPERATION_HEARTBEAT_SECONDS', .03):
+            with self.assertRaisesRegex(OSError, 'copy failed'):
+                with MOD._operation_progress(manager.logger, 'archive fixture-binlog'):
+                    time.sleep(.09)
+                    raise OSError('copy failed')
+        text = output.getvalue()
+        self.assertIn('STAGE still running: archive fixture-binlog', text)
+        self.assertIn('STAGE interrupted or failed:', text)
+        self.assertNotIn('STAGE completed:', text)
+        self.assertFalse(any(t.name == 'mysqlbackup-progress' for t in threading.enumerate()))
+
+    def test_pipeline_drains_both_errors_stops_on_either_failure_and_reaps_on_interrupt(self):
+        import signal
+        import subprocess
+        import sys
+        import time
+        driver = '''import importlib.util,logging,os,sys
+from pathlib import Path
+from types import SimpleNamespace
+spec=importlib.util.spec_from_file_location('backup',sys.argv[1])
+m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+manager=m.BackupManager(SimpleNamespace(mysql_user='fixture',mysql_password='fixture-secret',mysql_socket='/fixture',native_options={}))
+manager._binlog_replay_files=lambda plan:(123,[Path('/fixture/mysql-bin.000001')])
+m.OPERATION_HEARTBEAT_SECONDS=.1
+manager._apply_binlog({},'2099-01-01 00:00:00',None)
+'''
+        for case in ('large', 'producer-failure', 'consumer-failure', 'consumer-missing', 'interrupt', 'silent'):
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                producer = ('import os,pathlib,sys,time,signal\n'
+                            'root=pathlib.Path(os.environ["PIPE_FIXTURE"])\n'
+                            '(root/"producer.pid").write_text(str(os.getpid()))\n')
+                consumer = ('import os,pathlib,sys,time\n'
+                            'root=pathlib.Path(os.environ["PIPE_FIXTURE"])\n'
+                            '(root/"consumer.pid").write_text(str(os.getpid()))\n')
+                if case == 'large':
+                    producer += 'os.write(2,b"producer fixture-secret\\n"*12000);os.write(1,b"PRIVATE_SQL_DATA\\n"*12000)\n'
+                    consumer += 'os.write(2,b"consumer fixture-secret\\n"*12000);data=sys.stdin.buffer.read();print("PRIVATE_SQL_RESULT");assert data.startswith(b"PRIVATE_SQL_DATA")\n'
+                elif case == 'producer-failure':
+                    producer += 'sys.stderr.write("decoder tail fixture-secret");sys.exit(23)\n'
+                    consumer += 'sys.stdin.read();time.sleep(60)\n'
+                elif case == 'consumer-failure':
+                    producer += 'while True: os.write(1,b"sql"*10000)\n'
+                    consumer += 'sys.stderr.write("consumer tail fixture-secret");sys.exit(17)\n'
+                elif case == 'interrupt':
+                    producer += 'while not (root/"consumer.pid").exists(): time.sleep(.01)\nos.kill(os.getppid(),signal.SIGINT);time.sleep(60)\n'
+                    consumer += 'sys.stdin.read();time.sleep(60)\n'
+                elif case == 'silent':
+                    producer += 'time.sleep(.5);print("PRIVATE_SQL_DATA")\n'
+                    consumer += 'sys.stdin.read()\n'
+                else:
+                    producer += 'time.sleep(60)\n'
+                for name, code in (('mysqlbinlog', producer), ('mysql', consumer)):
+                    if name == 'mysql' and case == 'consumer-missing':
+                        continue
+                    path = root / name; path.write_text('#!' + sys.executable + '\n' + code); path.chmod(0o755)
+                env = dict(os.environ, PATH=str(root), PIPE_FIXTURE=directory,
+                           MYSQLBACKUP_LOG_FILE=str(root / 'product.log'))
+                with subprocess.Popen([sys.executable, '-B', '-c', driver,
+                                       str(ROOT / 'tools/mysqltools/MyBackupCli.py')],
+                                      env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                      start_new_session=True) as child:
+                    try:
+                        data = child.communicate(timeout=5)[0].decode(errors='replace')
+                    except subprocess.TimeoutExpired:
+                        os.killpg(child.pid, signal.SIGKILL)
+                        child.communicate()
+                        self.fail('Pipeline blocked: ' + case)
+                self.assertEqual(child.returncode == 0, case in ('large', 'silent'), data[-1500:])
+                for path in root.glob('*.pid'):
+                    with self.assertRaises(ProcessLookupError):
+                        os.kill(int(path.read_text()), 0)
+                for text in (data, (root / 'product.log').read_text()):
+                    self.assertNotIn('fixture-secret', text)
+                    self.assertNotIn('PRIVATE_SQL_DATA', text)
+                    self.assertNotIn('PRIVATE_SQL_RESULT', text)
+                if case == 'large':
+                    self.assertIn('producer ***', data); self.assertIn('consumer ***', data)
+                    self.assertIn('mysqlbinlog_rc=0 mysql_rc=0', data)
+                elif case == 'producer-failure':
+                    self.assertIn('decoder tail ***', data); self.assertIn('mysqlbinlog_rc=23', data)
+                elif case == 'consumer-failure':
+                    self.assertIn('consumer tail ***', data); self.assertIn('mysql_rc=17', data)
+                elif case == 'silent':
+                    self.assertIn('Binlog still running: phase=replay', data)
+
+    def test_configuration_mysql_diagnostic_is_visible_before_exit_without_sql_data(self):
+        import selectors
+        import subprocess
+        import sys
+        import time
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            binary = root / 'bin'; binary.mkdir()
+            mysql = binary / 'mysql'
+            mysql.write_text('#!' + sys.executable + '\nimport os,pathlib,sys,time\n'
+                             'root=pathlib.Path(os.environ["COMMAND_FIXTURE"])\n'
+                             'print("connection diagnostic fixture-secret",file=sys.stderr,flush=True)\n'
+                             '(root/"ready").touch()\n'
+                             'while not (root/"release").exists(): time.sleep(.02)\n'
+                             'print("8.0.33 PRIVATE_SQL_RESULT")\n')
+            mysql.chmod(0o755)
+            config = root / 'backup.json'
+            config.write_text(json.dumps({'backup_base': str(root / 'backup'),
+                                          'mysql_password': 'fixture-secret'}))
+            config.chmod(0o600)
+            env = dict(os.environ, PATH=str(binary) + ':' + os.environ['PATH'],
+                       MYSQLBACKUP_LOG_FILE=str(root / 'product.log'), COMMAND_FIXTURE=directory)
+            with subprocess.Popen([sys.executable, '-B', str(ROOT / 'tools/mysqltools/MyBackupCli.py'),
+                                   'purge', '-c', str(config)], stdout=subprocess.PIPE,
+                                  stderr=subprocess.STDOUT, env=env) as child:
+                captured = b''
+                try:
+                    with selectors.DefaultSelector() as selector:
+                        selector.register(child.stdout, selectors.EVENT_READ)
+                        deadline = time.monotonic() + 2
+                        while b'connection diagnostic' not in captured and time.monotonic() < deadline:
+                            for key, _ in selector.select(.05):
+                                block = os.read(key.fd, 65536)
+                                if not block:
+                                    break
+                                captured += block
+                    self.assertIn(b'connection diagnostic ***', captured,
+                                  'Configuration mysql diagnostics hidden until child exit')
+                    self.assertIsNone(child.poll())
+                    self.assertIn('connection diagnostic ***', (root / 'product.log').read_text())
+                finally:
+                    (root / 'release').touch()
+                    captured += child.communicate(timeout=5)[0]
+                self.assertEqual(child.returncode, 0, captured.decode(errors='replace'))
+                self.assertNotIn(b'fixture-secret', captured)
+                self.assertNotIn(b'PRIVATE_SQL_RESULT', captured)
+                self.assertNotIn('PRIVATE_SQL_RESULT', (root / 'product.log').read_text())
+
+
 class NativeAndCapabilityTests(unittest.TestCase):
     def test_capability_uses_actual_help_and_not_mysql_version(self):
         manager = manager_for('/tmp')
@@ -833,20 +1030,24 @@ class NativeAndCapabilityTests(unittest.TestCase):
         ):
             manager.config.xtrabackup_lock_ddl = 'AUTO'
             proc = mock.Mock(returncode=0, stdout=help_text, stderr='')
-            with mock.patch.object(MOD.subprocess, 'run', return_value=proc):
+            with mock.patch.object(MOD, '_run_external', return_value=proc):
                 self.assertEqual(manager.backup_lock_ddl(), expected)
         manager.config.xtrabackup_lock_ddl = 'REDUCED'
-        with mock.patch.object(MOD.subprocess, 'run', return_value=mock.Mock(returncode=0, stdout='--lock-ddl boolean', stderr='')):
+        with mock.patch.object(MOD, '_run_external', return_value=mock.Mock(returncode=0, stdout='--lock-ddl boolean', stderr='')):
             with self.assertRaisesRegex(RuntimeError, 'does not advertise'):
                 manager.backup_lock_ddl()
 
     def test_success_stderr_is_logged_and_secret_is_redacted(self):
+        import io
+        import sys
         manager = manager_for('/tmp')
         manager.config.mysql_password = 's3cret'
-        manager.logger = mock.Mock()
-        with mock.patch.object(MOD.subprocess, 'run', return_value=mock.Mock(returncode=0, stdout='', stderr='warning s3cret ignored')):
-            manager.run_cmd(['mysql', '--version'])
-        manager.logger.info.assert_any_call('warning *** ignored')
+        output = io.StringIO()
+        manager.logger = logging.Logger('successful-external')
+        manager.logger.addHandler(logging.StreamHandler(output))
+        manager.run_cmd([sys.executable, '-c', 'import sys;print("warning s3cret ignored",file=sys.stderr)'])
+        self.assertIn('warning *** ignored', output.getvalue())
+        self.assertNotIn('s3cret', output.getvalue())
 
     def test_native_args_kwargs_repeat_and_target_isolation(self):
         self.assertEqual(MOD.native_arguments('mysql', '--ssl-mode=VERIFY_IDENTITY', connect_timeout=15),
@@ -915,7 +1116,7 @@ class NativeAndCapabilityTests(unittest.TestCase):
             (1, '  --lock-ddl[=name] ON OFF REDUCED\n', None),
             (2, 'Usage: xtrabackup\n  --lock-ddl bool\n', None),
         ):
-            with mock.patch.object(MOD.subprocess, 'run', return_value=mock.Mock(returncode=returncode, stdout=text, stderr='')):
+            with mock.patch.object(MOD, '_run_external', return_value=mock.Mock(returncode=returncode, stdout=text, stderr='')):
                 if expected:
                     self.assertEqual(manager.backup_lock_ddl(), expected)
                 else:

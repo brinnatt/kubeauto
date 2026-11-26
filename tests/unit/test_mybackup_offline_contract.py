@@ -25,7 +25,7 @@ class OfflineRestoreContracts(unittest.TestCase):
                  'log-bin':str(root/'logs/mysql-bin'),'log-bin-index':str(root/'logs/mysql-bin.index'),
                  'skip-replica-start':'TRUE','super-read-only':'TRUE','gtid-mode':'ON'}
         options.update(changes)
-        def command(argv,**kwargs):
+        def command(argv,*args,**kwargs):
             if argv[:3]==['systemctl','show','--property=ExecStart']:
                 stdout='{ path=/usr/sbin/mysqld ; argv[]=/usr/sbin/mysqld --defaults-file='+str(root/'my.cnf')+' ; ignore_errors=no ; pid=0 ; }\n'
                 return mock.Mock(returncode=0,stdout=stdout)
@@ -39,7 +39,7 @@ class OfflineRestoreContracts(unittest.TestCase):
     def test_offline_config_uses_real_unit_binary_and_never_queries_sql(self):
         with tempfile.TemporaryDirectory() as directory:
             path=self.config(directory)
-            with mock.patch.object(MOD.subprocess,'run',side_effect=self.commands(directory)), mock.patch.object(MOD.Config,'_mysql_cmd',side_effect=AssertionError('SQL accessed')):
+            with mock.patch.object(MOD,'_run_external',side_effect=self.commands(directory)), mock.patch.object(MOD.Config,'_mysql_cmd',side_effect=AssertionError('SQL accessed')):
                 config=MOD.Config(str(path),offline=True)
             self.assertEqual(config.mysql_version,(8,0)); self.assertEqual(config.mysql_version_text,'8.0.33')
             self.assertEqual(config.offline_state['gtid'],'ON')
@@ -50,21 +50,21 @@ class OfflineRestoreContracts(unittest.TestCase):
                 path=self.config(directory,**updates)
                 with self.assertRaises(SystemExit): MOD.Config(str(path),offline=True)
             path=self.config(directory)
-            with mock.patch.object(MOD.subprocess,'run',side_effect=self.commands(directory,datadir='/wrong')):
+            with mock.patch.object(MOD,'_run_external',side_effect=self.commands(directory,datadir='/wrong')):
                 with self.assertRaises(SystemExit): MOD.Config(str(path),offline=True)
 
     def test_replica_requires_both_persistent_startup_guards(self):
         with tempfile.TemporaryDirectory() as directory:
             path=self.config(directory)
             for key in ('skip-replica-start','super-read-only'):
-                with mock.patch.object(MOD.subprocess,'run',side_effect=self.commands(directory,**{key:'FALSE'})):
+                with mock.patch.object(MOD,'_run_external',side_effect=self.commands(directory,**{key:'FALSE'})):
                     with self.assertRaises(SystemExit): MOD.Config(str(path),offline=True)
 
     def test_persisted_configuration_cannot_override_startup_guard(self):
         with tempfile.TemporaryDirectory() as directory:
             path=self.config(directory); data=Path(directory)/'data'; data.mkdir()
             (data/'mysqld-auto.cnf').write_text(json.dumps({'Version':2,'mysql_dynamic_variables':{'super_read_only':{'Value':'OFF'}}}))
-            with mock.patch.object(MOD.subprocess,'run',side_effect=self.commands(directory)):
+            with mock.patch.object(MOD,'_run_external',side_effect=self.commands(directory)):
                 with self.assertRaises(SystemExit): MOD.Config(str(path),offline=True)
 
     def test_wrapper_or_active_target_is_refused_before_help(self):
@@ -72,12 +72,12 @@ class OfflineRestoreContracts(unittest.TestCase):
             path=self.config(directory)
             for wrapper in (True,False):
                 command=self.commands(directory)
-                def execute(argv,**kwargs):
+                def execute(argv,*args,**kwargs):
                     result=command(argv,**kwargs)
                     if wrapper and argv[:2]==['systemctl','show']: result.stdout=result.stdout.replace(' --defaults-file',' --extra --defaults-file')
                     if not wrapper and argv[:2]==['systemctl','is-active']: result.returncode=0
                     return result
-                with mock.patch.object(MOD.subprocess,'run',side_effect=execute):
+                with mock.patch.object(MOD,'_run_external',side_effect=execute):
                     with self.assertRaises(SystemExit): MOD.Config(str(path),offline=True)
 
     def test_offline_metadata_checks_exact_patch_gtid_and_topology(self):

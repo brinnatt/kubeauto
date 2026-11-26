@@ -1,12 +1,12 @@
 {
-  "date": "2026-11-25",
+  "date": "2026-11-26",
   "result": "author-reviewed",
   "scope": "Incremental MyBackupCli container/native standalone/primary-replica/asynchronous dual-primary configuration and recovery documentation. Author content and reader-path review; not customer sign-off, not product final acceptance, no combined tool image delivery.",
   "checks": [
     {
       "requirement": "配置默认值、空值、消费者和后果",
       "section": "operations-manual.md#选择配置及理解空值；mybackup.conf.example全部17项",
-      "basis": "Config实际默认值与校验、native_options拒绝集合；当前162项preflight",
+      "basis": "Config实际默认值与校验、native_options拒绝集合；本轮165项preflight及103项聚焦合同",
       "defect": "旧配置缺少topology/defaults-file语义；账号空值、socket不自动推导、threads及use_memory约束不清",
       "fix_and_recheck": "已补_comment_*与角色表；标准JSON逐项解析，17项实际字段均有相邻注释",
       "reviewer": "Codex author review",
@@ -128,16 +128,26 @@
       "fix_and_recheck": "明确默认终端/文件实时输出、30秒静默心跳、轮转边界、阶段rc和工具最终成功区别；新增命令经bash -n，原有图形未改",
       "reviewer": "Codex author review",
       "result": "closed"
+    },
+    {
+      "requirement": "所有命令、数据管道与文件长阶段观测",
+      "section": "operations-manual.md#观察物理备份与恢复进度",
+      "basis": "CPython3.12 subprocess/selectors原有官方文档与源码；当前103合同；当前冻结8.4恢复证据另由所属记录核验",
+      "defect": "前次仅XtraBackup流式，其它命令诊断缓存；回放错误管道读取顺序可能死锁；文件长阶段无心跳",
+      "fix_and_recheck": "新增逐操作表、SQL与元数据不入日志、双端回放退出码/失败停止、文件心跳及本地客户端中断边界；正文与代码逐项核对，全部原命令和图形逐字未变，复用原静态和渲染依据；文件不可写的单份stderr回退已用真实CLI合同验证，停启探测的连接拒绝须结合阶段及最终读回解释。",
+      "reviewer": "Codex author review",
+      "result": "closed"
     }
   ],
   "files": {
-    "tools/mysqltools/operations-manual.md": "995f6210e9d9218b8941a2d021fb0b752ae543c8d88c64dfaac03b970d499bd5",
-    "tools/mysqltools/mybackup.conf.example": "07836fde22223f81e95529a94226fbba8392359e80f46ca0b2740d4fff3474a7"
+    "tools/mysqltools/operations-manual.md": "a9b0bb27d02f3d9612a1507ec21b1963d073fbd724c64107d8c305928bf42c42",
+    "tools/mysqltools/mybackup.conf.example": "07836fde22223f81e95529a94226fbba8392359e80f46ca0b2740d4fff3474a7",
+    "logs/mybackup-command-observability-20261126/documentation-static.json": "c892e5919719225247893233b36b8a65f793c6bc37f39749308f8d026f0ebe79"
   },
   "operational_evidence": {
-    "tests/evidence/mysql80-binary-standalone.json": "0084c4a949ff1cb3162b83d347ec7ba73a7e6e33cb4aadbd45151b503d52e55a",
-    "tests/evidence/mysql80-binary-primary-replica.json": "35707b40bcfa16d559f68ac5306c24c04b39ec0397ceb613e1e6fac22c1aaa7f",
-    "tests/evidence/mysql80-binary-dual-primary.json": "31565338f571e04ba0d12c1113e4ac98fdadc534d06c7c6547a052c86f6fcd0e"
+    "tests/evidence/mysql80-binary-standalone.json": "ed88c00d33a627ec42dfc69af00f2fa813af3d92c8ce8a6d8b1b5e97348994ee",
+    "tests/evidence/mysql80-binary-primary-replica.json": "2404f88c13033e717e87c3340a173adb747c28a3f42df89c36b0cdba01c99bd6",
+    "tests/evidence/mysql80-binary-dual-primary.json": "16e4a730444db6a19c93199bbb6ce179d44c134fd588523491d5f1d09db4e7a6"
   },
   "review_artifacts": {
     "logs/mysql80-documentation-native-20261125/current-static-check.json": "52e9bd4aeefd88e7a35dd6b7161cb3d826cd19c6e5bc7848798d2cf7b2330ce7",
@@ -178,7 +188,7 @@
     "mechanism_development": "PXB8.0.35-36 pxb80.cc and backup_copy/backup_mysql source; MySQL8.0.33 mysqld.cc/mysqlbinlog.cc; Docker bind/stop/start interface.",
     "coverage_record": "logs/mysql80-official-20261125/80-official-records.json",
     "limits": "Incremental dependency-interface review only; no claim of full independent MySQL/PXB manual corpus or customer review.",
-    "logging": "Python 3.12 subprocess/selectors API: concurrent draining, process wait/reaping; exact installed CPython3.12.14 subprocess.run source reviewed. Current streaming uses standard-library selectors and incremental UTF-8 decoding."
+    "logging": "Reuse unchanged Python3.12 subprocess/selectors docs and installedCPython3.12.14 source: pipe capacity/deadlock, concurrent drain, process exit/reaping and non-buffered diagnostics; incrementally review same interface for every command and both replay processes. Thread Event wait/stop keeps filesystem observation separate from copy semantics."
   },
   "previous_review": {
     "path": "logs/mysql80-documentation-native-20261125/previous-author-review.json",
@@ -188,6 +198,7 @@
     "Dependency-interface research; not a claim of reading the full MySQL/PXB product manual corpus.",
     "Native topology focused evidence is accepted; final clean run remains separately gated by TL-MBK-13. Current container proof is independently required by TL-MBK-07～09; this author check does not accept it.",
     "Self-provided combined-image template was not executed verbatim; actual test composition and prerequisites are stated explicitly.",
-    "19 bash syntax checks, 4 JSON blocks, local links/anchors, 17 key comments and 2 unchanged rendered diagrams verified; 3 SQL templates read against pinned syntax and require real deployment substitutions."
+    "19 bash syntax checks, 4 JSON blocks, local links/anchors, 17 key comments and 2 unchanged rendered diagrams verified; 3 SQL templates read against pinned syntax and require real deployment substitutions.",
+    "Current local103 all-command observability contracts accepted. Current frozen native standalone, primary-replica and asynchronous dual-primary focused records each accept eight exact OS/version/GTID combinations; operational_evidence hashes bind those owning records. Final clean acceptance is separately gated by TL-MBK-13."
   ]
 }
