@@ -479,14 +479,14 @@ validate 在 host/both 时也必须带齐上述项，否则子命令会直接报
   %(prog)s --context prod nodes
   %(prog)s --context prod --executor calicoctl validate \\
       --traffic-layer host \\
-      -a 172.20.0.0/16 -a 192.168.125.0/24 -a 10.234.0.0/16 -a 2001:db8:nodes::/64 \\
+      -a 172.20.0.0/16 -a 192.168.125.0/24 -a 10.234.0.0/16 -a 2001:db8:10::/64 \\
       --port 9100 \\
       --interface eth0 \\
       --include-external-ip \\
       --hep-profile projectcalico-default-allow
   %(prog)s --context prod --executor calicoctl plan \\
       --traffic-layer host \\
-      -a 172.20.0.0/16 -a 192.168.125.0/24 -a 10.234.0.0/16 -a 2001:db8:nodes::/64 \\
+      -a 172.20.0.0/16 -a 192.168.125.0/24 -a 10.234.0.0/16 -a 2001:db8:10::/64 \\
       --port 9100 \\
       --policy-name myorg-host-tcp-9100 \\
       --hep-prefix myorg-hep \\
@@ -499,7 +499,7 @@ validate 在 host/both 时也必须带齐上述项，否则子命令会直接报
   # 若集群已配置 Calico/Enterprise Tier，在上一行 plan 末尾追加： --gnp-tier <现网Tier名>
   %(prog)s --context prod --executor calicoctl apply --confirm --backup --apply-staged --post-verify \\
       --traffic-layer host \\
-      -a 172.20.0.0/16 -a 192.168.125.0/24 -a 10.234.0.0/16 -a 2001:db8:nodes::/64 \\
+      -a 172.20.0.0/16 -a 192.168.125.0/24 -a 10.234.0.0/16 -a 2001:db8:10::/64 \\
       --port 9100 \\
       --policy-name myorg-host-tcp-9100 \\
       --hep-prefix myorg-hep \\
@@ -540,7 +540,7 @@ validate 在 host/both 时也必须带齐上述项，否则子命令会直接报
       -n monitoring \\
       --pod-label app.kubernetes.io/name=prometheus-node-exporter \\
       --pod-label app.kubernetes.io/component=metrics \\
-      -a 172.20.0.0/16 -a 192.168.125.0/24 -a 2001:db8:prom::/64 \\
+      -a 172.20.0.0/16 -a 192.168.125.0/24 -a 2001:db8:20::/64 \\
       --port 9100 \\
       --k8s-np-name myorg-pod-tcp-9100
   %(prog)s --context prod plan \\
@@ -548,7 +548,7 @@ validate 在 host/both 时也必须带齐上述项，否则子命令会直接报
       -n monitoring \\
       --pod-label app.kubernetes.io/name=prometheus-node-exporter \\
       --pod-label app.kubernetes.io/component=metrics \\
-      -a 172.20.0.0/16 -a 192.168.125.0/24 -a 2001:db8:prom::/64 \\
+      -a 172.20.0.0/16 -a 192.168.125.0/24 -a 2001:db8:20::/64 \\
       --port 9100 \\
       --k8s-np-name myorg-pod-tcp-9100
   %(prog)s --context prod apply --dry-run=server \\
@@ -556,7 +556,7 @@ validate 在 host/both 时也必须带齐上述项，否则子命令会直接报
       -n monitoring \\
       --pod-label app.kubernetes.io/name=prometheus-node-exporter \\
       --pod-label app.kubernetes.io/component=metrics \\
-      -a 172.20.0.0/16 -a 192.168.125.0/24 -a 2001:db8:prom::/64 \\
+      -a 172.20.0.0/16 -a 192.168.125.0/24 -a 2001:db8:20::/64 \\
       --port 9100 \\
       --k8s-np-name myorg-pod-tcp-9100
   %(prog)s --context prod apply --confirm --backup --post-verify \\
@@ -564,7 +564,7 @@ validate 在 host/both 时也必须带齐上述项，否则子命令会直接报
       -n monitoring \\
       --pod-label app.kubernetes.io/name=prometheus-node-exporter \\
       --pod-label app.kubernetes.io/component=metrics \\
-      -a 172.20.0.0/16 -a 192.168.125.0/24 -a 2001:db8:prom::/64 \\
+      -a 172.20.0.0/16 -a 192.168.125.0/24 -a 2001:db8:20::/64 \\
       --port 9100 \\
       --k8s-np-name myorg-pod-tcp-9100 \\
       --backup-dir /tmp/calico-fw-backup

@@ -3192,6 +3192,14 @@ def show_examples():
 Kubernetes 备份 / 恢复工具
 ================================================================================
 
+【数据与执行边界】
+  本工具导出/恢复 Kubernetes API 配置对象；PV/PVC 清单不包含卷内数据，也不是 etcd 快照。
+  数据库和持久卷数据须使用所属备份工具，恢复应用前核对数据恢复点。
+  kubeconfig、备份目录和 tar 均为执行端路径；容器须显式挂载配置/归档及所需凭据。
+  显式 --kubeconfig 或 --context 时使用 kubeconfig；两者都未指定才尝试 in-cluster，失败后用当前 context。
+  生产推荐同时指定 --kubeconfig 与 --context，执行前核对目标身份。
+  子命令完整参数：KubeBackupCli backup --help / KubeBackupCli restore --help。
+
 【子命令】
   backup   从集群导出资源到本地目录（可选打 tar.gz）
   restore  从备份目录写回集群（可选映射命名空间 / 镜像 / 环境变量）
@@ -3202,7 +3210,7 @@ Kubernetes 备份 / 恢复工具
   --debug             更详细的日志
   --dry-run           演练模式
                         · backup：仍会调用 API 列举资源；不创建备份子目录、不写 YAML、不写 backup-metadata.json、
-                          不生成 tar、不做备份后校验（全程不落盘）
+                          不生成 tar、不做备份后校验；仍可能写本地日志
                         · restore：不执行 server-side apply，仅打日志，集群内对象不变
                         例：backup --dry-run 结束后不应出现新的 backup-* 空目录；restore --dry-run 仅见 [模拟运行] 恢复日志。
 
@@ -4017,9 +4025,8 @@ def main():
 
     # 显示帮助信息
     if args.help or not args.command:
+        parser.print_help()
         show_examples()
-        if not args.help:
-            parser.print_help()
         sys.exit(0)
 
     # 设置日志级别

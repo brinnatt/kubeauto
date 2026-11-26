@@ -86,7 +86,7 @@ case "${1:---preflight}" in
       tests.unit.test_subprocess_environment_contract tests.unit.test_mysql_backup_gate_contract \
       tests.unit.test_mybackup_replication_contract tests.unit.test_mysql80_binary_artifact_contract \
       tests.unit.test_mybackup_offline_contract tests.unit.test_mysql80_binary_live_contract tests.unit.test_mybackup_native_build_contract \
-      tests.unit.test_tools_execution_inventory_contract tests.unit.test_tools_evidence_dependency_contract \
+      tests.unit.test_tools_execution_inventory_contract tests.unit.test_tools_help_contract tests.unit.test_tools_evidence_dependency_contract \
       tests.unit.test_mysql80_evidence_dependency_contract tests.unit.test_mybackup_legacy_handoff_contract \
       tests.unit.test_tools_api_fixture_contract \
       tests.unit.test_publish_load_fixture_contract tests.unit.test_mysql80_recovery_contract \

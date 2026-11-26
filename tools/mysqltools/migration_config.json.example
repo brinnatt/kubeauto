@@ -1,6 +1,6 @@
 {
   "_documentation": {
-    "_note": "本段仅作说明，程序运行时忽略。完整手册: python MigrationCli.py --guide",
+    "_note": "本段仅作说明，程序运行时忽略。完整手册: python3 MigrationCli.py --guide。下列版本路径是配置示意，不代表各组合已实测；当前回归版本为 8.0.46 / 8.4.4 / 9.2.0。",
     "version_model": {
       "reference": "https://dev.mysql.com/doc/refman/8.4/en/mysql-releases.html",
       "lts": ["8.0.x (Bugfix)", "8.4.x (LTS)"],

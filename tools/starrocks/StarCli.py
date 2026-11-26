@@ -4012,6 +4012,16 @@ def _run_remote_deploy(
 def show_examples():
     """显示使用示例"""
     examples = """
+执行与配置边界:
+  交付命令名为 StarCli；下文 starcli 为运维安装时可选的小写别名。
+  源码运行 python3 tools/starrocks/StarCli.py；冻结程序直接执行，不能交给 Python 解释器。
+  --target-host 指向目标节点：路径、归档、Java、systemd 均在目标机核验；
+  源码远程交接需要目标 Python 及依赖，冻结程序需要匹配 OS/架构与外部命令。
+  JSON 与 CLI 的优先级按字段实现，不能笼统认为 CLI 总优先：deploy、starrocks_home、
+  target_host、SSH 及部分 root_password 路径优先使用非空 JSON；端口/目录等多数部署项优先 CLI。
+  生产不要在两处填写冲突值；布尔关闭项须按对应开关/JSON 的说明使用。
+  --clean/--force 会清理所属部署和数据，操作前独立备份并核对节点身份。
+
 使用示例:
 
 1. 部署单个FE节点（Leader）:
@@ -4199,7 +4209,7 @@ def show_examples():
          --root-password your_password
 
 17. 远程部署BE节点（默认本地，指定远程主机）:
-   # 注意：远程主机必须已安装 starcli 到系统 PATH（如 /usr/local/bin/starcli）
+   # 远端优先使用 PATH 中的 starcli；没有时上传本次源码或冻结程序，须满足对应运行依赖
    starcli \\
         --deploy be \\
         --starrocks-home /opt/starrocks \\
@@ -4504,6 +4514,7 @@ def main():
     args = parser.parse_args()
 
     if args.help:
+        parser.print_help()
         show_examples()
         return
 

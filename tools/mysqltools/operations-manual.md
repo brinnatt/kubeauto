@@ -7,6 +7,7 @@
 | 要完成的任务 | 入口 |
 | --- | --- |
 | 查看普通命令及常用示例 | `MyBackupCli --help`、`MyLogiBackupCli --help` |
+| 输出完整带注释 JSON、核对默认值与空字符串 | `MyBackupCli --help-config`；与 [mybackup.conf.example](mybackup.conf.example) 一致，无需连接数据库 |
 | 二进制单机、主从及异步双主的配置与恢复边界 | [二进制部署与复制](#二进制部署主从与异步双主) |
 | 为单 MySQL 容器配置物理备份 | [执行位置与路径](#物理备份执行位置与路径) |
 | 完成全备、增量和恢复演练 | [物理备份与恢复主线](#物理备份与恢复主线) |
@@ -17,6 +18,8 @@
 | 临时添加参数 | [命令行使用](#命令行使用) |
 | 保存参数供以后使用 | [配置与定时任务](#配置与定时任务) |
 | 参数被拒绝或上游报错 | [失败判断与恢复](#失败判断与恢复) |
+
+`MyBackupCli -c` 不填时使用程序默认配置，不会自动加载 `/etc/mysql/backup.conf`；生产应显式传入配置路径。`--help-config` 可直接从独立程序输出完整 JSON，包括容器、binlog 目录/index、拓扑、停机恢复及原生参数说明。普通 `--help` 保留场景选择和常用命令。更新源码不会更新已安装的冻结程序；应按交付清单 SHA256 核对实际文件，不能仅凭帮助外观判断版本。其它独立工具的配置规则见 [统一入口](../operations-manual.md)。
 
 ## 物理备份执行位置与路径
 
@@ -391,6 +394,36 @@ MYSQL_HISTFILE=/dev/null mysql --socket="$MYSQL_SOCKET" -uroot -p
 国内制品入口也须核对精确版本与 ABI。华为 Downloads 地址不是“所有 MySQL 版本均存在”的保证。只有 EL9 的包不能作为 Rocky 8.10 的兼容证据；下载由固定 runner 以国内 HTTPS 源、可信摘要和原子替换管理，缺包、摘要不符或境外重定向时应在现场变更前拒绝，不关闭校验或换相近版本继续。
 
 机制依据：[固定版本 Percona 复制环境备份](https://github.com/percona/pxb-docs/blob/f8a15e8e73028742f92f63bddb6fe365bca5e311/docs/make-backup-in-replication-env.md)、[固定 PXB 8.0.35-36 复制检查实现](https://github.com/percona/percona-xtrabackup/blob/percona-xtrabackup-8.0.35-36/storage/innobase/xtrabackup/src/backup_mysql.cc)、[MySQL 复制启动参数](https://dev.mysql.com/doc/refman/8.0/en/replication-options-replica.html)、[CHANGE REPLICATION SOURCE TO](https://docs.oracle.com/cd/E17952_01/mysql-8.0-en/change-replication-source-to.html)、[GTID 自动定位](https://docs.oracle.com/cd/E17952_01/mysql-8.0-en/replication-gtids-auto-positioning.html)、[RESET REPLICA](https://docs.oracle.com/cd/E17952_01/mysql-8.0-en/reset-replica.html)、[MySQL 8.0.33 UUID 初始化源码](https://github.com/mysql/mysql-server/blob/mysql-8.0.33/sql/mysqld.cc)。
+
+## 逻辑备份的执行环境与定时配置
+
+MyLogiBackupCli 是另一个独立工具，通过 `mysqldump` 导出 SQL，不读取 MyBackupCli 的 JSON，也没有 `restore` 子命令。当前回归使用 MySQL 8.0.46、8.4.4、9.2.0；连接检查要求 `mysql`、`mysqldump` 与服务端主次版本相同。新版本不能仅因版本号被识别就视为已验收。
+
+默认通过 `/usr/local/bin` 下的客户端和 `mysql-backup` 登录路径连接数据库；凭据文件为 `/root/.mylogin.cnf`，须 root 所有、权限 `0600`。备份根 `/backups` 必须是独立挂载点，每个备份范围最多保留三个成功归档；这是按数量轮换，与 MyBackupCli 的 `purge --backup-days/--binlog-days` 无关。空间检查不是容量承诺，应预留 SQL 临时文件、压缩和校验期间的峰值空间。
+
+从帮助进入选定任务，设置登录路径时交互输入密码：
+
+```bash
+MyLogiBackupCli setup-login --help
+MyLogiBackupCli preflight --help
+MyLogiBackupCli backup --help
+MyLogiBackupCli timer install --help
+```
+
+`setup-login` 需要显式填写真实主机、端口和账号。preflight 不修改数据库，但会在备份挂载下创建实例目录并将权限设为 `0700`，也会写本地日志；它不是完全无文件副作用的检查。先通过 preflight，再执行 backup；选择数据库使用 `--database`，排除使用 `--exclude-database`。默认不排除 MySQL 账号库；系统信息库的处理以 preflight 列出的实际范围为准。备份失败不会发布成功归档，先修复首个错误并核对空间、凭据及 DDL 窗口，再重新备份；SQL 导入后的数据读回由恢复操作者完成。
+
+| 环境变量 | 未设置时的默认值 | 谁使用、留空会怎样 |
+| --- | --- | --- |
+| `MYLOGI_MYSQL_BIN` / `MYLOGI_MYSQLDUMP_BIN` | `/usr/local/bin/mysql` / `/usr/local/bin/mysqldump` | 执行端原生客户端；空字符串不回退默认，不能用来禁用检查 |
+| `MYLOGI_MYSQL_CONFIG_EDITOR` | `/usr/local/bin/mysql_config_editor` | setup-login 的客户端；不等于数据库服务进程 |
+| `MYLOGI_BACKUP_MOUNT` | `/backups` | 备份/前置检查的实际独立挂载点；容器必须真实挂载 |
+| `MYLOGI_LOGIN_FILE` | `/root/.mylogin.cnf` | 执行账户的凭据文件；容器必须可见，不能仅挂载 MySQL 数据目录 |
+| `MYLOGI_LOCK_FILE` | `/run/lock/mysql_backup.lock` | 执行端互斥锁；同一套备份任务应使用同一个锁 |
+| `MYLOGI_LOG_FILE` | `/var/log/mysql_backup.log` | 执行端日志文件；按实际配置核对权限 |
+
+这些环境变量必须在进程启动前设置，不要设为空字符串。工具容器执行一次性备份须具备 root 凭据、原生客户端和独立挂载；timer 管理则需要实际 systemd，不能把普通容器当宿主机。
+
+`timer install` 把本次声明的库范围、压缩和原生参数写入 service，不继承先前 backup 的参数，也不把调用 shell 的临时 `MYLOGI_*` 环境覆盖写入 service。如果手工备份依赖非默认路径，先为 service 配置明确的 systemd 环境覆盖并核验生成的 `ExecStart`，再启用定时运行。`timer status` 检查定时器状态；它不证明上一次业务备份成功，还需检查 journal 和 `MYSQL_BACKUP_OK`。原生参数保存示例见 [配置与定时任务](#配置与定时任务)。
 
 ## 先选择参数要交给谁
 

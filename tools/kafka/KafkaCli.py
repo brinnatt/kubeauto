@@ -4911,6 +4911,7 @@ Apache Kafka（KRaft）运维脚本：在 --kafka-home 下调用发行版 bin/ka
   · --status / --metrics 系列：只读，天然可重复。
   · --clean：卸载（删 unit 与生成配置），非部署；抹数据须 --clean-data 或与 --clean/--clean-first 联用 --force。
   · --force：单独部署一般不需要；主要用于与 --clean / --clean-first 联用时删除磁盘数据。
+【执行环境】发行版 bin/kafka-*.sh、Java、数据目录与 systemd 属于实际执行节点。源码远程交接需目标 Python 和依赖；冻结程序直接执行，需匹配 OS/架构。工具容器不隐式获得宿主机路径或 systemd，不能仅凭网络可达验收部署。
 【远程子命令】--target-host 且目标非本机时，整条命令（含 --clean、broker-decommission、topic 等）在目标机执行；见下方 argparse「远程执行（前置机经 SSH…）」分组与分步示例 §3。
 【Broker 下线】kafka-reassign-partitions：--topics-to-move-json-file 若指定须为已存在文件；verify 读取工具退出码与输出（进行中与完成态见 §8）。
 【Quorum 运维】--quorum-add-controller 须显式提供 --bootstrap-controller 和/或 --bootstrap-server；脚本不默认 localhost:9092（避免误用 Broker 端口连接元数据工具）。

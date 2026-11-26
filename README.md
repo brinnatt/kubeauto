@@ -40,8 +40,11 @@ kubeauto 用于快速部署 Kubernetes 集群及云原生周边组件：安装�
 
 Ceph 文档继续按官方九个模块组织，不改造成中间件三文件结构；产品实现使用独立专项矩阵与回归分路管理验证状态。
 
-独立辅助工具：MyBackupCli 与 MyLogiBackupCli 的参数扩展、配置保存和错误处置见
-[MySQL 备份与迁移工具操作说明](./tools/mysqltools/operations-manual.md)。普通用法查看 `--help`，完整原生参数说明查看 `--help-native`；两个入口均无需连接数据库。
+独立辅助工具：全部 11 个 CLI 的帮助、配置规则和宿主机/容器/远程执行边界见
+[独立工具使用入口](./tools/operations-manual.md)；MySQL 专题见
+[备份与迁移操作说明](./tools/mysqltools/operations-manual.md)。普通用法查看 `--help`，
+MyBackupCli 完整注释配置查看 `--help-config`，三个 MySQL 工具的原生参数查看 `--help-native`；
+这些帮助入口均无需连接数据库。
 
 白皮书分章（架构评审请从这里进）：
 

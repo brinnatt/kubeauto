@@ -835,7 +835,12 @@ def create_parser():
 
 运行合同：
   仅支持 MySQL 8.0 及以上；mysql、mysqldump 与服务端必须为相同主次版本。
+  实测版本为 MySQL 8.0.46 / 8.4.4 / 9.2.0，其它版本须先核对客户端和演练结果。
+  本工具导出逻辑备份，不提供 restore 命令；SQL 导入与读回按运维手册执行。
   默认二进制位于 /usr/local/bin；备份根目录 /backups 必须是独立挂载点。
+  默认日志 /var/log/mysql_backup.log；同一范围最多保留 3 个成功归档，不按天数轮换。
+  在宿主机或准备好客户端、root 凭据和独立挂载的工具容器执行；timer 需要真实 systemd。
+  环境覆盖须在执行前设置，空字符串不是回退默认值；timer 不继承调用 shell 的临时覆盖。
   凭据文件 /root/.mylogin.cnf 必须由 root 所有且权限为 0600。
   环境覆盖：MYLOGI_MYSQL_BIN、MYLOGI_MYSQLDUMP_BIN、MYLOGI_MYSQL_CONFIG_EDITOR、
   MYLOGI_BACKUP_MOUNT、MYLOGI_LOGIN_FILE、MYLOGI_LOCK_FILE、MYLOGI_LOG_FILE。
@@ -870,7 +875,7 @@ def create_parser():
     setup.add_argument("--login-path", default=DEFAULT_LOGIN_PATH)
     setup.set_defaults(handler=setup_login)
 
-    preflight_parser = subparsers.add_parser("preflight", help="执行全部只读前置检查", allow_abbrev=False,
+    preflight_parser = subparsers.add_parser("preflight", help="检查连接/版本/范围/空间；会创建本地备份目录并设为 0700，不导出 SQL", allow_abbrev=False,
         formatter_class=argparse.RawDescriptionHelpFormatter, epilog=native_examples)
     add_scope_arguments(preflight_parser)
     preflight_parser.set_defaults(handler=lambda args: preflight(args))

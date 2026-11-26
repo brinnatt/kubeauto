@@ -1073,6 +1073,12 @@ def parse_arguments() -> argparse.Namespace:
   报告目录 / 日志目录 / --json-summary 父目录可写；需 ICMP 时 PATH 需有 ping；
   内置 NODE_IPS 全无效且无命令行目标时报错
 
+执行与判据:
+  探测使用执行端的网络命名空间；工具容器的路由、DNS 与 ICMP 权限须独立核对。
+  不加 --no-default-nodes 会同时探测源码中的 NODE_IPS；自选目标建议显式加此开关。
+  ICMP 失败样本占比上限 5%%，平均延迟上限 100ms，抖动上限 50ms；TCP 成功率至少 95%%。
+  上述为程序判据，不是业务 SLO 保证；--dry-run 仅核对计划，不证明目标连通。
+
 环境变量:
   NETCHECK_LOG_DIR             日志目录（默认 ./logs）
   NETCHECK_MAX_DURATION_SEC    单次运行最大秒数（默认约 30 天）

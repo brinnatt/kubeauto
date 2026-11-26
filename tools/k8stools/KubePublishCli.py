@@ -1270,32 +1270,32 @@ def show_examples():
 使用示例:
 
 1. 下载镜像:
-   python3 k8simgmanager.py --download nginx:alpine redis:latest ubuntu:20.04
-   python3 k8simgmanager.py --download nginx:alpine --local-runtime nerdctl --namespace default
+   KubePublishCli --download nginx:alpine redis:latest ubuntu:20.04
+   KubePublishCli --download nginx:alpine --local-runtime nerdctl --namespace default
 
 2. 打包本地镜像:
-   python3 k8simgmanager.py --pack myapp:v1.0 mysql:8.0
-   python3 k8simgmanager.py --pack myapp:v1.0 --output-dir /tmp/images --local-runtime nerdctl
-   python3 k8simgmanager.py --pack myapp:v1.0 --cleanup  # 打包后清理旧的自动生成文件
+   KubePublishCli --pack myapp:v1.0 mysql:8.0
+   KubePublishCli --pack myapp:v1.0 --output-dir /tmp/images --local-runtime nerdctl
+   KubePublishCli --pack myapp:v1.0 --cleanup  # 打包后清理旧的自动生成文件
 
 3. 删除镜像:
-   python3 k8simgmanager.py --delete nginx:alpine redis:latest
-   python3 k8simgmanager.py --delete myapp:v1.0 --local-runtime nerdctl --namespace k8s.io
-   python3 k8simgmanager.py --delete nginx:alpine redis:latest --delete-hosts host1:2222 host2 --remote-runtime nerdctl
+   KubePublishCli --delete nginx:alpine redis:latest
+   KubePublishCli --delete myapp:v1.0 --local-runtime nerdctl --namespace k8s.io
+   KubePublishCli --delete nginx:alpine redis:latest --delete-hosts host1:2222 host2 --remote-runtime nerdctl
 
 4. 分发镜像到远程主机:
    # 方式1: 与--pack一起使用（推荐，同一会话完成）
-   python3 k8simgmanager.py --pack nginx:alpine --distribute 192.168.1.100:2222 192.168.1.101
+   KubePublishCli --pack nginx:alpine --distribute 192.168.1.100:2222 192.168.1.101
    # 批量主机（花括号数字区间、IPv4 末段区间； per-host 端口仍用 :PORT，全局 SSH 端口用 --ssh-port）
-   python3 k8simgmanager.py --pack nginx:alpine --distribute worker-{01..17} 192.168.4.7-19 --ssh-port 58595
-   python3 k8simgmanager.py --pack nginx:alpine --distribute 192.168.1.100 --cleanup  # 分发成功后清理旧文件
+   KubePublishCli --pack nginx:alpine --distribute worker-{01..17} 192.168.4.7-19 --ssh-port 58595
+   KubePublishCli --pack nginx:alpine --distribute 192.168.1.100 --cleanup  # 分发成功后清理旧文件
    
    # 方式2: 使用--tar指定已存在的tar文件
-   python3 k8simgmanager.py --distribute 192.168.1.100 --tar images_batch.tar
+   KubePublishCli --distribute 192.168.1.100 --tar images_batch.tar
    
    # 方式3: 分步执行（先打包，再分发）
-   python3 k8simgmanager.py --pack nginx:alpine
-   python3 k8simgmanager.py --distribute 192.168.1.100  # 使用输出目录中的tar文件
+   KubePublishCli --pack nginx:alpine
+   KubePublishCli --distribute 192.168.1.100  # 使用输出目录中的tar文件
 
 5. 使用JSON配置文件（推荐）:
    # config.json 示例（下载、打包、分发）:
@@ -1324,32 +1324,32 @@ def show_examples():
    # }
 
    # 从配置文件执行所有操作（推荐）
-   python3 k8simgmanager.py --config config.json
+   KubePublishCli --config config.json
    
-   # 从配置文件执行特定操作（命令行参数会覆盖配置文件）
-   python3 k8simgmanager.py --config config.json --pack
-   python3 k8simgmanager.py --config config.json --distribute
+   # 非空 CLI 列表覆盖同名列表；其它 JSON 操作仍会执行
+   KubePublishCli --config config.json --pack
+   KubePublishCli --config config.json --distribute
    
    # 使用配置文件删除镜像
-   python3 k8simgmanager.py --config config_delete.json
-   python3 k8simgmanager.py --config config_delete_remote.json --remote-runtime nerdctl
+   KubePublishCli --config config_delete.json
+   KubePublishCli --config config_delete_remote.json --remote-runtime nerdctl
 
 6. 组合使用 - 完整流程（推荐）:
    # 下载、打包、分发全流程（同一会话）
-   python3 k8simgmanager.py \\
+   KubePublishCli \\
         --download nginx:alpine redis:latest \\
         --pack nginx:alpine redis:latest \\
         --distribute host1:2222 host2
    
    # 完整流程并清理旧文件
-   python3 k8simgmanager.py \\
+   KubePublishCli \\
         --download nginx:alpine redis:latest \\
         --pack nginx:alpine redis:latest \\
         --distribute host1:2222 host2 \\
         --cleanup
 
 7. 组合使用 - 下载并分发:
-   python3 k8simgmanager.py \\
+   KubePublishCli \\
         --download ubuntu:20.04 \\
         --pack ubuntu:20.04 \\
         --distribute host1 host2 \\
@@ -1358,22 +1358,22 @@ def show_examples():
 
 8. 分步执行（适合长时间操作）:
    # 步骤1: 下载镜像
-   python3 k8simgmanager.py --download nginx:alpine redis:latest
+   KubePublishCli --download nginx:alpine redis:latest
    
    # 步骤2: 打包镜像
-   python3 k8simgmanager.py --pack nginx:alpine redis:latest
+   KubePublishCli --pack nginx:alpine redis:latest
    
    # 步骤3: 分发镜像（使用输出目录中的tar文件）
-   python3 k8simgmanager.py --distribute 192.168.1.100 192.168.1.101
+   KubePublishCli --distribute 192.168.1.100 192.168.1.101
 
 9. 仅分发已存在的tar文件:
-   python3 k8simgmanager.py \\
+   KubePublishCli \\
         --distribute host1 host2 \\
         --tar my_images.tar \\
         --remote-runtime nerdctl
 
 10. 使用nerdctl运行时:
-    python3 k8simgmanager.py \\
+    KubePublishCli \\
          --local-runtime nerdctl \\
          --namespace k8s.io \\
          --pack nginx:alpine \\
@@ -1382,10 +1382,10 @@ def show_examples():
 
 11. 清理旧的自动生成文件:
     # 打包后清理旧文件
-    python3 k8simgmanager.py --pack nginx:alpine --cleanup
+    KubePublishCli --pack nginx:alpine --cleanup
     
     # 分发成功后清理旧文件
-    python3 k8simgmanager.py --pack nginx:alpine --distribute host1 --cleanup
+    KubePublishCli --pack nginx:alpine --distribute host1 --cleanup
 
 参数说明:
   --pack IMAGES        打包本地镜像 (如未指定，使用download列表)
@@ -1404,14 +1404,24 @@ def show_examples():
   --ssh-port           SSH端口 (默认: 22)
   --ssh-key            SSH私钥路径
 
+配置与执行边界:
+  JSON 只读取 download / pack / distribute / delete 操作集合；runtime、namespace、
+  output-dir、tar、SSH、cleanup 等选项须在 CLI 传入，不从 JSON 读取。
+  非空 CLI 操作列表覆盖同名 JSON 列表；空 --pack 等可复用配置列表，不表示清空。
+  --config 不带操作开关会执行 JSON 中全部操作；指定开关也不会取消其它已配置操作。
+  请为单项任务使用只包含该项操作的 JSON，避免执行多余动作。
+  本地默认 Docker；远程默认 Docker；nerdctl namespace 默认 k8s.io（Docker 不使用）。
+  容器内执行须显式连接实际 runtime 并挂载归档/SSH 密钥；远端 load 在目标主机运行。
+  分发首个失败返回非 0；检查目标镜像身份后再重试，不以传输成功代替 load 成功。
+
 注意:
   - --delete 只能单独使用，不能与其他操作组合
   - --distribute 需要指定 --tar 或 --pack，或者输出目录中已有tar文件
   - --pack 如未指定镜像，则使用 --download 的镜像列表
   - 使用 --config 时，如果只指定 --config，会执行配置文件中的所有操作
-  - 使用 --config 时，命令行参数会覆盖配置文件中的对应设置
+  - 使用 --config 时，仅非空 CLI 操作列表覆盖同名列表；通用设置始终来自 CLI
   - 清理逻辑：默认不清理，只有指定 --cleanup 时才会在所有操作成功后清理旧的自动生成文件
-  - ACID原则：操作过程中不清理文件，失败时只清理本次会话产生的文件
+  - 归档/分发不是事务；失败时只清理本次生成文件，已成功加载的远程镜像不会自动回滚
   - 端口可以在host参数中指定 (host:port)，优先级高于 --ssh-port
   - 当使用nerdctl时，会自动添加-n参数指定命名空间
   - 批量操作效率高，适合大量镜像处理
@@ -1545,6 +1555,7 @@ def main():
 
     # 显示帮助
     if args.help:
+        parser.print_help()
         show_examples()
         return 0
 

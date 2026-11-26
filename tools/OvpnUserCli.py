@@ -2093,8 +2093,9 @@ USER_EPILOG = """
   · 字母开头，3～16 位，字母/数字/下划线
   · 不可用 server、ca（分别为服务端与 CA 保留名）
 
-有效证书判定:
-  · pki/issued/<用户名>.crt 存在 → 可连接
+本地证书定位与连接条件:
+  · pki/issued/<用户名>.crt 是本地已签发证书位置；存在不等于 VPN 已连通
+  · 实际连接还取决于证书有效期、服务端 CRL、TLS 配置、网络和客户端配置
   · revoke 后移入 pki/revoked/certs_by_serial/<SERIAL>.crt
 
 {log_help}
@@ -2131,6 +2132,13 @@ def build_parser():
   · create: easyrsa build-client-full；revoke: easyrsa revoke + gen-crl（官方流程）
   · client.ovpn 默认对齐 server.conf；仅 --proto/--dev/--rhost/--rport 可手动覆盖
   · CRL（crl.pem）全 CA 共用，每次 revoke 后 gen-crl 覆盖更新
+  · create 支持 tls-auth / tls-crypt；tls-crypt-v2 在签发前拒绝，不分发服务端 unwrap key。
+  · TLS 相对路径只接受 server.conf 内显式的绝对 cd；不猜 OpenVPN 启动工作目录。
+  · 在持有真实 PKI 的宿主机或挂载完整 PKI/server.conf 的工具容器运行；不是远程 VPN API。
+  · 路径环境变量（未设置时用下列默认布局；不要设为空字符串）：
+    GENOVPN_OPENVPN_BASE=/etc/openvpn；GENOVPN_EASYRSA_VERSION=3.0.7；
+    GENOVPN_EASYRSA_DIR 默认 <base>/<version>；GENOVPN_CLIENT_DIR 默认 <base>/client；
+    GENOVPN_LOG_DIR=/var/log/openvpn。覆盖变量须在启动工具前设置。
   · 客户端包: client/<用户>/（{client}）
   · Easy-RSA: {easyrsa}
   · 服务端: {server_conf}

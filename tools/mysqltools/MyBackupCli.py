@@ -2,36 +2,18 @@
 # -*- coding: utf-8 -*-
 
 """
-MySQL Enterprise Backup Script (Production Ready)
-==================================================
+MyBackupCli: standalone physical backup, incremental chains and binlog PITR.
 
-Author: (Brinnatt)
-Description:
-  Full / Incremental / Binlog backup for MySQL 5.7, 8.0, 8.4
-  Binlog continuity guaranteed
-  Restore with mandatory dry-run audit gate
-  
-Compatibility:
-  - MySQL 5.7 with the matching Percona XtraBackup 2.4 series
-  - MySQL 8.0 with the matching Percona XtraBackup 8.0 series
-  - MySQL 8.4 with the matching Percona XtraBackup 8.4 series
-  - MySQL 9.x is intentionally unsupported for physical backup
-  - Python 3.6+
-
-Best Practices Implemented:
-  - Percona XtraBackup official recommendations
-  - Compressed backup decompression before prepare
-  - Capability-aware --lock-ddl parameter from the actual XtraBackup binary
-  - --use-memory for optimized performance
-  - Proper incremental backup prepare sequence
-  - Enhanced error handling and validation
+Execution boundaries and annotated configuration: --help and --help-config.
+MySQL 8.0.33/8.0.46 on Rocky 8.10/9.8: standalone Docker and binary
+systemd deployments; binary primary-replica and asynchronous dual-primary.
+The tool restores one isolated node; replication reattachment is operator-owned.
+Other declared version families require their matching XtraBackup series;
+see operations-manual.md for the exact validated scope and exclusions.
 
 References:
-  - https://docs.percona.com/percona-xtrabackup/8.4/
-  - https://docs.percona.com/percona-xtrabackup/8.4/prepare-compressed-backup.html
-  - https://docs.percona.com/percona-xtrabackup/8.4/prepare-incremental-backup.html
-  - https://docs.percona.com/percona-xtrabackup/8.4/reduction-in-locks.html
-  - https://www.percona.com/blog/percona-xtrabackup-8-enables-lock-ddl-by-default/
+  https://docs.percona.com/percona-xtrabackup/8.0/
+  https://docs.percona.com/percona-xtrabackup/8.4/
 """
 
 import os
@@ -424,23 +406,6 @@ class Config:
     def __init__(self, config_file=None, native_options=None, offline=False):
         # 初始化logger（在配置加载前使用）
         self.logger = setup_logger("mysqlbackup.config")
-        """
-        加载配置文件
-        配置文件格式（JSON）:
-        {
-            "backup_base": "/backup/mysql",
-            "mysql_user": "backup",
-            "mysql_password": "password",
-            "mysql_socket": "/var/lib/mysql/mysql.sock",
-            "mysql_service": "mysqld",
-            "mysql_datadir": "/var/lib/mysql",
-            "mysql_binlog_prefix": "mysql-bin",
-            "xtrabackup_parallel": 4,
-            "xtrabackup_compress_threads": 4,
-            "xtrabackup_use_memory": "1G",
-            "xtrabackup_lock_ddl": "AUTO"  # AUTO, REDUCED, ON, OFF
-        }
-        """
         # 默认配置
         defaults = {
             "backup_base": "/backup/mysql",
@@ -1936,64 +1901,112 @@ class BackupManager:
 
 
 
+def configuration_help():
+    """Keep the offline embedded example identical to mybackup.conf.example."""
+    return """配置模板（JSON；_comment_* 为说明字段，复制后按实际实例填写）：
+{
+    "_comments": "标准 JSON 不支持 # 或 // 行注释。_comment_* 是说明字段，工具不执行它们；实际值在下一行。这里的留空指空字符串，不要用 null。复制到生产时保留说明即可。",
+    "_comment_backup_base": "默认 /backup/mysql；不能为空。工具执行环境中的独立备份目录，禁止与 data/binlog 目录重叠；每实例独享。",
+    "backup_base": "/backup/mysql",
+    "_comment_mysql_user": "默认 backup；必须填写目标实例的明确账号，空字符串不会回退到 backup。复制检查需读取相关 performance_schema 表；恢复配置应改用有导入/只读管理权限的专用账号，不能假定备份读取账号可恢复。",
+    "mysql_user": "backup",
+    "_comment_mysql_password": "默认空；空字符串时读取执行端 MYSQL_BACKUP_PASSWORD，两者都空则拒绝；示例密码必须替换。",
+    "mysql_password": "your_backup_password_here",
+    "_comment_mysql_socket": "默认 /var/lib/mysql/mysql.sock；不要留空，必须是工具执行环境可见的目标 Unix socket，不从 datadir 推导；不是 Docker 容器名或 TCP 地址。",
+    "mysql_socket": "/var/lib/mysql/mysql.sock",
+    "_comment_mysql_service": "默认 mysqld；mysql_container 为空时，由工具通过 systemctl 管理此真实 unit；不能为空。容器模式忽略此项。",
+    "mysql_service": "mysqld",
+    "_comment_mysql_defaults_file": "默认空：普通在线操作不读取。二进制实例使用 --offline-restore 时必填实际 my.cnf 绝对路径；真实 systemd ExecStart 须直接执行 mysqld --defaults-file=该路径，不接受 wrapper/额外启动参数。用于停机版本/路径与复制只读保护核验，不能填写工具的 JSON 配置。",
+    "mysql_defaults_file": "",
+    "_comment_mysql_container": "默认空字符串：使用 systemd；非空：实际 Docker 容器名或 ID，工具改用 Docker 启停目标并核对 bind mounts。不是工具容器名。",
+    "mysql_container": "",
+    "_comment_mysql_datadir": "默认 /var/lib/mysql；不能为空，必须是工具可见的目标真实数据目录。二进制部署用本机路径，容器部署用映射后的路径。",
+    "mysql_datadir": "/var/lib/mysql",
+    "_comment_mysql_binlog_prefix": "默认 mysql-bin；不能为空，只填实际文件名前缀，不填目录或 .000001；以 @@log_bin_basename 实值为准。",
+    "mysql_binlog_prefix": "mysql-bin",
+    "_comment_mysql_binlog_dir": "缺省或空字符串：使用 mysql_datadir；非空：工具可见的实际 binlog 目录。外置 binlog 必须填写真实目录。",
+    "mysql_binlog_dir": "/var/lib/mysql",
+    "_comment_mysql_binlog_index": "缺省或空字符串：mysql_binlog_dir/mysql_binlog_prefix.index；非空：实际 index 的绝对路径，必须位于 binlog_dir。",
+    "mysql_binlog_index": "/var/lib/mysql/mysql-bin.index",
+    "_comment_xtrabackup_parallel": "默认 4，不能留空或填 0，须为正整数；备份/解压并行数。按资源调整，不保证性能。",
+    "xtrabackup_parallel": 4,
+    "_comment_xtrabackup_compress_threads": "默认 4，不能留空或填 0，须为正整数；备份压缩线程数。",
+    "xtrabackup_compress_threads": 4,
+    "_comment_xtrabackup_use_memory": "默认 1G；请填写 XtraBackup 接受的容量值，不要留空，空值不表示不限内存。用于 XtraBackup 尤其 prepare 的内存预算，不是 MySQL buffer pool。",
+    "xtrabackup_use_memory": "1G",
+    "_comment_xtrabackup_lock_ddl": "默认 AUTO：检查实际 XtraBackup 能力，支持 REDUCED 则选它，否则选 ON。也可显式 ON/OFF/REDUCED；空字符串非法。生产建议 AUTO，不能通过 native_options 覆盖。",
+    "xtrabackup_lock_ddl": "AUTO",
+    "_comment_native_options": "默认 {}；各阶段数组默认为空，只给对应原生命令追加选项，不替代 mysql_* 配置。复制备份的 slave-info/safe-slave-backup 由工具按真实通道管理，不能从此覆盖。",
+    "native_options": {
+        "mysql": [],
+        "mysqlbinlog": [],
+        "xtrabackup-backup": [],
+        "xtrabackup-prepare": [],
+        "xtrabackup-decompress": [],
+        "xtrabackup-copy-back": []
+    },
+    "_comment_mysql_topology": "默认 standalone，仅单机且无入站复制通道；primary-replica 用于主从两端，dual-primary 用于异步双主两端。不能为空。每次只操作本配置对应节点，不自动管理对端/切主/重接复制。复制恢复还需 --confirm-replication-isolated 与持久 skip_replica_start=ON。",
+    "mysql_topology": "standalone"
+}
+
+默认模板适用于本机 systemd 单机。容器与复制场景须按 --help 和手册修改。
+配置文件权限必须为 0600；恢复凭据另存 backup-restore.conf。
+完整场景与恢复步骤：tools/mysqltools/operations-manual.md
+"""
+
+
 def parse_arguments():
     """解析命令行参数，提供完整的帮助文档"""
     parser = argparse.ArgumentParser(
-        description='MySQL Enterprise Backup Script - Production Ready',
+        description='MySQL 物理备份、增量链与 binlog 时间点恢复工具（单目标实例）',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         allow_abbrev=False,
         epilog="""
-示例用法:
+常用任务（路径均由运行工具的环境解释）:
+  %(prog)s full -c /etc/mysql/backup.conf
+  %(prog)s incr -c /etc/mysql/backup.conf
+  %(prog)s binlog -c /etc/mysql/backup.conf
+  %(prog)s checksum -c /etc/mysql/backup.conf --date 2026-11-25
+  %(prog)s restore-dry-run -c /etc/mysql/backup-restore.conf --date 2026-11-25
+  %(prog)s restore -c /etc/mysql/backup-restore.conf --date 2026-11-25 --confirm-destructive-restore --binlog-start-time '2026-11-25 10:00:00' --binlog-stop-time '2026-11-25 12:00:00'
+  %(prog)s purge -c /etc/mysql/backup.conf --backup-days 15 --binlog-days 30
 
-  1. 全量备份:
-     %(prog)s full -c /etc/mysql/backup.conf
+恢复前提:
+  上述日期/时间为示例，必须替换为已核对的备份链与 binlog 范围、执行端时区。
+  先校验和 dry-run，再由恢复账号执行 restore；backup-restore.conf 保持相同目标及路径，
+  仅更换为有 SQL 导入/只读管理权限的账号。备份读取账号不一定能恢复。
+  restore 会停止目标并覆盖数据目录；单次恢复不管理对端、不自动重接复制。
+  primary-replica / dual-primary 恢复须先隔离应用和对端、持久配置 skip_replica_start=ON，
+  再在恢复命令追加 --confirm-replication-isolated；恢复后按手册选择复制重接或重建。
+  已停机二进制实例另加 --offline-restore，填写 mysql_defaults_file 并核验真实 unit。
 
-  2. 增量备份:
-     %(prog)s incr -c /etc/mysql/backup.conf
+选择配置（完整带注释 JSON：%(prog)s --help-config；无需连接数据库）:
+  -c/--config 不填：使用程序默认值；不会自动读取 /etc/mysql/backup.conf。
+  配置为标准 JSON，文件权限 0600；_comment_* 仅为说明，不参与操作。
+  mysql_container 默认空字符串：用 systemctl 管理 mysql_service（默认 mysqld）。
+    非空：实际目标 MySQL Docker 容器名/ID，改用 Docker 启停并核对 bind mounts。
+    容器场景在宿主机或独立工具容器运行；完整恢复不能在被停止的 MySQL 容器内运行。
+    独立工具容器须连接同一 Docker daemon、按相同绝对路径挂载数据/binlog/备份目录。
+  mysql_datadir、mysql_socket：工具可见的实际数据目录与 socket；容器路径不能照抄到宿主机。
+  mysql_binlog_dir 缺省/空字符串：用 mysql_datadir；外置 binlog 必须明确填写。
+  mysql_binlog_index 缺省/空字符串：用 binlog_dir/mysql_binlog_prefix.index；核对真实文件名。
+  mysql_topology 默认 standalone；一主一从两端填 primary-replica，异步双主两端填 dual-primary。
+    空字符串非法；不是自动拓扑发现。每节点独享 backup_base。
+  mysql_defaults_file 默认空；--offline-restore 时须填真实 my.cnf，不能填此 JSON。
+  mysql_password 空字符串：读取执行端 MYSQL_BACKUP_PASSWORD；两者都空则拒绝。
 
-  3. Binlog备份:
-     %(prog)s binlog -c /etc/mysql/backup.conf
+日志与判断:
+  原生命令诊断实时输出并脱敏，静默 30 秒输出心跳；文件处理显示阶段及进度。
+  默认日志 /var/log/mysqlbackup.log；MYSQLBACKUP_LOG_FILE 可覆盖。退出码 0/1/130 为成功/失败/中断。
+  失败后保留日志并停止后续恢复；详细阶段判据和恢复出口见手册。
 
-  4. 校验备份:
-     %(prog)s checksum -c /etc/mysql/backup.conf
-     %(prog)s checksum -c /etc/mysql/backup.conf --date 2025-01-20
-
-  5. 恢复前审计（dry-run）:
-     %(prog)s restore-dry-run -c /etc/mysql/backup.conf
-     %(prog)s restore-dry-run -c /etc/mysql/backup.conf --date 2025-01-20
-
-  6. 执行恢复:
-     %(prog)s restore -c /etc/mysql/backup.conf --confirm-destructive-restore --binlog-start-time '2025-01-20 10:00:00'
-     %(prog)s restore -c /etc/mysql/backup.conf --confirm-destructive-restore --date 2025-01-20 --binlog-start-time '2025-01-20 10:00:00' --binlog-stop-time '2025-01-20 12:00:00'
-
-  7. 清理旧备份:
-     %(prog)s purge -c /etc/mysql/backup.conf
-     %(prog)s purge -c /etc/mysql/backup.conf --backup-days 30 --binlog-days 60
-
-配置文件格式 (JSON):
-{
-    "backup_base": "/backup/mysql",
-    "mysql_user": "backup",
-    "mysql_password": "your_password",
-    "mysql_socket": "/var/lib/mysql/mysql.sock",
-    "mysql_service": "mysqld",
-    "mysql_datadir": "/var/lib/mysql",
-    "mysql_binlog_prefix": "mysql-bin",
-    "xtrabackup_parallel": 4,
-    "xtrabackup_compress_threads": 4,
-    "xtrabackup_use_memory": "1G",
-    "xtrabackup_lock_ddl": "AUTO"
-}
-
-环境变量（配置文件密码为空时使用）:
-  MYSQL_BACKUP_PASSWORD  - MySQL备份密码
-
-兼容性:
-  - MySQL 5.7 + matching Percona XtraBackup 2.4
-  - MySQL 8.0 + matching Percona XtraBackup 8.0
-  - MySQL 8.4 + matching Percona XtraBackup 8.4
-  - MySQL 9.x physical backup is unsupported; use MigrationCli logical migration
-  - Python 3.6+
+兼容与验收边界:
+  MySQL 8.0.33 / 8.0.46 + PXB 8.0.35-36：AMD64、Rocky 8.10 / 9.8，
+    单 MySQL 容器（宿主机/独立工具容器），二进制单机/一主一从/异步双主。
+  MySQL 8.4 使用匹配的 PXB 8.4；5.7/2.4 保留兼容分支，不代表本次生产拓扑验收。
+  不支持 MySQL 9.x 物理备份；逻辑迁移用 MigrationCli。
+  Galera/Group Replication/多源复制/加密/跨版本恢复不在上述验收范围。
+  官方版本兼容不代替本工具场景验收；完整条件见 tools/mysqltools/operations-manual.md。
 
 原生参数（普通备份不必填写）：
   例如限制备份阶段 I/O：
@@ -2004,6 +2017,7 @@ def parse_arguments():
   完整阶段映射、JSON 配置示例和拒绝参数的替代入口：%(prog)s --help-native
 
 官方文档参考:
+  - https://docs.percona.com/percona-xtrabackup/8.0/
   - https://docs.percona.com/percona-xtrabackup/8.4/
   - https://docs.percona.com/percona-xtrabackup/8.4/prepare-compressed-backup.html
   - https://docs.percona.com/percona-xtrabackup/8.4/prepare-incremental-backup.html
@@ -2019,7 +2033,7 @@ def parse_arguments():
     parser.add_argument(
         '-c', '--config',
         default=None,
-        help='配置文件路径（JSON格式）'
+        help='JSON 配置文件路径（权限 0600）；不填时用程序默认值，不自动读取 /etc/mysql/backup.conf'
     )
     
     parser.add_argument(
@@ -2068,6 +2082,8 @@ def parse_arguments():
         help='Binlog保留天数（purge命令），默认: 30'
     )
     
+    parser.add_argument("--help-config", action="version", version=configuration_help(),
+                        help="输出完整带注释 JSON 配置及默认/空值说明；无需连接数据库")
     parser.add_argument("--help-native", action="version", version=native_option_help(),
                         help="查看原生参数的阶段说明、完整示例、配置保存及拒绝清单；无需连接数据库")
     parser.add_argument("--native-option", action="append", default=[], metavar="TARGET=--OPTION[=VALUE]",
