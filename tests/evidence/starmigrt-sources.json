@@ -1,0 +1,229 @@
+{
+  "access_date": "2026-11-27",
+  "versions": {
+    "starrocks": "3.5.7",
+    "pymysql": "1.1.2"
+  },
+  "sources": [
+    {
+      "version": "3.5.7",
+      "path": "fe/fe-core/src/main/java/com/starrocks/sql/parser/AstBuilder.java",
+      "url": "https://github.com/StarRocks/starrocks/blob/3.5.7/fe/fe-core/src/main/java/com/starrocks/sql/parser/AstBuilder.java",
+      "git_blob_sha1": "afcaf91ff3ad6895cc749c5a7286f7b940dc7476",
+      "sha256": "71c1c1037d7fee1ae774074beb6a575dc776b60c36fda854021213525b858211",
+      "snapshot": "logs/starmigrt-sources/AstBuilder.java"
+    },
+    {
+      "version": "3.5.7",
+      "path": "docs/en/sql-reference/data-types/string-type/BINARY.md",
+      "url": "https://github.com/StarRocks/starrocks/blob/3.5.7/docs/en/sql-reference/data-types/string-type/BINARY.md",
+      "git_blob_sha1": "294260447d325cc2bff0d3ef50aaa3c8b71cff76",
+      "sha256": "d40f28643ccfd4e256d22fe1fd53decbfb1dcbd9b2db4385c582c14c1b6fb53f",
+      "snapshot": "logs/starmigrt-sources/BINARY.md"
+    },
+    {
+      "version": "3.5.7",
+      "path": "docs/en/sql-reference/sql-statements/account-management/CREATE_USER.md",
+      "url": "https://github.com/StarRocks/starrocks/blob/3.5.7/docs/en/sql-reference/sql-statements/account-management/CREATE_USER.md",
+      "git_blob_sha1": "7a530fc1351336835adb484fe21466d6a18b1dd9",
+      "sha256": "8612975473b6a99aa637ca243ca76d826286e48787fbe7f0a2115cf669b9e27b",
+      "snapshot": "logs/starmigrt-sources/CREATE_USER.md"
+    },
+    {
+      "version": "3.5.7",
+      "path": "fe/fe-core/src/main/java/com/starrocks/common/Config.java",
+      "url": "https://github.com/StarRocks/starrocks/blob/3.5.7/fe/fe-core/src/main/java/com/starrocks/common/Config.java",
+      "git_blob_sha1": "e39b2f1fee4a3d7ffcdf44067e88b831a76b4486",
+      "sha256": "b6636c8a0dbb4bf9b8f2dd4ae856b68ea450260870c97ed5f090f7ea2e433ee8",
+      "snapshot": "logs/starmigrt-sources/Config.java"
+    },
+    {
+      "version": "3.5.7",
+      "path": "docs/en/sql-reference/data-types/numeric/DECIMAL.md",
+      "url": "https://github.com/StarRocks/starrocks/blob/3.5.7/docs/en/sql-reference/data-types/numeric/DECIMAL.md",
+      "git_blob_sha1": "22f42f0ff84012f37852dfe731b5b38ca730a425",
+      "sha256": "83e27c30913428c788afdb95893ed0525f7c0d6664960e8e47c07e3dcad15888",
+      "snapshot": "logs/starmigrt-sources/DECIMAL.md"
+    },
+    {
+      "version": "3.5.7",
+      "path": "docs/en/sql-reference/sql-statements/table_bucket_part_index/DESCRIBE.md",
+      "url": "https://github.com/StarRocks/starrocks/blob/3.5.7/docs/en/sql-reference/sql-statements/table_bucket_part_index/DESCRIBE.md",
+      "git_blob_sha1": "8d7a41a935d67318e34fe7230a4f12f27f6d3e85",
+      "sha256": "5f1bc24621bfa313d7931cdf46bd8236f1af1d56932f4064d14b53cf7284ec70",
+      "snapshot": "logs/starmigrt-sources/DESCRIBE.md"
+    },
+    {
+      "version": "3.5.7",
+      "path": "docs/en/sql-reference/sql-statements/account-management/GRANT.md",
+      "url": "https://github.com/StarRocks/starrocks/blob/3.5.7/docs/en/sql-reference/sql-statements/account-management/GRANT.md",
+      "git_blob_sha1": "18ed0edde0c8a6beca3a968913733732f76d5c26",
+      "sha256": "a9b83defe8b07b178e4aebf2c7d95ef176517ceba669c69796d465bd3d428696",
+      "snapshot": "logs/starmigrt-sources/GRANT.md"
+    },
+    {
+      "version": "3.5.7",
+      "path": "docs/en/sql-reference/sql-statements/loading_unloading/INSERT.md",
+      "url": "https://github.com/StarRocks/starrocks/blob/3.5.7/docs/en/sql-reference/sql-statements/loading_unloading/INSERT.md",
+      "git_blob_sha1": "69f3c26cd7a486c6a0e51ffef3c339b169893b9a",
+      "sha256": "2e7bfa862949831f506dafa8f4db0c7a69d6c9c9f476401df287ae33a15d30a6",
+      "snapshot": "logs/starmigrt-sources/INSERT.md"
+    },
+    {
+      "version": "3.5.7",
+      "path": "docs/en/sql-reference/data-types/semi_structured/JSON.md",
+      "url": "https://github.com/StarRocks/starrocks/blob/3.5.7/docs/en/sql-reference/data-types/semi_structured/JSON.md",
+      "git_blob_sha1": "f3633dc822b391bea28bd493c5215e574c45a475",
+      "sha256": "520ca34b464af80fcfa0c7cc3373776f15cdc25e56f270208775a26789ff59bd",
+      "snapshot": "logs/starmigrt-sources/JSON.md"
+    },
+    {
+      "version": "3.5.7",
+      "path": "docs/en/sql-reference/data-types/numeric/LARGEINT.md",
+      "url": "https://github.com/StarRocks/starrocks/blob/3.5.7/docs/en/sql-reference/data-types/numeric/LARGEINT.md",
+      "git_blob_sha1": "98479880288155ae60560c54c3c1799c9addb4e5",
+      "sha256": "31a1205f52f777e4a9a5083be660a0e36b268e80a6af8ea6ccd829355a277f34",
+      "snapshot": "logs/starmigrt-sources/LARGEINT.md"
+    },
+    {
+      "version": "3.5.7",
+      "path": "docs/en/sql-reference/sql-statements/table_bucket_part_index/SHOW_CREATE_TABLE.md",
+      "url": "https://github.com/StarRocks/starrocks/blob/3.5.7/docs/en/sql-reference/sql-statements/table_bucket_part_index/SHOW_CREATE_TABLE.md",
+      "git_blob_sha1": "a18f2d2394affe24e82aab87e722b2d0672175b6",
+      "sha256": "9ebefc9a93c3bd64156513aae1ca03585448661ed8a2f32079c2a2796f8b1aff",
+      "snapshot": "logs/starmigrt-sources/SHOW_CREATE_TABLE.md"
+    },
+    {
+      "version": "3.5.7",
+      "path": "docs/en/sql-reference/sql-statements/Database/SHOW_DATABASES.md",
+      "url": "https://github.com/StarRocks/starrocks/blob/3.5.7/docs/en/sql-reference/sql-statements/Database/SHOW_DATABASES.md",
+      "git_blob_sha1": "57f72c883728d8a94a88fc8738be95d760aea8f4",
+      "sha256": "ab44ff4f2d532d2785ba4f1e47dd31723710f6e86ca33fae8d9347558a142352",
+      "snapshot": "logs/starmigrt-sources/SHOW_DATABASES.md"
+    },
+    {
+      "version": "3.5.7",
+      "path": "fe/fe-core/src/main/java/com/starrocks/catalog/ScalarType.java",
+      "url": "https://github.com/StarRocks/starrocks/blob/3.5.7/fe/fe-core/src/main/java/com/starrocks/catalog/ScalarType.java",
+      "git_blob_sha1": "0729dbf33223d3cd5dc23d17d32287ccc1cb826c",
+      "sha256": "26cd7e3b9945f41ca40da357c14513cc616dbea9a7170e9e632f179e21da97e3",
+      "snapshot": "logs/starmigrt-sources/ScalarType.java"
+    },
+    {
+      "version": "3.5.7",
+      "path": "fe/fe-core/src/main/java/com/starrocks/qe/SqlModeHelper.java",
+      "url": "https://github.com/StarRocks/starrocks/blob/3.5.7/fe/fe-core/src/main/java/com/starrocks/qe/SqlModeHelper.java",
+      "git_blob_sha1": "15d5649e5667b0c1646dffd6456dc7a9d738b73d",
+      "sha256": "f669b5219aabda97fa5818ae42c61de4bfea8299c0553303cf1df9b34d618889",
+      "snapshot": "logs/starmigrt-sources/SqlModeHelper.java"
+    },
+    {
+      "version": "3.5.7",
+      "path": "docs/en/administration/management/Backup_and_restore.md",
+      "url": "https://github.com/StarRocks/starrocks/blob/3.5.7/docs/en/administration/management/Backup_and_restore.md",
+      "git_blob_sha1": "701703c4fb6357e7080bfe06cc5974041a7639bb",
+      "sha256": "8165fdfeb503aa8201f068cd4786aad7280e8cc4668c7481945fc8d7e98b743c",
+      "snapshot": "logs/starmigrt-sources/backup.md"
+    },
+    {
+      "version": "3.5.7",
+      "path": "docs/en/sql-reference/information_schema/columns.md",
+      "url": "https://github.com/StarRocks/starrocks/blob/3.5.7/docs/en/sql-reference/information_schema/columns.md",
+      "git_blob_sha1": "9bb9ec2790d8d1f230ba1d5e47c66457e6f7023e",
+      "sha256": "1528fdc40dbd3b8db11702c91c62b4fa25d430acacf86e6e8fb871096e0af365",
+      "snapshot": "logs/starmigrt-sources/columns.md"
+    },
+    {
+      "version": "3.5.7",
+      "path": "docs/en/administration/data_migration_tool.md",
+      "url": "https://github.com/StarRocks/starrocks/blob/3.5.7/docs/en/administration/data_migration_tool.md",
+      "git_blob_sha1": "d14ded6d657681047aa6d8df15c7ad5caa628d35",
+      "sha256": "0a54dca3449b006e4282e845b60b5dfd24c904dca93cdb83f0be43e049861bdb",
+      "snapshot": "logs/starmigrt-sources/data_migration_tool.md"
+    },
+    {
+      "version": "3.5.7",
+      "path": "docs/en/table_design/data_distribution/dynamic_partitioning.md",
+      "url": "https://github.com/StarRocks/starrocks/blob/3.5.7/docs/en/table_design/data_distribution/dynamic_partitioning.md",
+      "git_blob_sha1": "775b1338f6a87cbe1029d6b88eacb9628e0be42d",
+      "sha256": "cf5b3051154587d7586172cf41aefcb543917d2438dc6cfc2b490a8ae77e7a85",
+      "snapshot": "logs/starmigrt-sources/dynamic_partitioning.md"
+    },
+    {
+      "version": "3.5.7",
+      "path": "docs/en/unloading/Export.md",
+      "url": "https://github.com/StarRocks/starrocks/blob/3.5.7/docs/en/unloading/Export.md",
+      "git_blob_sha1": "19d3d58f37b166376081c31457c9c8adbd02f0cb",
+      "sha256": "20dbc4e7928ce6a16989209a055ee8921fb0d88560e18765f4ff78f161f292d1",
+      "snapshot": "logs/starmigrt-sources/export.md"
+    },
+    {
+      "version": "3.5.7",
+      "path": "docs/en/sql-reference/sql-statements/loading_unloading/unloading/EXPORT.md",
+      "url": "https://github.com/StarRocks/starrocks/blob/3.5.7/docs/en/sql-reference/sql-statements/loading_unloading/unloading/EXPORT.md",
+      "git_blob_sha1": "ca033a4a538c654a6ac503d7e5ba9f08e85af2e7",
+      "sha256": "b7db0aae85a62c0daf3c36a1a115cee2c76e42f2078a6a1e5a45b70cdb67a2dd",
+      "snapshot": "logs/starmigrt-sources/export_stmt.md"
+    },
+    {
+      "version": "3.5.7",
+      "path": "docs/en/sql-reference/sql-functions/json-functions/json-constructor-functions/parse_json.md",
+      "url": "https://github.com/StarRocks/starrocks/blob/3.5.7/docs/en/sql-reference/sql-functions/json-functions/json-constructor-functions/parse_json.md",
+      "git_blob_sha1": "e5005488e202b89c6b391488310e78ce62935077",
+      "sha256": "d76ac54df122f0e73497706c8792c2db33cccf2eaf8a71fb67fe8eb8b5b4a218",
+      "snapshot": "logs/starmigrt-sources/parse_json.md"
+    },
+    {
+      "version": "3.5.7",
+      "path": "be/src/http/action/stream_load.cpp",
+      "url": "https://github.com/StarRocks/starrocks/blob/3.5.7/be/src/http/action/stream_load.cpp",
+      "git_blob_sha1": "7c2b8d8a7956b6816277d92376a1db0f3acccc8e",
+      "sha256": "926be32bf1b97eaa79e52516426d001793f067968c980dae0d8c69d9d8716f11",
+      "snapshot": "logs/starmigrt-sources/stream_load.cpp"
+    },
+    {
+      "version": "3.5.7",
+      "path": "docs/en/loading/StreamLoad.md",
+      "url": "https://github.com/StarRocks/starrocks/blob/3.5.7/docs/en/loading/StreamLoad.md",
+      "git_blob_sha1": "4461f96ab6943c0ed1d4544a91ff184f4e80882c",
+      "sha256": "dcef462d50fbf5a7b05c9943394ee6790a94d1297bc6fe76f122696e22bce867",
+      "snapshot": "logs/starmigrt-sources/streamload.md"
+    },
+    {
+      "version": "3.5.7",
+      "path": "docs/en/sql-reference/information_schema/tables.md",
+      "url": "https://github.com/StarRocks/starrocks/blob/3.5.7/docs/en/sql-reference/information_schema/tables.md",
+      "git_blob_sha1": "5f0c993b050398da05c0b9e5918053d5f9dc1522",
+      "sha256": "d03bf23a11238304a01d46b2b6213fe352332754db3992782296dd3d2b1e06ad",
+      "snapshot": "logs/starmigrt-sources/tables.md"
+    },
+    {
+      "version": "3.5.7",
+      "path": "docs/en/sql-reference/sql-functions/string-functions/unhex.md",
+      "url": "https://github.com/StarRocks/starrocks/blob/3.5.7/docs/en/sql-reference/sql-functions/string-functions/unhex.md",
+      "git_blob_sha1": "3b7164a6be203ec51a315c51e362f2432f932a56",
+      "sha256": "5146ea52ccd519eabee1f6cb8308c8971a3e35074390e0b7c48d3f0ac9937039",
+      "snapshot": "logs/starmigrt-sources/unhex.md"
+    },
+    {
+      "version": "v1.1.2",
+      "url": "https://github.com/PyMySQL/PyMySQL/blob/v1.1.2/pymysql/connections.py",
+      "sha256": "06cf0f1b651a732405e21ac9ecdebc99da627e6eede40b74bd31ef6451d91bc9",
+      "snapshot": "logs/starmigrt-sources/pymysql-connections.py"
+    },
+    {
+      "version": "v1.1.2",
+      "url": "https://github.com/PyMySQL/PyMySQL/blob/v1.1.2/pymysql/cursors.py",
+      "sha256": "6b8f891d83f5e3c931fbda95351cfcbd3b658a51a52836e4fd0b45956a61e4be",
+      "snapshot": "logs/starmigrt-sources/pymysql-cursors.py"
+    }
+  ],
+  "interface_topics": {
+    "user": "SQL对象、SHOW CREATE、DESC、INSERT及各原生类型；README二至五章",
+    "operations": "SELECT及建库建表/INSERT权限、停写、动态分区、label与未知提交；README一、二、六章",
+    "mechanism": "逐表读取无跨表快照、独立INSERT事务、VISIBLE/COMMITTED、流式游标与中断；README二、六、七章",
+    "development": "PyMySQL1.1.2连接、认证前TLS验证、SSCursor关闭排空；独立CLI合同与runner"
+  },
+  "boundaries": "只消费固定版本SQL与PyMySQL接口；不交付服务端安装、外部存储、CDC、Windows或ARM认证",
+  "implementation": "dump/load单SQL；文件原子发布、完整性和目标预检、首错停止、自动内容校验"
+}

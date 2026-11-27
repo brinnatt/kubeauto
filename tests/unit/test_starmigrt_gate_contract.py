@@ -49,7 +49,7 @@ class GateContracts(unittest.TestCase):
             try:
                 with patch.object(gate.subprocess, 'run', return_value=subprocess.CompletedProcess([], 1, '', 'unrelated crash')):
                     with self.assertRaises(ValueError):
-                        scenario.cli('dump', expected='STARMIGRT_FAIL', rc=1)
+                        scenario.cli('dump', expected='STARMIGRT_ERROR', rc=1)
             finally:
                 scenario.log.close()
 
@@ -121,7 +121,7 @@ class GateContracts(unittest.TestCase):
             try:
                 with patch.object(gate, 'run', side_effect=build):
                     scenario.freeze()
-                check = next(c for c in commands if c[0] == 'check')
+                check = next(c for c in commands if c[0] == 'dump' and '--check' in c)
                 self.assertEqual(check[check.index('--exclude-table')+1], 'skip_*')
             finally:
                 scenario.log.close()
@@ -138,17 +138,15 @@ class GateContracts(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'existing route'):
             gate.guard_subnet('10.251.240.0/24', routes, peer)
 
-    def test_generated_restore_contract_accepts_sql_whitespace(self):
-        from tests.unit.test_starmigrt_contract import dump
+    def test_current_file_input_includes_customer_readme(self):
+        self.assertIn('tools/starrocks/starmigration/README.md', gate.inputs())
+
+    def test_marker_does_not_accept_wrong_exit_code(self):
         with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            table = dict(target_database='dst_b', name='partition_t', ddl='CREATE TABLE fixture;', file='table-000001.sql', dynamic_disabled=True)
-            manifest = dict(plan=dict(mode='schema-and-data', databases=[dict(target='dst_b')], tables=[table]), completed={'table-000001.sql': dict(rows=2)})
-            dump.write_common_files(root, manifest)
-            path = root/'restore_dynamic_partitions.sql'
-            gate.verify_deferred_restore(path)
-            path.write_text(path.read_text().replace('"="', '" = "'))
-            gate.verify_deferred_restore(path)
-            path.write_text(path.read_text()+'DROP TABLE unrelated;')
-            with self.assertRaises(ValueError):
-                gate.verify_deferred_restore(path)
+            scenario = gate.Scenario(type('Worker', (), dict(base=Path(tmp)))())
+            try:
+                with patch.object(gate.subprocess, 'run', return_value=subprocess.CompletedProcess([], 1, 'STARMIGRT_LOAD_OK', '')):
+                    with self.assertRaisesRegex(ValueError, 'rc=1'):
+                        scenario.cli('load', expected='STARMIGRT_LOAD_OK')
+            finally:
+                scenario.log.close()

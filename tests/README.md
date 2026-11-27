@@ -922,24 +922,25 @@ matrix is approved, and `--full` still requires the explicit
 `TOOLS_MATRIX_APPROVED=yes` gate; Tier3 `--help` results in the enterprise
 matrix are not tools delivery evidence.
 
-新增 `tools/starrocks/starmigration/StarMigrtCli.py` 的 `TL-SD-01`–`TL-SD-07`
-由 `starmigrt_review` 独立约束，已获得用户要求 GA 的本工具范围授权；不继承旧十工具的 PASS。
-其本地静态和隔离 CLI 合同入口为 `bash tests/run_tools_regression.sh --starmigrt-preflight`，
-只读矩阵状态为 `bash tests/run_tools_regression.sh --starmigrt-status`。
-这两个入口不连接实验室。`--starmigrt-qualify` 先运行本地合同，再持有 130 与 122.2
-共享池锁及 216 节点锁，在 `root@192.168.122.216` 的私有 Docker 28.5.2 中建立两个
-StarRocks 3.5.7 实例。仅消费已双端双架构 readback 的 allin1 digest；镜像不在此入口发布。
-离线 wheel 固定版本并按官方 PyPI SHA256 校验，冻结只选择 `StarMigrtCli`，平台为
-Rocky Linux 9.8/Python 3.9.25/glibc 2.34/x86_64。真实业务包括多库、类型、分区、模式、
-只读账号、TLS 协议代理的 CA/身份/降级正反向、SIGTERM 续传和目标同数内容变化。
-外部 mysql 仅消费工具生成的 SQL，不能替代工具的 dump/merge/verify CLI 证据。
+`tools/starrocks/starmigration/StarMigrtCli.py` 的 `TL-SD-01`–`TL-SD-07`
+由 `starmigrt_review` 独立约束，只验收本迁移工具的 SQL 导出、导入和自动校验。
+静态与独立 CLI 合同入口为 `bash tests/run_tools_regression.sh --starmigrt-preflight`，
+只读状态为 `bash tests/run_tools_regression.sh --starmigrt-status`。
+`--starmigrt-qualify` 先运行本地合同，再持有 130、122.2 共享池锁及 216 节点锁，
+在 `root@192.168.122.216` 的私有 Docker 28.5.2 内建立两个 StarRocks 3.5.7 实例。
+复用双端双架构固定 allin1 digest，不构建或发布镜像。离线 wheel 按官方 PyPI
+SHA256 校验，onefile 只构建 StarMigrtCli。验收包括多库、筛选、映射、原生类型、
+分区、结构/数据、gzip、只读账号、TLS CA/身份/降级、SIGTERM 原子文件清理、
+损坏拒绝、导入首错、同名目标拒绝、自动行数/内容校验，以及普通 mysql 消费 SQL。
+产品证据必须来自 dump/load CLI，fixture SQL 不代替产品入口。
 
-`--starmigrt-full` 在任何 SSH 前核验 TL-SD-01–06 的当前输入、日志、冻结文件及 durable
-双 0，然后从干净环境重新执行上述完整场景；不调用 `--full` 或旧工具业务。
-成功要求六个 case marker、`STARMIGRT_GATE_PASS stage=full`、durable exit/finalized 双 0、
-零非预期失败和 `TOOLS_CLEAN_VERIFY_PASS scope=starmigrt`。成功、失败、中断均回收本轮
-容器、internal 网络、daemon、数据和挂载，并检查防火墙前后不变及无所属运行时进程。
-原始日志和诊断在 `logs/starmigrt-*` 私有目录保留，正式 SHA 绑定在 `tests/evidence/starmigrt-*.json`。
+`--starmigrt-full` 在任何 SSH 前核验 TL-SD-01–06 当前输入、原始日志、冻结制品和
+退出状态，前置缺失或失效立即拒绝。然后从干净环境执行本工具完整场景。
+要求六个 case marker、`STARMIGRT_GATE_PASS stage=full`、durable exit/finalized 双 0、
+零非预期失败和 `TOOLS_CLEAN_VERIFY_PASS scope=starmigrt`。成功、失败、中断均回收
+本轮容器、网络、daemon、数据和挂载，检查防火墙前后不变及所属进程归零。
+当前原始证据存放于 `logs/starmigrt-*`，正式输入与 SHA 绑定于
+`tests/evidence/starmigrt-qualify.json` 和 `starmigrt-full.json`。
 
 失败后的 `--recover-run` 仅接受本入口的固定 UUID，在重新取得租约、确认 durable 已结束、
 无运行时目录/进程/挂载且防火墙相同后，归档诊断并删除该失败 run 的残留目录：

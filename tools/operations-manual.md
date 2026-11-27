@@ -18,7 +18,7 @@
 | [MyLogiBackupCli](mysqltools/MyLogiBackupCli.py) | SQL 逻辑备份：`MyLogiBackupCli --help`、`backup --help`、`timer install --help`、`--help-native` | 登录路径、独立挂载、归档轮换、systemd timer；[MySQL 运维手册](mysqltools/operations-manual.md#逻辑备份的执行环境与定时配置)；没有 restore 子命令 |
 | [MigrationCli](mysqltools/MigrationCli.py) | MySQL 逻辑迁移：`MigrationCli --help`、`--guide`、`--help-native` | [配置模板](mysqltools/migration_config.json.example) 及 [MySQL 运维手册](mysqltools/operations-manual.md#迁移任务中的使用)；先读 `--guide`，再连库 `--dry-run` |
 | [StarCli](starrocks/StarCli.py) | StarRocks 二进制部署、状态与清理：`StarCli --help` | 根帮助含 FE/BE/CN 完整部署实例；小写 `starcli` 是可选安装别名，远程交接也会优先查找该别名；配置冲突规则见下一节 |
-| [StarMigrtCli](starrocks/starmigration/StarMigrtCli.py) | StarRocks 离线导出、校验与合并：`StarMigrtCli --help`、`dump --help`、`verify --help`、`merge --help` | [专项手册](starrocks/starmigration/README.md)；固定 StarRocks 3.5.7；源端停写由执行人保证，工具不自动导入目标 |
+| [StarMigrtCli](starrocks/starmigration/StarMigrtCli.py) | StarRocks SQL 导出和导入：`StarMigrtCli --help`、`dump --help`、`load --help` | [专项手册](starrocks/starmigration/README.md)；固定 StarRocks 3.5.7；先暂停源变更，导入空目标并自动校验 |
 
 ### 不同工具的 JSON 规则不能混用
 

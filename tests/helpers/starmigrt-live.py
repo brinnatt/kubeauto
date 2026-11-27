@@ -61,10 +61,10 @@ def run(args, **kw):
 
 
 def inputs():
-    files = [PRODUCT, 'tools-onefile.spec', 'tests/helpers/starmigrt-live.py',
+    files = [PRODUCT, 'tools/starrocks/starmigration/README.md', 'tools-onefile.spec', 'tests/helpers/starmigrt-live.py',
              'tests/helpers/starrocks-compose-live.py', 'tests/helpers/run-durable-gate.sh',
              'tests/unit/test_starmigrt_contract.py', 'tests/unit/test_starmigrt_gate_contract.py',
-             'tests/helpers/validate_tools_test_matrix.py', 'tests/evidence/starmigrt-images.json']
+             'tests/helpers/validate_tools_test_matrix.py', 'tests/evidence/starmigrt-images.json', 'tests/evidence/starmigrt-sources.json']
     return {f: sha(ROOT / f) for f in files}
 
 
@@ -313,13 +313,6 @@ def guard_subnet(subnet, routes, peer):
     return str(candidate)
 
 
-def verify_deferred_restore(path):
-    text = '\n'.join(line for line in Path(path).read_text().splitlines() if not line.lstrip().startswith('--')).strip()
-    pattern = r'ALTER\s+TABLE\s+`dst_b`\.`partition_t`\s+SET\s*\(\s*"dynamic_partition\.enable"\s*=\s*"true"\s*\)\s*;'
-    if not re.fullmatch(pattern, text, re.I):
-        raise ValueError('Deferred partition restore target/statement differs')
-
-
 class Scenario:
     def __init__(self, worker):
         self.w = worker
@@ -436,63 +429,67 @@ class Scenario:
         binary.chmod(0o755)
         self.binary = [str(binary)]
         self.cli('--help', expected='StarRocks', product=self.binary)
-        self.cli('check', '--database', 'sd_b', '--exclude-table', 'skip_*', host=self.source, expected='STARMIGRT_CHECK_PASS', product=self.binary)
+        self.cli('dump', '--check', '--database', 'sd_b', '--exclude-table', 'skip_*', host=self.source, expected='STARMIGRT_CHECK_OK', product=self.binary)
         print('STARMIGRT_CASE_PASS TL-SD-01 frozen_sha256=' + sha(binary), flush=True)
 
     def cases(self):
         self.freeze()
-        self.cli('check', '--databases', 'sd_a', 'sd_b', '--exclude-table', '*.skip_*', host=self.source, expected='STARMIGRT_CHECK_PASS')
-        self.cli('dump', '--database', 'sd_b', '--output', self.base / 'must-not-exist', host=self.source, expected='source-quiesced', rc=2)
-        assert not (self.base / 'must-not-exist').exists()
-        self.cli('check', '--database', 'sd_b', '--table', 'skip_array', host=self.source, expected='未适配数据类型', rc=1)
-        self.cli('check', '--database', 'sd_a', '--table', 'skip_view', host=self.source, expected='普通内表', rc=1)
+        common = ['--databases', 'sd_a', 'sd_b', '--exclude-table', '*.skip_*']
+        self.cli('dump', '--check', *common, host=self.source, expected='STARMIGRT_CHECK_OK')
+        self.cli('dump', '--database', 'sd_b', '--output', self.base/'work/invalid.sql', host=self.source, expected='未适配数据类型', rc=1)
+        assert not (self.base/'work/invalid.sql').exists()
+        self.cli('dump', '--check', '--database', 'sd_a', '--table', 'skip_view', host=self.source, expected='普通内表', rc=1)
+        self.cli('dump', '--host', self.source, '--user', 'root', '--output', self.base/'work/none.sql', expected='required', rc=2)
         print('STARMIGRT_CASE_PASS TL-SD-02', flush=True)
-        package = self.base / 'work/package'
-        selection = ['--all-databases', '--exclude-database', 'sd_ignored', '--exclude-table', '*.skip_*', '--database-map', 'sd_a=dst_a', '--database-map', 'sd_b=dst_b']
-        self.cli('dump', *selection, '--source-quiesced', '--gzip', '--workers', '2', '--batch-rows', '250', '--output', package, host=self.source, expected='STARMIGRT_PASS', product=self.binary)
-        self.cli('verify', '--input', package, expected='scope=local-files', product=self.binary)
-        assert (package.stat().st_mode & 0o777) == 0o700
-        assert all((p.stat().st_mode & 0o777) == 0o600 for p in package.iterdir())
-        # Select/schema-only/data-only each execute the real tool against the real source.
+        dumpfile = self.base/'work/all.sql.gz'
+        selection = ['--all-databases', '--exclude-database', 'sd_ignored', '--exclude-table', '*.skip_*',
+                     '--database-map', 'sd_a=dst_a', '--database-map', 'sd_b=dst_b']
+        self.cli('dump', *selection, '--batch-rows', '250', '--output', dumpfile, host=self.source, expected='STARMIGRT_DUMP_OK', product=self.binary)
+        assert dumpfile.stat().st_mode & 0o777 == 0o600
         for mode in ('schema-only', 'data-only'):
-            p = self.base / ('work/' + mode)
-            args = ['--source-quiesced'] if mode == 'data-only' else []
-            self.cli('dump', '--database', 'sd_b', '--table', 'primary_*', '--target-database', 'mode_b', '--' + mode, *args, '--output', p, host=self.source, expected='STARMIGRT_PASS')
-            merged = self.base / ('work/' + mode + '.sql')
-            self.cli('merge', '--input', p, '--output', merged, expected='STARMIGRT_MERGE_PASS')
-            self.import_sql(merged)
-            self.cli('verify', '--input', p, host=self.target, expected='STARMIGRT_VERIFY_PASS')
-        print('STARMIGRT_CASE_PASS TL-SD-03 rows=65547 workers=2 batch=250 gzip=true', flush=True)
-        self.cli('check', '--database', 'sd_b', '--ssl-ca', self.base / 'ca.pem', host=self.source, rc=1, expected='STARMIGRT_FAIL')
-        # The positive/negative TLS handshake is exercised by a runner-owned proxy below.
+            path = self.base/('work/'+mode+'.sql')
+            self.cli('dump', '--database', 'sd_b', '--table', 'primary_*', '--target-database', 'mode_b',
+                     '--'+mode, '--output', path, host=self.source, expected='STARMIGRT_DUMP_OK')
+            self.cli('load', '--input', path, host=self.target, expected='STARMIGRT_LOAD_OK')
+        assert self.sql(self.target, 'SELECT * FROM mode_b.primary_t ORDER BY id') == ((1, 'new'), (2, 'value'))
+        print('STARMIGRT_CASE_PASS TL-SD-03 rows=65547 batch=250 gzip=true', flush=True)
         security(self)
         print('STARMIGRT_CASE_PASS TL-SD-04', flush=True)
         recovery(self)
         print('STARMIGRT_CASE_PASS TL-SD-05', flush=True)
-        merged = self.base / 'work/all.sql'
-        self.cli('merge', '--input', package, '--output', merged, expected='STARMIGRT_MERGE_PASS', product=self.binary)
-        self.import_sql(merged)
+        self.cli('load', '--input', dumpfile, host=self.target, expected='STARMIGRT_LOAD_OK', product=self.binary)
         assert '"dynamic_partition.enable" = "false"' in self.sql(self.target, 'SHOW CREATE TABLE dst_b.partition_t')[0][1]
-        verify_deferred_restore(package / 'restore_dynamic_partitions.sql')
-        self.cli('verify', '--input', package, '--content', host=self.target, expected='scope=target-content', product=self.binary)
-        self.sql(self.target, "UPDATE dst_b.primary_t SET txt='changed' WHERE id=1")
-        self.cli('verify', '--input', package, '--content', host=self.target, expected='STARMIGRT_FAIL', rc=1)
-        self.sql(self.target, "UPDATE dst_b.primary_t SET txt='new' WHERE id=1")
-        self.cli('verify', '--input', package, '--content', host=self.target, expected='scope=target-content')
-        print('STARMIGRT_CASE_PASS TL-SD-06', flush=True)
+        self.cli('load', '--input', dumpfile, host=self.target, expected='已存在', rc=1, product=self.binary)
+        # A normal MySQL client consumes the same standalone file without preprocessing.
+        plain = self.base/'work/mysql.sql'
+        self.cli('dump', '--database', 'sd_a', '--table', 'a_types', '--target-database', 'mysql_dst',
+                 '--output', plain, host=self.source, expected='STARMIGRT_DUMP_OK')
+        self.import_sql(plain)
+        assert self.sql(self.target, 'SELECT COUNT(*) FROM mysql_dst.a_types')[0][0] == 3
+        assert self.sql(self.target, 'SELECT * FROM mysql_dst.a_types ORDER BY id') == self.sql(self.source, 'SELECT * FROM sd_a.a_types ORDER BY id')
+        mismatch=self.base/'work/mismatch.sql'
+        self.cli('dump', '--database', 'sd_b', '--table', 'primary_t', '--target-database', 'mismatch_dst',
+                 '--output', mismatch, host=self.source, expected='STARMIGRT_DUMP_OK')
+        # A deliberately inconsistent trusted fixture has a valid file checksum,
+        # but different row content; automatic readback must reject it.
+        body=mismatch.read_bytes().split(b'-- StarMigrtCli complete sha256=')[0]
+        assert b"'new'" in body
+        body=body.replace(b"'new'", b"'bad'")
+        mismatch.write_bytes(body+b'-- StarMigrtCli complete sha256='+hashlib.sha256(body).hexdigest().encode()+b'\n')
+        self.cli('load', '--input', mismatch, host=self.target, expected='内容校验不一致', rc=1)
+        print('STARMIGRT_CASE_PASS TL-SD-06 tool_load_content_and_mysql_client', flush=True)
 
 
 def security(s):
     # Least-privilege real account: metadata, dump and readback need only SELECT.
     password = uuid.uuid4().hex
     s.sql(s.source, "CREATE USER sd_reader IDENTIFIED BY '" + password + "'")
-    s.cli('check', '--database', 'sd_b', host=s.source, user='sd_reader', password=password, expected='不存在或不可见', rc=1)
+    s.cli('dump', '--check', '--database', 'sd_b', host=s.source, user='sd_reader', password=password, expected='不存在或不可见', rc=1)
     s.sql(s.source, 'GRANT SELECT ON ALL TABLES IN DATABASE sd_b TO USER sd_reader')
-    p = s.base / 'work/reader'
-    s.cli('dump', '--database', 'sd_b', '--table', 'primary_t', '--source-quiesced', '--output', p,
-          host=s.source, user='sd_reader', password=password, expected='STARMIGRT_PASS', product=s.binary)
-    s.cli('verify', '--input', p, '--content', host=s.source, user='sd_reader', password=password, expected='scope=target-content')
-    denied = s.cli('check', '--database', 'sd_b', host=s.source, user='sd_reader', password=password+'wrong', expected='STARMIGRT_FAIL', rc=1)
+    p = s.base / 'work/reader.sql'
+    s.cli('dump', '--database', 'sd_b', '--table', 'primary_t', '--output', p,
+          host=s.source, user='sd_reader', password=password, expected='STARMIGRT_DUMP_OK', product=s.binary)
+    denied = s.cli('dump', '--check', '--database', 'sd_b', host=s.source, user='sd_reader', password=password+'wrong', expected='STARMIGRT_ERROR', rc=1)
     assert password not in denied.stdout + denied.stderr
     # Actual authenticated StarRocks traffic through TLS, with verified CA/hostname.
     import ssl
@@ -574,12 +571,12 @@ def security(s):
     thread = threading.Thread(target=accept)
     thread.start()
     try:
-        s.cli('check', '--database', 'sd_b', '--table', 'primary_t', '--port', port, '--ssl-ca', cert, host='localhost', user='sd_reader', password=password, expected='STARMIGRT_CHECK_PASS', product=s.binary)
-        s.cli('check', '--database', 'sd_b', '--port', port, '--ssl-ca', cert, host='127.0.0.1', expected='STARMIGRT_FAIL', rc=1)
+        s.cli('dump', '--check', '--database', 'sd_b', '--table', 'primary_t', '--port', port, '--ssl-ca', cert, host='localhost', user='sd_reader', password=password, expected='STARMIGRT_CHECK_OK', product=s.binary)
+        s.cli('dump', '--check', '--database', 'sd_b', '--port', port, '--ssl-ca', cert, host='127.0.0.1', expected='STARMIGRT_ERROR', rc=1)
         other = s.base / 'other.pem'
         run(['openssl', 'req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-keyout', s.base / 'other.key', '-out', other, '-days', '1', '-subj', '/CN=other'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        s.cli('check', '--database', 'sd_b', '--port', port, '--ssl-ca', other, host='localhost', expected='STARMIGRT_FAIL', rc=1)
-        s.cli('check', '--database', 'sd_b', '--ssl-ca', cert, host=s.source, expected='STARMIGRT_FAIL', rc=1)
+        s.cli('dump', '--check', '--database', 'sd_b', '--port', port, '--ssl-ca', other, host='localhost', expected='STARMIGRT_ERROR', rc=1)
+        s.cli('dump', '--check', '--database', 'sd_b', '--ssl-ca', cert, host=s.source, expected='STARMIGRT_ERROR', rc=1)
         assert not errors, errors
         assert 'SSLV3_ALERT_BAD_CERTIFICATE' in tls_refusals, tls_refusals
         assert 'TLSV1_ALERT_UNKNOWN_CA' in tls_refusals, tls_refusals
@@ -593,46 +590,47 @@ def security(s):
 
 
 def recovery(s):
-    p = s.base / 'work/recovery'
-    args = ['dump', '--host', s.source, '--user', 'root', '--database', 'sd_a', '--exclude-table', 'skip_*', '--source-quiesced', '--workers', '1', '--batch-rows', '10', '--output', str(p)]
-    with (s.base / 'recovery.log').open('w') as log:
-        process = subprocess.Popen([*s.product, *args], env=s.env, stdout=log, stderr=log)
+    p = s.base/'work/interrupted.sql'
+    argv = ['dump', '--host', s.source, '--user', 'root', '--database', 'sd_a', '--exclude-table', 'skip_*',
+            '--batch-rows', '10', '--output', str(p)]
+    partial = p.with_name(p.name+'.partial')
+    with (s.base/'recovery.log').open('w') as log:
+        process = subprocess.Popen([*s.product, *argv], env=s.env, stdout=log, stderr=log)
         try:
-            deadline = time.monotonic() + 90
-            while time.monotonic() < deadline:
-                try:
-                    manifest = json.loads((p / 'manifest.json').read_text())
-                    if len(manifest['completed']) == 1:
-                        break
-                except (FileNotFoundError, json.JSONDecodeError):
-                    pass
-                if process.poll() is not None:
-                    raise ValueError('Dump completed before interruption boundary')
+            deadline = time.monotonic()+90
+            while time.monotonic()<deadline:
+                if partial.exists() and partial.stat().st_size > 1024*1024: break
+                if process.poll() is not None: raise ValueError('Dump exited before interruption boundary')
                 time.sleep(.005)
-            else:
-                raise TimeoutError('No completed table before interruption')
+            else: raise TimeoutError('No streaming output before interruption')
             process.terminate()
-            assert process.wait(timeout=15) != 0
+            assert process.wait(timeout=15) == 130
         finally:
-            if process.poll() is None:
-                process.kill()
-                process.wait()
-    manifest = json.loads((p / 'manifest.json').read_text())
-    assert manifest['status'] == 'incomplete' and len(manifest['completed']) == 1
-    completed = next(iter(manifest['completed']))
-    stamp = (p / completed).stat().st_mtime_ns
-    digest = sha(p / completed)
-    assert not list(p.glob('*.partial'))
-    s.cli(*args, '--resume', expected='STARMIGRT_PASS')
-    assert sha(p / completed) == digest and (p / completed).stat().st_mtime_ns == stamp
-    broken = s.base / 'work/broken'
-    shutil.copytree(p, broken)
-    with (broken / completed).open('ab') as f:
-        f.write(b'corrupt')
-    s.cli('verify', '--input', broken, expected='STARMIGRT_FAIL', rc=1)
-    s.cli(*args, '--resume', '--gzip', expected='STARMIGRT_FAIL', rc=1)
-    s.cli('merge', '--input', p, '--output', p / 'outside.sql', expected='STARMIGRT_FAIL', rc=1)
-    print('STARMIGRT_RECOVERY_REAL_PASS signal resume_reuses_table corrupt_refusal plan_refusal', flush=True)
+            if process.poll() is None: process.kill();process.wait()
+    assert not p.exists() and not partial.exists()
+    s.cli(*argv, expected='STARMIGRT_DUMP_OK')
+    broken=s.base/'work/broken.sql'
+    broken.write_bytes(p.read_bytes()[:-80])
+    s.cli('load', '--input', broken, host=s.target, expected='STARMIGRT_ERROR', rc=1)
+    assert not self_table_exists(s, 'sd_a', 'a_types')
+    # The account can create a target database/table but cannot INSERT. A real
+    # import failure must stop and leave the existing target protected on retry.
+    s.sql(s.target, "CREATE USER sd_writer IDENTIFIED BY ''")
+    s.sql(s.target, 'CREATE DATABASE failed_dst')
+    s.sql(s.target, 'GRANT CREATE TABLE ON DATABASE failed_dst TO USER sd_writer')
+    s.sql(s.target, 'GRANT CREATE DATABASE ON CATALOG default_catalog TO USER sd_writer')
+    s.sql(s.target, 'GRANT SELECT ON ALL TABLES IN DATABASE failed_dst TO USER sd_writer')
+    fail=s.base/'work/failed-import.sql'
+    s.cli('dump', '--database', 'sd_b', '--table', 'primary_t', '--target-database', 'failed_dst',
+          '--output', fail, host=s.source, expected='STARMIGRT_DUMP_OK')
+    s.cli('load', '--input', fail, host=s.target, user='sd_writer', expected='STARMIGRT_ERROR', rc=1)
+    assert s.sql(s.target,'SELECT COUNT(*) FROM failed_dst.primary_t')[0][0] == 0
+    s.cli('load', '--input', fail, host=s.target, expected='已存在', rc=1)
+    print('STARMIGRT_RECOVERY_REAL_PASS signal_atomic_cleanup corrupt_refusal first_error_no_replay', flush=True)
+
+
+def self_table_exists(s, db, name):
+    return bool(s.sql(s.target, "SELECT TABLE_NAME FROM information_schema.tables WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s'" % (db,name)))
 
 
 def remote():

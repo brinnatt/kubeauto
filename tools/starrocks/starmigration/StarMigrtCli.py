@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
-"""独立 StarRocks 3.5.7 离线逻辑迁移工具；不修改源端或自动写入目标端。"""
+"""StarRocks SQL 导出与导入工具。"""
 
 import argparse
-from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from contextlib import contextmanager
 import datetime as dt
 import fnmatch
@@ -21,9 +20,9 @@ import sys
 import threading
 import time
 import uuid
+import io
 
-VERSION = "2.0.0"
-FORMAT_VERSION = 1
+VERSION = "3.0.0"
 SYSTEM_DATABASES = {"information_schema", "sys", "_statistics_", "starrocks_monitor"}
 NUMERIC_TYPES = {
     "tinyint", "smallint", "int", "integer", "bigint", "largeint", "float", "double",
@@ -232,7 +231,7 @@ def columns_for(conn, db, table):
     if any(len(row) != 6 for row in rows):
         raise MigrationError("DESC 返回结构与 StarRocks 3.5.7 普通内表契约不一致")
     return [dict(name=row[0], type=str(row[1]).split("(", 1)[0].strip().lower(),
-                 extra=str(row[5] or "")) for row in rows]
+                 native_type=str(row[1]).strip().lower(), extra=str(row[5] or "")) for row in rows]
 
 
 def matches(pattern, db, table):
@@ -306,17 +305,15 @@ def inspect(conn, args, progress):
             except MigrationError as error:
                 errors.append(ref + ": " + str(error))
                 continue
-            number = len(tables) + 1
-            filename = "table-%06d.sql%s" % (number, ".gz" if args.gzip else "")
             tables.append(dict(database=db, target_database=mapping.get(db, db), name=name,
                                source_ddl=original, ddl=ddl, dynamic_disabled=dynamic,
-                               columns=columns, file=filename))
+                               columns=columns))
     for pattern in set(args.table) - seen_patterns:
         errors.append("--table 没有匹配对象: " + pattern)
     if errors:
         raise MigrationError("预检未通过，未导出任何数据:\n" + "\n".join(errors))
     if not tables:
-        raise MigrationError("筛选结果没有普通内表；不会生成空迁移包")
+        raise MigrationError("筛选结果没有普通内表；不会生成空 SQL 文件")
     return dict(databases=[dict(source=db, target=mapping.get(db, db)) for db in databases], tables=tables)
 
 
@@ -360,32 +357,10 @@ class Source:
                     return super()._request_authentication()
             self.connection_factory = TLSConnection
         self.timeout = args.query_timeout
-        self.lock = threading.Lock()
-        self.connections = set()
-        self.cancelled = False
-
-    def abort(self):
-        """唤醒等待网络的工作线程，避免线程池退出时等待整个查询超时。"""
-        with self.lock:
-            self.cancelled = True
-            connections = list(self.connections)
-        for conn in connections:
-            # PyMySQL 1.1.2 owns this socket; shutdown wakes its blocked recv().
-            sock = getattr(conn, "_sock", None)
-            if sock is not None:
-                try:
-                    sock.shutdown(socket.SHUT_RDWR)
-                except OSError:
-                    pass
 
     @contextmanager
     def connect(self):
         conn = self.connection_factory(**self.options)
-        with self.lock:
-            if self.cancelled:
-                conn.close()
-                raise MigrationError("迁移已取消")
-            self.connections.add(conn)
         try:
             all_rows(conn, "SET query_timeout = " + str(self.timeout))
             # Fix SHOW CREATE output mode as well as INSERT literal mode.
@@ -395,8 +370,6 @@ class Source:
                 raise MigrationError("目前仅适配 StarRocks 3.5.7，检测到 " + version)
             yield conn, version
         finally:
-            with self.lock:
-                self.connections.discard(conn)
             if conn.open:
                 conn.close()
 
@@ -447,122 +420,6 @@ def sha256(path):
     return digest.hexdigest()
 
 
-def safe_file(root, name):
-    if not isinstance(name, str) or not re.fullmatch(r"(?:table-\d{6}\.sql(?:\.gz)?|schema\.sql|verify\.sql|restore_dynamic_partitions\.sql)", name):
-        raise MigrationError("迁移包包含非法文件名")
-    path = root / name
-    if path.is_symlink() or not path.is_file():
-        raise MigrationError("迁移包文件缺失或为符号链接: " + name)
-    return path
-
-
-def sync_directory(path):
-    if os.name != "nt":
-        fd = os.open(path, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
-        try:
-            os.fsync(fd)
-        finally:
-            os.close(fd)
-
-
-@contextmanager
-def atomic_output(path, compressed=False):
-    partial = path.with_name(path.name + ".partial")
-    fd = os.open(partial, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    try:
-        with os.fdopen(fd, "wb") as raw:
-            if compressed:
-                with gzip.GzipFile(fileobj=raw, mode="wb", compresslevel=1, mtime=0) as zipped:
-                    import io
-                    with io.TextIOWrapper(zipped, encoding="utf-8", newline="\n") as output:
-                        yield output
-            else:
-                import io
-                with io.TextIOWrapper(raw, encoding="utf-8", newline="\n", write_through=True) as output:
-                    yield output
-                    output.flush()
-                    os.fsync(output.fileno())
-            if compressed:
-                raw.flush()
-                os.fsync(raw.fileno())
-        os.replace(partial, path)
-        sync_directory(path.parent)
-    except BaseException:
-        partial.unlink(missing_ok=True)
-        raise
-
-
-def write_json(path, value):
-    with atomic_output(path) as output:
-        json.dump(value, output, ensure_ascii=False, indent=2)
-        output.write("\n")
-
-
-@contextmanager
-def package_lock(root):
-    path = root / ".lock"
-    fd = os.open(path, os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0), 0o600)
-    try:
-        if os.name == "nt":
-            import msvcrt
-            if os.fstat(fd).st_size == 0:
-                os.write(fd, b"\0")
-            os.lseek(fd, 0, os.SEEK_SET)
-            try:
-                msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
-            except OSError:
-                raise MigrationError("迁移包正被另一个进程使用") from None
-        else:
-            import fcntl
-            try:
-                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except BlockingIOError:
-                raise MigrationError("迁移包正被另一个进程使用") from None
-        yield
-    finally:
-        os.close(fd)
-
-
-def read_manifest(root):
-    if root.is_symlink() or not root.is_dir():
-        raise MigrationError("--input/--output 必须为真实目录，不能为符号链接")
-    path = root / "manifest.json"
-    if path.is_symlink() or not path.is_file():
-        raise MigrationError("缺少 manifest.json 或文件为符号链接")
-    try:
-        manifest = json.loads(path.read_text(encoding="utf-8"))
-        if manifest["tool"] != "StarMigrtCli" or manifest["format_version"] != FORMAT_VERSION:
-            raise MigrationError("不支持的迁移包格式；旧版 ioc_dump 不能续传")
-        if hashlib.sha256(canonical(manifest["plan"])).hexdigest() != manifest["plan_sha256"]:
-            raise MigrationError("迁移计划校验失败")
-        if not isinstance(manifest["completed"], dict) or not manifest["plan"]["tables"]:
-            raise MigrationError("迁移包清单结构错误")
-        if not re.fullmatch(r"[a-f0-9]{32}", manifest["package_id"]):
-            raise MigrationError("迁移包任务标识错误")
-        return manifest
-    except (ValueError, KeyError, TypeError):
-        raise MigrationError("无法解析迁移包清单") from None
-
-
-def validate_files(root, manifest, complete=True):
-    plan = manifest["plan"]
-    expected = {t["file"] for t in plan["tables"]}
-    completed = manifest["completed"]
-    if not set(completed) <= expected:
-        raise MigrationError("完成记录不属于迁移计划")
-    if complete and (manifest.get("status") != "complete" or set(completed) != expected):
-        raise MigrationError("迁移包尚未完成，不能导入、合并或进行目标验收；请先 dump --resume")
-    for name, record in completed.items():
-        path = safe_file(root, name)
-        if sha256(path) != record["sha256"] or path.stat().st_size != record["bytes"]:
-            raise MigrationError("已完成文件校验失败，不能续传或导入: " + name)
-    for name, digest in manifest.get("sha256", {}).items():
-        if sha256(safe_file(root, name)) != digest:
-            raise MigrationError("公共文件校验失败: " + name)
-    if complete and set(manifest.get("sha256", {})) != {"schema.sql", "verify.sql", "restore_dynamic_partitions.sql"}:
-        raise MigrationError("迁移包缺少公共文件校验记录")
-
-
 def abort_stream(conn, cursor):
     """放弃本次连接上的流；禁用 PyMySQL 1.1.2 析构时的排空操作。"""
     result = getattr(cursor, "_result", None) or getattr(conn, "_result", None)
@@ -574,347 +431,391 @@ def abort_stream(conn, cursor):
         conn.close()
 
 
-def export_table(source, table, path, args, cancel, progress, package_id):
-    rows, row_hash, buffered = 0, 0, []
-    names = ",".join(ident(c["name"]) for c in table["columns"])
-    table_number = table["file"].split("-")[1].split(".")[0]
-    batch_number = 1
-
-    def insert_prefix():
-        label = "sr_%s_t%s_b%012d" % (package_id, table_number, batch_number)
-        return ("INSERT INTO " + ident(table["target_database"]) + "." + ident(table["name"]) +
-                " WITH LABEL " + ident(label) + " (" + names + ") VALUES\n")
-
-    prefix = insert_prefix()
-    prefix_bytes = len(prefix.encode("utf-8"))
-    size, limit = prefix_bytes, args.batch_mib * 1024 * 1024
-    started = time.monotonic()
-    with atomic_output(path, args.gzip) as output:
-        output.write(SESSION_SQL)
-        if not args.schema_only:
-            with source.connect() as (conn, _):
-                cursor = conn.cursor(source.driver.cursors.SSCursor)
-                try:
-                    cursor.execute("SELECT " + names + " FROM " + ident(table["database"]) + "." + ident(table["name"]))
-                    for row in cursor:
-                        if cancel.is_set():
-                            raise MigrationError("迁移已取消；已完成表仍保留")
-                        text = row_sql(row, table["columns"])
-                        row_hash = (row_hash + int.from_bytes(hashlib.sha256(text.encode("utf-8")).digest(), "big")) % HASH_MOD
-                        byte_count = len(text.encode("utf-8")) + 2
-                        if prefix_bytes + byte_count > limit:
-                            raise MigrationError("单行超过 --batch-mib，未截断；请增大批次上限并用新输出目录重导")
-                        if buffered and (len(buffered) >= args.batch_rows or size + byte_count > limit):
-                            output.write(prefix + ",\n".join(buffered) + ";\n")
-                            batch_number += 1
-                            prefix = insert_prefix()
-                            buffered.clear()
-                            size = prefix_bytes
-                        buffered.append(text)
-                        size += byte_count
-                        rows += 1
-                        if rows % 1000 == 0:
-                            progress.add_rows(1000)
-                    if buffered:
-                        output.write(prefix + ",\n".join(buffered) + ";\n")
-                    progress.add_rows(rows % 1000)
-                except BaseException:
-                    # SSCursor.close() drains unread results; disconnect before closing it.
-                    abort_stream(conn, cursor)
-                    raise
-                finally:
-                    cursor.close()
-                current = all_rows(conn, "SHOW CREATE TABLE " + ident(table["database"]) + "." + ident(table["name"]))[0][1]
-                if current != table["source_ddl"]:
-                    raise MigrationError("导出期间表结构/分区发生变化；停止 DDL、分区调度后重新导出")
-    return dict(rows=rows, row_sha256_sum="%064x" % row_hash, sha256=sha256(path),
-                bytes=path.stat().st_size, seconds=round(time.monotonic() - started, 3))
+# SQL files remain directly executable by the MySQL client. Comments carry the
+# information needed for automatic preflight and readback by this tool.
+SIGNATURE = '-- StarMigrtCli SQL 1\n'
+FOOTER = '-- StarMigrtCli complete sha256='
+MAX_STATEMENT = 256 * 1024 * 1024
+MAX_METADATA = 8 * 1024 * 1024
 
 
-def write_common_files(root, manifest):
-    plan = manifest["plan"]
-    with atomic_output(root / "schema.sql") as output:
-        output.write("-- Execute ONCE into empty target databases; stop on the FIRST error.\n" + SESSION_SQL)
-        if plan["mode"] != "data-only":
-            for database in plan["databases"]:
-                output.write("CREATE DATABASE IF NOT EXISTS " + ident(database["target"]) + ";\n")
-            for table in plan["tables"]:
-                output.write(table["ddl"])
-    with atomic_output(root / "verify.sql") as output:
-        output.write(SESSION_SQL + "-- Every ok must be 1. Counts alone do not prove content equality.\n")
-        for table in plan["tables"]:
-            if plan["mode"] == "schema-only":
-                continue
-            count = manifest["completed"][table["file"]]["rows"]
-            ref = ident(table["target_database"]) + "." + ident(table["name"])
-            output.write("SELECT " + sql_string(ref) + " AS table_name, " + str(count) +
-                         " AS expected_rows, COUNT(*) AS actual_rows, COUNT(*) = " + str(count) +
-                         " AS ok FROM " + ref + ";\n")
-    with atomic_output(root / "restore_dynamic_partitions.sql") as output:
-        output.write("-- Run ONLY after data verification and review of partition retention.\n")
-        for table in plan["tables"]:
-            if table["dynamic_disabled"] and plan["mode"] != "data-only":
-                output.write("ALTER TABLE " + ident(table["target_database"]) + "." + ident(table["name"]) +
-                             ' SET ("dynamic_partition.enable"="true");\n')
-    manifest["sha256"] = {name: sha256(root / name) for name in
-                          ("schema.sql", "verify.sql", "restore_dynamic_partitions.sql")}
-
-
-def export_package(source, plan, root, args, progress):
-    if root.is_symlink():
-        raise MigrationError("输出目录不能是符号链接")
-    if not args.resume:
-        try:
-            root.mkdir(mode=0o700, parents=True, exist_ok=False)
-        except FileExistsError:
-            raise MigrationError("输出目录已存在；使用新目录或明确指定 --resume") from None
-    elif not root.is_dir():
-        raise MigrationError("续传目录不存在")
-    with package_lock(root):
-        if args.resume:
-            manifest = read_manifest(root)
-            if manifest["plan"] != plan:
-                raise MigrationError("续传输入或源结构已变化；保留旧包，使用新目录重新导出")
-            validate_files(root, manifest, complete=False)
-            if manifest["status"] == "complete":
-                validate_files(root, manifest)
-                return manifest
-        else:
-            manifest = dict(tool="StarMigrtCli", tool_version=VERSION, format_version=FORMAT_VERSION,
-                            created_at=dt.datetime.now(dt.timezone.utc).isoformat(), status="incomplete",
-                            package_id=uuid.uuid4().hex,
-                            plan=plan, plan_sha256=hashlib.sha256(canonical(plan)).hexdigest(), completed={})
-            write_json(root / "manifest.json", manifest)
-        # Only known runner-owned partials may be removed under the held lock.
-        allowed = {t["file"] + ".partial" for t in plan["tables"]} | {
-            name + ".partial" for name in ("manifest.json", "schema.sql", "verify.sql", "restore_dynamic_partitions.sql")}
-        for name in allowed:
-            path = root / name
-            if path.is_symlink():
-                raise MigrationError("发现符号链接临时文件，拒绝续传")
-            path.unlink(missing_ok=True)
-        for table in plan["tables"]:
-            path = root / table["file"]
-            if path.is_symlink():
-                raise MigrationError("数据文件不能为符号链接")
-            if table["file"] not in manifest["completed"]:
-                # A crash between file publication and checkpoint commit is safe to re-export.
-                path.unlink(missing_ok=True)
-        pending = iter(t for t in plan["tables"] if t["file"] not in manifest["completed"])
-        cancel = threading.Event()
-        progress.update(phase="导出数据", finished=len(manifest["completed"]))
-        with ThreadPoolExecutor(max_workers=args.workers) as pool:
-            futures = {}
-
-            def submit_one():
-                table = next(pending, None)
-                if table is not None:
-                    progress.update(table=table["database"] + "." + table["name"])
-                    future = pool.submit(export_table, source, table, root / table["file"], args, cancel, progress,
-                                         manifest["package_id"])
-                    futures[future] = table
-
-            for _ in range(args.workers):
-                submit_one()
-            try:
-                while futures:
-                    done, _ = wait(futures, timeout=1, return_when=FIRST_COMPLETED)
-                    failure = None
-                    # Consume every finished result before scheduling any new work.
-                    for future in done:
-                        table = futures.pop(future)
-                        try:
-                            record = future.result()
-                        except BaseException as error:
-                            if failure is None:
-                                failure = error if isinstance(error, KeyboardInterrupt) else MigrationError(
-                                    table["database"] + "." + table["name"] + ": " + failure_text(error))
-                            cancel.set()
-                            source.abort()
-                            continue
-                        manifest["completed"][table["file"]] = record
-                        write_json(root / "manifest.json", manifest)
-                        progress.update(finished=len(manifest["completed"]))
-                        print("[%d/%d] %s.%s: %s 行，%.1fs" %
-                              (len(manifest["completed"]), len(plan["tables"]), table["database"],
-                               table["name"], record["rows"], record["seconds"]), file=sys.stderr, flush=True)
-                    if failure is not None:
-                        raise failure
-                    for _ in done:
-                        submit_one()
-            except BaseException:
-                cancel.set()
-                source.abort()
-                for future in futures:
-                    future.cancel()
-                raise
-        # Recheck all selected metadata after parallel reads, including already resumed tables.
-        with source.connect() as (conn, _):
-            current = inspect(conn, args, progress)
-            if current != {key: plan[key] for key in ("databases", "tables")}:
-                raise MigrationError("最终元数据检查发现变化；不会将此包标为完成，请新建目录重导")
-        progress.update(phase="生成校验与导入文件", table="")
-        write_common_files(root, manifest)
-        manifest["status"] = "complete"
-        manifest["completed_at"] = dt.datetime.now(dt.timezone.utc).isoformat()
-        write_json(root / "manifest.json", manifest)
-        validate_files(root, manifest)
-        return manifest
-
-
-def verify_target(source, manifest, content, progress):
-    plan = manifest["plan"]
-    failures = []
-    with source.connect() as (conn, _):
-        for table in plan["tables"]:
-            db, name = table["target_database"], table["name"]
-            progress.update(phase="目标只读校验", table=db + "." + name)
-            columns = columns_for(conn, db, name)
-            if [(c["name"], c["type"]) for c in columns] != [(c["name"], c["type"]) for c in table["columns"]]:
-                failures.append(db + "." + name + ": 列名称/类型/顺序不匹配")
-                continue
-            if plan["mode"] == "schema-only":
-                continue
-            expected = manifest["completed"][table["file"]]
-            ref = ident(db) + "." + ident(name)
-            count = int(all_rows(conn, "SELECT COUNT(*) FROM " + ref)[0][0])
-            if count != expected["rows"]:
-                failures.append(db + "." + name + ": 行数不匹配，期望 %d，实际 %d" % (expected["rows"], count))
-                continue
-            if content:
-                names = ",".join(ident(c["name"]) for c in table["columns"])
-                cursor = conn.cursor(source.driver.cursors.SSCursor)
-                total, rows = 0, 0
-                try:
-                    cursor.execute("SELECT " + names + " FROM " + ref)
-                    for row in cursor:
-                        total = (total + int.from_bytes(hashlib.sha256(row_sql(row, table["columns"]).encode("utf-8")).digest(), "big")) % HASH_MOD
-                        rows += 1
-                        if rows % 1000 == 0:
-                            progress.add_rows(1000)
-                    progress.add_rows(rows % 1000)
-                except BaseException:
-                    abort_stream(conn, cursor)
-                    raise
-                finally:
-                    cursor.close()
-                if rows != count or "%064x" % total != expected["row_sha256_sum"]:
-                    failures.append(db + "." + name + ": 内容摘要不匹配或校验期间数据发生变化")
-    if failures:
-        raise MigrationError("目标校验未通过:\n" + "\n".join(failures))
-
-
-def merge_package(root, manifest, destination):
-    if destination.exists() or destination.is_symlink():
-        raise MigrationError("合并目标已存在，不会覆盖")
-    if destination.resolve().is_relative_to(root.resolve()):
-        raise MigrationError("合并文件请放在迁移包目录之外")
-    # Claim the destination before writing so concurrent merges cannot overwrite each other.
-    fd = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    os.close(fd)
+@contextmanager
+def sql_output(path):
+    if path.exists() or path.is_symlink():
+        raise MigrationError("输出文件已存在，不会覆盖；请指定新文件")
+    partial = path.with_name(path.name + '.partial')
+    fd = os.open(partial, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     try:
-        with atomic_output(destination) as output:
-            output.write("-- Import ONCE; stop on FIRST error. This is NOT a database transaction.\n")
-            names = ["schema.sql"] + [t["file"] for t in manifest["plan"]["tables"]]
-            for name in names:
-                path = safe_file(root, name)
-                opener = gzip.open if name.endswith(".gz") else open
-                with opener(path, "rt", encoding="utf-8", newline="") as data:
-                    for block in iter(lambda: data.read(1024 * 1024), ""):
-                        output.write(block)
-                output.write("\n")
+        with os.fdopen(fd, 'wb') as raw:
+            stream = gzip.GzipFile(fileobj=raw, mode='wb', compresslevel=1, mtime=0) if path.suffix == '.gz' else raw
+            output = io.TextIOWrapper(stream, encoding='utf-8', newline='\n')
+            try:
+                yield output
+                output.flush()
+            finally:
+                output.detach()
+                if stream is not raw:
+                    stream.close()
+            raw.flush()
+            os.fsync(raw.fileno())
+        # link publishes a complete file atomically and refuses concurrent output.
+        os.link(partial, path)
+        if os.name != "nt":
+            directory_fd = os.open(path.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+            try:
+                os.fsync(directory_fd)
+            finally:
+                os.close(directory_fd)
+    finally:
+        partial.unlink(missing_ok=True)
+
+
+class SQLWriter:
+    def __init__(self, output):
+        self.output = output
+        self.digest = hashlib.sha256()
+
+    def write(self, text):
+        self.output.write(text)
+        self.digest.update(text.encode('utf-8'))
+
+    def metadata(self, kind, value):
+        line = '-- ' + kind + ' ' + canonical(value).decode('utf-8') + '\n'
+        if len(line.encode('utf-8')) > MAX_METADATA:
+            raise MigrationError('表结构信息超过 8 MiB，停止导出')
+        self.write(line)
+
+    def finish(self):
+        self.output.write(FOOTER + self.digest.hexdigest() + '\n')
+
+
+def export_rows(source, conn, table, writer, args, progress, dump_id, number):
+    names = ','.join(ident(c['name']) for c in table['columns'])
+    ref = ident(table['target_database']) + '.' + ident(table['name'])
+    batch, rows, total, size, buffered = 1, 0, 0, 0, []
+    limit = args.batch_mib * 1024 * 1024
+
+    def prefix():
+        return 'INSERT INTO %s WITH LABEL `sr_%s_t%d_b%d` (%s) VALUES\n' % (ref, dump_id, number, batch, names)
+
+    cursor = conn.cursor(source.driver.cursors.SSCursor)
+    try:
+        cursor.execute('SELECT ' + names + ' FROM ' + ident(table['database']) + '.' + ident(table['name']))
+        for row in cursor:
+            text = row_sql(row, table['columns'])
+            length = len(text.encode('utf-8')) + 2
+            if len(prefix().encode('utf-8')) + length > limit:
+                raise MigrationError('单行超过 --batch-mib；请提高上限并重新导出')
+            if buffered and (len(buffered) >= args.batch_rows or size + length + len(prefix().encode('utf-8')) > limit):
+                writer.write(prefix() + ',\n'.join(buffered) + ';\n')
+                batch += 1
+                buffered, size = [], 0
+            buffered.append(text)
+            size += length
+            rows += 1
+            total = (total + int.from_bytes(hashlib.sha256(text.encode('utf-8')).digest(), 'big')) % HASH_MOD
+            if rows % 1000 == 0:
+                progress.add_rows(1000)
+        if buffered:
+            writer.write(prefix() + ',\n'.join(buffered) + ';\n')
+        progress.add_rows(rows % 1000)
     except BaseException:
-        destination.unlink(missing_ok=True)
+        abort_stream(conn, cursor)
         raise
-    return sha256(destination)
+    finally:
+        cursor.close()
+    return dict(rows=rows, row_sha256_sum='%064x' % total)
 
 
-def add_connection(parser, required=True):
-    parser.add_argument("--host", required=required, help="FE MySQL 地址；verify 省略时仅校验本地包")
-    parser.add_argument("--port", type=int, default=9030)
-    parser.add_argument("--user", required=required)
-    parser.add_argument("--password-env", default="SR_PASSWORD", help="密码环境变量名，默认 SR_PASSWORD")
-    parser.add_argument("--password-file", type=Path, help="当前用户拥有的 0600 UTF-8 密码文件")
-    parser.add_argument("--ssl-ca", type=Path, help="CA 文件；同时验证证书和主机名")
-    parser.add_argument("--connect-timeout", type=int, default=15, help="建连超时秒，1–120")
-    parser.add_argument("--query-timeout", type=int, default=3600, help="查询超时秒；网络读取超时为此值+30")
+def dump_sql(source, conn, plan, args, progress):
+    started = time.monotonic()
+    dump_id = uuid.uuid4().hex
+    with sql_output(args.output.absolute()) as output:
+        writer = SQLWriter(output)
+        writer.write(SIGNATURE)
+        writer.metadata('plan', plan)
+        writer.write('-- Import into an empty target; stop on the first error.\n' + SESSION_SQL)
+        if plan['mode'] != 'data-only':
+            for db in plan['databases']:
+                writer.write('CREATE DATABASE IF NOT EXISTS ' + ident(db['target']) + ';\n')
+            for table in plan['tables']:
+                writer.write(table['ddl'])
+        rows = 0
+        for number, table in enumerate(plan['tables'], 1):
+            ref = table['database'] + '.' + table['name']
+            progress.update(phase='导出', table=ref)
+            record = dict(rows=0, row_sha256_sum='0' * 64)
+            if plan['mode'] != 'schema-only':
+                record = export_rows(source, conn, table, writer, args, progress, dump_id, number)
+            record['table'] = number - 1
+            writer.metadata('table', record)
+            rows += record['rows']
+            progress.update(finished=number)
+            print('[导出 %d/%d] %s：%d 行；累计 %.1fs' %
+                  (number, len(plan['tables']), ref, record['rows'], time.monotonic()-started), file=sys.stderr, flush=True)
+        progress.update(phase='复查源端结构', table='')
+        if inspect(conn, args, progress) != {key: plan[key] for key in ('databases', 'tables')}:
+            raise MigrationError('导出期间库表结构或分区发生变化；请暂停相关变更后重新导出')
+        for table in plan['tables']:
+            if table['dynamic_disabled'] and plan['mode'] != 'data-only':
+                writer.write('-- After verification and retention review, enable scheduling manually:\n-- ALTER TABLE ' +
+                             ident(table['target_database']) + '.' + ident(table['name']) +
+                             ' SET ("dynamic_partition.enable"="true");\n')
+        writer.finish()
+    print('STARMIGRT_DUMP_OK tables=%d rows=%d file=%s sha256=%s' %
+          (len(plan['tables']), rows, args.output, sha256(args.output)), flush=True)
+
+
+@contextmanager
+def sql_input(path):
+    fd = os.open(path, os.O_RDONLY | getattr(os, 'O_NOFOLLOW', 0))
+    with os.fdopen(fd, 'rb') as raw:
+        if not stat.S_ISREG(os.fstat(raw.fileno()).st_mode):
+            raise MigrationError('输入必须为普通 SQL 文件')
+        stream = gzip.GzipFile(fileobj=raw) if path.suffix == '.gz' else raw
+        with io.TextIOWrapper(stream, encoding='utf-8', newline='') as data:
+            yield data
+
+
+def read_dump(data):
+    digest, plan, records = hashlib.sha256(), None, []
+    if data.readline() != SIGNATURE:
+        raise MigrationError('输入不是 StarMigrtCli 导出的 SQL 文件')
+    digest.update(SIGNATURE.encode('utf-8'))
+    for line in data:
+        if line.startswith(FOOTER):
+            if line != FOOTER + digest.hexdigest() + '\n' or data.read(1):
+                raise MigrationError('SQL 文件校验失败：文件损坏或被修改')
+            break
+        digest.update(line.encode('utf-8'))
+        if line.startswith('-- plan ') or line.startswith('-- table '):
+            if len(line.encode('utf-8')) > MAX_METADATA:
+                raise MigrationError('SQL 结构信息过大')
+            try:
+                value = json.loads(line.split(' ', 2)[2])
+            except ValueError:
+                raise MigrationError('SQL 结构信息损坏') from None
+            if line.startswith('-- plan '):
+                if plan is not None:
+                    raise MigrationError('SQL 结构信息重复')
+                plan = value
+            else:
+                records.append(value)
+    else:
+        raise MigrationError('SQL 文件不完整，不能导入；请重新导出')
+    try:
+        if plan['mode'] not in {'schema-only', 'data-only', 'schema-and-data'} or not plan['tables']:
+            raise ValueError()
+        if len(records) != len(plan['tables']) or [r['table'] for r in records] != list(range(len(records))):
+            raise ValueError()
+        for t, r in zip(plan['tables'], records):
+            ident(t['target_database'])
+            ident(t['name'])
+            if not t['columns'] or r['rows'] < 0 or not re.fullmatch('[0-9a-f]{64}', r['row_sha256_sum']):
+                raise ValueError()
+    except (ValueError, KeyError, TypeError):
+        raise MigrationError('SQL 结构或校验信息不完整') from None
+    return plan, records
+
+
+def statements(data):
+    """Stream SQL, preserving delimiters inside strings, identifiers and comments."""
+    parts, size, quote, block, escaped = [], 0, None, False, False
+    for line in data:
+        i, start = 0, 0
+        while i < len(line):
+            c = line[i]
+            if block:
+                if line.startswith('*/', i):
+                    block = False
+                    i += 2
+                else:
+                    i += 1
+                continue
+            if quote:
+                if escaped:
+                    escaped = False
+                elif c == '\\' and quote != '`':
+                    escaped = True
+                elif c == quote:
+                    if i + 1 < len(line) and line[i+1] == quote:
+                        i += 2
+                        continue
+                    quote = None
+                i += 1
+                continue
+            if line.startswith('--', i) or c == '#':
+                parts.append(line[start:i])
+                size += i - start
+                start = len(line)
+                break
+            if line.startswith('/*', i):
+                block = True
+                i += 2
+                continue
+            if c in "'\"`":
+                quote = c
+            elif c == ';':
+                parts.append(line[start:i+1])
+                size += i + 1 - start
+                if size > MAX_STATEMENT:
+                    raise MigrationError('SQL 单条语句超过 256 MiB')
+                statement = ''.join(parts).strip()
+                if statement:
+                    yield statement
+                parts, size, start = [], 0, i + 1
+            i += 1
+        parts.append(line[start:])
+        size += len(line) - start
+        if size > MAX_STATEMENT:
+            raise MigrationError('SQL 单条语句超过 256 MiB')
+    if quote or block or ''.join(parts).strip():
+        raise MigrationError('SQL 语句未闭合')
+
+
+def table_ref(table):
+    return ident(table['target_database']) + '.' + ident(table['name'])
+
+
+def preflight_target(conn, plan):
+    # Check ALL objects before any CREATE or INSERT, not one table at a time.
+    visible = {r[0] for r in all_rows(conn, 'SHOW DATABASES')}
+    objects = {db['target']: {r[0] for r in inventory(conn, db['target'])}
+               for db in plan['databases'] if db['target'] in visible}
+    for table in plan['tables']:
+        exists = table['name'] in objects.get(table['target_database'], set())
+        if plan['mode'] != 'data-only':
+            if exists:
+                raise MigrationError(table_ref(table) + ' 已存在；导入已停止，未写入任何数据')
+        else:
+            if not exists or columns_for(conn, table['target_database'], table['name']) != table['columns']:
+                raise MigrationError(table_ref(table) + ' 不存在或列结构不一致')
+            if all_rows(conn, 'SELECT COUNT(*) FROM ' + table_ref(table))[0][0] != 0:
+                raise MigrationError(table_ref(table) + ' 不是空表，不能导入数据')
+            original = all_rows(conn, 'SHOW CREATE TABLE ' + table_ref(table))[0][1]
+            props = ddl_properties(original)
+            if props.get('dynamic_partition.enable', ('', 'false'))[1].lower() == 'true':
+                raise MigrationError(table_ref(table) + ' 的动态分区仍在运行，请先暂停调度')
+            prepare_ddl(original, table['target_database'], table['name'], with_data=True)
+
+
+def verify_rows(source, conn, plan, records, progress):
+    for number, (table, record) in enumerate(zip(plan['tables'], records), 1):
+        ref = table_ref(table)
+        progress.update(phase='校验目标', table=ref)
+        if columns_for(conn, table['target_database'], table['name']) != table['columns']:
+            raise MigrationError(ref + ' 列名称、原生类型或顺序不一致')
+        if plan['mode'] != 'schema-only':
+            names = ','.join(ident(c['name']) for c in table['columns'])
+            cursor = conn.cursor(source.driver.cursors.SSCursor)
+            count, total = 0, 0
+            try:
+                cursor.execute('SELECT ' + names + ' FROM ' + ref)
+                for row in cursor:
+                    total = (total + int.from_bytes(hashlib.sha256(row_sql(row, table['columns']).encode('utf-8')).digest(), 'big')) % HASH_MOD
+                    count += 1
+                    if count % 1000 == 0:
+                        progress.add_rows(1000)
+                progress.add_rows(count % 1000)
+            except BaseException:
+                abort_stream(conn, cursor)
+                raise
+            finally:
+                cursor.close()
+            if count != record['rows'] or '%064x' % total != record['row_sha256_sum']:
+                raise MigrationError(ref + ' 行数或内容校验不一致；请保持目标隔离')
+        print('[校验 %d/%d] %s：通过' % (number, len(records), ref), file=sys.stderr, flush=True)
+        progress.update(finished=number)
+
+
+def load_sql(source, conn, data, plan, records, progress):
+    preflight_target(conn, plan)
+    data.seek(0)
+    number = 0
+    for statement in statements(data):
+        number += 1
+        progress.update(phase='导入', table='SQL #%d' % number)
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(statement)
+                if cursor.warning_count:
+                    raise MigrationError('SQL #%d 返回警告，已停止；请核查目标数据' % number)
+                message = getattr(getattr(cursor, '_result', None), 'message', b'')
+                if isinstance(message, bytes):
+                    message = message.decode('utf-8', errors='replace')
+                if re.search(r"['\"]status['\"]\s*:\s*['\"]COMMITTED['\"]", message):
+                    raise MigrationError('SQL #%d 已提交但尚未可见；请查询该事务状态，禁止重放' % number)
+        except Exception as error:
+            # Do not print SQL values or raw server errors.
+            raise MigrationError('导入在 SQL #%d 停止：%s。已提交语句不会自动回滚；请保留失败目标，勿直接重放文件。' %
+                                 (number, failure_text(error))) from None
+        if number % 100 == 0:
+            print('[导入] 已执行 %d 条 SQL' % number, file=sys.stderr, flush=True)
+    verify_rows(source, conn, plan, records, progress)
+    scope = 'columns' if plan['mode'] == 'schema-only' else 'content'
+    print('STARMIGRT_LOAD_OK tables=%d statements=%d verification=%s' % (len(records), number, scope), flush=True)
+
+
+def add_connection(parser):
+    parser.add_argument('--host', required=True, help='FE 地址')
+    parser.add_argument('--port', type=int, default=9030, help='FE MySQL 端口，默认 9030')
+    parser.add_argument('--user', required=True, help='数据库账号')
+    parser.add_argument('--password-env', default='SR_PASSWORD', help='密码环境变量名，默认 SR_PASSWORD；未设置时交互输入')
+    parser.add_argument('--password-file', type=Path, help='当前用户拥有的 0600 密码文件')
+    parser.add_argument('--ssl-ca', type=Path, help='CA 文件；验证证书及主机名，拒绝 TLS 降级')
+    parser.add_argument('--connect-timeout', type=int, default=15, help='连接超时秒，默认 15')
+    parser.add_argument('--query-timeout', type=int, default=3600, help='查询及导入超时秒，默认 3600')
 
 
 def make_parser():
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter,
-                                     epilog="示例：\n  StarMigrtCli.py check --host fe --user reader --databases db1 db2\n"
-                                            "  StarMigrtCli.py dump --host fe --user reader --databases db1 db2 --source-quiesced --output backup\n"
-                                            "  StarMigrtCli.py verify --input backup\n"
-                                            "  StarMigrtCli.py merge --input backup --output migration.sql\n详见同目录 README.md；仅适配 StarRocks 3.5.7。")
-    parser.add_argument("--version", action="version", version="StarMigrtCli " + VERSION)
-    commands = parser.add_subparsers(dest="command", required=True)
-    for name in ("check", "dump"):
-        sub = commands.add_parser(name, help="源端只读预检" if name == "check" else "导出/续传离线逻辑迁移包")
-        add_connection(sub)
-        sub.add_argument("--database", action="append", help="单个库，可重复；兼容旧入口")
-        sub.add_argument("--databases", nargs="+", help="多个库，以空格分隔")
-        sub.add_argument("--all-databases", action="store_true", help="所有可见业务库，不包含系统库")
-        sub.add_argument("--exclude-database", action="append", default=[], metavar="PATTERN")
-        sub.add_argument("--table", action="append", default=[], metavar="[DB.]PATTERN", help="包含表；支持 shell 通配符，可重复，需用引号")
-        sub.add_argument("--exclude-table", action="append", default=[], metavar="[DB.]PATTERN")
-        sub.add_argument("--database-map", action="append", default=[], metavar="SOURCE=TARGET")
-        sub.add_argument("--target-database", help="单库重命名快捷入口")
-        mode = sub.add_mutually_exclusive_group()
-        mode.add_argument("--schema-only", action="store_true", help="只导结构，允许未适配数据类型")
-        mode.add_argument("--data-only", action="store_true", help="只导数据；目标结构/分区管理须自行准备")
-        sub.add_argument("--replication-num", type=int, help="显式修改目标副本数；默认保留，不自动降为1")
-        sub.add_argument("--batch-rows", type=int, default=500)
-        sub.add_argument("--batch-mib", type=int, default=1, help="每条 INSERT UTF-8 大小上限 MiB")
-        sub.add_argument("--gzip", action="store_true", help="压缩逐表 SQL；merge 时自动解压")
-        if name == "dump":
-            sub.add_argument("--output", type=Path, required=True, help="新建私有目录；续传时为原目录")
-            sub.add_argument("--resume", action="store_true", help="核对计划/文件后仅重导未完成表")
-            sub.add_argument("--workers", type=int, default=2, help="并发读表连接数，1–16；另有1个元数据连接")
-            consistency = sub.add_mutually_exclusive_group()
-            consistency.add_argument("--source-quiesced", action="store_true", help="声明源端写入、DDL和分区调度已暂停，并持续到导出/续传结束")
-            consistency.add_argument("--allow-inconsistent", action="store_true", help="明确接受各表不同读取时点；不能用于一致性切换")
-    sub = commands.add_parser("verify", help="校验包完整性；可选目标端只读行数/内容校验")
-    sub.add_argument("--input", type=Path, required=True)
-    add_connection(sub, required=False)
-    sub.add_argument("--content", action="store_true", help="目标全表流式扫描，核对无序行摘要（需 --host/--user）")
-    sub = commands.add_parser("merge", help="将完整迁移包合并成一个可导入的 SQL 文件")
-    sub.add_argument("--input", type=Path, required=True)
-    sub.add_argument("--output", type=Path, required=True, help="包目录之外的新文件；不覆盖")
+    parser = argparse.ArgumentParser(description='StarRocks 3.5.7 SQL 导出与导入',
+        formatter_class=argparse.RawDescriptionHelpFormatter, epilog='示例：\n'
+        '  StarMigrtCli dump --host source-fe --user reader --database sales --output sales.sql\n'
+        '  StarMigrtCli load --host target-fe --user writer --input sales.sql\n'
+        '生产迁移：先暂停源端写入、DDL 和分区调度；导入到空目标，自动校验后再切换业务。')
+    parser.add_argument('--version', action='version', version='StarMigrtCli ' + VERSION)
+    commands = parser.add_subparsers(dest='command', required=True)
+    dump = commands.add_parser('dump', help='导出一个 SQL 文件', description='导出库表结构及数据；源端只读。')
+    add_connection(dump)
+    selection = dump.add_mutually_exclusive_group(required=True)
+    selection.add_argument('--database', action='append', help='源库，可重复')
+    selection.add_argument('--databases', nargs='+', help='多个源库，以空格分隔')
+    selection.add_argument('--all-databases', action='store_true', help='当前账号可见的全部业务库')
+    dump.add_argument('--output', type=Path, help='新 SQL 文件；.gz 后缀自动压缩，不覆盖已有文件')
+    dump.add_argument('--check', action='store_true', help='只检查范围、结构和类型，不读取表数据或生成文件')
+    dump.add_argument('--table', action='append', default=[], metavar='[DB.]PATTERN', help='选择表，支持通配符，可重复')
+    dump.add_argument('--exclude-table', action='append', default=[], metavar='[DB.]PATTERN', help='排除表，可重复')
+    dump.add_argument('--exclude-database', action='append', default=[], metavar='PATTERN', help='排除库，可重复')
+    dump.add_argument('--target-database', help='单库导出时修改 SQL 中的目标库名；默认同源库')
+    dump.add_argument('--database-map', action='append', default=[], metavar='SOURCE=TARGET', help='多库导出时修改目标库名，可重复')
+    mode = dump.add_mutually_exclusive_group()
+    mode.add_argument('--schema-only', action='store_true', help='只导出结构')
+    mode.add_argument('--data-only', action='store_true', help='只导出数据；导入时要求目标已有空表')
+    dump.add_argument('--replication-num', type=int, help='目标副本数；默认保留源值')
+    dump.add_argument('--batch-rows', type=int, default=500, help='每条 INSERT 最多行数，默认 500')
+    dump.add_argument('--batch-mib', type=int, default=1, help='每条 INSERT 最大 MiB，默认 1')
+    load = commands.add_parser('load', help='导入 SQL 并自动校验', description='校验文件、检查空目标、顺序导入、核对行数和内容。')
+    add_connection(load)
+    load.add_argument('--input', type=Path, required=True, help='本工具导出的 SQL 文件；.gz 自动解压')
     return parser
 
 
 def parse_args(argv):
     parser = make_parser()
-    # Preserve explicit old invocations, but remove the unsafe implicit ioc database default.
-    if argv and argv[0].startswith("--") and argv[0] not in {"--help", "--version"}:
-        argv = list(argv)
-        command = "check" if "--check-only" in argv else "dump"
-        if "--check-only" in argv:
-            argv.remove("--check-only")
-        argv.insert(0, command)
     args = parser.parse_args(argv)
-    if hasattr(args, "port"):
-        if not 1 <= args.port <= 65535 or not 1 <= args.connect_timeout <= 120 or not 1 <= args.query_timeout <= 86400:
-            parser.error("端口须为 1–65535；建连超时 1–120 秒；查询超时 1–86400 秒")
-    if args.command in {"check", "dump"}:
-        if not (args.database or args.databases or args.all_databases):
-            parser.error("必须显式选择 --database/--databases/--all-databases，不再默认 ioc")
-        if args.all_databases and (args.database or args.databases):
-            parser.error("--all-databases 不能与显式数据库列表同用")
+    if not 1 <= args.port <= 65535 or not 1 <= args.connect_timeout <= 120 or not 1 <= args.query_timeout <= 86400:
+        parser.error('端口范围 1–65535；连接超时 1–120 秒；查询超时 1–86400 秒')
+    if args.command == 'dump':
+        if args.check and args.output:
+            parser.error('--check 不生成文件，无需 --output')
+        if not args.check and not args.output:
+            parser.error('导出必须指定 --output sales.sql 或 sales.sql.gz')
         if not 1 <= args.batch_rows <= 1000000 or not 1 <= args.batch_mib <= 256:
-            parser.error("--batch-rows 为 1–1000000；--batch-mib 为 1–256")
+            parser.error('--batch-rows 范围 1–1000000；--batch-mib 范围 1–256')
         if args.replication_num is not None and not 1 <= args.replication_num <= 32767:
-            parser.error("--replication-num 必须为 1–32767")
+            parser.error('--replication-num 范围 1–32767')
         if args.data_only and args.replication_num is not None:
-            parser.error("--data-only 不生成 DDL，不能指定 --replication-num")
-    if args.command == "dump":
-        if not 1 <= args.workers <= 16:
-            parser.error("--workers 为 1–16")
-        if not args.schema_only and not (args.source_quiesced or args.allow_inconsistent):
-            parser.error("导数据须声明 --source-quiesced，或明确接受 --allow-inconsistent；工具不能建立跨表快照")
-    if args.command == "verify":
-        if bool(args.host) != bool(args.user) or args.content and not args.host:
-            parser.error("目标校验须同时指定 --host 和 --user；--content 需要目标连接")
+            parser.error('--data-only 不生成结构，不能修改副本数')
     return args
 
 
@@ -922,52 +823,38 @@ def main(argv=None):
     args = parse_args(sys.argv[1:] if argv is None else argv)
     try:
         with Progress() as progress:
-            if args.command in {"verify", "merge"}:
-                root = args.input.absolute()
-                # A missing/malformed input must never create a lock or other output.
-                read_manifest(root)
-                with package_lock(root):
-                    manifest = read_manifest(root)
-                    validate_files(root, manifest)
-                    if args.command == "merge":
-                        digest = merge_package(root, manifest, args.output.absolute())
-                        print("STARMIGRT_MERGE_PASS sha256=" + digest + " output=" + str(args.output))
+            if args.command == 'dump':
+                source = Source(args)
+                with source.connect() as (conn, _):
+                    plan = inspect(conn, args, progress)
+                    plan['mode'] = 'schema-only' if args.schema_only else 'data-only' if args.data_only else 'schema-and-data'
+                    print('[检查通过] %d 个库、%d 张表；副本数：%s' %
+                          (len(plan['databases']), len(plan['tables']), args.replication_num or '保留源值'), file=sys.stderr, flush=True)
+                    for table in plan['tables']:
+                        print('  %s.%s → %s.%s' % (table['database'], table['name'], table['target_database'], table['name']), file=sys.stderr, flush=True)
+                    if args.check:
+                        print('STARMIGRT_CHECK_OK tables=%d' % len(plan['tables']))
                     else:
-                        if args.content and manifest["plan"]["mode"] == "schema-only":
-                            raise MigrationError("--content 需要含数据的迁移包；结构包仅支持目标列校验")
-                        if args.host:
-                            verify_target(Source(args), manifest, args.content, progress)
-                        scope = "local-files"
-                        if args.host:
-                            scope = "target-columns" if manifest["plan"]["mode"] == "schema-only" else "target-content" if args.content else "target-rows"
-                        print("STARMIGRT_VERIFY_PASS scope=" + scope)
-                return 0
-            source = Source(args)
-            with source.connect() as (conn, version):
-                plan = inspect(conn, args, progress)
-            plan.update(source=dict(host=args.host, port=args.port, user=args.user, version=version),
-                        mode="schema-only" if args.schema_only else "data-only" if args.data_only else "schema-and-data",
-                        consistent=bool(getattr(args, "source_quiesced", False)),
-                        batch_rows=args.batch_rows, batch_mib=args.batch_mib, gzip=args.gzip,
-                        replication_num=args.replication_num)
-            print("预检通过：%d 个库、%d 张普通内表；副本数 %s" %
-                  (len(plan["databases"]), len(plan["tables"]), args.replication_num or "保留源值"), file=sys.stderr, flush=True)
-            for table in plan["tables"]:
-                print("  %s.%s → %s.%s" % (table["database"], table["name"], table["target_database"], table["name"]), file=sys.stderr)
-            if args.command == "check":
-                print("STARMIGRT_CHECK_PASS tables=" + str(len(plan["tables"])))
-                return 0
-            if args.allow_inconsistent:
-                print("注意：本次明确接受非一致读取，包不可作为一致性切换依据。", file=sys.stderr)
-            manifest = export_package(source, plan, args.output.absolute(), args, progress)
-            print("STARMIGRT_PASS tables=%d rows=%d output=%s" %
-                  (len(plan["tables"]), sum(r["rows"] for r in manifest["completed"].values()), args.output))
+                        print('[开始导出] 请保持源端写入、DDL 和分区调度暂停，直到迁移校验及业务切换完成。', file=sys.stderr, flush=True)
+                        dump_sql(source, conn, plan, args, progress)
+            else:
+                with sql_input(args.input) as data:
+                    progress.update(phase='校验 SQL 文件')
+                    plan, records = read_dump(data)
+                    # Parse to completion before connecting or changing the target.
+                    data.seek(0)
+                    for _ in statements(data):
+                        pass
+                    source = Source(args)
+                    with source.connect() as (conn, _):
+                        all_rows(conn, 'SET insert_timeout = ' + str(args.query_timeout))
+                        load_sql(source, conn, data, plan, records, progress)
         return 0
     except KeyboardInterrupt:
-        print("STARMIGRT_STOPPED：收到中断；已提交到清单的表可续传，当前未完成表会重新读取。", file=sys.stderr)
+        print('STARMIGRT_STOPPED：操作已中断。导出临时文件已回收；导入已提交数据须保留核查，不能直接重放。', file=sys.stderr, flush=True)
         return 130
     except Exception as error:
-        print("STARMIGRT_FAIL：" + failure_text(error), file=sys.stderr)
+        print('STARMIGRT_ERROR：' + failure_text(error), file=sys.stderr, flush=True)
         return 1
 
 
@@ -975,7 +862,6 @@ def handle_termination(signum, frame):
     raise KeyboardInterrupt
 
 
-if __name__ == "__main__":
-    # Convert TERM to normal unwind so temporary files and locks are reclaimed.
+if __name__ == '__main__':
     signal.signal(signal.SIGTERM, handle_termination)
     sys.exit(main())

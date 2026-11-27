@@ -2,6 +2,7 @@
 import datetime as dt
 from decimal import Decimal
 import gzip
+import io
 import hashlib
 import importlib.util
 import json
@@ -51,6 +52,7 @@ class Cursor:
     def __init__(self, conn, stream=False):
         self.conn, self.stream, self.rows, self.exhausted = conn, stream, [], False
         self.connection = conn
+        self.warning_count = 0
     def __enter__(self): return self
     def __exit__(self, *args): self.close()
     def execute(self, sql, args=None):
@@ -84,6 +86,9 @@ class Cursor:
                 raise RuntimeError(1234,'private-row-value DO_NOT_PRINT_PASSWORD')
             self.rows = ((i,'row-'+str(i)) for i in range(t['n'])) if 'n' in t else [tuple(r) for r in t.get('rows',[])]
             return
+        if sql.startswith(('CREATE ', 'INSERT ')):
+            event('WRITE '+sql.split()[0])
+            raise RuntimeError(1234, 'private-row-value DO_NOT_PRINT_PASSWORD')
         raise AssertionError(sql)
     def fetchall(self): return tuple(self.rows)
     def __iter__(self):
@@ -180,15 +185,6 @@ class LiteralContracts(unittest.TestCase):
             dump.prepare_ddl(source, 'new', 'events')
         dump.prepare_ddl(source, 'new', 'events', with_data=False)
 
-    def test_atomic_failure_never_publishes_partial_file(self):
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory)/'test'
-            with self.assertRaises(RuntimeError):
-                with dump.atomic_output(path) as output:
-                    output.write('secret')
-                    raise RuntimeError('fail')
-            self.assertEqual(list(Path(directory).iterdir()), [])
-
     def test_real_pymysql_abort_does_not_drain_or_close_twice(self):
         try:
             import pymysql
@@ -242,257 +238,221 @@ PROPERTIES ("replication_num"="3")'''
         self.assertIn('AS LARGEINT', dump.literal(2**127-1, columns[0]['type']))
 
 
-class CliContracts(unittest.TestCase):
+class SQLContracts(unittest.TestCase):
+    def test_split_sql_strings_comments_and_backticks(self):
+        sql = "-- header\nCREATE TABLE `a;b` (`c` varchar(20) COMMENT 'semi;colon');\nINSERT INTO `a;b` VALUES ('a;\\\'b', '双引号;'); -- end\n"
+        result = list(dump.statements(io.StringIO(sql)))
+        self.assertEqual(len(result), 2)
+        self.assertIn("semi;colon", result[0])
+        self.assertIn("双引号;", result[1])
+        for sql in ("SELECT 'unfinished", '/* unfinished', 'SELECT 1'):
+            with self.assertRaises(dump.MigrationError): list(dump.statements(io.StringIO(sql)))
+
+    def test_output_atomic_failure_compression_and_no_clobber(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            for suffix in ('.sql', '.sql.gz'):
+                p = root/('data'+suffix)
+                with self.assertRaises(RuntimeError):
+                    with dump.sql_output(p) as out:
+                        out.write('secret')
+                        raise RuntimeError()
+                self.assertFalse(p.exists())
+                self.assertFalse(p.with_name(p.name+'.partial').exists())
+                with dump.sql_output(p) as out: out.write('中文\n')
+                self.assertEqual(p.stat().st_mode & 0o777, 0o600)
+                with dump.sql_input(p) as data: self.assertEqual(data.read(), '中文\n')
+                with self.assertRaises(dump.MigrationError):
+                    with dump.sql_output(p): pass
+            p = root/'race.sql'
+            with self.assertRaises(FileExistsError):
+                with dump.sql_output(p) as out:
+                    out.write('new')
+                    p.write_text('foreign')
+            self.assertEqual(p.read_text(), 'foreign')
+
+    def test_dump_integrity_missing_footer_and_tamper(self):
+        plan = dict(mode='schema-and-data', tables=[dict(target_database='db', name='t', columns=[dict(name='id',type='int')])])
+        data = io.StringIO()
+        writer = dump.SQLWriter(data)
+        writer.write(dump.SIGNATURE)
+        writer.metadata('plan', plan)
+        writer.write('SELECT 1;\n')
+        writer.metadata('table', dict(table=0, rows=1, row_sha256_sum='0'*64))
+        writer.finish()
+        text = data.getvalue()
+        self.assertEqual(dump.read_dump(io.StringIO(text))[0], plan)
+        for broken in (text.replace('SELECT 1','SELECT 2'),text[:text.index(dump.FOOTER)],text+'\n'):
+            with self.assertRaises(dump.MigrationError): dump.read_dump(io.StringIO(broken))
+
+    def test_target_checks_all_tables_before_write(self):
+        conn = SimpleNamespace()
+        plan = dict(mode='schema-and-data',databases=[dict(target='db')],tables=[dict(target_database='db',name='new'),dict(target_database='db',name='existing')])
+        def query(conn, sql, args=None):
+            if sql == 'SHOW DATABASES': return [('db',)]
+            if sql.startswith('SELECT TABLE_NAME'): return [('existing','BASE TABLE','OLAP')]
+            self.fail('unexpected mutation: '+sql)
+        with patch.object(dump,'all_rows',side_effect=query),self.assertRaisesRegex(dump.MigrationError,'已存在'):
+            dump.preflight_target(conn,plan)
+
+    def test_warning_and_committed_stop_before_next_statement(self):
+        for warning, message in ((1,b''),(0,b"{'status':'COMMITTED'}")):
+            cursor = unittest.mock.MagicMock()
+            cursor.__enter__.return_value = cursor
+            cursor.warning_count = warning
+            cursor._result.message = message
+            conn = SimpleNamespace(cursor=lambda:cursor)
+            with patch.object(dump,'preflight_target'),patch.object(dump,'verify_rows') as verify:
+                with self.assertRaisesRegex(dump.MigrationError,'SQL #1'):
+                    dump.load_sql(None,conn,io.StringIO('INSERT INTO t VALUES (1);\nINSERT INTO t VALUES (2);'),{},[],SimpleNamespace(update=lambda **kw:None))
+                self.assertEqual(cursor.execute.call_count,1)
+                verify.assert_not_called()
+
+    def test_content_mismatch_with_same_row_count_fails(self):
+        cursor=unittest.mock.MagicMock()
+        cursor.__iter__.return_value=iter([(2,)])
+        cursor.close=lambda:None
+        conn=SimpleNamespace(cursor=lambda _:cursor)
+        columns=[dict(name='id',type='int',native_type='int',extra='')]
+        plan=dict(mode='schema-and-data',tables=[dict(target_database='db',name='t',columns=columns)])
+        expected=int.from_bytes(hashlib.sha256(b'(1)').digest(),'big')
+        with patch.object(dump,'columns_for',return_value=columns),self.assertRaisesRegex(dump.MigrationError,'内容'):
+            dump.verify_rows(SimpleNamespace(driver=SimpleNamespace(cursors=SimpleNamespace(SSCursor=None))),conn,plan,[dict(rows=1,row_sha256_sum='%064x'%expected)],SimpleNamespace(update=lambda **kw:None,add_rows=lambda n:None))
+
+
+class CLIContracts(unittest.TestCase):
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory(prefix='starmigrt-contract-')
+        self.temp = tempfile.TemporaryDirectory(prefix='starmigrt-cli-')
+        self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
-        (self.root/'pymysql.py').write_text(DRIVER, encoding='utf-8')
-        self.config = self.root/'fixture.json'
+        (self.root/'pymysql.py').write_text(DRIVER)
+        self.config = self.root/'config.json'
         self.events = self.root/'events'
-        self.package = self.root/'backup'
-        self.env = dict(os.environ, PYTHONPATH=str(self.root), PYTHONDONTWRITEBYTECODE='1',
-                        SR_PASSWORD='DO_NOT_PRINT_PASSWORD', KUBEAUTO_LOG_DIR=str(self.root/'logs'),
-                        FAKE_CONFIG=str(self.config), FAKE_EVENTS=str(self.events))
-        self.fixture = dict(databases={'db1': {'events': table()}, 'db2': {'events': table([[3,'other']])}})
-        self.save()
+        self.env = dict(os.environ,PYTHONPATH=str(self.root),PYTHONDONTWRITEBYTECODE='1',
+                        KUBEAUTO_LOG_DIR=str(self.root),FAKE_CONFIG=str(self.config),FAKE_EVENTS=str(self.events),SR_PASSWORD='DO_NOT_PRINT_PASSWORD')
+        self.data = dict(databases=dict(sales=dict(events=table())))
+        self.config.write_text(json.dumps(self.data))
 
-    def tearDown(self): self.temp.cleanup()
+    def cli(self,*args,rc=0):
+        p = subprocess.run([sys.executable,'-B',str(SCRIPT),*map(str,args)],env=self.env,capture_output=True,text=True,timeout=20)
+        self.assertEqual(p.returncode,rc,p.stdout+p.stderr)
+        self.assertNotIn('DO_NOT_PRINT_PASSWORD',p.stdout+p.stderr)
+        return p
 
-    def save(self): self.config.write_text(json.dumps(self.fixture), encoding='utf-8')
+    def export(self,path=None,*extra):
+        path = path or self.root/'sales.sql'
+        self.cli('dump','--host','source','--user','reader','--database','sales','--output',path,*extra)
+        return path
 
-    def cli(self, *arguments, expected=0):
-        result = subprocess.run([sys.executable, '-B', str(SCRIPT), *map(str, arguments)],
-                                env=self.env, text=True, capture_output=True, timeout=20)
-        self.assertEqual(result.returncode, expected, result.stdout+'\n'+result.stderr)
-        self.assertNotIn('DO_NOT_PRINT_PASSWORD', result.stdout+result.stderr)
-        return result
+    def test_public_help_and_two_step_flow(self):
+        text=self.cli('--help').stdout
+        self.assertIn('{dump,load}',text)
+        for obsolete in ('source-quiesced','allow-inconsistent','merge','manifest','resume'):
+            self.assertNotIn(obsolete,text)
+        for command in ('dump','load'):
+            self.assertIn('--host',self.cli(command,'--help').stdout)
+        self.assertIn('3.0.0',self.cli('--version').stdout)
 
-    def source(self, command='dump', *extra, expected=0):
-        args = [command, '--host','fixture.invalid','--user','reader','--databases','db1','db2']
-        if command == 'dump': args += ['--source-quiesced','--output',self.package]
-        return self.cli(*args, *extra, expected=expected)
+    def test_dump_single_file_plain_and_gzip(self):
+        for suffix in ('.sql','.sql.gz'):
+            p=self.export(self.root/('sales'+suffix))
+            with dump.sql_input(p) as data:
+                plan,records=dump.read_dump(data)
+                data.seek(0)
+                sql=data.read()
+                self.assertIn("CREATE TABLE `sales`.`events`",sql)
+                self.assertIn('INSERT INTO `sales`.`events` WITH LABEL',sql)
+                self.assertNotIn('DROP TABLE',sql)
+            self.assertEqual(records[0]['rows'],2)
+            self.assertEqual(plan['tables'][0]['columns'][0]['native_type'],'bigint')
+        self.assertFalse(list(self.root.glob('*.partial')))
+        self.assertNotIn('DRAIN_BUG',self.events.read_text())
 
-    def manifest(self): return json.loads((self.package/'manifest.json').read_text(encoding='utf-8'))
+    def test_check_creates_no_file_and_reads_no_data(self):
+        self.cli('dump','--host','source','--user','reader','--database','sales','--check')
+        self.assertNotIn('READ ',self.events.read_text())
+        self.assertFalse(list(self.root.glob('*.sql')))
 
-    def reads(self): return self.events.read_text().splitlines() if self.events.exists() else []
+    def test_schema_data_selection_and_mapping(self):
+        for mode in ('schema-only','data-only'):
+            p=self.export(self.root/(mode+'.sql'),'--'+mode,'--target-database','target')
+            text=p.read_text()
+            self.assertIn('CREATE TABLE `target`' if mode=='schema-only' else 'INSERT INTO `target`',text)
+            self.assertNotIn('INSERT INTO' if mode=='schema-only' else '\nCREATE TABLE',text)
 
-    def test_help_version_and_explicit_scope(self):
-        help_text = self.cli('--help').stdout
-        self.assertIn('离线逻辑迁移', help_text)
-        self.assertIn('StarMigrtCli.py', help_text)
-        self.assertEqual(self.cli('--version').stdout.strip(), 'StarMigrtCli 2.0.0')
-        self.cli('dump','--host','x','--user','u','--output',self.package, expected=2)
-        self.cli('dump','--host','x','--user','u','--database','db1','--output',self.package, expected=2)
-        self.cli('check','--host','x','--user','u','--all-databases','--database','db1', expected=2)
-        self.assertFalse(self.package.exists())
+    def test_invalid_arguments_fail_before_authentication(self):
+        common=['--host','source','--user','reader']
+        for args in (['dump',*common,'--output','x.sql'],['dump',*common,'--database','sales'],
+                     ['dump',*common,'--database','sales','--check','--batch-rows','0'],
+                     ['load',*common,'--input','x.sql','--port','0']):
+            self.cli(*args,rc=2)
+        self.assertFalse(self.events.exists())
 
-    def test_check_is_metadata_only_and_mapping_is_shown(self):
-        result = self.source('check', '--database-map','db1=new1')
-        self.assertIn('db1.events → new1.events', result.stderr)
-        self.assertIn('STARMIGRT_CHECK_PASS', result.stdout)
-        self.assertFalse(self.package.exists())
-        self.assertFalse(any(x.startswith('READ ') for x in self.reads()))
+    def test_corrupt_input_refused_before_authentication(self):
+        p=self.root/'broken.sql'
+        p.write_text(dump.SIGNATURE+'SELECT 1;\n')
+        self.cli('load','--host','target','--user','writer','--input',p,rc=1)
+        self.assertFalse(self.events.exists())
 
-    def test_multi_database_export_merge_and_offline_verify(self):
-        self.assertIn('STARMIGRT_PASS', self.source().stdout)
-        manifest = self.manifest()
-        self.assertEqual(manifest['tool'], 'StarMigrtCli')
-        self.assertEqual(manifest['status'], 'complete')
-        self.assertEqual(sum(x['rows'] for x in manifest['completed'].values()), 3)
-        self.assertIn('"replication_num" = "3"', (self.package/'schema.sql').read_text())
-        self.assertNotIn('DO_NOT_PRINT_PASSWORD', json.dumps(manifest))
-        self.assertIn('STARMIGRT_VERIFY_PASS', self.cli('verify','--input',self.package).stdout)
-        merged = self.root/'migration.sql'
-        self.assertIn('STARMIGRT_MERGE_PASS', self.cli('merge','--input',self.package,'--output',merged).stdout)
-        sql = merged.read_text(encoding='utf-8')
-        self.assertIn('CREATE TABLE `db1`.`events`', sql)
-        self.assertIn('INSERT INTO `db2`.`events`', sql)
-        self.assertNotIn('DROP TABLE', sql)
-        self.cli('merge','--input',self.package,'--output',merged, expected=1)
-        if os.name != 'nt':
-            self.assertEqual(self.package.stat().st_mode & 0o777, 0o700)
-            for path in self.package.iterdir(): self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+    def test_existing_target_refused_without_writes(self):
+        p=self.export()
+        result=self.cli('load','--host','target','--user','writer','--input',p,rc=1)
+        self.assertIn('已存在',result.stderr)
+        self.assertNotIn('WRITE',self.events.read_text())
 
-    def test_all_databases_and_explicit_filters(self):
-        self.fixture['databases']['information_schema'] = {'ignored': table()}
-        self.fixture['databases']['db1']['archive'] = table()
-        self.save()
-        self.cli('dump','--host','x','--user','u','--all-databases','--exclude-database','db2',
-                 '--exclude-table','archive','--output',self.package,'--source-quiesced')
-        self.assertEqual([t['database']+'.'+t['name'] for t in self.manifest()['plan']['tables']], ['db1.events'])
-
-    def test_unknown_table_unsupported_object_and_type_fail_closed(self):
-        self.source('check','--table','missing', expected=1)
-        self.fixture['databases']['db1']['view1'] = table(kind='VIEW', engine='')
-        self.save()
-        self.source(expected=1)
-        self.assertFalse(self.package.exists())
-        self.source('check','--exclude-table','view1')
-        self.fixture['databases']['db1']['events']['columns'][1][1] = 'array'
-        self.save()
-        self.source('check','--exclude-table','view1',expected=1)
-        self.source('check','--schema-only','--exclude-table','view1')
-
-    def test_mapping_collision_and_unknown_mapping_refused(self):
-        self.source('check','--database-map','db1=db2',expected=1)
-        self.source('check','--database-map','absent=new',expected=1)
-        self.source('check','--target-database','new',expected=1)
-
-    def test_gzip_schema_only_and_data_only(self):
-        self.source('dump','--gzip','--schema-only')
-        self.assertFalse(any(x.startswith('READ ') for x in self.reads()))
-        self.assertTrue(all(name.endswith('.gz') for name in self.manifest()['completed']))
-        self.cli('verify','--input',self.package)
-        result = self.cli('verify','--input',self.package,'--host','target','--user','reader')
-        self.assertIn('scope=target-columns',result.stdout)
-        self.cli('verify','--input',self.package,'--host','target','--user','reader','--content',expected=1)
-        self.cli('merge','--input',self.package,'--output',self.root/'schema.sql')
-        self.assertNotIn('INSERT INTO', (self.root/'schema.sql').read_text())
-        self.package = self.root/'data-only'
-        self.source('dump','--gzip','--data-only')
-        self.assertNotIn('CREATE TABLE', (self.package/'schema.sql').read_text())
-        self.assertNotIn('CREATE DATABASE', (self.package/'schema.sql').read_text())
-        for name in self.manifest()['completed']:
-            with gzip.open(self.package/name,'rt') as data: self.assertIn('INSERT INTO',data.read())
-
-    def test_resume_keeps_completed_table_and_restarts_failed_table(self):
-        self.fixture['databases']['db2']['events']['fail'] = True
-        self.save()
-        self.source('dump','--workers','1', expected=1)
-        manifest = self.manifest()
-        self.assertEqual(manifest['status'], 'incomplete')
-        self.assertEqual(list(manifest['completed']), ['table-000001.sql'])
-        path = self.package/'table-000001.sql'
-        before = path.stat().st_mtime_ns
-        self.assertNotIn('DRAIN_BUG',self.reads())
-        self.cli('verify','--input',self.package,expected=1)
-        self.fixture['databases']['db2']['events']['fail'] = False
-        self.save()
-        self.source('dump','--resume','--workers','2')
-        self.assertEqual(path.stat().st_mtime_ns, before)
-        self.assertEqual(self.reads().count('READ db1.events'), 1)
-        self.assertEqual(self.manifest()['status'], 'complete')
-        self.source('dump','--resume')
-        self.assertEqual(self.reads().count('READ db1.events'), 1)
-
-    def test_failure_stops_next_unlaunched_table_and_redacts_error(self):
-        self.fixture['databases']['db1'] = {'a': table(fail=True), 'b': table()}
-        self.save()
-        result = self.source('dump','--workers','1',expected=1)
+    def test_import_first_error_stops_and_redacts_sql(self):
+        p=self.export()
+        self.data['databases']={}
+        self.config.write_text(json.dumps(self.data))
+        result=self.cli('load','--host','target','--user','writer','--input',p,rc=1)
+        self.assertIn('SQL #4',result.stderr)
         self.assertNotIn('private-row-value',result.stderr)
-        self.assertNotIn('READ db1.b',self.reads())
-        self.assertEqual(list(self.package.glob('*.partial')), [])
+        self.assertEqual(self.events.read_text().count('WRITE '),1)
 
-    def test_corruption_and_plan_changes_refuse_resume(self):
-        self.source()
-        self.source('dump','--resume','--replication-num','1',expected=1)
-        path = self.package/'table-000001.sql'
-        path.write_text('corrupted')
-        self.cli('verify','--input',self.package,expected=1)
-        self.source('dump','--resume',expected=1)
-        self.assertEqual(path.read_text(), 'corrupted')
+    def test_unsupported_objects_fail_without_output(self):
+        self.data['databases']['sales']['events']['kind']='VIEW'
+        self.config.write_text(json.dumps(self.data))
+        path=self.root/'no.sql'
+        result=self.cli('dump','--host','source','--user','reader','--database','sales','--output',path,rc=1)
+        self.assertIn('普通内表',result.stderr)
+        self.assertFalse(path.exists())
 
-    def test_target_rows_and_content_detect_changed_values(self):
-        self.source()
-        self.cli('verify','--input',self.package,'--host','target','--user','reader','--content')
-        self.fixture['databases']['db1']['events']['rows'][0][1] = 'changed'
-        self.save()
-        self.cli('verify','--input',self.package,'--host','target','--user','reader')
-        self.cli('verify','--input',self.package,'--host','target','--user','reader','--content',expected=1)
-        self.fixture['databases']['db1']['events']['rows'].append([4,'extra'])
-        self.save()
-        self.cli('verify','--input',self.package,'--host','target','--user','reader',expected=1)
+    def test_error_cleans_partial_and_does_not_publish(self):
+        self.data['databases']['sales']['events']['fail']=True
+        self.config.write_text(json.dumps(self.data))
+        path=self.root/'failed.sql'
+        result=self.cli('dump','--host','source','--user','reader','--database','sales','--output',path,rc=1)
+        self.assertNotIn('private-row-value',result.stderr)
+        self.assertFalse(path.exists())
+        self.assertFalse(path.with_name(path.name+'.partial').exists())
+        self.assertNotIn('DRAIN_BUG',self.events.read_text())
 
-    def test_symlink_and_manifest_path_traversal_are_refused(self):
-        self.source()
-        manifest = self.manifest()
-        original = self.package/'table-000001.sql'
-        moved = self.root/'moved.sql'
-        original.rename(moved)
-        original.symlink_to(moved)
-        self.cli('verify','--input',self.package,expected=1)
-        manifest['completed']['../moved.sql'] = manifest['completed'].pop('table-000001.sql')
-        (self.package/'manifest.json').write_text(json.dumps(manifest))
-        self.cli('verify','--input',self.package,expected=1)
-        self.assertTrue(moved.exists())
+    def test_signal_reclaims_partial_and_exits_nonzero(self):
+        self.data['databases']['sales']['events']['block']=True
+        self.config.write_text(json.dumps(self.data))
+        path=self.root/'signal.sql'
+        with (self.root/'signal.log').open('w') as log:
+            proc=subprocess.Popen([sys.executable,'-B',str(SCRIPT),'dump','--host','source','--user','reader','--database','sales','--output',str(path)],env=self.env,stdout=log,stderr=log)
+            try:
+                deadline=time.monotonic()+10
+                while time.monotonic()<deadline:
+                    if self.events.exists() and 'READ ' in self.events.read_text(): break
+                    if proc.poll() is not None: self.fail('exited before signal')
+                    time.sleep(.02)
+                else: self.fail('no read boundary')
+                proc.terminate()
+                self.assertEqual(proc.wait(timeout=5),130)
+            finally:
+                if proc.poll() is None: proc.kill();proc.wait()
+        self.assertFalse(path.exists())
+        self.assertFalse(path.with_name(path.name+'.partial').exists())
 
-    def test_sql_batches_preserve_all_rows_and_bound_bytes(self):
-        self.fixture['databases'] = {'db1': {'events': table(n=10001)}}
-        self.save()
-        self.cli('dump','--host','x','--user','u','--database','db1','--source-quiesced',
-                 '--output',self.package,'--batch-rows','500')
-        record = self.manifest()['completed']['table-000001.sql']
-        self.assertEqual(record['rows'],10001)
-        sql = (self.package/'table-000001.sql').read_text()
-        self.assertEqual(sql.count('INSERT INTO'),21)
-        self.assertEqual(sql.count("'row-"),10001)
-        self.cli('verify','--input',self.package,'--host','target','--user','reader','--content')
-
-    def test_byte_limit_splits_without_splitting_a_row(self):
-        self.fixture['databases'] = {'db1': {'events': table([[i,'中' * 200000] for i in range(3)])}}
-        self.save()
-        self.cli('dump','--host','x','--user','u','--database','db1','--source-quiesced',
-                 '--output',self.package,'--batch-rows','500','--batch-mib','1')
-        sql = (self.package/'table-000001.sql').read_text()
-        statements = ['INSERT INTO' + part for part in sql.split('INSERT INTO')[1:]]
-        self.assertEqual(len(statements),3)
-        self.assertTrue(all(len(s.encode('utf-8')) <= 1024*1024 for s in statements))
-
-    def test_labels_survive_resume_and_are_unique_between_packages(self):
-        self.source()
-        first = self.manifest()['package_id']
-        sql = (self.package/'table-000001.sql').read_text()
-        self.assertIn('WITH LABEL `sr_'+first+'_t000001_b000000000001`',sql)
-        self.source('dump','--resume')
-        self.assertEqual((self.package/'table-000001.sql').read_text(),sql)
-        self.package = self.root/'another'
-        self.source()
-        self.assertNotEqual(self.manifest()['package_id'],first)
-
-    def test_oversized_row_leaves_incomplete_package_not_truncated_data(self):
-        self.fixture['databases']['db1']['events']['rows'] = [[1,'x'*(1024*1024)]]
-        self.save()
-        self.source('dump','--workers','1',expected=1)
-        self.assertFalse((self.package/'table-000001.sql').exists())
-        self.assertEqual(self.manifest()['status'],'incomplete')
-        self.assertEqual(list(self.package.glob('*.partial')), [])
-
-    def test_password_file_and_tls_flags(self):
-        password = self.root/'password'
-        password.write_text('DO_NOT_PRINT_PASSWORD\n')
-        password.chmod(0o600)
-        self.source('check','--password-file',password,'--ssl-ca',self.root/'ca.pem')
-        if os.name != 'nt':
-            password.chmod(0o644)
-            self.source('check','--password-file',password,expected=1)
-
-    def test_tls_refuses_downgrade_before_authentication(self):
-        self.fixture['no_tls'] = True
-        self.save()
-        result = self.source('check','--ssl-ca',self.root/'ca.pem',expected=1)
-        self.assertIn('拒绝降级',result.stderr)
-        self.assertNotIn('AUTH',self.reads())
-
-    def test_signal_wakes_blocked_query_and_retains_resumable_state(self):
-        if os.name == 'nt': self.skipTest('POSIX signal contract')
-        self.fixture['databases']['db1']['events']['block'] = True
-        self.save()
-        process = subprocess.Popen([sys.executable,'-B',str(SCRIPT),'dump','--host','x','--user','u',
-                                    '--database','db1','--source-quiesced','--workers','1','--output',str(self.package)],
-                                   env=self.env,text=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
-        try:
-            deadline = time.monotonic()+5
-            while 'READ db1.events' not in self.reads() and time.monotonic()<deadline:
-                time.sleep(0.02)
-            self.assertIn('READ db1.events',self.reads())
-            process.send_signal(signal.SIGTERM)
-            stdout,stderr = process.communicate(timeout=5)
-            self.assertEqual(process.returncode,130,stdout+stderr)
-            self.assertEqual(list(self.package.glob('*.partial')), [])
-            self.assertEqual(self.manifest()['status'],'incomplete')
-            self.assertNotIn('DRAIN_BUG',self.reads())
-        finally:
-            if process.poll() is None: process.kill(); process.communicate()
+    def test_tls_downgrade_refused_before_authentication(self):
+        self.data['no_tls']=True
+        self.config.write_text(json.dumps(self.data))
+        self.cli('dump','--host','source','--user','reader','--database','sales','--check','--ssl-ca',self.root/'ca.pem',rc=1)
+        self.assertFalse(self.events.exists())
 
 
-if __name__ == '__main__': unittest.main()
+if __name__ == '__main__':
+    unittest.main()

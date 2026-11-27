@@ -166,13 +166,13 @@ execution_boundaries:
     cleanup: "仅本轮所属进程/安装/上传目录；不重启外来服务"
     evidence_scope: "TL-SR-06当前真实SSH交接；原业务证据保持原身份"
   StarMigrtCli:
-    configuration: "显式host/port/user/TLS、选择/映射、导出模式、包路径、并发/超时"
-    namespace: "PyMySQL TCP；包文件属于执行端；不调用本地mysql shell客户端"
-    identity: "StarRocks3.5.7版本检查；SSL能力/证书/身份校验；一致性需显式停写"
-    commands: "check/export/verify/merge；表级原子提交、manifest hash与目标行/内容校验"
-    paths: "包成员safe_file与原子输出；密码受控文件/环境，拒绝symlink/宽权限"
-    cleanup: "当前未完成表回收，已提交表可续传；中断唤醒网络线程与包锁释放"
-    evidence_scope: "复用未变源码的TL-SD原始业务/中断/续传/TLS证据，不推定任意版本"
+    configuration: "dump/load；显式FE、账号、库表范围、SQL文件与TLS"
+    namespace: "执行端PyMySQL连接；SQL文件属于执行端，可离线传输"
+    identity: "固定StarRocks3.5.7；只读源、空目标、文件完整性和原生列核验"
+    commands: "dump：流式SELECT→原子SQL；load：预检→顺序SQL→自动内容校验"
+    paths: "单SQL或gzip文件0600；不覆盖；partial仅归本次导出所有"
+    cleanup: "导出失败清理本次partial；导入首错停止且不自动删除已提交目标"
+    evidence_scope: "TL-SD-01–07当前源码、冻结制品和真实双实例往返独立验收"
   StarRocksShells:
     configuration: "RUSTFS_BUCKET/REGION/ACCESS_KEY/SECRET_KEY；Compose service DNS和固定端口"
     namespace: "init与healthcheck容器自身网络；FE9030、CN8040、RustFS9000"
@@ -277,13 +277,13 @@ test_cases:
   - {id: TL-X-09, tool: cross-tool, category: delivery, scenario: "两个 MySQL 备份工具变化范围的最终干净完整回归", command: "bash tests/run_tools_regression.sh --mysql-backup-live", expected: "所有当前适用前置 PASS 且输入绑定后才启动；两个工具全部原有场景及新增场景；durable 双0、零未预期失败、TOOLS_CLEAN_VERIFY_PASS", status: pass, evidence: "tests/evidence/mysql-backup-final-20261125.json；2026-11-27 当前冻结制品容器16组合、二进制24组合、十四脚本审计及最后五阶段干净完整回归全部通过；最终run=mysql-backups-full-20261127-024805；durable双0、零未预期失败及限定清理已核验；旧记录保全原身份"}
 
   # 新迁移工具独立待验收；不继承 StarCli、容器或旧 cross-tool 的 PASS。
-  - {id: TL-SD-01, tool: StarMigrtCli, category: build, scenario: "独立导入、Python 3.9+ 与选定单工具 onefile", command: "bash tests/run_tools_regression.sh --starmigrt-qualify", expected: "独立 AST/语法通过；冻结产物 SHA256/依赖/运行平台另留证", status: pass, official: "StarRocks 3.5.7 INSERT/SHOW CREATE TABLE；PyMySQL v1.1.2 connections/cursors；starmigrt_review.official", fixture: "私有 Docker 28.5.2；双 allin1 3.5.7 固定 digest；Python3.9.25/glibc2.34；65536行流式表及多类型/主键/聚合表；TLS协议代理；fixture SQL仅建数和消费导出SQL", cleanup: "只移除本轮label容器/网络、daemon及运行目录；核对防火墙不变、无mount/进程/partial；失败保留私有证据", disproof: "bash tests/run_tools_regression.sh --starmigrt-qualify", evidence: tests/evidence/starmigrt-full.json}
-  - {id: TL-SD-02, tool: StarMigrtCli, category: cli, scenario: "帮助、显式范围、参数拒绝与只读预检", command: "bash tests/run_tools_regression.sh --starmigrt-qualify", expected: "CLI fixture 验证不默认 ioc、未声明一致性拒绝、check 不读数据不建输出", status: pass, official: "StarRocks 3.5.7 INSERT/SHOW CREATE TABLE；PyMySQL v1.1.2 connections/cursors；starmigrt_review.official", fixture: "私有 Docker 28.5.2；双 allin1 3.5.7 固定 digest；Python3.9.25/glibc2.34；65536行流式表及多类型/主键/聚合表；TLS协议代理；fixture SQL仅建数和消费导出SQL", cleanup: "只移除本轮label容器/网络、daemon及运行目录；核对防火墙不变、无mount/进程/partial；失败保留私有证据", disproof: "bash tests/run_tools_regression.sh --starmigrt-qualify", evidence: tests/evidence/starmigrt-full.json}
-  - {id: TL-SD-03, tool: StarMigrtCli, category: functional, scenario: "多库/全可见业务库、库表筛选、库映射、结构/数据与压缩", command: "bash tests/run_tools_regression.sh --starmigrt-qualify", expected: "STARMIGRT_PASS；两库普通内表完整；精确值及副本/分区语义可复验", status: pass, official: "StarRocks 3.5.7 INSERT/SHOW CREATE TABLE；PyMySQL v1.1.2 connections/cursors；starmigrt_review.official", fixture: "私有 Docker 28.5.2；双 allin1 3.5.7 固定 digest；Python3.9.25/glibc2.34；65536行流式表及多类型/主键/聚合表；TLS协议代理；fixture SQL仅建数和消费导出SQL", cleanup: "只移除本轮label容器/网络、daemon及运行目录；核对防火墙不变、无mount/进程/partial；失败保留私有证据", disproof: "bash tests/run_tools_regression.sh --starmigrt-qualify", evidence: tests/evidence/starmigrt-full.json}
-  - {id: TL-SD-04, tool: StarMigrtCli, category: security, scenario: "凭据/TLS降级、权限、SQL名称、输出覆盖及包路径边界", command: "bash tests/run_tools_regression.sh --starmigrt-qualify", expected: "认证前拒绝TLS降级；凭据/行值不进错误输出；私有包/文件权限；符号链接及越界拒绝", status: pass, official: "StarRocks 3.5.7 INSERT/SHOW CREATE TABLE；PyMySQL v1.1.2 connections/cursors；starmigrt_review.official", fixture: "私有 Docker 28.5.2；双 allin1 3.5.7 固定 digest；Python3.9.25/glibc2.34；65536行流式表及多类型/主键/聚合表；TLS协议代理；fixture SQL仅建数和消费导出SQL", cleanup: "只移除本轮label容器/网络、daemon及运行目录；核对防火墙不变、无mount/进程/partial；失败保留私有证据", disproof: "bash tests/run_tools_regression.sh --starmigrt-qualify", evidence: tests/evidence/starmigrt-full.json}
-  - {id: TL-SD-05, tool: StarMigrtCli, category: recovery, scenario: "首错停止、SIGTERM、表级续传、计划/文件损坏拒绝", command: "bash tests/run_tools_regression.sh --starmigrt-qualify", expected: "已提交清单的表不重读；失败表重新读取；锁/partial清理；损坏不绕过", status: pass, official: "StarRocks 3.5.7 INSERT/SHOW CREATE TABLE；PyMySQL v1.1.2 connections/cursors；starmigrt_review.official", fixture: "私有 Docker 28.5.2；双 allin1 3.5.7 固定 digest；Python3.9.25/glibc2.34；65536行流式表及多类型/主键/聚合表；TLS协议代理；fixture SQL仅建数和消费导出SQL", cleanup: "只移除本轮label容器/网络、daemon及运行目录；核对防火墙不变、无mount/进程/partial；失败保留私有证据", disproof: "bash tests/run_tools_regression.sh --starmigrt-qualify", evidence: tests/evidence/starmigrt-full.json}
-  - {id: TL-SD-06, tool: StarMigrtCli, category: functional, scenario: "合并导入与目标行数/内容校验", command: "bash tests/run_tools_regression.sh --starmigrt-qualify", expected: "STARMIGRT_MERGE_PASS 与 STARMIGRT_VERIFY_PASS scope=target-content；同数不同内容非0", status: pass, official: "StarRocks 3.5.7 INSERT/SHOW CREATE TABLE；PyMySQL v1.1.2 connections/cursors；starmigrt_review.official", fixture: "私有 Docker 28.5.2；双 allin1 3.5.7 固定 digest；Python3.9.25/glibc2.34；65536行流式表及多类型/主键/聚合表；TLS协议代理；fixture SQL仅建数和消费导出SQL", cleanup: "只移除本轮label容器/网络、daemon及运行目录；核对防火墙不变、无mount/进程/partial；失败保留私有证据", disproof: "bash tests/run_tools_regression.sh --starmigrt-qualify", evidence: tests/evidence/starmigrt-full.json}
-  - {id: TL-SD-07, tool: StarMigrtCli, category: delivery, scenario: "仅此迁移工具的最终干净往返与清理", command: "bash tests/run_tools_regression.sh --starmigrt-full", expected: "当前前置与真实往返证据、durable rc=0、零未预期失败、TOOLS_CLEAN_VERIFY_PASS scope=starmigrt；本地模拟驱动不签现场PASS", status: pass, official: "StarRocks 3.5.7 INSERT/SHOW CREATE TABLE；PyMySQL v1.1.2 connections/cursors；starmigrt_review.official", fixture: "私有 Docker 28.5.2；双 allin1 3.5.7 固定 digest；Python3.9.25/glibc2.34；65536行流式表及多类型/主键/聚合表；TLS协议代理；fixture SQL仅建数和消费导出SQL", cleanup: "只移除本轮label容器/网络、daemon及运行目录；核对防火墙不变、无mount/进程/partial；失败保留私有证据", disproof: "bash tests/run_tools_regression.sh --starmigrt-full", evidence: tests/evidence/starmigrt-full.json}
+  - {id: TL-SD-01, tool: "StarMigrtCli", category: "build", scenario: "独立源码与单工具 onefile 构建", command: "bash tests/run_tools_regression.sh --starmigrt-qualify", expected: "源码、冻结文件执行同一 dump/load；SHA256、依赖与平台可追溯", status: pass, official: "StarRocks 3.5.7 INSERT/SHOW CREATE TABLE；PyMySQL v1.1.2 connections/cursors；starmigrt_review.official", fixture: "私有Docker28.5.2；双allin1 3.5.7固定digest；65536行流式表、多类型/主键/聚合/分区表；TLS协议代理；仅产品dump/load签业务", cleanup: "只回收本轮label容器、网络、daemon、文件和挂载；防火墙前后相同；失败保留本轮诊断", disproof: "bash tests/run_tools_regression.sh --starmigrt-preflight", evidence: tests/evidence/starmigrt-full.json}
+  - {id: TL-SD-02, tool: "StarMigrtCli", category: "cli", scenario: "两步主流程、帮助、显式范围与只读检查", command: "bash tests/run_tools_regression.sh --starmigrt-qualify", expected: "dump/load 帮助匹配；dump --check 不读数据、不创建文件；非法输入非0", status: pass, official: "StarRocks 3.5.7 INSERT/SHOW CREATE TABLE；PyMySQL v1.1.2 connections/cursors；starmigrt_review.official", fixture: "私有Docker28.5.2；双allin1 3.5.7固定digest；65536行流式表、多类型/主键/聚合/分区表；TLS协议代理；仅产品dump/load签业务", cleanup: "只回收本轮label容器、网络、daemon、文件和挂载；防火墙前后相同；失败保留本轮诊断", disproof: "bash tests/run_tools_regression.sh --starmigrt-preflight", evidence: tests/evidence/starmigrt-full.json}
+  - {id: TL-SD-03, tool: "StarMigrtCli", category: "functional", scenario: "单SQL多库选表、映射、结构/数据、gzip和类型往返", command: "bash tests/run_tools_regression.sh --starmigrt-qualify", expected: "STARMIGRT_DUMP_OK；多库及精确类型、表模型、分区、副本可复验", status: pass, official: "StarRocks 3.5.7 INSERT/SHOW CREATE TABLE；PyMySQL v1.1.2 connections/cursors；starmigrt_review.official", fixture: "私有Docker28.5.2；双allin1 3.5.7固定digest；65536行流式表、多类型/主键/聚合/分区表；TLS协议代理；仅产品dump/load签业务", cleanup: "只回收本轮label容器、网络、daemon、文件和挂载；防火墙前后相同；失败保留本轮诊断", disproof: "bash tests/run_tools_regression.sh --starmigrt-preflight", evidence: tests/evidence/starmigrt-full.json}
+  - {id: TL-SD-04, tool: "StarMigrtCli", category: "security", scenario: "凭据、TLS、只读源、输出与目标保护", command: "bash tests/run_tools_regression.sh --starmigrt-qualify", expected: "认证前拒绝TLS降级；凭据和行值不回显；0600且不覆盖；全部目标先预检", status: pass, official: "StarRocks 3.5.7 INSERT/SHOW CREATE TABLE；PyMySQL v1.1.2 connections/cursors；starmigrt_review.official", fixture: "私有Docker28.5.2；双allin1 3.5.7固定digest；65536行流式表、多类型/主键/聚合/分区表；TLS协议代理；仅产品dump/load签业务", cleanup: "只回收本轮label容器、网络、daemon、文件和挂载；防火墙前后相同；失败保留本轮诊断", disproof: "bash tests/run_tools_regression.sh --starmigrt-preflight", evidence: tests/evidence/starmigrt-full.json}
+  - {id: TL-SD-05, tool: "StarMigrtCli", category: "recovery", scenario: "首错、中断、损坏、空目标与失败后重入", command: "bash tests/run_tools_regression.sh --starmigrt-qualify", expected: "导出原子发布与中断清理；坏文件连接前拒绝；导入首错停且已存在目标不重放", status: pass, official: "StarRocks 3.5.7 INSERT/SHOW CREATE TABLE；PyMySQL v1.1.2 connections/cursors；starmigrt_review.official", fixture: "私有Docker28.5.2；双allin1 3.5.7固定digest；65536行流式表、多类型/主键/聚合/分区表；TLS协议代理；仅产品dump/load签业务", cleanup: "只回收本轮label容器、网络、daemon、文件和挂载；防火墙前后相同；失败保留本轮诊断", disproof: "bash tests/run_tools_regression.sh --starmigrt-preflight", evidence: tests/evidence/starmigrt-full.json}
+  - {id: TL-SD-06, tool: "StarMigrtCli", category: "functional", scenario: "自动导入校验和普通MySQL客户端兼容", command: "bash tests/run_tools_regression.sh --starmigrt-qualify", expected: "STARMIGRT_LOAD_OK；自动行数与内容校验；同数异值拒绝；mysql直接消费SQL", status: pass, official: "StarRocks 3.5.7 INSERT/SHOW CREATE TABLE；PyMySQL v1.1.2 connections/cursors；starmigrt_review.official", fixture: "私有Docker28.5.2；双allin1 3.5.7固定digest；65536行流式表、多类型/主键/聚合/分区表；TLS协议代理；仅产品dump/load签业务", cleanup: "只回收本轮label容器、网络、daemon、文件和挂载；防火墙前后相同；失败保留本轮诊断", disproof: "bash tests/run_tools_regression.sh --starmigrt-preflight", evidence: tests/evidence/starmigrt-full.json}
+  - {id: TL-SD-07, tool: "StarMigrtCli", category: "delivery", scenario: "最终干净导出导入、冻结制品与限定清理", command: "bash tests/run_tools_regression.sh --starmigrt-full", expected: "当前前置全部PASS；真实全场景；durable双0、零非预期失败与TOOLS_CLEAN_VERIFY_PASS scope=starmigrt", status: pass, official: "StarRocks 3.5.7 INSERT/SHOW CREATE TABLE；PyMySQL v1.1.2 connections/cursors；starmigrt_review.official", fixture: "私有Docker28.5.2；双allin1 3.5.7固定digest；65536行流式表、多类型/主键/聚合/分区表；TLS协议代理；仅产品dump/load签业务", cleanup: "只回收本轮label容器、网络、daemon、文件和挂载；防火墙前后相同；失败保留本轮诊断", disproof: "bash tests/run_tools_regression.sh --starmigrt-preflight", evidence: tests/evidence/starmigrt-full.json}
 
   - {id: TL-X-10, tool: cross-tool, category: security, scenario: "全部 tools 的配置消费与宿主机/容器执行边界审计", command: "bash tests/run_tools_regression.sh --production-audit", expected: "11 个 Python CLI 及随附 shell 的输入到命令追踪；声明执行命名空间、路径/端点/身份/启停边界；逐项核验已有 raw evidence；缺口精确补测；夹具不得补产品参数或掩盖默认路径；真实业务读回与 scoped cleanup", status: pass, official: "各 tool_catalog.official 固定版本文档/源码；Python subprocess；Docker bind mounts/stop/start/exec；MySQL8.0.33/8.0.46/PXB8.0.35-36", fixture: "先本地静态和确定性合同；现场仅所属固定 runner 的租约资源；不得连接生产，不继承其它工具 PASS", cleanup: "本轮临时配置/子进程/容器/端口/挂载/文件；保留原始证据；不动用户或其它任务资源", disproof: "bash tests/run_tools_regression.sh --preflight", evidence: "tests/evidence/tools-production-execution-audit-20261125.json；11CLI及3shell逐输入追踪、8工具修复、真实补测与限定依赖复用；固定只读门禁核验原始摘要及durable状态；不外推全部拓扑"}
 
@@ -298,13 +298,13 @@ test_cases:
 
 functional_inventory:
   StarMigrtCli:
-    - {id: SD-F-01, operation: "check/帮助/显式库选择/旧参数入口", case_ids: [TL-SD-02]}
+    - {id: SD-F-01, operation: "dump/load帮助、显式库选择与只读预检", case_ids: [TL-SD-02]}
     - {id: SD-F-02, operation: "单库/多库/全可见业务库与库表筛选", case_ids: [TL-SD-03]}
     - {id: SD-F-03, operation: "结构/数据模式、映射、副本与分区安全", case_ids: [TL-SD-03]}
-    - {id: SD-F-04, operation: "流式有界并发、行/字节批次与gzip", case_ids: [TL-SD-03]}
+    - {id: SD-F-04, operation: "单连接流式读取、行/字节批次与gzip", case_ids: [TL-SD-03]}
     - {id: SD-F-05, operation: "凭据、TLS拒绝降级、权限及输出边界", case_ids: [TL-SD-04]}
-    - {id: SD-F-06, operation: "断点/取消/损坏/输入变化与首错停止", case_ids: [TL-SD-05]}
-    - {id: SD-F-07, operation: "合并、文件完整性、目标列/行数/内容核验", case_ids: [TL-SD-06]}
+    - {id: SD-F-06, operation: "原子发布、取消、损坏拒绝与首错停止", case_ids: [TL-SD-05]}
+    - {id: SD-F-07, operation: "单SQL导入、文件完整性、自动列/行数/内容核验", case_ids: [TL-SD-06]}
     - {id: SD-F-08, operation: "最终真实往返及限定清理", case_ids: [TL-SD-06, TL-SD-07]}
   NetCheckCli:
     - {id: NET-F-01, operation: "ICMP IPv4/IPv6、域名探测", case_ids: [TL-NET-03]}
@@ -433,7 +433,7 @@ coverage_summary:
   fail: 0
   skip: 0
   na: 1
-  overall_assessment: "2026-11-27 当前适用89项全部通过固定status核验，pending/fail均为0；当前冻结日志/帮助修订、MySQL8.0容器16组合和二进制三拓扑24组合及最后五阶段干净完整回归通过，durable双0、原始证据和限定清理均已核验；Calico未采用KDD后端保留1项NA；历史记录保留原身份，不代客户签收。"
+  overall_assessment: "验收以各工具当前矩阵与固定status证据为准；迁移工具TL-SD-01–07按当前SQL接口独立验收，其它未变项保持所属证据边界。"
 
 mysql_backup_requalification:
   evidence: tests/evidence/mysql-backup-qualification-20261125.json
@@ -605,9 +605,9 @@ starrocks_compose:
 
 starmigrt_review:
   review_status: approved
-  authorization: "用户明确要求 GA 并继续本工具范围的实现及现场验收；2026-11-23"
-  scope: "仅 tools/starrocks/starmigration/StarMigrtCli.py；旧十工具与容器的 PASS 只覆盖原范围，不签新工具"
-  classification: "新独立产品及其合同门禁；仅两实例隔离fixture，复用镜像，无镜像构建或发布"
+  authorization: "用户要求重新设计为SQL导出导入、重写README、移除迁移工具旧回归记录并达到GA；2026-11-27"
+  scope: "仅迁移工具、README及所属测试和证据；其它产品代码不变"
+  classification: "产品重设计及对应门禁；仅两实例隔离fixture，复用镜像，无镜像构建或发布"
   local_entry: "bash tests/run_tools_regression.sh --starmigrt-preflight"
   status_entry: "bash tests/run_tools_regression.sh --starmigrt-status"
   official:
@@ -617,10 +617,10 @@ starmigrt_review:
     - "https://github.com/PyMySQL/PyMySQL/blob/v1.1.2/pymysql/connections.py"
     - "https://github.com/PyMySQL/PyMySQL/blob/v1.1.2/pymysql/cursors.py"
   local_fixture: "tests/unit/test_starmigrt_contract.py 临时驱动模块/数据/子进程；只证明CLI合同，不证明数据库语义或吞吐"
-  cleanup: "本地 TemporaryDirectory、子进程、socket、包锁和当前 partial；失败包是用户可续传制品，不自动删除"
+  cleanup: "本地 TemporaryDirectory、子进程、socket、本次导出partial；保留导入已提交数据供核查，不自动删库表"
   smallest_disproof: "python3 -B -m unittest tests.unit.test_starmigrt_contract -v"
   live_boundary: "root@192.168.122.216；持双控制端共享池租约与节点锁；私有daemon、两个internal网络上的allin1 3.5.7实例；不连接生产，不调用旧工具业务"
-  remaining: "TL-SD-01–07 已完成名称统一后的 StarMigrtCli.py 独立验收；Windows/ARM、其它拓扑与生产规模容量不在本次认证范围"
+  remaining: "TL-SD-01–07 以当前SQL导出导入矩阵验收；仅本工具进入现场和最终回归"
 
 mysql80_physical_requalification:
   authorization: "2026-11-25 用户要求补 MySQL 8.0.33/8.0.46 生产版本物理备份生命周期回归；不连接生产"
