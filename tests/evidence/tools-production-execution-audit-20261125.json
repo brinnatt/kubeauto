@@ -1,101 +1,98 @@
 {
-  "date": "2026-11-26",
+  "date": "2026-11-27",
   "result": "pass",
   "scope": [
     "TL-X-10"
   ],
   "scripts": {
     "tools/NetCheckCli.py": {
-      "sha256": "7910eae746d5a900ba10fc6784ddd02fe29fe38c720fc4db3c19a8b0eb4c4877",
+      "sha256": "70a5b5896a376f68e1a01cbf10e3c1596fe7def2a52bd4721d7c9206703c07ff",
       "boundary": "NetCheckCli",
       "parser_declarations": [
         {
           "options": [
             "--version"
           ],
-          "line": 1090
+          "line": 1096
         },
         {
           "options": [
             "-d",
             "--duration"
           ],
-          "line": 1091
+          "line": 1097
         },
         {
           "options": [
             "--no-default-nodes"
           ],
-          "line": 1095
+          "line": 1101
         },
         {
           "options": [
             "-v",
             "--verbose"
           ],
-          "line": 1099
+          "line": 1105
         },
         {
           "options": [
             "--no-log-file"
           ],
-          "line": 1102
+          "line": 1108
         },
         {
           "options": [
             "--log-file"
           ],
-          "line": 1106
+          "line": 1112
         },
         {
           "options": [
             "--report-dir"
           ],
-          "line": 1110
+          "line": 1116
         },
         {
           "options": [
             "--no-report-file"
           ],
-          "line": 1114
+          "line": 1120
         },
         {
           "options": [
             "--json-summary"
           ],
-          "line": 1118
+          "line": 1124
         },
         {
           "options": [
             "--dry-run"
           ],
-          "line": 1122
+          "line": 1128
         },
         {
           "options": [
             "--max-expand"
           ],
-          "line": 1126
+          "line": 1132
         },
         {
           "options": [
             "--max-icmp-workers"
           ],
-          "line": 1133
+          "line": 1139
         },
         {
           "options": [
             "targets"
           ],
-          "line": 1140
+          "line": 1146
         }
-      ],
-      "trace_review": "CLI目标、报告目录、探测时长/阈值；环境中的线程/展开上限 -> run_ping argv → ping；TCP socket；质量汇总与退出码",
-      "indirect_consumers": "Direct attribute/config value consumption or argparse action; no unexplained destination found in review.",
-      "finding": "No new same-class product defect proven; retain original product behavior and original evidence scope."
+      ]
     },
     "tools/OvpnUserCli.py": {
-      "sha256": "9b2a49c47a6945d40cea87d40bb42192a640b7d3e6880344b0162445f2c491d2",
+      "sha256": "9cde10ab4941434b4ba28a98b0ecb5a07ae4123832adc3a9e4703378de52ffb6",
       "boundary": "OvpnUserCli",
       "parser_declarations": [
         {
@@ -103,53 +100,50 @@
             "--user",
             "-u"
           ],
-          "line": 2185
+          "line": 2193
         },
         {
           "options": [
             "--rhost"
           ],
-          "line": 2188
+          "line": 2196
         },
         {
           "options": [
             "--rport"
           ],
-          "line": 2194
+          "line": 2202
         },
         {
           "options": [
             "--proto"
           ],
-          "line": 2201
+          "line": 2209
         },
         {
           "options": [
             "--dev"
           ],
-          "line": 2210
+          "line": 2218
         },
         {
           "options": [
             "--user",
             "-u"
           ],
-          "line": 2240
+          "line": 2248
         },
         {
           "options": [
             "--user",
             "-u"
           ],
-          "line": 2258
+          "line": 2266
         }
-      ],
-      "trace_review": "GENOVPN_*路径、server.conf的proto/dev/TLS密钥及方向、create/revoke/status -> 真实easyrsa build-client-full/revoke/gen-crl；openssl证书/CRL核验",
-      "indirect_consumers": "Direct attribute/config value consumption or argparse action; no unexplained destination found in review.",
-      "finding": "Read actual tls-auth/tls-crypt key and direction; explicit EasyRSA cwd; reject unsupported tls-crypt-v2 before issuing."
+      ]
     },
     "tools/k8stools/CalicoPolicyCli.py": {
-      "sha256": "fefd0b352611e4b1fe175d72c2939ad15ce5e8afeaa4cfabc02b1262ae125929",
+      "sha256": "0c527c34fc87eb3dcea4c4aa268a24d0abf31578e0720c9898a0bdc39e7f30b2",
       "boundary": "CalicoPolicyCli",
       "parser_declarations": [
         {
@@ -415,13 +409,10 @@
           ],
           "line": 2561
         }
-      ],
-      "trace_review": "context、executor、流量层、namespace、策略名、HEP/GNP参数 -> apply/delete/get执行器；首错非0且停止后续变更；空集合与枚举失败区分",
-      "indirect_consumers": "allow_net_ignored/gnp_*/post_verify are consumed via getattr by manifest and validation paths.",
-      "finding": "Delete executor failure and failed HEP enumeration return nonzero and stop changes; distinguish NotFound."
+      ]
     },
     "tools/k8stools/KubeBackupCli.py": {
-      "sha256": "bcd8f94ccfc834eda5cdf484d07752f52595b0f062c374c15c062cd1e235b114",
+      "sha256": "1156f4efb24eadd8306c978e4a35e5361cbe2e6f7a871d2107d0b1c6e4022f9d",
       "boundary": "KubeBackupCli",
       "parser_declarations": [
         {
@@ -429,193 +420,190 @@
             "-n",
             "--namespace"
           ],
-          "line": 3685
+          "line": 3693
         },
         {
           "options": [
             "--all-namespaces"
           ],
-          "line": 3689
+          "line": 3697
         },
         {
           "options": [
             "-r",
             "--resources"
           ],
-          "line": 3694
+          "line": 3702
         },
         {
           "options": [
             "-o",
             "--output-dir"
           ],
-          "line": 3699
+          "line": 3707
         },
         {
           "options": [
             "--include-crds"
           ],
-          "line": 3704
+          "line": 3712
         },
         {
           "options": [
             "--tar"
           ],
-          "line": 3709
+          "line": 3717
         },
         {
           "options": [
             "--max-workers"
           ],
-          "line": 3714
+          "line": 3722
         },
         {
           "options": [
             "--label-selector"
           ],
-          "line": 3720
+          "line": 3728
         },
         {
           "options": [
             "--field-selector"
           ],
-          "line": 3724
+          "line": 3732
         },
         {
           "options": [
             "--include-names"
           ],
-          "line": 3728
+          "line": 3736
         },
         {
           "options": [
             "--exclude-names"
           ],
-          "line": 3732
+          "line": 3740
         },
         {
           "options": [
             "--backup-name"
           ],
-          "line": 3736
+          "line": 3744
         },
         {
           "options": [
             "--backup-dir"
           ],
-          "line": 3744
+          "line": 3752
         },
         {
           "options": [
             "--namespace-mapping"
           ],
-          "line": 3749
+          "line": 3757
         },
         {
           "options": [
             "--image-mapping"
           ],
-          "line": 3755
+          "line": 3763
         },
         {
           "options": [
             "--env-mapping"
           ],
-          "line": 3760
+          "line": 3768
         },
         {
           "options": [
             "--env-namespace-substitute"
           ],
-          "line": 3767
+          "line": 3775
         },
         {
           "options": [
             "--merge-patch"
           ],
-          "line": 3774
+          "line": 3782
         },
         {
           "options": [
             "--merge-patch-kind"
           ],
-          "line": 3781
+          "line": 3789
         },
         {
           "options": [
             "--max-workers"
           ],
-          "line": 3789
+          "line": 3797
         },
         {
           "options": [
             "--skip-crds"
           ],
-          "line": 3795
+          "line": 3803
         },
         {
           "options": [
             "--skip-cluster-scoped"
           ],
-          "line": 3800
+          "line": 3808
         },
         {
           "options": [
             "--create-namespaces",
             "--create-namespace"
           ],
-          "line": 3805
+          "line": 3813
         },
         {
           "options": [
             "--backup-name"
           ],
-          "line": 3811
+          "line": 3819
         },
         {
           "options": [
             "-h",
             "--help"
           ],
-          "line": 3825
+          "line": 3833
         },
         {
           "options": [
             "--dry-run"
           ],
-          "line": 3841
+          "line": 3849
         },
         {
           "options": [
             "--dry-run"
-          ],
-          "line": 3846
-        },
-        {
-          "options": [
-            "--kubeconfig"
           ],
           "line": 3854
         },
         {
           "options": [
+            "--kubeconfig"
+          ],
+          "line": 3862
+        },
+        {
+          "options": [
             "--context"
           ],
-          "line": 3858
+          "line": 3866
         },
         {
           "options": [
             "--debug"
           ],
-          "line": 3862
+          "line": 3870
         }
-      ],
-      "trace_review": "kubeconfig/context、namespace、resources、selector、output/input目录与restore改写 -> 动态discovery/list/create/patch；备份归档及恢复清单",
-      "indirect_consumers": "Direct attribute/config value consumption or argparse action; no unexplained destination found in review.",
-      "finding": "Explicit kubeconfig context takes precedence over in-cluster/current context."
+      ]
     },
     "tools/k8stools/KubePublishCli.py": {
-      "sha256": "ed3c8c138c02fdd3cc69b4f8f7d46127734e029ea334ff2767d1d28c4c6cdb9b",
+      "sha256": "e59634bd4c8e7a6c495b579704aa584842f97cfe8599ba8a045e5a866ea3044f",
       "boundary": "KubePublishCli",
       "parser_declarations": [
         {
@@ -623,111 +611,108 @@
             "-h",
             "--help"
           ],
-          "line": 1430
+          "line": 1440
         },
         {
           "options": [
             "--local-runtime"
           ],
-          "line": 1437
+          "line": 1447
         },
         {
           "options": [
             "--remote-runtime"
           ],
-          "line": 1444
+          "line": 1454
         },
         {
           "options": [
             "--namespace"
           ],
-          "line": 1451
+          "line": 1461
         },
         {
           "options": [
             "--pack"
           ],
-          "line": 1458
+          "line": 1468
         },
         {
           "options": [
             "--download"
           ],
-          "line": 1465
+          "line": 1475
         },
         {
           "options": [
             "--delete"
           ],
-          "line": 1472
+          "line": 1482
         },
         {
           "options": [
             "--delete-hosts"
           ],
-          "line": 1479
+          "line": 1489
         },
         {
           "options": [
             "--distribute"
           ],
-          "line": 1486
+          "line": 1496
         },
         {
           "options": [
             "--tar"
           ],
-          "line": 1493
+          "line": 1503
         },
         {
           "options": [
             "--config"
           ],
-          "line": 1500
+          "line": 1510
         },
         {
           "options": [
             "--output-dir"
           ],
-          "line": 1507
+          "line": 1517
         },
         {
           "options": [
             "--ssh-user"
           ],
-          "line": 1513
+          "line": 1523
         },
         {
           "options": [
             "--ssh-port"
           ],
-          "line": 1519
+          "line": 1529
         },
         {
           "options": [
             "--ssh-key"
           ],
-          "line": 1526
+          "line": 1536
         },
         {
           "options": [
             "--disable-ssh-host-check"
           ],
-          "line": 1532
+          "line": 1542
         },
         {
           "options": [
             "--cleanup"
           ],
-          "line": 1538
+          "line": 1548
         }
-      ],
-      "trace_review": "CLI/JSON镜像、目标host:port、runtime、namespace、tar/output路径 -> pull/save→SSH传输→load；逐包load首个非0传播；delete显式确认",
-      "indirect_consumers": "Direct attribute/config value consumption or argparse action; no unexplained destination found in review.",
-      "finding": "Remote sequential load stops at first nonzero; find -exec no longer masks failure."
+      ]
     },
     "tools/kafka/KafkaCli.py": {
-      "sha256": "b973bd568a6e6f908caa2f7d30873ca213511623349d6816a90c129f726f298f",
+      "sha256": "9eeac546bff80479730fe9ed516e7f40662aebf4bc2508a575b11932d3cfbf6a",
       "boundary": "KafkaCli",
       "parser_declarations": [
         {
@@ -735,764 +720,761 @@
             "-h",
             "--help"
           ],
-          "line": 5215
+          "line": 5216
         },
         {
           "options": [
             "--config"
           ],
-          "line": 5226
+          "line": 5227
         },
         {
           "options": [
             "--assume-kafka-version"
           ],
-          "line": 5231
+          "line": 5232
         },
         {
           "options": [
             "--skip-kraft-version-check"
           ],
-          "line": 5236
+          "line": 5237
         },
         {
           "options": [
             "--deploy"
           ],
-          "line": 5254
+          "line": 5255
         },
         {
           "options": [
             "--kafka-home"
           ],
-          "line": 5261
+          "line": 5262
         },
         {
           "options": [
             "--log-dirs"
           ],
-          "line": 5266
+          "line": 5267
         },
         {
           "options": [
             "--metadata-log-dir"
           ],
-          "line": 5271
+          "line": 5272
         },
         {
           "options": [
             "--node-id"
           ],
-          "line": 5276
+          "line": 5277
         },
         {
           "options": [
             "--controller-scope"
           ],
-          "line": 5282
+          "line": 5283
         },
         {
           "options": [
             "--advertised-host"
           ],
-          "line": 5291
+          "line": 5292
         },
         {
           "options": [
             "--cluster-id"
           ],
-          "line": 5300
+          "line": 5301
         },
         {
           "options": [
             "--generate-cluster-id"
           ],
-          "line": 5307
+          "line": 5308
         },
         {
           "options": [
             "--use-disk-cluster-id"
           ],
-          "line": 5313
+          "line": 5314
         },
         {
           "options": [
             "--controller-quorum-bootstrap-servers"
           ],
-          "line": 5318
+          "line": 5319
         },
         {
           "options": [
             "--controller-listen-host"
           ],
-          "line": 5323
+          "line": 5324
         },
         {
           "options": [
             "--controller-listen-port"
           ],
-          "line": 5330
+          "line": 5331
         },
         {
           "options": [
             "--broker-listen-host"
           ],
-          "line": 5337
+          "line": 5338
         },
         {
           "options": [
             "--broker-listen-port"
           ],
-          "line": 5344
+          "line": 5345
         },
         {
           "options": [
             "--listeners"
           ],
-          "line": 5351
+          "line": 5352
         },
         {
           "options": [
             "--extra-properties"
           ],
-          "line": 5357
+          "line": 5358
         },
         {
           "options": [
             "--initial-controllers"
           ],
-          "line": 5363
+          "line": 5364
         },
         {
           "options": [
             "--join-quorum"
           ],
-          "line": 5368
+          "line": 5369
         },
         {
           "options": [
             "--java-home"
           ],
-          "line": 5374
+          "line": 5375
         },
         {
           "options": [
             "--user"
           ],
-          "line": 5375
+          "line": 5376
         },
         {
           "options": [
             "--group"
           ],
-          "line": 5380
+          "line": 5381
         },
         {
           "options": [
             "--no-systemd"
           ],
-          "line": 5381
+          "line": 5382
         },
         {
           "options": [
             "--verify"
           ],
-          "line": 5386
+          "line": 5387
         },
         {
           "options": [
             "--force"
           ],
-          "line": 5391
+          "line": 5392
         },
         {
           "options": [
             "--clean"
           ],
-          "line": 5396
+          "line": 5397
         },
         {
           "options": [
             "--clean-data"
           ],
-          "line": 5401
+          "line": 5402
         },
         {
           "options": [
             "--clean-first"
           ],
-          "line": 5406
+          "line": 5407
         },
         {
           "options": [
             "--bootstrap-server"
           ],
-          "line": 5418
+          "line": 5419
         },
         {
           "options": [
             "--bootstrap-controller"
           ],
-          "line": 5426
+          "line": 5427
         },
         {
           "options": [
             "--status"
           ],
-          "line": 5432
+          "line": 5433
         },
         {
           "options": [
             "--command-config"
           ],
-          "line": 5440
+          "line": 5441
         },
         {
           "options": [
             "--kafka-user"
           ],
-          "line": 5445
+          "line": 5446
         },
         {
           "options": [
             "--kafka-password"
           ],
-          "line": 5450
+          "line": 5451
         },
         {
           "options": [
             "--kafka-sasl-mechanism"
           ],
-          "line": 5455
+          "line": 5456
         },
         {
           "options": [
             "--deploy-sasl-plain"
           ],
-          "line": 5461
+          "line": 5462
         },
         {
           "options": [
             "--deploy-sasl-ssl"
           ],
-          "line": 5466
+          "line": 5467
         },
         {
           "options": [
             "--ssl-keystore-path"
           ],
-          "line": 5471
+          "line": 5472
         },
         {
           "options": [
             "--ssl-keystore-password"
           ],
-          "line": 5476
+          "line": 5477
         },
         {
           "options": [
             "--ssl-key-password"
           ],
-          "line": 5481
+          "line": 5482
         },
         {
           "options": [
             "--ssl-truststore-path"
           ],
-          "line": 5486
+          "line": 5487
         },
         {
           "options": [
             "--ssl-truststore-password"
           ],
-          "line": 5491
+          "line": 5492
         },
         {
           "options": [
             "--target-host"
           ],
-          "line": 5503
+          "line": 5504
         },
         {
           "options": [
             "--ssh-user"
           ],
-          "line": 5508
+          "line": 5509
         },
         {
           "options": [
             "--ssh-port"
           ],
-          "line": 5509
+          "line": 5510
         },
         {
           "options": [
             "--ssh-key"
           ],
-          "line": 5510
+          "line": 5511
         },
         {
           "options": [
             "--disable-ssh-host-check"
           ],
-          "line": 5511
+          "line": 5512
         },
         {
           "options": [
             "--remote-workdir"
           ],
-          "line": 5516
+          "line": 5517
         },
         {
           "options": [
             "--batch"
           ],
-          "line": 5521
+          "line": 5522
         },
         {
           "options": [
             "--topic-create"
           ],
-          "line": 5536
+          "line": 5537
         },
         {
           "options": [
             "--topic-delete"
           ],
-          "line": 5537
+          "line": 5538
         },
         {
           "options": [
             "--topic-describe"
           ],
-          "line": 5538
+          "line": 5539
         },
         {
           "options": [
             "--topic-list"
           ],
-          "line": 5539
+          "line": 5540
         },
         {
           "options": [
             "--topic"
           ],
-          "line": 5540
+          "line": 5541
         },
         {
           "options": [
             "--partitions"
           ],
-          "line": 5541
+          "line": 5542
         },
         {
           "options": [
             "--replication-factor"
           ],
-          "line": 5542
+          "line": 5543
         },
         {
           "options": [
             "--group-list"
           ],
-          "line": 5548
+          "line": 5549
         },
         {
           "options": [
             "--group-describe"
           ],
-          "line": 5549
+          "line": 5550
         },
         {
           "options": [
             "--consumer-group"
           ],
-          "line": 5550
+          "line": 5551
         },
         {
           "options": [
             "--produce"
           ],
-          "line": 5556
+          "line": 5557
         },
         {
           "options": [
             "--consume"
           ],
-          "line": 5557
+          "line": 5558
         },
         {
           "options": [
             "--message"
           ],
-          "line": 5558
+          "line": 5559
         },
         {
           "options": [
             "--input-file"
           ],
-          "line": 5559
+          "line": 5560
         },
         {
           "options": [
             "--max-messages"
           ],
-          "line": 5560
+          "line": 5561
         },
         {
           "options": [
             "--metrics"
           ],
-          "line": 5568
+          "line": 5569
         },
         {
           "options": [
             "--metrics-json"
           ],
-          "line": 5569
+          "line": 5570
         },
         {
           "options": [
             "--config-describe-broker"
           ],
-          "line": 5575
+          "line": 5576
         },
         {
           "options": [
             "--config-describe-topic"
           ],
-          "line": 5576
+          "line": 5577
         },
         {
           "options": [
             "--config-entity-name"
           ],
-          "line": 5577
+          "line": 5578
         },
         {
           "options": [
             "--quorum-add-controller"
           ],
-          "line": 5583
+          "line": 5584
         },
         {
           "options": [
             "--broker-decommission-generate"
           ],
-          "line": 5596
+          "line": 5597
         },
         {
           "options": [
             "--preferred-replica-election"
           ],
-          "line": 5601
+          "line": 5602
         },
         {
           "options": [
             "--broker-decommission-execute"
           ],
-          "line": 5606
+          "line": 5607
         },
         {
           "options": [
             "--broker-decommission-verify"
           ],
-          "line": 5611
+          "line": 5612
         },
         {
           "options": [
             "--broker-list"
           ],
-          "line": 5612
+          "line": 5613
         },
         {
           "options": [
             "--topics-to-move-json-file",
             "--topics-to-move-json"
           ],
-          "line": 5617
+          "line": 5618
         },
         {
           "options": [
             "--reassignment-json-file"
           ],
-          "line": 5624
+          "line": 5625
         },
         {
           "options": [
             "--throttle"
           ],
-          "line": 5629
+          "line": 5630
         }
-      ],
-      "trace_review": "CLI/JSON→_get_opt；kafka_home、角色/端点、存储身份、SSH与认证 -> Kafka4.3.1官方脚本与JVM；远端上传校验和路径quote",
-      "indirect_consumers": "CLI/JSON aliases flow through _get_opt/getattr and merged config, including endpoint/home/storage options.",
-      "finding": "Frozen SSH bootstrap executes verified binary directly; source bootstrap uses Python; quoted work paths."
+      ]
     },
     "tools/mysqltools/MigrationCli.py": {
-      "sha256": "1a369e6ef29bf70d332b4dc31fc5bf2a5b7e7fbf50130f434c93c9f385dc87ea",
+      "sha256": "09293031816365027c29aba461d71260efc7f9b0ec1c029e3d0694630544d02c",
       "boundary": "MigrationCli",
       "parser_declarations": [
         {
           "options": [
             "--help-native"
           ],
-          "line": 2467
+          "line": 2468
         },
         {
           "options": [
             "--native-option"
           ],
-          "line": 2469
+          "line": 2470
         },
         {
           "options": [
             "--guide"
           ],
-          "line": 2473
+          "line": 2474
         },
         {
           "options": [
             "-c",
             "--config"
           ],
-          "line": 2484
+          "line": 2485
         },
         {
           "options": [
             "-s",
             "--source"
           ],
-          "line": 2493
+          "line": 2494
         },
         {
           "options": [
             "-t",
             "--target"
           ],
-          "line": 2502
+          "line": 2503
         },
         {
           "options": [
             "--dry-run"
           ],
-          "line": 2513
+          "line": 2514
         },
         {
           "options": [
             "--structure-only"
           ],
-          "line": 2521
+          "line": 2522
         },
         {
           "options": [
             "--keep-dump-files"
           ],
-          "line": 2529
+          "line": 2530
         },
         {
           "options": [
             "--max-workers"
           ],
-          "line": 2540
+          "line": 2541
         },
         {
           "options": [
             "--max-workers-per-target-host"
           ],
-          "line": 2547
+          "line": 2548
         },
         {
           "options": [
             "--no-per-table"
           ],
-          "line": 2554
+          "line": 2555
         },
         {
           "options": [
             "--no-compress"
           ],
-          "line": 2562
+          "line": 2563
         },
         {
           "options": [
             "--dump-timeout"
           ],
-          "line": 2567
+          "line": 2568
         },
         {
           "options": [
             "--import-timeout"
           ],
-          "line": 2574
+          "line": 2575
         },
         {
           "options": [
             "--complete-insert"
           ],
-          "line": 2581
+          "line": 2582
         },
         {
           "options": [
             "--gtid-mode"
           ],
-          "line": 2592
+          "line": 2593
         },
         {
           "options": [
             "--replication-target"
           ],
-          "line": 2603
+          "line": 2604
         },
         {
           "options": [
             "--ssl-mode"
           ],
-          "line": 2617
+          "line": 2618
         },
         {
           "options": [
             "--add-drop-table"
           ],
-          "line": 2624
+          "line": 2625
         },
         {
           "options": [
             "--force-overwrite"
           ],
-          "line": 2629
+          "line": 2630
         },
         {
           "options": [
             "--skip-target-empty-check"
           ],
-          "line": 2634
+          "line": 2635
         },
         {
           "options": [
             "--no-fix-definer"
           ],
-          "line": 2639
+          "line": 2640
         },
         {
           "options": [
             "--rollback-on-failure"
           ],
-          "line": 2647
+          "line": 2648
         },
         {
           "options": [
             "--exact-row-count"
           ],
-          "line": 2658
+          "line": 2659
         },
         {
           "options": [
             "--table-checksum"
           ],
-          "line": 2666
+          "line": 2667
         },
         {
           "options": [
             "--skip-version-check"
           ],
-          "line": 2674
+          "line": 2675
         },
         {
           "options": [
             "--report-dir"
           ],
-          "line": 2682
+          "line": 2683
         }
-      ],
-      "trace_review": "source/target、全局/任务/CLI选项→连接与dump/import -> driver预检→mysqldump argv→mysql argv→校验/审计；子进程首错传播",
-      "indirect_consumers": "no_compress/no_fix_definer/no_per_table consumed through _cfg_enabled_by_default; help_native intercepted before clients.",
-      "finding": "PyMySQL plus mysql/mysqldump explicitly use TCP; localhost and port cannot fall through to socket."
+      ]
     },
     "tools/mysqltools/MyBackupCli.py": {
-      "sha256": "ebd5120225a7afef78a5b30f79dcb369c0103a827ec3b1b08180ce6cd08836e1",
+      "sha256": "7ae02eb9ddc4d54462f0dc88018db18faaffad0220e9b455aa2a75fe8e0fed21",
       "boundary": "MyBackupCli",
       "parser_declarations": [
         {
           "options": [
             "command"
           ],
-          "line": 2013
+          "line": 2053
         },
         {
           "options": [
             "-c",
             "--config"
           ],
-          "line": 2019
+          "line": 2059
         },
         {
           "options": [
             "--date"
           ],
-          "line": 2025
+          "line": 2065
         },
         {
           "options": [
             "--binlog-start-time"
           ],
-          "line": 2031
+          "line": 2071
         },
         {
           "options": [
             "--binlog-stop-time"
           ],
-          "line": 2037
+          "line": 2077
         },
         {
           "options": [
             "--confirm-destructive-restore"
           ],
-          "line": 2043
+          "line": 2083
         },
         {
           "options": [
             "--confirm-replication-isolated"
           ],
-          "line": 2048
+          "line": 2088
         },
         {
           "options": [
             "--offline-restore"
           ],
-          "line": 2052
+          "line": 2092
         },
         {
           "options": [
             "--backup-days"
           ],
-          "line": 2057
+          "line": 2097
         },
         {
           "options": [
             "--binlog-days"
           ],
-          "line": 2064
+          "line": 2104
+        },
+        {
+          "options": [
+            "--help-config"
+          ],
+          "line": 2111
         },
         {
           "options": [
             "--help-native"
           ],
-          "line": 2071
+          "line": 2113
         },
         {
           "options": [
             "--native-option"
           ],
-          "line": 2073
+          "line": 2115
         }
-      ],
-      "trace_review": "JSON/CLI→Config的路径、服务、身份、拓扑及停机启动校验→显式PXB参数→工作副本prepare/copy-back→真实启停与SQL就绪→PITR只读保护；全部单命令走本地_run_external，stdout元数据与诊断分离，stderr实时脱敏输出；回放两端stderr并发排空，SQL直接管道，检查双rc并回收本地客户端；归档、校验、audit、复制、清理及purge阶段有开始、结束和30秒心跳。",
-      "indirect_consumers": "Direct attribute/config value consumption or argparse action; no unexplained destination found in review.",
-      "finding": "原容器路径及恢复边界修复保留。本轮证实并修复非XtraBackup命令诊断缓存、回放管道读取顺序死锁与客户端回收缺口、文件长阶段无心跳及日志文件打开失败时重复输出。当前103合同、退出前可见性及双进程故障复现通过；当前冻结程序容器16和二进制24组合最终干净回归通过。自动切流量、选择权威节点、人工复制重接及Galera不属于本次能力。"
+      ]
     },
     "tools/mysqltools/MyLogiBackupCli.py": {
-      "sha256": "df68a6aeb660de6755526f0a49df1478bc1a1715dce46f804740d20d05c88d2c",
+      "sha256": "3c2d7c22c6c832db3d31a845ea4983191e7396fa6da82c42c4fe598f2dbc0a18",
       "boundary": "MyLogiBackupCli",
       "parser_declarations": [
         {
@@ -1535,57 +1517,54 @@
           "options": [
             "--help-native"
           ],
-          "line": 861
+          "line": 866
         },
         {
           "options": [
             "--version"
           ],
-          "line": 863
+          "line": 868
         },
         {
           "options": [
             "--host"
           ],
-          "line": 867
+          "line": 872
         },
         {
           "options": [
             "--port"
           ],
-          "line": 868
+          "line": 873
         },
         {
           "options": [
             "--user"
           ],
-          "line": 869
+          "line": 874
         },
         {
           "options": [
             "--login-path"
           ],
-          "line": 870
+          "line": 875
         },
         {
           "options": [
             "--at"
           ],
-          "line": 887
+          "line": 892
         },
         {
           "options": [
             "--exec-path"
           ],
-          "line": 888
+          "line": 893
         }
-      ],
-      "trace_review": "login-path中的显式IPv4/port、库选择、挂载目录、压缩、timer与native options -> mysql预检→mysqldump→压缩归档回读/摘要→原子发布；不提供物理restore",
-      "indirect_consumers": "native_option consumed through getattr/native_for; help_native handled on early argv path.",
-      "finding": "No new same-class product defect proven; retain original product behavior and original evidence scope."
+      ]
     },
     "tools/starrocks/StarCli.py": {
-      "sha256": "f8d2d6d2a0e8523327721a64f9fb571dc876483dcd96a57ffdec57f5ab5e6d95",
+      "sha256": "b6af78513ef96af08eac3e5c556f6727150fea833d30429473bce562ef4e48bb",
       "boundary": "StarCli",
       "parser_declarations": [
         {
@@ -1593,228 +1572,225 @@
             "-h",
             "--help"
           ],
-          "line": 4290
+          "line": 4300
         },
         {
           "options": [
             "--deploy"
           ],
-          "line": 4296
+          "line": 4306
         },
         {
           "options": [
             "--starrocks-home"
           ],
-          "line": 4302
+          "line": 4312
         },
         {
           "options": [
             "--config"
           ],
-          "line": 4307
+          "line": 4317
         },
         {
           "options": [
             "--meta-dir"
           ],
-          "line": 4313
+          "line": 4323
         },
         {
           "options": [
             "--http-port"
           ],
-          "line": 4318
+          "line": 4328
         },
         {
           "options": [
             "--rpc-port"
           ],
-          "line": 4324
+          "line": 4334
         },
         {
           "options": [
             "--query-port"
           ],
-          "line": 4330
+          "line": 4340
         },
         {
           "options": [
             "--edit-log-port"
           ],
-          "line": 4336
+          "line": 4346
         },
         {
           "options": [
             "--helper-address"
           ],
-          "line": 4342
+          "line": 4352
         },
         {
           "options": [
             "--use-fqdn"
           ],
-          "line": 4347
+          "line": 4357
         },
         {
           "options": [
             "--default-replication-num"
           ],
-          "line": 4353
+          "line": 4363
         },
         {
           "options": [
             "--storage-root-path"
           ],
-          "line": 4360
+          "line": 4370
         },
         {
           "options": [
             "--be-port"
           ],
-          "line": 4365
+          "line": 4375
         },
         {
           "options": [
             "--be-http-port"
           ],
-          "line": 4371
+          "line": 4381
         },
         {
           "options": [
             "--heartbeat-port"
           ],
-          "line": 4377
+          "line": 4387
         },
         {
           "options": [
             "--brpc-port"
           ],
-          "line": 4383
+          "line": 4393
         },
         {
           "options": [
             "--starlet-port"
           ],
-          "line": 4389
+          "line": 4399
         },
         {
           "options": [
             "--priority-networks"
           ],
-          "line": 4398
+          "line": 4408
         },
         {
           "options": [
             "--java-home"
           ],
-          "line": 4403
+          "line": 4413
         },
         {
           "options": [
             "--user"
           ],
-          "line": 4408
+          "line": 4418
         },
         {
           "options": [
             "--group"
           ],
-          "line": 4414
+          "line": 4424
         },
         {
           "options": [
             "--no-systemd"
           ],
-          "line": 4420
+          "line": 4430
         },
         {
           "options": [
             "--verify"
           ],
-          "line": 4426
+          "line": 4436
         },
         {
           "options": [
             "--force"
           ],
-          "line": 4432
+          "line": 4442
         },
         {
           "options": [
             "--clean"
           ],
-          "line": 4438
+          "line": 4448
         },
         {
           "options": [
             "--fe-host"
           ],
-          "line": 4444
+          "line": 4454
         },
         {
           "options": [
             "--fe-query-port"
           ],
-          "line": 4449
+          "line": 4459
         },
         {
           "options": [
             "--setup"
           ],
-          "line": 4456
+          "line": 4466
         },
         {
           "options": [
             "--root-password"
           ],
-          "line": 4462
+          "line": 4472
         },
         {
           "options": [
             "--status"
           ],
-          "line": 4467
+          "line": 4477
         },
         {
           "options": [
             "--target-host"
           ],
-          "line": 4474
+          "line": 4484
         },
         {
           "options": [
             "--ssh-user"
           ],
-          "line": 4478
+          "line": 4488
         },
         {
           "options": [
             "--ssh-port"
           ],
-          "line": 4483
+          "line": 4493
         },
         {
           "options": [
             "--ssh-key"
           ],
-          "line": 4489
+          "line": 4499
         },
         {
           "options": [
             "--disable-ssh-host-check"
           ],
-          "line": 4494
+          "line": 4504
         },
         {
           "options": [
             "--remote-workdir"
           ],
-          "line": 4499
+          "line": 4509
         }
-      ],
-      "trace_review": "CLI/JSON→角色、安装路径、FE/BE/CN端点与SSH -> StarRocks3.5.7启停/成员SQL；bootstrap校验上传SHA并直接运行二进制",
-      "indirect_consumers": "Direct attribute/config value consumption or argparse action; no unexplained destination found in review.",
-      "finding": "Frozen SSH bootstrap executes verified binary directly; source bootstrap uses Python; quoted work paths."
+      ]
     },
     "tools/starrocks/starmigration/StarMigrtCli.py": {
       "sha256": "0e8d474ae0339eacfb050e375daa297b06d8a97c9582603170ee58611a7bb262",
@@ -2012,34 +1988,19 @@
           ],
           "line": 875
         }
-      ],
-      "trace_review": "显式host/port/user/TLS、选择/映射、导出模式、包路径、并发/超时 -> check/export/verify/merge；表级原子提交、manifest hash与目标行/内容校验",
-      "indirect_consumers": "version is argparse action; no standalone unused runtime destination.",
-      "finding": "No new same-class product defect proven; retain original product behavior and original evidence scope."
+      ]
     },
     "tools/starrocks/starrocks-3.5.7/fe-cn/scripts/healthcheck-cn.sh": {
       "sha256": "bca0f1955c320d9a296f78d5d6ea04946e636e45a19058b67286798bc6182808",
-      "boundary": "StarRocksShells",
-      "parser_declarations": [],
-      "trace_review": "RUSTFS_BUCKET/REGION/ACCESS_KEY/SECRET_KEY；Compose service DNS和固定端口 -> init-rustfs-cn.sh→aws；init-storage-volume-cn.sh→mysql TCP stdin；healthcheck-cn.sh→curl+mysql",
-      "indirect_consumers": "Direct attribute/config value consumption or argparse action; no unexplained destination found in review.",
-      "finding": "No new same-class product defect proven; retain original product behavior and original evidence scope."
+      "boundary": "StarRocksShells"
     },
     "tools/starrocks/starrocks-3.5.7/fe-cn/scripts/init-rustfs-cn.sh": {
       "sha256": "92ec1d25a6a9fd54c4b1db707530ca55b4bd0559d535543b43c4a090a0357453",
-      "boundary": "StarRocksShells",
-      "parser_declarations": [],
-      "trace_review": "RUSTFS_BUCKET/REGION/ACCESS_KEY/SECRET_KEY；Compose service DNS和固定端口 -> init-rustfs-cn.sh→aws；init-storage-volume-cn.sh→mysql TCP stdin；healthcheck-cn.sh→curl+mysql",
-      "indirect_consumers": "Direct attribute/config value consumption or argparse action; no unexplained destination found in review.",
-      "finding": "No new same-class product defect proven; retain original product behavior and original evidence scope."
+      "boundary": "StarRocksShells"
     },
     "tools/starrocks/starrocks-3.5.7/fe-cn/scripts/init-storage-volume-cn.sh": {
       "sha256": "1d1aa652ce24f9284a64bc706d04852da198ae0fd6cbfffc9972733b626d4d0d",
-      "boundary": "StarRocksShells",
-      "parser_declarations": [],
-      "trace_review": "RUSTFS_BUCKET/REGION/ACCESS_KEY/SECRET_KEY；Compose service DNS和固定端口 -> init-rustfs-cn.sh→aws；init-storage-volume-cn.sh→mysql TCP stdin；healthcheck-cn.sh→curl+mysql",
-      "indirect_consumers": "Direct attribute/config value consumption or argparse action; no unexplained destination found in review.",
-      "finding": "No new same-class product defect proven; retain original product behavior and original evidence scope."
+      "boundary": "StarRocksShells"
     }
   },
   "boundaries": {
@@ -2153,82 +2114,87 @@
     }
   },
   "inputs": {
-    "tools/NetCheckCli.py": "7910eae746d5a900ba10fc6784ddd02fe29fe38c720fc4db3c19a8b0eb4c4877",
-    "tools/OvpnUserCli.py": "9b2a49c47a6945d40cea87d40bb42192a640b7d3e6880344b0162445f2c491d2",
-    "tools/k8stools/CalicoPolicyCli.py": "fefd0b352611e4b1fe175d72c2939ad15ce5e8afeaa4cfabc02b1262ae125929",
-    "tools/k8stools/KubeBackupCli.py": "bcd8f94ccfc834eda5cdf484d07752f52595b0f062c374c15c062cd1e235b114",
-    "tools/k8stools/KubePublishCli.py": "ed3c8c138c02fdd3cc69b4f8f7d46127734e029ea334ff2767d1d28c4c6cdb9b",
-    "tools/kafka/KafkaCli.py": "b973bd568a6e6f908caa2f7d30873ca213511623349d6816a90c129f726f298f",
-    "tools/mysqltools/MigrationCli.py": "1a369e6ef29bf70d332b4dc31fc5bf2a5b7e7fbf50130f434c93c9f385dc87ea",
-    "tools/mysqltools/MyBackupCli.py": "ebd5120225a7afef78a5b30f79dcb369c0103a827ec3b1b08180ce6cd08836e1",
-    "tools/mysqltools/MyLogiBackupCli.py": "df68a6aeb660de6755526f0a49df1478bc1a1715dce46f804740d20d05c88d2c",
-    "tools/starrocks/StarCli.py": "f8d2d6d2a0e8523327721a64f9fb571dc876483dcd96a57ffdec57f5ab5e6d95",
+    "dist/MyBackupCli-rocky8": "e74f5fbc61ff9ad0dd74bbd9121697f864acf09d5450fbb41a16ad604fc83d58",
+    "dist/MyLogiBackupCli-rocky8": "ee58b73608f84325cc3eb0d0f667c6c510f167075cc95473ae13aecc2bd2caf3",
+    "dist/mysql-backup-build.json": "0b27452882e03a6e187a82a18b39b8295c2c601268c40e498a269a48c0d5c121",
+    "logs/tools-ga-current-preflight-20261127.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/tools-ga-current-preflight-20261127.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/tools-ga-current-preflight-20261127.log": "501433e0885bcb38e69383a417894f6b4274abbf03dc78f771ab636c21e93eab",
+    "tests/evidence/mybackup-native-contract-20261125.json": "2659250b78a8088cb8f32025eed962f806b70756007b0d0cfa0b66afe207eb23",
+    "tests/evidence/mysql-backup-portability-20261125.json": "a47adab063d6efcb0cce0cf9709f24ed1a1bd67bcfed3c8609f2209775039529",
+    "tests/evidence/mysql-logical-requal-20261126.json": "fdf55b4346738da53fd5e4348622f4ab9b5666662c29faf87279ddab1f89a8b8",
+    "tests/evidence/mysql80-binary-dual-primary.json": "b2e3b38cc97c446533543b371719c230bf84dc96c5d46a4287dff5bb89793222",
+    "tests/evidence/mysql80-binary-full.json": "06d2963620f01492fe137e8a895210ee7c59e5d97ccf2c8d112c26814da89939",
+    "tests/evidence/mysql80-binary-primary-replica.json": "dc0511b18966bf2dc8f5649bae44385350fa27b04c355a127c307174be2865ee",
+    "tests/evidence/mysql80-binary-standalone.json": "9bc21e93692ff6818990a4e741d8c4e980ca14a791fd3ff93617c150493a770d",
+    "tests/evidence/mysql80-binary-supply-chain-20261125.json": "7663a30a1fa756fbdca22f14b02a4d73159530142033fa0ee7330ed5aaca54c9",
+    "tests/evidence/mysql80-physical-8.0.33.json": "0c529cc7e54e6258cffe0e155b0f28860f1912e2716f7dd3126b14f3393062f5",
+    "tests/evidence/mysql80-physical-8.0.46.json": "828db254b82495b6654e334db7618707812f7efce8e36e736ee2406f927a1912",
+    "tests/evidence/mysql80-physical-documentation-20261125.json": "4cb43790acfb8cc90685e63ceb87474ed307675311a3bff83e06cda0ce9d8c77",
+    "tests/evidence/mysql80-physical-full.json": "d449f19f76e19011c45e9c0eb0bd2a9df1f1f6b530b601a7e9d84a67ab7277df",
+    "tests/evidence/mysql84-physical-requal-20261125.json": "4ac18413ebc987e7afb5656f70e05abfb88e0fbe94856a05b749098341c3dbc3",
+    "tests/evidence/starmigrt-full.json": "15130e03a617fb2adf5f9fbcbad2dc46654b79ea04177454a3709232a894db61",
+    "tests/evidence/starrocks-compose-3.5.7-cn.json": "c1747dc5e8b5f51c3c0c2374b6c721f4973c7c07b2ebf64a0932448a82b11f37",
+    "tests/evidence/tools-api-boundary-20261125.json": "af0918803ec8d22c7ab82120b04db167595c9609996aee7df1ef0084c7af0b37",
+    "tests/evidence/tools-help-frozen-20261126.json": "c761bcdb4344ec4e0c799f7bd9000f79e8fe6102cebd04c63cbf0a77275fb9cb",
+    "tests/evidence/tools-kubebackup-api-full-20261125.json": "b833c649395b558d775f082b0d3e5e84bb81cb30c95f0160b9c1fdfe720a8edb",
+    "tests/evidence/tools-migration-endpoint-full-20261125.json": "c1e3746e2beb8cbc21b3a87236aa83f700348f558f369d1df548cd80a4d3defc",
+    "tests/evidence/tools-ovpn-config-20261125.json": "332e8097a6d2527f30a54c9a572f29e82f2c965dfcfc4f9030bfe8b7a4d33715",
+    "tests/evidence/tools-publish-load-live-20261125.json": "5136205c2505e83b30aca22ccbe1be0810aa251cff7f54b634558207df5cc893",
+    "tests/evidence/tools-remote-bootstrap-20261125.json": "ab3f6592376424d8443fc14c8dedcec1081f4f003aefa6b181e706a86f21df3c",
+    "tests/helpers/build-tools-rocky8.sh": "803f2c98e55e269c888e137a9f8f8784d904e49b657f084de587f5aa1bd593ff",
+    "tests/helpers/mybackup-cli-live-regression.sh": "a04bae7c3123b04f5b9627f5c9e1fdb03d92804136c64a64a5936e35f405b501",
+    "tests/helpers/mybackup-lifecycle.sh": "9aa6a82a72ccde72f71201b5967aa490225433a1886d776322249e905c6347fe",
+    "tests/helpers/mylogi-backup-live-regression.sh": "47cefa23cb77c7b03bfd504af30e28626d8f041e3f2cc3fadaa9e23a5bef547c",
+    "tests/helpers/mysql-backups-regression.sh": "359cda27fe0b0b6c81871f71604d8becb458ff716133d8cb288ef3925b83c274",
+    "tests/helpers/supervise-mysql-backups.py": "4b948cff12a5ec8eff47fa9e8ba161428c16fcb48be8ed939c6b04c4e2e72bb6",
+    "tests/helpers/tools-production-audit.py": "81733a7c6c155b15b88ef561e1afa9856555ae794d25ae435daa27e4c938a5c4",
+    "tests/run_tools_regression.sh": "ae55f8b32a6d3367f5d12b9999f12a1dd6831370cabeb39a24ae25c5b2bb4e88",
+    "tests/unit/test_mybackup_cli_contract.py": "9e51b58eaefc5c1251d0c051128bb5b9282696e0a30aa56cf1cf3d22623ae233",
+    "tests/unit/test_mybackup_offline_contract.py": "542b5db5deeceb4b26b9f7988dffb805f1de2b3ccf81d421f714b0cb2c77da9f",
+    "tests/unit/test_mybackup_replication_contract.py": "8fd58256bab85ad3122ecdf89fd7a2b0608ae7d323058d7c1e8dfc5f5ce89abd",
+    "tests/unit/test_mysql_backup_gate_contract.py": "702ed65b2f86305a3aac80de4820ca16983e1b41c177d26982a32b15d735b434",
+    "tests/unit/test_tools_help_contract.py": "c1a36b92d2027d32bf47fab64c7118fc100bff9e3ad2758acedfa1b10ac8742e",
+    "tests/unit/test_tools_production_audit_contract.py": "63f9e945c79f6195aa943f6a85bc42f71a1f291540f5474e36068c27708cfdac",
+    "tools-onefile.spec": "7bb77b6db73a9c015aff2156120d94f7dc67a7a30e037f105d452bcbded45956",
+    "tools/NetCheckCli.py": "70a5b5896a376f68e1a01cbf10e3c1596fe7def2a52bd4721d7c9206703c07ff",
+    "tools/OvpnUserCli.py": "9cde10ab4941434b4ba28a98b0ecb5a07ae4123832adc3a9e4703378de52ffb6",
+    "tools/k8stools/CalicoPolicyCli.py": "0c527c34fc87eb3dcea4c4aa268a24d0abf31578e0720c9898a0bdc39e7f30b2",
+    "tools/k8stools/KubeBackupCli.py": "1156f4efb24eadd8306c978e4a35e5361cbe2e6f7a871d2107d0b1c6e4022f9d",
+    "tools/k8stools/KubePublishCli.py": "e59634bd4c8e7a6c495b579704aa584842f97cfe8599ba8a045e5a866ea3044f",
+    "tools/kafka/KafkaCli.py": "9eeac546bff80479730fe9ed516e7f40662aebf4bc2508a575b11932d3cfbf6a",
+    "tools/mysqltools/MigrationCli.py": "09293031816365027c29aba461d71260efc7f9b0ec1c029e3d0694630544d02c",
+    "tools/mysqltools/MyBackupCli.py": "7ae02eb9ddc4d54462f0dc88018db18faaffad0220e9b455aa2a75fe8e0fed21",
+    "tools/mysqltools/MyLogiBackupCli.py": "3c2d7c22c6c832db3d31a845ea4983191e7396fa6da82c42c4fe598f2dbc0a18",
+    "tools/mysqltools/mybackup.conf.example": "07836fde22223f81e95529a94226fbba8392359e80f46ca0b2740d4fff3474a7",
+    "tools/mysqltools/operations-manual.md": "bb5ac2752e41a70044c38c72681877dd2c45490e6958235c303113d4cb9f8323",
+    "tools/operations-manual.md": "9557b531068f38f2107f40eeb69f0839578827a6f81364017c3a5a761651f6fd",
+    "tools/starrocks/StarCli.py": "b6af78513ef96af08eac3e5c556f6727150fea833d30429473bce562ef4e48bb",
     "tools/starrocks/starmigration/StarMigrtCli.py": "0e8d474ae0339eacfb050e375daa297b06d8a97c9582603170ee58611a7bb262",
     "tools/starrocks/starrocks-3.5.7/fe-cn/scripts/healthcheck-cn.sh": "bca0f1955c320d9a296f78d5d6ea04946e636e45a19058b67286798bc6182808",
     "tools/starrocks/starrocks-3.5.7/fe-cn/scripts/init-rustfs-cn.sh": "92ec1d25a6a9fd54c4b1db707530ca55b4bd0559d535543b43c4a090a0357453",
-    "tools/starrocks/starrocks-3.5.7/fe-cn/scripts/init-storage-volume-cn.sh": "1d1aa652ce24f9284a64bc706d04852da198ae0fd6cbfffc9972733b626d4d0d",
-    "tools-onefile.spec": "7bb77b6db73a9c015aff2156120d94f7dc67a7a30e037f105d452bcbded45956",
-    "tests/helpers/tools-production-audit.py": "78e7e167b285e3cd79031b60cd25f41146615da14606c45a47ee98a64d6802e9",
-    "tests/run_tools_regression.sh": "10e506a3f4bd5af1238687ba89e154696c9ab9717044453cb10ab67bde26c46d",
-    "tests/unit/test_tools_production_audit_contract.py": "574cd8db0177dcdfcc085cce4e93f185c7e7a5da8b0cb48c86fee6f684ac9a8c",
-    "tests/unit/test_tools_execution_inventory_contract.py": "0a53452e02b48157769804355bbc52c42981005317c039ec0b4a48ceda74bf5a",
-    "tests/unit/test_mysql_portability_contract.py": "e79498c514af50606624c0af2620d35533d9a3615c763472ac98030fcc616449",
-    "tests/helpers/mysql-backups-regression.sh": "359cda27fe0b0b6c81871f71604d8becb458ff716133d8cb288ef3925b83c274",
-    "tests/unit/test_mysql_backup_gate_contract.py": "0a56c9c3de626ba7951ed18a19c04aa7e2587cc2920c712bc60f628776dd64ff",
-    "tests/unit/test_tools_execution_boundary_contract.py": "944a6b14cfc15cfb7860c71028bf5a65879cfc7ad1816e6ae68b8b650dc5ec0b",
-    "tests/unit/test_tools_config_failure_contract.py": "148232de0f983d64773214b49d4a70311f9ccef1f28635dc00815fa2ec41c6eb",
-    "tests/unit/test_mysql80_recovery_contract.py": "25e59b1e476b48031f337745f57baa8974b00228a5adf9408f0e018b3dc84947",
-    "tests/unit/test_lab_cleanup_process_contract.py": "6bcc49bed2ccae8889a84f69f36c05e8e74843cf3288db910508076bd4b9dd83",
-    "tests/helpers/lab-wipe-nodes.sh": "3357793ed351dceaa2615435a8a3f8fda865fa60910e3ea7212d5a17b7d86ac3",
-    "logs/tools-audit-preflight5-20261125.log": "abefd2d9aabb5ee2d70ae30433b6dcb57b1c1c8b656d7038c5c04bf0ce951da3",
-    "tests/helpers/mysql80-retired-staging-cleanup.py": "66cd97c8e1d9f8eed1d0eaa805b29c25da819696d26a85f62887d26df883baea",
-    "tests/unit/test_mysql80_retired_cleanup_contract.py": "e73a1a07024482c496a59c65119e3d856ace4d017d28e4d9fe4012d6dcb50ea4",
-    "logs/mysql80-host-relocation-qualification-20261125.json": "0c47f8cccce3f932f1325af4fa193eed8fac41a61e6b394170658870a56469f1",
-    "logs/mysql80-host-relocation-contract2-20261125.log": "8651b761b925b59d8467907e8279785cd4f3a8041feb4699d1cdef14c0ae5e2e",
-    "logs/mysql80-host-relocation-preflight2-20261125.log": "e0e05963659e859a173f18c06ef76f474831a880e2dd1f6b4c784488fa7cf734",
-    "logs/mysql80-tools-reused-dependency-review-20261125.log": "fe75fc2105d2ef77ae844a860d11bcf8b4663124ba90e2d0fac3a8e8ab5d0595",
-    "tests/evidence/mysql80-physical-8.0.33.json": "9ec4991941ef2bbb8260fbddb05f853d72d03a8fcfda70fb8f1786c7309b5c57",
-    "tests/evidence/mysql80-physical-8.0.46.json": "7d3497644e43914ebada5603db061968ed6a11edb5ca26ab83c48a47d0f934ed",
-    "tests/evidence/mysql80-physical-full.json": "46e609756a83f9fed2c5039dc207df924bd7a55663baa761934c27f848ae5efb",
-    "tests/evidence/mysql80-binary-standalone.json": "ed88c00d33a627ec42dfc69af00f2fa813af3d92c8ce8a6d8b1b5e97348994ee",
-    "tests/evidence/mysql80-binary-primary-replica.json": "2404f88c13033e717e87c3340a173adb747c28a3f42df89c36b0cdba01c99bd6",
-    "tests/evidence/mysql80-binary-dual-primary.json": "16e4a730444db6a19c93199bbb6ce179d44c134fd588523491d5f1d09db4e7a6",
-    "tests/evidence/mysql80-binary-full.json": "18ab5fd6fb9ff8eadd5c8079f5c2308cfcd98a9fddf5506bf27bd16f343b536b",
-    "tests/evidence/mysql80-binary-supply-chain-20261125.json": "958c2bdc266f79f803417944b32c10cfbadbe1fa73674a9ced7b82b720a40032",
-    "tests/evidence/mybackup-native-contract-20261125.json": "2767d903841a88e6db8ae30fd6dfef8e4f42f1085a7683a8482de8765c0ffddc",
-    "tests/evidence/mysql80-physical-documentation-20261125.json": "10b8a1efe796b5d4e36d207f144acf369fcff1de11cb2a968403cb17a4f9c53c",
-    "tests/evidence/mysql80-binary-sources.json": "f6f12c5671ebaa08caebb52f5cc654a58f98da135b1b21cb265493f20ac99d55",
-    "logs/mysql80-native-current-dependencies-20261125.log": "52ddf498b7d2a43ae92bca1b66c6ff0d48ad8511f169333531867a6aac3954e8",
-    "logs/mysql80-official-20261125/80-official-records.json": "0cd69703eb6d63da8ae543c5095ae97a8146ef4468093a62a84a98081fc5ff9c",
-    "tools/mysqltools/mybackup.conf.example": "07836fde22223f81e95529a94226fbba8392359e80f46ca0b2740d4fff3474a7",
-    "tools/mysqltools/operations-manual.md": "a9b0bb27d02f3d9612a1507ec21b1963d073fbd724c64107d8c305928bf42c42",
-    "dist/mysql-backup-build.json": "08c708e9c3f009396fcab0f1aa5882c2c66ed7e41e1d3ba020393000d1e6b57a",
-    "dist/MyBackupCli-rocky8": "208d48965cb2528732462e7126556435b528d3b6d19f32bf1470b32478cfb99b",
-    "tests/evidence/mybackup-observability-20261125.json": "46ef38ef87c3091877c85b3d3877588efe0cc1d7760ec3799b784a296a35bae4",
-    "tests/unit/test_mybackup_cli_contract.py": "0eeb587f02b68f516f6e790fd451b10dad26fa1b3f7459a2dd291b9af2a5f649",
-    "tests/evidence/mysql-logical-requal-20261126.json": "4278dda8645955ac95a999dba4b07049a34f4bc2673e6af3caf8ca5b1a23c66f",
-    "tests/helpers/mylogi-backup-live-regression.sh": "47cefa23cb77c7b03bfd504af30e28626d8f041e3f2cc3fadaa9e23a5bef547c",
-    "tests/unit/test_mylogi_archive_pipe_contract.py": "c5da7f9e111dc2905110746b2c187f91ffd4c25381e82535cbd6eb144db9fa3a",
-    "tests/evidence/mybackup-command-observability-20261126.json": "969927e0107406e195cf4f9070edb711b3b77fc6d6b42c96c29d10bc10477bc9",
-    "logs/mybackup-command-observability-20261126/current-dependencies-final.log": "52ddf498b7d2a43ae92bca1b66c6ff0d48ad8511f169333531867a6aac3954e8"
+    "tools/starrocks/starrocks-3.5.7/fe-cn/scripts/init-storage-volume-cn.sh": "1d1aa652ce24f9284a64bc706d04852da198ae0fd6cbfffc9972733b626d4d0d"
   },
   "evidence": {
-    "tools-remote-bootstrap-20261125": "8123ca063ef7ea7460aa1f7439458d6b12d4aa7157841547cb11fbee1c042547",
-    "tools-ovpn-config-20261125": "20c405718447924c3f318ea0161aa80e0aed6f164a207573d6136f7e1bf498b2",
-    "tools-api-boundary-20261125": "9ca9bc0b7ab52c411ffac1d215dcdbb2c368423090d1f628fa89a00e71f02f8f",
-    "tools-kubebackup-api-full-20261125": "049a56e626fef156c03cfab9b6bac8cfee258456e0c6522baa22f83233436c7f",
-    "tools-publish-load-live-20261125": "4c4a3c7a420c11409f01c5e067c3389df0bd369ea09cf1100f62e0b34a161db5",
-    "tools-migration-endpoint-full-20261125": "d71a7bcddd74b1c02470da604c6777dba47bed05bd75f63f5a837b92476d6228",
+    "tools-remote-bootstrap-20261125": "ab3f6592376424d8443fc14c8dedcec1081f4f003aefa6b181e706a86f21df3c",
+    "tools-ovpn-config-20261125": "332e8097a6d2527f30a54c9a572f29e82f2c965dfcfc4f9030bfe8b7a4d33715",
+    "tools-api-boundary-20261125": "af0918803ec8d22c7ab82120b04db167595c9609996aee7df1ef0084c7af0b37",
+    "tools-kubebackup-api-full-20261125": "b833c649395b558d775f082b0d3e5e84bb81cb30c95f0160b9c1fdfe720a8edb",
+    "tools-publish-load-live-20261125": "5136205c2505e83b30aca22ccbe1be0810aa251cff7f54b634558207df5cc893",
+    "tools-migration-endpoint-full-20261125": "c1e3746e2beb8cbc21b3a87236aa83f700348f558f369d1df548cd80a4d3defc",
     "starrocks-compose-3.5.7-cn": "c1747dc5e8b5f51c3c0c2374b6c721f4973c7c07b2ebf64a0932448a82b11f37",
     "starmigrt-full": "15130e03a617fb2adf5f9fbcbad2dc46654b79ea04177454a3709232a894db61",
-    "mysql84-physical-requal-20261125": "9bf76785a1b066662838e222c17c4e0a24f8fd137846ed17317233db64c7705f",
-    "mysql-backup-portability-20261125": "f93daa9362497ce9792d1bf62370a193ac72edb0f2c4bfeae543f2144382bc66"
+    "mysql84-physical-requal-20261125": "4ac18413ebc987e7afb5656f70e05abfb88e0fbe94856a05b749098341c3dbc3",
+    "mysql-backup-portability-20261125": "a47adab063d6efcb0cce0cf9709f24ed1a1bd67bcfed3c8609f2209775039529"
   },
-  "physical80": "tests/evidence/mysql80-physical-full.json",
-  "logical_reuse": {
-    "evidence": "tests/evidence/mysql-logical-requal-20261126.json",
-    "stage": "logical",
-    "checks": "Current clean three-version logical focused run after full-drain archive assertion and final-TCP readiness repairs; unchanged product/artifact, real restoration/timers, original raw hashes, durable0 and cleanup. Prior failed full attempts retained."
+  "official_review": {
+    "scope": "Incremental audit of called configuration/API and failure interfaces; reuse pinned official references and source snapshots in owning proofs. No claim of reading all upstream manuals or validating every topology.",
+    "mysql80": "logs/mysql80-official-20261125/80-official-records.json",
+    "api": "tests/evidence/tools-api-boundary-20261125.json",
+    "openvpn": "tests/evidence/tools-ovpn-config-20261125.json",
+    "nerdctl": "tests/evidence/tools-publish-load-live-20261125.json",
+    "native80": "Pinned MySQL8.0.33/8.0.46 mysqld/persisted-variable sources plus fixed PXB8.0.35-36 replication backup implementation and CHANGE/RESET/GTID docs; snapshots under logs/mysql80-official-20261125. Dependency-interface research only.",
+    "logging": "Python3.12 subprocess/selectors文档、固定CPython3.12.14源码及PXB原生诊断源码；沿用已核验接口并扩展到所有单命令及回放双进程。当前引用、源码摘要和真实复现见tests/evidence/mybackup-command-observability-20261126.json；历史专项证据原样保留。"
   },
   "netcheck_basis": [
     {
@@ -2282,23 +2248,6 @@
       "evidence": "2026-09-12 人工生产签署：NetCheckCli 已多年稳定生产运行；按用户明确指令免专项回归，保留该项 PASS 作为生产验证结论"
     }
   ],
-  "official_review": {
-    "scope": "Incremental audit of called configuration/API and failure interfaces; reuse pinned official references and source snapshots in owning proofs. No claim of reading all upstream manuals or validating every topology.",
-    "mysql80": "logs/mysql80-official-20261125/80-official-records.json",
-    "api": "tests/evidence/tools-api-boundary-20261125.json",
-    "openvpn": "tests/evidence/tools-ovpn-config-20261125.json",
-    "nerdctl": "tests/evidence/tools-publish-load-live-20261125.json",
-    "native80": "Pinned MySQL8.0.33/8.0.46 mysqld/persisted-variable sources plus fixed PXB8.0.35-36 replication backup implementation and CHANGE/RESET/GTID docs; snapshots under logs/mysql80-official-20261125. Dependency-interface research only.",
-    "logging": "Python3.12 subprocess/selectors文档、固定CPython3.12.14源码及PXB原生诊断源码；沿用已核验接口并扩展到所有单命令及回放双进程。当前引用、源码摘要和真实复现见tests/evidence/mybackup-command-observability-20261126.json；历史专项证据原样保留。"
-  },
-  "reuse_boundaries": [
-    "Historical raw is unchanged. SHA-matching snapshots preserve original launcher bytes; compare owning branch and effective global header, ignore only build-only allowlist extensions.",
-    "StarMigrt README insertion is MySQL8.0-only; exact original README preserved. Physical8.4 setup/cleanup and physical function unchanged by portability fallback.",
-    "NetCheck retains original delivery-owner production acceptance/exemption; static audit is not new live evidence.",
-    "Kafka/Star new SSH proof covers bootstrap only; their unchanged local broker/database business evidence is not relabelled as a new run.",
-    "Historical native raw and exact port-preflight compatibility guards remain preserved. All current standalone/primary-replica/dual-primary focused records and the native clean final bind current product, runner and frozen input identities; no historical lifecycle was relabelled as a current run.",
-    "Capacity-driven relocation of the future Rocky8.10 executor from 131 to authorized 137 preserves prior 131 evidence and inputs. Only the exact reviewed host/contract/admission/runbook differences are accepted; focused 8.0.46 passed on 137 and final runs use current inputs. The fixed retired-staging selector excludes native-binary recovery ownership; its exact-cause contract and scoped cleanup passed."
-  ],
   "limits": [
     "No production access or deployment; no zero-defect guarantee.",
     "Physical profile: AMD64 native Rocky8.10/9.8, MySQL8.0.33/8.0.46 in one Docker container, host/independent tool-container execution, GTID OFF/ON, no encryption.",
@@ -2306,52 +2255,27 @@
     "No target-MySQL-container self-stop/full-restore, automatic failover/traffic control, Galera/GR/multi-source/keyring/external general tablespace/Windows/ARM native/cross-version qualification. Native asynchronous replication is limited to the separately named exact OS/version/GTID profiles.",
     "Offline native restore deliberately compares exact raw startup values from mysqld --verbose --help: explicit absolute data/socket/log-bin/log-bin-index and a direct systemd ExecStart are required; valid relative/default/extension-normalized MySQL configurations may be refused. See operations-manual offline prerequisites; this is not arbitrary my.cnf support."
   ],
-  "native80": {
-    "evidence": [
-      "tests/evidence/mysql80-binary-standalone.json",
-      "tests/evidence/mysql80-binary-primary-replica.json",
-      "tests/evidence/mysql80-binary-dual-primary.json",
-      "tests/evidence/mysql80-binary-full.json"
-    ],
-    "scope": "AMD64 native Rocky8.10/9.8 × MySQL8.0.33/8.0.46 × GTID OFF/ON × native standalone/primary-replica/asynchronous dual-primary; product CLI lifecycle with real systemd; no Galera/GR/multisource/encryption/ARM/cross-version claim.",
-    "final_runs": {
-      "rocky8": "f0c45edce014",
-      "rocky9": "66529f9a2e09"
-    },
-    "final_combinations": 24
-  },
-  "execution_environment_qualification": "logs/mysql80-host-relocation-qualification-20261125.json",
-  "current_input_review": {
-    "tests/helpers/tools-production-audit.py": {
-      "previous_sha256": "96fa32ab80f0047f2bc24e7ee22bf4f4b1fe3a06e45f69b6623f80b7e76058ff",
-      "current_sha256": "78e7e167b285e3cd79031b60cd25f41146615da14606c45a47ee98a64d6802e9",
-      "basis": "Exact port-preflight/host relocation reuse guards and strengthened dependency/final checks reviewed; focused42 and preflight165 contracts passed. Logical evidence now requires new fixed owning record; missing new record cannot fall back to old acceptance, and product/raw/durable tampering contracts pass."
-    },
-    "tests/run_tools_regression.sh": {
-      "previous_sha256": "0114d8fb4f08abf85d2456ae89859470a92b15ef79840f94834478eff9aee2b6",
-      "current_sha256": "10e506a3f4bd5af1238687ba89e154696c9ab9717044453cb10ab67bde26c46d",
-      "basis": "Native branch handoff, scoped preflight/status extension reviewed; actual final launcher admitted current prerequisites and used current frozen CLI."
-    },
-    "tests/unit/test_tools_production_audit_contract.py": {
-      "previous_sha256": "8c888064e65357a01db17599f1626ad4e83538268fa262e5e176bbd27b7ce8c8",
-      "current_sha256": "574cd8db0177dcdfcc085cce4e93f185c7e7a5da8b0cb48c86fee6f684ac9a8c",
-      "basis": "Exact host/port/snapshot/evidence refusal contracts reviewed; focused42 and preflight165 logs."
-    },
-    "tools/mysqltools/MyBackupCli.py": {
-      "previous_sha256": "625ebeea9f9565866b89cfb70449a0de95a9ac1c88f6eff0a57865938719a1f0",
-      "current_sha256": "ebd5120225a7afef78a5b30f79dcb369c0103a827ec3b1b08180ce6cd08836e1",
-      "basis": "全命令调用点审计；旧CLI静默、旧回放管道阻塞和双handler复现；当前103合同、165 preflight、冻结原生构建、真实8.4、容器16及二进制24最终干净回归，保留全部旧原始身份和两次环境失败；未放宽runner或验收门槛。"
-    },
-    "tests/helpers/mylogi-backup-live-regression.sh": {
-      "previous_sha256": "b28f0f84dc7ec531bd8a8b7bc75990f236a7310abc914d81389b77cb7477194d",
-      "current_sha256": "47cefa23cb77c7b03bfd504af30e28626d8f041e3f2cc3fadaa9e23a5bef547c",
-      "basis": "GNU grep manual/source, deterministic SIGPIPE reproduction, valid/missing/corrupt real archives, fixed logical three-version CLI/timer readback and cleanup. Exact fixed-image official entrypoint and raw temporary port0/final3306 logs; source/restore readiness loops use explicit TCP SQL, 16 focused contracts and current three-version clean focused run."
+  "reuse_boundaries": [
+    "Historical raw and artifact bytes retain original identities. Current runtime/help revisions use newly executed owning integrations, preserving historical records. Source AST observations do not waive runtime changes. MyBackupCli lifecycle is newly executed; no old lifecycle is relabelled.",
+    "Runner branches and original shell/source snapshots are compared under exact scoped compatibility contracts. Common governance prose relocation is separate from executed command/fixture changes.",
+    "NetCheck retains the original delivery-owner production acceptance/exemption; its current help/build and AST equivalence are checked without inventing a new business run."
+  ],
+  "physical80": {
+    "evidence": "tests/evidence/mysql80-physical-full.json",
+    "combinations": 16,
+    "runs": {
+      "rocky8": "mysql80-full-rocky8-cc748b3f6d95",
+      "rocky9": "mysql80-full-rocky9-acdf3f8d6161"
     }
   },
-  "physical80_final_runs": {
-    "rocky8": "17b93cd42935",
-    "rocky9": "d2844402f16c"
+  "native80": {
+    "evidence": "tests/evidence/mysql80-binary-full.json",
+    "combinations": 24,
+    "runs": {
+      "rocky8": "mysql80-binary-full-rocky8-00d7e02037ff",
+      "rocky9": "mysql80-binary-full-rocky9-097c38436541"
+    }
   },
-  "physical80_final_combinations": 16,
-  "review_completion": "当前14脚本的配置消费和执行命名空间审计保留，未变工具逐个核验所属原始依赖后复用。本次MyBackupCli全命令及文件长阶段修订经103合同、当前原生构建、8.4恢复、容器16及二进制24最终干净回归核验，双退出码、读回和限定清理齐备；作者审计，不代表客户签收或生产部署。"
+  "logical_evidence": "tests/evidence/mysql-logical-requal-20261126.json",
+  "review_completion": "Current14-script input/command/namespace/path/identity/service/cleanup audit. Existing behavior is reused only under owning raw/input checks; new logging and help have current contracts, builds, real lifecycle/readback and clean finals. Author review; no production deployment or customer sign-off."
 }

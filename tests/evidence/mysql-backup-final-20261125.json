@@ -1,5 +1,5 @@
 {
-  "date": "2026-11-25",
+  "date": "2026-11-27",
   "scope": [
     "TL-X-09"
   ],
@@ -27,17 +27,18 @@
     "MYSQL_BACKUP_PORTABILITY_PASS runtime=ubuntu24 tools=2"
   ],
   "files": {
-    "logs/mysql-backups-full-20261126-135915.log": "56531fd5485fabf0ee25e0c61a761898d21614422b9cbc2f8a96e4b692644fa1",
-    "logs/mysql-backups-full-20261126-135915.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
-    "logs/mysql-backups-full-20261126-135915.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
-    "logs/mysql-backups-full-20261126-135915.remote-status": "0ccdb5a77ba5bf7687f2565a8ed97dfb9c1af45503c496fb646312239fab5101",
-    "logs/mysql-backups-full-20261126-135915.evidence.tar.gz": "4fdda35a91172a02ea1430e6dda4bd1a9db2ef881e6da0eb798560b801ba16e0",
-    "tests/evidence/tools-production-execution-audit-20261125.json": "d8725db3c85bfc211d5bfba54956274ff86d0bf7b6d9294dbd90391f15d9ad82",
-    "tests/evidence/mysql-backup-qualification-20261125.json": "663485108da8ab3b32e984b249c74174db1e0264668fb3a62e15506eaae65ea6",
-    "tests/evidence/mysql80-physical-full.json": "46e609756a83f9fed2c5039dc207df924bd7a55663baa761934c27f848ae5efb",
-    "tests/run_tools_regression.sh": "10e506a3f4bd5af1238687ba89e154696c9ab9717044453cb10ab67bde26c46d",
-    "tests/evidence/mysql80-binary-full.json": "18ab5fd6fb9ff8eadd5c8079f5c2308cfcd98a9fddf5506bf27bd16f343b536b",
-    "tests/helpers/tools-production-audit.py": "78e7e167b285e3cd79031b60cd25f41146615da14606c45a47ee98a64d6802e9"
+    "logs/mysql-backups-full-20261127-024805.log": "574071835f491cd17f58bb75f646fdffdfdb70957b66329e80a082ead247dd22",
+    "logs/mysql-backups-full-20261127-024805.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/mysql-backups-full-20261127-024805.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/mysql-backups-full-20261127-024805.remote-status": "0ccdb5a77ba5bf7687f2565a8ed97dfb9c1af45503c496fb646312239fab5101",
+    "logs/mysql-backups-full-20261127-024805.evidence.tar.gz": "fec3d330489c5c3b96bb7bb08e25f78094641234ef46a091b32cce6a52193836",
+    "tests/evidence/tools-production-execution-audit-20261125.json": "48f4aa705dc175d826a451cd41c41e800c75c0c35f62fcc8c205600948dca890",
+    "tests/evidence/mysql-backup-qualification-20261125.json": "99a207e499b790a50e1d5df690bc38b565a89284151ac40639af2f711b007b63",
+    "tests/evidence/mysql80-physical-full.json": "d449f19f76e19011c45e9c0eb0bd2a9df1f1f6b530b601a7e9d84a67ab7277df",
+    "tests/run_tools_regression.sh": "ae55f8b32a6d3367f5d12b9999f12a1dd6831370cabeb39a24ae25c5b2bb4e88",
+    "tests/evidence/mysql80-binary-full.json": "06d2963620f01492fe137e8a895210ee7c59e5d97ccf2c8d112c26814da89939",
+    "tests/helpers/tools-production-audit.py": "81733a7c6c155b15b88ef561e1afa9856555ae794d25ae435daa27e4c938a5c4"
   },
-  "boundary": "One clean MySQL8.4 physical + three-version logical + portability final run. Separate accepted clean 16-combination MySQL8.0 final retained with original identities. Native single-instance, primary-replica and asynchronous dual-primary final binds both exact Rocky releases, both MySQL versions and GTID OFF/ON. Other tools use their owning accepted evidence; no claim of rerunning every tool business."
+  "boundary": "One clean MySQL8.4 physical + three-version logical + portability final run. Separate accepted clean 16-combination MySQL8.0 final retained with original identities. Native single-instance, primary-replica and asynchronous dual-primary final binds both exact Rocky releases, both MySQL versions and GTID OFF/ON. Other tools use their owning accepted evidence; no claim of rerunning every tool business.",
+  "accepted_at": "2026-11-27T02:51:40+08:00"
 }

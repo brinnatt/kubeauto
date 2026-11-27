@@ -1,12 +1,12 @@
 {
-  "date": "2026-11-26",
+  "date": "2026-11-27",
   "result": "author-reviewed",
   "scope": "Incremental MyBackupCli container/native standalone/primary-replica/asynchronous dual-primary configuration and recovery documentation. Author content and reader-path review; not customer sign-off, not product final acceptance, no combined tool image delivery.",
   "checks": [
     {
       "requirement": "配置默认值、空值、消费者和后果",
       "section": "operations-manual.md#选择配置及理解空值；mybackup.conf.example全部17项",
-      "basis": "Config实际默认值与校验、native_options拒绝集合；本轮165项preflight及103项聚焦合同",
+      "basis": "Config实际默认值与校验、native_options拒绝集合；当前固定189项preflight及既有全命令日志聚焦合同",
       "defect": "旧配置缺少topology/defaults-file语义；账号空值、socket不自动推导、threads及use_memory约束不清",
       "fix_and_recheck": "已补_comment_*与角色表；标准JSON逐项解析，17项实际字段均有相邻注释",
       "reviewer": "Codex author review",
@@ -132,22 +132,31 @@
     {
       "requirement": "所有命令、数据管道与文件长阶段观测",
       "section": "operations-manual.md#观察物理备份与恢复进度",
-      "basis": "CPython3.12 subprocess/selectors原有官方文档与源码；当前103合同；当前冻结8.4恢复证据另由所属记录核验",
+      "basis": "CPython3.12 subprocess/selectors原有官方文档与源码；当前189项固定preflight包含全命令日志合同；当前冻结8.4恢复证据另由所属记录核验",
       "defect": "前次仅XtraBackup流式，其它命令诊断缓存；回放错误管道读取顺序可能死锁；文件长阶段无心跳",
       "fix_and_recheck": "新增逐操作表、SQL与元数据不入日志、双端回放退出码/失败停止、文件心跳及本地客户端中断边界；正文与代码逐项核对，全部原命令和图形逐字未变，复用原静态和渲染依据；文件不可写的单份stderr回退已用真实CLI合同验证，停启探测的连接拒绝须结合阶段及最终读回解释。",
+      "reviewer": "Codex author review",
+      "result": "closed"
+    },
+    {
+      "requirement": "客户可解释的原生日志来源、阶段、等级与成功判据",
+      "section": "operations-manual.md#观察物理备份与恢复进度；MyBackupCli --help/--help-config",
+      "basis": "CPython logging/subprocess固定官方文档与Logger源码；当前冻结8.4现场日志；11CLI真实冻结帮助合同",
+      "defect": "stderr通道标签被误读为失败；帮助未包含当前配置与场景边界",
+      "fix_and_recheck": "逐段核对原生消息头分级、INFO未知等级、SQL就绪重试、双端退出码和最终读回；真实冻结配置模板逐字段相等，34页422参数及8种离线专用帮助均通过",
       "reviewer": "Codex author review",
       "result": "closed"
     }
   ],
   "files": {
-    "tools/mysqltools/operations-manual.md": "a9b0bb27d02f3d9612a1507ec21b1963d073fbd724c64107d8c305928bf42c42",
+    "tools/mysqltools/operations-manual.md": "bb5ac2752e41a70044c38c72681877dd2c45490e6958235c303113d4cb9f8323",
     "tools/mysqltools/mybackup.conf.example": "07836fde22223f81e95529a94226fbba8392359e80f46ca0b2740d4fff3474a7",
-    "logs/mybackup-command-observability-20261126/documentation-static.json": "c892e5919719225247893233b36b8a65f793c6bc37f39749308f8d026f0ebe79"
+    "logs/tools-ga-20261126/documentation-static.json": "474c8f70654c99da3263cd76126fa05df452bb9e5ecf1bfd4c8d3a2cdcacfb7d"
   },
   "operational_evidence": {
-    "tests/evidence/mysql80-binary-standalone.json": "ed88c00d33a627ec42dfc69af00f2fa813af3d92c8ce8a6d8b1b5e97348994ee",
-    "tests/evidence/mysql80-binary-primary-replica.json": "2404f88c13033e717e87c3340a173adb747c28a3f42df89c36b0cdba01c99bd6",
-    "tests/evidence/mysql80-binary-dual-primary.json": "16e4a730444db6a19c93199bbb6ce179d44c134fd588523491d5f1d09db4e7a6"
+    "tests/evidence/mysql80-binary-standalone.json": "9bc21e93692ff6818990a4e741d8c4e980ca14a791fd3ff93617c150493a770d",
+    "tests/evidence/mysql80-binary-primary-replica.json": "dc0511b18966bf2dc8f5649bae44385350fa27b04c355a127c307174be2865ee",
+    "tests/evidence/mysql80-binary-dual-primary.json": "b2e3b38cc97c446533543b371719c230bf84dc96c5d46a4287dff5bb89793222"
   },
   "review_artifacts": {
     "logs/mysql80-documentation-native-20261125/current-static-check.json": "52e9bd4aeefd88e7a35dd6b7161cb3d826cd19c6e5bc7848798d2cf7b2330ce7",
@@ -191,14 +200,16 @@
     "logging": "Reuse unchanged Python3.12 subprocess/selectors docs and installedCPython3.12.14 source: pipe capacity/deadlock, concurrent drain, process exit/reaping and non-buffered diagnostics; incrementally review same interface for every command and both replay processes. Thread Event wait/stop keeps filesystem observation separate from copy semantics."
   },
   "previous_review": {
-    "path": "logs/mysql80-documentation-native-20261125/previous-author-review.json",
-    "sha256": "7058c5403f44ce6bfc4aafcc557eb80342bbb1c17ed933432d6665129a9281d3"
+    "path": "logs/tools-ga-20261126/prior-records/db82740bee741aac9bf6dd3c4ba4a48c78e59ec1979c666c6ffb86dbd7728f81-mysql80-physical-documentation-20261125.json",
+    "sha256": "db82740bee741aac9bf6dd3c4ba4a48c78e59ec1979c666c6ffb86dbd7728f81"
   },
   "limits": [
     "Dependency-interface research; not a claim of reading the full MySQL/PXB product manual corpus.",
     "Native topology focused evidence is accepted; final clean run remains separately gated by TL-MBK-13. Current container proof is independently required by TL-MBK-07～09; this author check does not accept it.",
     "Self-provided combined-image template was not executed verbatim; actual test composition and prerequisites are stated explicitly.",
     "19 bash syntax checks, 4 JSON blocks, local links/anchors, 17 key comments and 2 unchanged rendered diagrams verified; 3 SQL templates read against pinned syntax and require real deployment substitutions.",
-    "Current local103 all-command observability contracts accepted. Current frozen native standalone, primary-replica and asynchronous dual-primary focused records each accept eight exact OS/version/GTID combinations; operational_evidence hashes bind those owning records. Final clean acceptance is separately gated by TL-MBK-13."
+    "Current fixed189 preflight, including all-command observability contracts, accepted. Current frozen native standalone, primary-replica and asynchronous dual-primary focused records each accept eight exact OS/version/GTID combinations; operational_evidence hashes bind those owning records. Final clean acceptance is separately gated by TL-MBK-13.",
+    "2026-11-26日志及帮助增量完成作者内容/读者路径检查；当前制品8.0容器及复制拓扑现场验收单独门禁，未由本记录代签。",
+    "2026-11-27 当前三个二进制聚焦 owning records 已逐个通过固定 verify_record 核验；本次仅更新这些真实操作证据的摘要，不代签正在执行的 TL-MBK-13，不作客户签收。"
   ]
 }

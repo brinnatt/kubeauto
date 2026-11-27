@@ -48,6 +48,25 @@ class MysqlBackupGateTests(unittest.TestCase):
             self.assertEqual(result.returncode, 2)
             self.assertIn('TOOLS_SELECTED_SCOPE_REFUSED', result.stderr)
 
+    def test_help_delivery_selection_matches_the_ten_changed_tools_and_not_starmigrt(self):
+        selection = 'CalicoPolicyCli,NetCheckCli,KafkaCli,MyBackupCli,MyLogiBackupCli,MigrationCli,StarCli,KubeBackupCli,KubePublishCli,OvpnUserCli'
+        for name in ('tests/run_tools_regression.sh', 'tests/helpers/build-tools-rocky8.sh'):
+            source = (ROOT/name).read_text()
+            # Execute the actual preflight/selection only, with no remote setup.
+            stop = '\nBUILD_SUDO=' if name.endswith('run_tools_regression.sh') else '\n[[ "$SOURCE"'
+            prefix = source.split(stop, 1)[0]
+            with tempfile.TemporaryDirectory() as directory:
+                script = Path(directory)/'selection.sh'
+                script.write_text(prefix + '\nprintf "%s\\n" "${TOOLS[@]}"\n')
+                accepted = subprocess.run(['bash', str(script), '--build-only'],
+                    env=dict(os.environ, TOOLS_SELECTED=selection), capture_output=True, text=True)
+                self.assertEqual(accepted.returncode, 0, accepted.stderr)
+                self.assertEqual(accepted.stdout.splitlines(), selection.split(','))
+                for bad in (selection+',StarMigrtCli', selection+',MyBackupCli', selection+','):
+                    refused = subprocess.run(['bash', str(script), '--build-only'],
+                        env=dict(os.environ, TOOLS_SELECTED=bad), capture_output=True, text=True)
+                    self.assertEqual(refused.returncode, 2, refused.stderr)
+
     def test_selected_kubernetes_tools_build_only_pinned_dependencies_and_separate_provenance(self):
         helper = (ROOT/'tests/helpers/build-tools-rocky8.sh').read_text()
         runner = (ROOT/'tests/run_tools_regression.sh').read_text()

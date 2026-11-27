@@ -2,39 +2,39 @@
   "date": "2026-11-26",
   "rc": 0,
   "result": "pass",
-  "scope": "Current logical owning gate after archive-listing SIGPIPE and temporary-server readiness repairs; unchanged MyLogiBackupCli product/artifact. Three-version CLI restoration, actual timers and cleanup.",
+  "scope": "Current help revision and frozen artifact: real three-version logical CLI/archive/restore readback, real timer execution and cleanup. Prior defect reproductions and repair evidence retained in previous owning record.",
   "inputs": {
-    "tools/mysqltools/MyLogiBackupCli.py": "df68a6aeb660de6755526f0a49df1478bc1a1715dce46f804740d20d05c88d2c",
+    "tools/mysqltools/MyLogiBackupCli.py": "3c2d7c22c6c832db3d31a845ea4983191e7396fa6da82c42c4fe598f2dbc0a18",
     "tools-onefile.spec": "7bb77b6db73a9c015aff2156120d94f7dc67a7a30e037f105d452bcbded45956",
     "tests/helpers/mylogi-backup-live-regression.sh": "47cefa23cb77c7b03bfd504af30e28626d8f041e3f2cc3fadaa9e23a5bef547c",
     "tests/helpers/supervise-mysql-backups.py": "4b948cff12a5ec8eff47fa9e8ba161428c16fcb48be8ed939c6b04c4e2e72bb6",
     "tests/helpers/mysql-backups-regression.sh": "359cda27fe0b0b6c81871f71604d8becb458ff716133d8cb288ef3925b83c274",
-    "tests/run_tools_regression.sh": "10e506a3f4bd5af1238687ba89e154696c9ab9717044453cb10ab67bde26c46d",
-    "tests/helpers/tools-production-audit.py": "78e7e167b285e3cd79031b60cd25f41146615da14606c45a47ee98a64d6802e9",
+    "tests/run_tools_regression.sh": "ae55f8b32a6d3367f5d12b9999f12a1dd6831370cabeb39a24ae25c5b2bb4e88",
+    "tests/helpers/tools-production-audit.py": "8e27a2fb26415ec835966208157c2c2d6016e1aac3ad58d89e343cd8b1abb328",
     "tests/unit/test_mylogi_archive_pipe_contract.py": "c5da7f9e111dc2905110746b2c187f91ffd4c25381e82535cbd6eb144db9fa3a"
   },
   "build": {
     "inputs": {
-      "tools/mysqltools/MyBackupCli.py": "625ebeea9f9565866b89cfb70449a0de95a9ac1c88f6eff0a57865938719a1f0",
-      "tools/mysqltools/MyLogiBackupCli.py": "df68a6aeb660de6755526f0a49df1478bc1a1715dce46f804740d20d05c88d2c",
+      "tools/mysqltools/MyBackupCli.py": "7ae02eb9ddc4d54462f0dc88018db18faaffad0220e9b455aa2a75fe8e0fed21",
+      "tools/mysqltools/MyLogiBackupCli.py": "3c2d7c22c6c832db3d31a845ea4983191e7396fa6da82c42c4fe598f2dbc0a18",
       "tools-onefile.spec": "7bb77b6db73a9c015aff2156120d94f7dc67a7a30e037f105d452bcbded45956",
-      "tests/helpers/build-tools-rocky8.sh": "ded6c6717bc3bbce6fc64b0c5ab07bc5cbf4aa6cfa78dfec7ed84eea8fca23fa",
+      "tests/helpers/build-tools-rocky8.sh": "803f2c98e55e269c888e137a9f8f8784d904e49b657f084de587f5aa1bd593ff",
       "tests/helpers/build-mybackup-native.py": "c78faeeaec19bdce4cfb8fdb5ece6428b2bf8f75b1d1422e81733a836e7accec"
     },
     "artifacts": {
-      "MyBackupCli": "f1e5153638c558cb2a6d1ee5c3f68a871a47575917cc8ef3c1196da4163efb68",
-      "MyLogiBackupCli": "e14afa5703941c1313cefe6c1277f4c80028848cb5f368cd91315d06b6d2ad0a"
+      "MyBackupCli": "e74f5fbc61ff9ad0dd74bbd9121697f864acf09d5450fbb41a16ad604fc83d58",
+      "MyLogiBackupCli": "ee58b73608f84325cc3eb0d0f667c6c510f167075cc95473ae13aecc2bd2caf3"
     },
     "runtime": "Rocky 8.10; glibc 2.28; Python 3.12; PyInstaller 6.16.0",
-    "native_mybackup_build": "logs/mybackup-native-build-1fcf765765c6/result.json"
+    "native_mybackup_build": "logs/mybackup-native-build-4efea018524b/result.json"
   },
   "stages": {
     "logical": {
-      "log": "logs/mysql-backups-logical-20261126-030837.log",
-      "sha256": "e10630b7ea89f2d44dcf1f8d143a65e2dcbb0ab34f1804dd6779530123fe0572",
-      "archive": "logs/mysql-backups-logical-20261126-030837.evidence.tar.gz",
-      "archive_sha256": "f715cbcf6d8201f5f3b7e97c5a6594b63a6abe62ca37773ee46fe8ad98745cbe",
-      "remote_status": "logs/mysql-backups-logical-20261126-030837.remote-status",
+      "log": "logs/mysql-backups-logical-20261126-234923.log",
+      "sha256": "ea1c15982f3be2edc773775ed4695c8c344598f209fae90e3617ba6cd0fa2843",
+      "archive": "logs/mysql-backups-logical-20261126-234923.evidence.tar.gz",
+      "archive_sha256": "d32f8ae3bdfa6053356e9e7c8070c6029e9ffec6d633fcb66901d1ff7808761e",
+      "remote_status": "logs/mysql-backups-logical-20261126-234923.remote-status",
       "required_markers": [
         "MYSQL_BACKUP_RELEASE_PASS stage=logical",
         "TOOLS_CLEAN_VERIFY_PASS scope=mysql-backup-release",
@@ -54,21 +54,11 @@
     }
   },
   "files": {
-    "logs/mybackup-observability-20261125/archive-pipe-reproduction.log": "c7fce8b563b605e1fc866213be56539b0e224cf0f605a3de74dfd2f360e80ea7",
-    "logs/mybackup-observability-20261125/archive-pipe-fixed.log": "d283f5282d33f8b42396cf83bad444c259a5aa853d4dc094e30650a290add6f0",
-    "logs/mybackup-observability-20261125/archive-pipe-admission-contract.log": "091cddd016d78ab4b0285060e9176a77e988ebd10943846f9524e62b24326da6",
-    "logs/mybackup-observability-20261125/pipe-repair-preflight.log": "b2da3f54118e1fa2b71cf9caca3f3947b59786bb4faa4b5f2a3d91efc7a121ea",
-    "logs/mybackup-observability-20261125/gnu-grep-output-control.html": "894d21587ac185974f313ac2d39c30fcb477380bb43ce155a295b8e541119196",
-    "logs/mybackup-observability-20261125/gnu-grep-3.11.c": "9301373afca3183588b15c7cefd72b02393b6d14243f69f02050161c11715d4a",
-    "logs/mysql-backups-logical-20261126-030837.log": "e10630b7ea89f2d44dcf1f8d143a65e2dcbb0ab34f1804dd6779530123fe0572",
-    "logs/mysql-backups-logical-20261126-030837.evidence.tar.gz": "f715cbcf6d8201f5f3b7e97c5a6594b63a6abe62ca37773ee46fe8ad98745cbe",
-    "logs/mysql-backups-logical-20261126-030837.remote-status": "0ccdb5a77ba5bf7687f2565a8ed97dfb9c1af45503c496fb646312239fab5101",
-    "logs/mysql-backups-logical-20261126-030837.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
-    "logs/mysql-backups-logical-20261126-030837.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
-    "logs/mybackup-observability-20261125/socket-readiness-reproduction.log": "a0232ef1c99ffe949430afd994660172e8ac3fe55eeb73af261424908a595259",
-    "logs/mybackup-observability-20261125/logical-readiness-contract.log": "dd2c7d2efde047a830eefed938ee32cb3000b8b083d52aaf1b5656893df5b112",
-    "logs/mybackup-observability-20261125/readiness-repair-preflight.log": "908428ed6e955fb26ce3998979b98ce106b6e2665c8a6c157c2dad0656b90c17",
-    "logs/mybackup-observability-20261125/mysql8.4.4-official-entrypoint.sh": "4f2c4025aa61a674c7f0e2d5daa6143fe7fef6f6a6ac3c69912d25128c1cc760"
+    "logs/mysql-backups-logical-20261126-234923.log": "ea1c15982f3be2edc773775ed4695c8c344598f209fae90e3617ba6cd0fa2843",
+    "logs/mysql-backups-logical-20261126-234923.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/mysql-backups-logical-20261126-234923.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/mysql-backups-logical-20261126-234923.remote-status": "0ccdb5a77ba5bf7687f2565a8ed97dfb9c1af45503c496fb646312239fab5101",
+    "logs/mysql-backups-logical-20261126-234923.evidence.tar.gz": "d32f8ae3bdfa6053356e9e7c8070c6029e9ffec6d633fcb66901d1ff7808761e"
   },
   "repair": {
     "root_cause": "Quiet grep exits before tar/decompressor has finished; pipefail reports SIGPIPE 141. Full-drain grep preserves both match rejection and producer failures.",
@@ -104,5 +94,6 @@
         "status": "failed; retained without relabeling"
       }
     ]
-  }
+  },
+  "previous_record": "logs/tools-ga-20261126/prior-records/4278dda8645955ac95a999dba4b07049a34f4bc2673e6af3caf8ca5b1a23c66f-mysql-logical-requal-20261126.json"
 }

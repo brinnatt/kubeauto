@@ -1,9 +1,9 @@
-# tools 独立交付测试矩阵 v1（评审稿）
+# tools 独立交付测试矩阵 v1（已批准）
 # 本文件只描述 tools/，不继承 enterprise/middleware 矩阵的状态或证据。
 
 meta:
   version: 1
-  updated: "2026-11-25"
+  updated: "2026-11-27"
   status: approved
   runner: tests/run_tools_regression.sh
   scope: "tools/ 下每个脚本都是独立 CLI；禁止依赖 kubeauto 核心、middleware、其它 tools 或其它工程。"
@@ -272,9 +272,9 @@ test_cases:
 
 # 对外功能清单：每一项都必须由 case_ids 指向可执行的功能/安全/恢复场景。
 # build/--help 只能证明交付物可启动，不能单独覆盖本清单中的生产功能。
-  - {id: TL-MBK-06, tool: MyBackupCli, category: functional, scenario: "实际 XtraBackup lock-ddl、实时原生日志/静默心跳和分阶段参数透传", command: "MYSQL_BACKUP_STAGE=physical bash tests/run_tools_regression.sh --mysql-backup-live", expected: "8.0 布尔帮助选择 ON；8.4 能力选择 REDUCED；不支持的显式 REDUCED 拒绝；原生 throttle/prepare 参数经 CLI 生效且恢复精确读回；子进程退出前终端/文件实时输出、明确来源和阶段、原生警告/错误与外层等级一致、通道不冒充等级；30秒静默心跳、双管道排空、脱敏和中断回收", status: pending, evidence: "2026-11-26 日志呈现修复待验收：统一转发入口等级与来源变化；最小补测为CommandObservabilityTests与XtraBackupStreamingTests，随后原固定physical入口验证冻结程序；旧tests/evidence/mysql84-physical-requal-20261125.json保留原身份，不签当前源码"}
+  - {id: TL-MBK-06, tool: MyBackupCli, category: functional, scenario: "实际 XtraBackup lock-ddl、实时原生日志/静默心跳和分阶段参数透传", command: "MYSQL_BACKUP_STAGE=physical bash tests/run_tools_regression.sh --mysql-backup-live", expected: "8.0 布尔帮助选择 ON；8.4 能力选择 REDUCED；不支持的显式 REDUCED 拒绝；原生 throttle/prepare 参数经 CLI 生效且恢复精确读回；子进程退出前终端/文件实时输出、明确来源和阶段、原生警告/错误与外层等级一致、通道不冒充等级；30秒静默心跳、双管道排空、脱敏和中断回收", status: pass, evidence: "tests/evidence/mysql84-physical-requal-20261125.json；当前冻结程序真实8.4全量/增量/prepare/恢复回读及故障恢复；tests/evidence/mybackup-native-contract-20261125.json为189项preflight、消息等级/流式/脱敏/双管道/中断合同；旧记录保全原身份"}
   - {id: TL-MLB-13, tool: MyLogiBackupCli, category: functional, scenario: "原生参数、单遍压缩摘要、阶段诊断和定时参数保存", command: "MYSQL_BACKUP_STAGE=logical bash tests/run_tools_regression.sh --mysql-backup-live", expected: "原生 extended-insert 与连接参数传到命令；三版本 SQL/BLOB/程序恢复；gz/bz2/xz 摘要回读；受保护参数拒绝；timer 保存参数", status: pass, evidence: "当前tests/evidence/mysql-logical-requal-20261126.json；历史2026-11-08 tests/evidence/mysql-backup-20261108.json保留；当前输入和冻结产物 SHA256 绑定；logical 固定入口、业务读回/参数/清理标记、durable 双0、零未预期失败；其它未变工具证据复用"}
-  - {id: TL-X-09, tool: cross-tool, category: delivery, scenario: "两个 MySQL 备份工具变化范围的最终干净完整回归", command: "bash tests/run_tools_regression.sh --mysql-backup-live", expected: "所有当前适用前置 PASS 且输入绑定后才启动；两个工具全部原有场景及新增场景；durable 双0、零未预期失败、TOOLS_CLEAN_VERIFY_PASS", status: pass, evidence: "tests/evidence/mysql-backup-final-20261125.json；当前run mysql-backups-full-20261126-135915，本轮全命令观测修订后的五阶段干净完整回归、durable双0、归档SHA256和scoped clean通过；绑定当前容器16、二进制24及14脚本审计；025133/030034两次测试门禁失败原始状态保留，未改签。"}
+  - {id: TL-X-09, tool: cross-tool, category: delivery, scenario: "两个 MySQL 备份工具变化范围的最终干净完整回归", command: "bash tests/run_tools_regression.sh --mysql-backup-live", expected: "所有当前适用前置 PASS 且输入绑定后才启动；两个工具全部原有场景及新增场景；durable 双0、零未预期失败、TOOLS_CLEAN_VERIFY_PASS", status: pass, evidence: "tests/evidence/mysql-backup-final-20261125.json；2026-11-27 当前冻结制品容器16组合、二进制24组合、十四脚本审计及最后五阶段干净完整回归全部通过；最终run=mysql-backups-full-20261127-024805；durable双0、零未预期失败及限定清理已核验；旧记录保全原身份"}
 
   # 新迁移工具独立待验收；不继承 StarCli、容器或旧 cross-tool 的 PASS。
   - {id: TL-SD-01, tool: StarMigrtCli, category: build, scenario: "独立导入、Python 3.9+ 与选定单工具 onefile", command: "bash tests/run_tools_regression.sh --starmigrt-qualify", expected: "独立 AST/语法通过；冻结产物 SHA256/依赖/运行平台另留证", status: pass, official: "StarRocks 3.5.7 INSERT/SHOW CREATE TABLE；PyMySQL v1.1.2 connections/cursors；starmigrt_review.official", fixture: "私有 Docker 28.5.2；双 allin1 3.5.7 固定 digest；Python3.9.25/glibc2.34；65536行流式表及多类型/主键/聚合表；TLS协议代理；fixture SQL仅建数和消费导出SQL", cleanup: "只移除本轮label容器/网络、daemon及运行目录；核对防火墙不变、无mount/进程/partial；失败保留私有证据", disproof: "bash tests/run_tools_regression.sh --starmigrt-qualify", evidence: tests/evidence/starmigrt-full.json}
@@ -428,16 +428,16 @@ functional_inventory:
 
 coverage_summary:
   total: 90
-  pass: 88
-  pending: 1
+  pass: 89
+  pending: 0
   fail: 0
   skip: 0
   na: 1
-  overall_assessment: "登记值为88 pass、1 pending、1 na，不代表当前证据全部有效。2026-11-26 TL-MBK-06因统一日志转发等级/来源变化从pass退回pending；本地合同与冻结程序聚焦验证为补测出口。固定status当前拒绝mysql80-physical-8.0.33输入变化，完整验收计数待核验；保留旧证据身份，不据此签当前源码或客户验收。"
+  overall_assessment: "2026-11-27 当前适用89项全部通过固定status核验，pending/fail均为0；当前冻结日志/帮助修订、MySQL8.0容器16组合和二进制三拓扑24组合及最后五阶段干净完整回归通过，durable双0、原始证据和限定清理均已核验；Calico未采用KDD后端保留1项NA；历史记录保留原身份，不代客户签收。"
 
 mysql_backup_requalification:
   evidence: tests/evidence/mysql-backup-qualification-20261125.json
-  date: "2026-11-25"
+  date: "2026-11-27"
   classification: product-and-test-gate
   authorization: "用户要求修复、参数扩展及 GA 回归；不连接生产；复用既有固定版本制品，不发布镜像"
   entry: "tests/run_tools_regression.sh --mysql-backup-live; MYSQL_BACKUP_STAGE=physical/logical/portability/full"
@@ -456,7 +456,7 @@ mysql_backup_requalification:
     - "https://dev.mysql.com/doc/refman/8.0/en/mysqldump.html"
     - "https://github.com/mysql/mysql-server/blob/mysql-8.0.33/client/mysqldump.cc"
     - "https://docs.python.org/3/library/tarfile.html"
-  validation_boundary: "无生产连接、无生产亿级数据压测、无原生 ARM64 主机；8.0.33/PXB8.0.35-36.1 的参数规则由固定源码及确定性 CLI 合同证明，不冒称此组合已实测恢复"
+  validation_boundary: "无生产连接、无生产亿级数据压测、无原生 ARM64 主机；本入口的physical阶段覆盖8.4.4/PXB8.4.0-5.1；8.0.33/8.0.46与PXB8.0.35-36的完整恢复另由TL-MBK-07～13当前所属证据验收"
 
 mysql_migration_requalification:
   evidence: tests/evidence/mysql-migration-20261109.json
@@ -648,7 +648,7 @@ mysql80_binary_requalification:
   restore_boundary: "各节点在线及真实停机的checksum/audit/restore；停机入口仅native systemd直接ExecStart mysqld --defaults-file；保留目标UUID及mysqld-auto.cnf；不同UUID donor不能归档目标旧日志到来源仓库。"
   fixture_boundary: "RPM仅私有解包，目标mysqld为宿主机真实二进制/systemd；客户端和PXB固定工具容器保持原argv与同绝对路径；不替换systemctl，不安装系统MySQL包。"
   artifact_boundary: "精确版本官方二进制包或官方RPM中的二进制；国内HTTPS来源及可信SHA256/签名；无境外fallback；缺任一适用制品在SSH/变更前拒绝。"
-  pending_dependencies: [TL-MBK-01, TL-MBK-02, TL-MBK-03, TL-MBK-04, TL-MBK-05, TL-MBK-06, TL-MBK-07, TL-MBK-08, TL-MBK-09, TL-X-06, TL-X-09, TL-X-10]
+  required_evidence: [TL-MBK-01, TL-MBK-02, TL-MBK-03, TL-MBK-04, TL-MBK-05, TL-MBK-06, TL-MBK-07, TL-MBK-08, TL-MBK-09, TL-MBK-10, TL-MBK-11, TL-MBK-12, TL-X-06]
   disproof: "各所属原固定入口及新增binary80聚焦入口；旧日志不改签；新产品、fixture和冻结产物须当前证据。"
 
 mybackup_command_observability:

@@ -1,5 +1,5 @@
 {
-  "date": "2026-11-25",
+  "date": "2026-11-27",
   "scope": [
     "TL-MIG-03"
   ],
@@ -21,19 +21,20 @@
     "Not a physical MySQL backup or production claim."
   ],
   "files": {
-    "logs/tools-migration-endpoint-full-20261125.log": "63814821190546d2fff5efa248fd959f7442200f400db2b26f0d3a323b4d5368",
-    "logs/tools-migration-endpoint-full-20261125.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
-    "logs/tools-migration-endpoint-full-20261125.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
-    "logs/tools-migration-full-20261125-132359.log": "e86334a3fa160823eb05bea9b5558121f0fe5307363172942c09186c869355d6",
-    "logs/tools-migration-full-20261125-132359.evidence.tar.gz": "a9b4fd87ffe6c7679b1bd7588d52c1ae15c6cf280fc44d020e56d52241b4b4bf",
-    "logs/tools-migration-full-20261125-132359.remote-status": "0ccdb5a77ba5bf7687f2565a8ed97dfb9c1af45503c496fb646312239fab5101",
-    "tests/evidence/tools-migration-native-20261125.json": "4002abe7efb3ee1b296b8876587ac5e297e9b8bf94e5ae769a3a081b75e9d4b2",
-    "tools/mysqltools/MigrationCli.py": "1a369e6ef29bf70d332b4dc31fc5bf2a5b7e7fbf50130f434c93c9f385dc87ea",
+    "tests/evidence/tools-migration-native-20261125.json": "9110e7e3f91538a09bcfc7f0720615e4119df0b497435f4e58ab7d662f8efd1d",
+    "tools/mysqltools/MigrationCli.py": "09293031816365027c29aba461d71260efc7f9b0ec1c029e3d0694630544d02c",
     "tests/helpers/migration-live-regression.sh": "337a15aea7e05af926b2fda43ca312a233e11180720e60af10f70a1f9b8df31c",
     "tests/helpers/supervise-migration.py": "bfddf47bd597cd0996330d87a16441ac47da324f9415ab6c094622ed0f841ab9",
-    "tests/run_tools_regression.sh": "00ac695783eceaea407b713ae3f2aa30edd782951e9750de209d687078a2e1d5",
-    "tests/unit/test_tools_evidence_dependency_contract.py": "ebf00e07a8951561817d3d3c1a3fa8072d4521454e0cb78c82b149c1713651c1",
-    "dist/MigrationCli-rocky8": "d95d245910018034be9ff3f073568e8bad9ad3036b7f30de90ca96e0a9ae0335",
-    "dist/mysql-migration-build.json": "00e7d5b5c00fe0312caed0ea2d59df6ece1829cabd619ca6b5a472b01ea8c6d3"
-  }
+    "tests/run_tools_regression.sh": "ae55f8b32a6d3367f5d12b9999f12a1dd6831370cabeb39a24ae25c5b2bb4e88",
+    "tests/unit/test_tools_evidence_dependency_contract.py": "69d85ae3a9f0fe0100212304847f3f6732aea7619f94d56514c38ec0d4c56d27",
+    "dist/MigrationCli-rocky8": "577da2f46d9081d6bccf5df3484962c09afaacc0555d4cd101e0c1be3fb631de",
+    "dist/mysql-migration-build.json": "a6bfe7801e3fe9864d8e21a53cd1ed5278276a842407c8ec0cab8a3c45381e03",
+    "logs/tools-migration-full-20261127-001813.log": "d36d56bf934eecf4e05fef867799233ca355860b23fadda779c68f4c063959fa",
+    "logs/tools-migration-full-20261127-001813.remote-status": "0ccdb5a77ba5bf7687f2565a8ed97dfb9c1af45503c496fb646312239fab5101",
+    "logs/tools-migration-full-20261127-001813.evidence.tar.gz": "4d242ad5ce6328ac220fce66b3fda022006ae42299f3af1ef0d38940853543fc",
+    "logs/tools-ga-migration-full-20261127.log": "41c4dc3aebfb3c05ab7e5be35be7a08a9590a10c9c95d670614b1d721a8f6978",
+    "logs/tools-ga-migration-full-20261127.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/tools-ga-migration-full-20261127.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+  },
+  "boundary": "Current frozen CPython3.12.16 migration full business, native failure/retry/rollback/concurrency, exact input binding, durable remote and local success, scoped cleanup."
 }

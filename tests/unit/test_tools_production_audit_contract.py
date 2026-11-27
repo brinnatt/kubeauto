@@ -153,9 +153,9 @@ class ProductionAuditContracts(unittest.TestCase):
 
     def test_mysql_runbook_and_inventory_count_change_do_not_resign_starmigrt(self):
         before='The tools matrix contains 78 scenarios (77 applicable and one not applicable) plus a 112-item\nSTARMIGRT commands unchanged\n'
-        after='每轮 `logs/mysql-backups-example` evidence\n'
+        after='每轮 `logs/mysql-backups-example` evidence\n## Failure and root-cause protocol\nold shared governance\n## China image-source contract\nsource unchanged\n'
         old=before+after
-        current=before.replace('78 scenarios (77','90 scenarios (89').replace('112-item','117-item')+'MySQL 8.0 的物理生命周期补充\nnew native runbook\n'+after
+        current=before.replace('78 scenarios (77','90 scenarios (89').replace('112-item','117-item')+'MySQL 8.0 的物理生命周期补充\nnew native runbook\n'+after.replace('old shared governance','current shared governance')
         with tempfile.TemporaryDirectory() as directory, mock.patch.object(GATE,'ROOT',Path(directory)):
             root=Path(directory); name='tests/README.md'; path=root/name;path.parent.mkdir();path.write_text(current)
             expected=hashlib.sha256(old.encode()).hexdigest()

@@ -118,8 +118,12 @@ def compatible_file(name, expected, owner):
         before, rest = current.split('MySQL 8.0 的物理生命周期补充', 1)
         _, after = rest.split('每轮 `logs/mysql-backups-', 1)
         def inventory_counts(text):
-            return re.sub(r'The tools matrix contains \d+ scenarios \(\d+ applicable and one not applicable\) plus a \d+-item',
+            text = re.sub(r'The tools matrix contains \d+ scenarios \(\d+ applicable and one not applicable\) plus a \d+-item',
                           'The tools matrix contains CURRENT scenarios and inventory', text)
+            # Shared governance prose moved here from AGENTS.md; product
+            # commands and executed fixtures remain independently bound.
+            return re.sub(r'(?s)## Failure and root-cause protocol\n.*?(?=## China image-source contract\n)',
+                          '## Shared governance\n', text)
         if inventory_counts(before + '每轮 `logs/mysql-backups-' + after) == inventory_counts(old):
             return
     elif name == 'tests/helpers/mysql-backups-regression.sh' and owner == 'mysql84-physical-requal-20261125':

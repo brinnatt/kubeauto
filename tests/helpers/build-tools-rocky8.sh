@@ -11,7 +11,7 @@ CONTAINER=kubeauto-rocky8-tools-build
 TOOLS=(CalicoPolicyCli NetCheckCli KafkaCli MyBackupCli MyLogiBackupCli MigrationCli StarCli KubeBackupCli KubePublishCli OvpnUserCli)
 
 if [[ -n "${TOOLS_SELECTED:-}" ]]; then
-  [[ "$TOOLS_SELECTED" == MyBackupCli,MyLogiBackupCli || "$TOOLS_SELECTED" == MyBackupCli || "$TOOLS_SELECTED" == MyLogiBackupCli || "$TOOLS_SELECTED" == MigrationCli || "$TOOLS_SELECTED" == MyBackupCli,MyLogiBackupCli,MigrationCli || "$TOOLS_SELECTED" == KubeBackupCli || "$TOOLS_SELECTED" == KubePublishCli || "$TOOLS_SELECTED" == MyBackupCli,KubeBackupCli,KubePublishCli || "$TOOLS_SELECTED" == KafkaCli,StarCli || "$TOOLS_SELECTED" == MyBackupCli,KafkaCli,MigrationCli,StarCli || "$TOOLS_SELECTED" == MyBackupCli,CalicoPolicyCli,OvpnUserCli || "$TOOLS_SELECTED" == CalicoPolicyCli,OvpnUserCli ]] || { echo TOOLS_BUILD_SCOPE_REFUSED >&2; exit 2; }
+  [[ "$TOOLS_SELECTED" == MyBackupCli,MyLogiBackupCli || "$TOOLS_SELECTED" == MyBackupCli || "$TOOLS_SELECTED" == MyLogiBackupCli || "$TOOLS_SELECTED" == MigrationCli || "$TOOLS_SELECTED" == MyBackupCli,MyLogiBackupCli,MigrationCli || "$TOOLS_SELECTED" == KubeBackupCli || "$TOOLS_SELECTED" == KubePublishCli || "$TOOLS_SELECTED" == MyBackupCli,KubeBackupCli,KubePublishCli || "$TOOLS_SELECTED" == KafkaCli,StarCli || "$TOOLS_SELECTED" == MyBackupCli,KafkaCli,MigrationCli,StarCli || "$TOOLS_SELECTED" == MyBackupCli,CalicoPolicyCli,OvpnUserCli || "$TOOLS_SELECTED" == CalicoPolicyCli,OvpnUserCli || "$TOOLS_SELECTED" == CalicoPolicyCli,NetCheckCli,KafkaCli,MyBackupCli,MyLogiBackupCli,MigrationCli,StarCli,KubeBackupCli,KubePublishCli,OvpnUserCli ]] || { echo TOOLS_BUILD_SCOPE_REFUSED >&2; exit 2; }
   IFS=, read -r -a TOOLS <<<"$TOOLS_SELECTED"
 fi
 
