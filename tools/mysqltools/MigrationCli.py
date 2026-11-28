@@ -1092,6 +1092,7 @@ def build_migration_options(
     opts.native_options = {target: list(tokens) for target, tokens in cfg.get("native_options", {}).items()}
     for target, tokens in parse_native_options(getattr(args, "native_option", [])).items():
         opts.native_options.setdefault(target, []).extend(tokens)
+    validate_options_dict(asdict(opts), label)
     return opts
 
 
@@ -2689,6 +2690,10 @@ def parse_arguments():
 
     args = parser.parse_args()
     try:
+        for name in ("max_workers", "max_workers_per_target_host", "dump_timeout", "import_timeout"):
+            value = getattr(args, name)
+            if value is not None and value <= 0:
+                raise ValueError("--" + name.replace("_", "-") + " 必须为正整数")
         parse_native_options(args.native_option)
     except ValueError as exc:
         parser.error(str(exc))

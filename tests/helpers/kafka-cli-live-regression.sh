@@ -41,6 +41,28 @@ cleanup(){
 }
 trap cleanup EXIT INT TERM
 
+echo "KAFKA_CLI_LIVE_STAGE initial-voters-format"
+VOTER_ROOT="$ROOT/initial-voters"
+mkdir -p "$VOTER_ROOT/logs" "$VOTER_ROOT/meta"
+CID="$(new_cluster_id)"; DIRECTORY_ID="$(new_cluster_id)"
+VOTERS="71@127.0.0.1:19193:$DIRECTORY_ID"
+run python3 "$TOOL" --deploy controller --controller-scope cluster --kafka-home "$HOME_K" \
+  --cluster-id "$CID" --node-id 71 --advertised-host 127.0.0.1 \
+  --controller-listen-host 0.0.0.0 --controller-listen-port 19193 \
+  --controller-quorum-bootstrap-servers 127.0.0.1:19193 --initial-controllers "$VOTERS" \
+  --log-dirs "$VOTER_ROOT/logs" --metadata-log-dir "$VOTER_ROOT/meta" --no-systemd --user root --group root
+python3 - "$VOTER_ROOT/meta/meta.properties" "$CID" "$DIRECTORY_ID" <<'PY'
+import pathlib,sys
+values=dict(line.split('=',1) for line in pathlib.Path(sys.argv[1]).read_text().splitlines()
+            if line and not line.startswith('#') and '=' in line)
+assert values['cluster.id']==sys.argv[2],values
+assert values['node.id']=='71',values
+assert values['directory.id']==sys.argv[3],values
+print('KAFKA_INITIAL_VOTERS_FORMAT_PASS cluster_node_directory=verified')
+PY
+run python3 "$TOOL" --deploy controller --clean --clean-data --force --kafka-home "$HOME_K" \
+  --node-id 71 --log-dirs "$VOTER_ROOT/logs" --metadata-log-dir "$VOTER_ROOT/meta" --user root --group root
+
 rm -rf "$DATA" "$ROOT/config-fixture"; mkdir -p "$DATA/logs" "$DATA/meta"
 echo "KAFKA_CLI_LIVE_STAGE standalone-cluster-id"
 CID="$(new_cluster_id)"

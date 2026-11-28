@@ -173,7 +173,7 @@ def compatible_inputs(recorded):
                     (ROOT / name).read_text() == snapshot.read_text().replace('root@192.168.47.131', 'root@192.168.47.137', 1)):
                 continue
             return False
-        if name not in ('tests/run_tools_regression.sh', 'tests/helpers/mysql80-physical-live.py',
+        if name not in ('tests/run_tools_regression.sh', 'tests/helpers/build-tools-rocky8.sh', 'tests/helpers/mysql80-physical-live.py',
                         'tests/helpers/mybackup-cli-live-regression.sh'):
             return False
         snapshot = ROOT / 'logs/mysql80-execution-inputs' / (expected + Path(name).suffix)
@@ -187,13 +187,26 @@ def compatible_inputs(recorded):
                 return False
             if before.split('\necho MYBACKUP_STAGE full\n', 1)[0] != after.split('\necho MYBACKUP_STAGE full\n', 1)[0]:
                 return False
+        elif name == 'tests/helpers/build-tools-rocky8.sh':
+            # These selections do not rebuild or execute MyBackupCli.
+            def unchanged_builder(source):
+                for selection in ('OvpnUserCli', 'NetCheckCli', 'CalicoPolicyCli',
+                        'NetCheckCli,CalicoPolicyCli,OvpnUserCli,KubePublishCli,KafkaCli,MigrationCli,StarCli'):
+                    source = source.replace(' || "$TOOLS_SELECTED" == '+selection+' ||', ' ||')
+                return source
+            if unchanged_builder(before) != unchanged_builder(after):
+                return False
         elif name.endswith('.sh'):
+            dispatch = '    if [[ "${MYSQL_BACKUP_STAGE:-}" == physical80-* ]]; then\n'
+            if dispatch not in before or dispatch not in after:
+                return False
             def physical_dispatch(source):
                 header = source.split('\nusage() {', 1)[0]
+                header = re.sub(r' \|\| "\$TOOLS_SELECTED" == [A-Za-z0-9,]+', '', header)
                 # Other independently gated MySQL launchers may precede this
                 # branch. Compare the actual physical80 handoff, not the first
                 # unrelated `if` inside the shared case arm.
-                branch = source.split('    if [[ "${MYSQL_BACKUP_STAGE:-}" == physical80-* ]]; then\n', 1)[1].split('    fi\n', 1)[0]
+                branch = source.split(dispatch, 1)[1].split('    fi\n', 1)[0]
                 return header, branch
             if physical_dispatch(before) != physical_dispatch(after):
                 return False

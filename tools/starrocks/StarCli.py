@@ -16,6 +16,7 @@ import socket
 import stat
 import subprocess
 import sys
+import tempfile
 import time
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
@@ -910,12 +911,11 @@ class SystemdServiceGenerator:
         # 构建启动命令
         # 注意：helper_address 已经是 host:port 格式，不需要再拼接 edit_log_port
         # 根据 StarRocks 官方文档，--helper 参数格式为: --helper "host:edit_log_port"
+        exec_start = f"{starrocks_home}/fe/bin/start_fe.sh"
         if helper_address:
-            exec_start = f"{starrocks_home}/fe/bin/start_fe.sh --helper {helper_address}"
-        elif use_fqdn:
-            exec_start = f"{starrocks_home}/fe/bin/start_fe.sh --host_type FQDN"
-        else:
-            exec_start = f"{starrocks_home}/fe/bin/start_fe.sh"
+            exec_start += f" --helper {helper_address}"
+        if use_fqdn:
+            exec_start += " --host_type FQDN"
 
         service_content = f"""[Unit]
 Description={description}
@@ -2754,12 +2754,12 @@ class StarRocksDeployer:
 
         # 生成启动命令（用于日志输出，实际启动由 systemd 服务管理）
         # 注意：helper_address 已经是 host:port 格式，不需要再拼接 edit_log_port
+        start_cmd = str(self.starrocks_home / 'fe' / 'bin' / 'start_fe.sh')
         if helper_address:
-            start_cmd = f"{self.starrocks_home / 'fe' / 'bin' / 'start_fe.sh'} --helper {helper_address} --daemon"
-        elif use_fqdn:
-            start_cmd = f"{self.starrocks_home / 'fe' / 'bin' / 'start_fe.sh'} --host_type FQDN --daemon"
-        else:
-            start_cmd = f"{self.starrocks_home / 'fe' / 'bin' / 'start_fe.sh'} --daemon"
+            start_cmd += f" --helper {helper_address}"
+        if use_fqdn:
+            start_cmd += " --host_type FQDN"
+        start_cmd += " --daemon"
 
         self._log_deployment_completion("FE", start_cmd, "starrocks-fe", enable_systemd)
 
@@ -3871,15 +3871,16 @@ def _build_remote_command(argv: List[str], remote_config_path: Optional[str],
         if skip_next:
             skip_next = False
             continue
-        if arg in flags_no_value:
+        option, separator, _value = arg.partition("=")
+        if option in flags_no_value:
             continue
-        if arg in flags_with_value:
-            if arg == "--config":
-                skip_next = True
+        if option in flags_with_value:
+            if option == "--config":
+                skip_next = not separator
                 if remote_config_path:
                     filtered.extend(["--config", remote_config_path])
             else:
-                skip_next = True
+                skip_next = not separator
             continue
         filtered.append(arg)
 
@@ -3974,20 +3975,39 @@ def _run_remote_deploy(
                 sys.exit(1)
 
         remote_config_path = f"{remote_workdir}/config.json"
-        if not ssh.copy_file(str(Path(args.config).resolve()), remote_config_path):
+        # SSH routing belongs to this caller. The target consumes only its
+        # business configuration, so it cannot recursively forward itself.
+        local_keys = {"target_host", "ssh_user", "ssh_port", "ssh_key", "remote_workdir",
+                      "disable_ssh_host_check", "nodes", "batch"}
+        payload = {key: value for key, value in config.items() if key not in local_keys}
+        with tempfile.TemporaryDirectory(prefix="cli-remote-config-") as directory:
+            transport = Path(directory) / "config.json"
+            with transport.open("x", encoding="utf-8") as stream:
+                os.chmod(str(transport), 0o600)
+                json.dump(payload, stream, ensure_ascii=False)
+            copied = ssh.copy_file(str(transport), remote_config_path)
+        if not copied:
             logger.error("复制配置文件到远程失败", extra={"to_stdout": True})
             sys.exit(1)
 
     remote_cmd = _build_remote_command(argv, remote_config_path, remote_script,
                                        remote_python=not getattr(sys, "frozen", False))
+    def redact(text: str) -> str:
+        for key in set(config) | set(vars(args)):
+            if "password" in key:
+                for value in (config.get(key), getattr(args, key, None)):
+                    if value:
+                        text = text.replace(shlex.quote(str(value)), "***").replace(str(value), "***")
+        return text
+
     logger.info(f"正在远程主机 {host}:{port} 执行部署...", extra={"to_stdout": True})
-    logger.info(f"远程执行命令: {remote_cmd}", extra={"to_stdout": True})
+    logger.info(f"远程执行命令: {redact(remote_cmd)}", extra={"to_stdout": True})
     # 使用 2>&1 确保捕获所有输出（包括错误输出）
     remote_cmd_with_redirect = f"{remote_cmd} 2>&1"
     success, output = ssh.run_command(remote_cmd_with_redirect, timeout=3600)
     if success:
         if output:
-            logger.info(output.strip(), extra={"to_stdout": True})
+            logger.info(redact(output.strip()), extra={"to_stdout": True})
         sys.exit(0)
     # 输出详细错误信息（完整输出，不截断）
     if output:
@@ -3995,10 +4015,10 @@ def _run_remote_deploy(
         error_lines = output.strip().split('\n')
         logger.error("远程执行失败，完整错误信息：", extra={"to_stdout": True})
         for line in error_lines:
-            logger.error(f"  {line}", extra={"to_stdout": True})
+            logger.error(f"  {redact(line)}", extra={"to_stdout": True})
     else:
         logger.error("远程执行失败（无错误输出）", extra={"to_stdout": True})
-    logger.error(f"执行的命令: {remote_cmd}", extra={"to_stdout": True})
+    logger.error(f"执行的命令: {redact(remote_cmd)}", extra={"to_stdout": True})
     logger.error(f"目标主机: {host}:{port} (用户: {ssh_user})", extra={"to_stdout": True})
     # 尝试获取更详细的错误信息
     if not output:
@@ -4522,6 +4542,12 @@ def main():
     config = {}
     if args.config:
         config = load_json_config(args.config)
+    # Merge only explicitly supplied options. Parser defaults must not replace
+    # configured user/group/SSH values when the caller omits those options.
+    explicit_options = {token.split('=', 1)[0] for token in sys.argv[1:]}
+    for name, value in vars(args).items():
+        if '--' + name.replace('_', '-') in explicit_options:
+            config[name] = value
 
     # 远程部署处理（在status/clean等逻辑之前）
     target_host = config.get("target_host") or args.target_host
@@ -4545,9 +4571,9 @@ def main():
     # 处理status命令（如果只查看状态，不部署）
     # 如果同时指定了 --status 和 --deploy，则在部署后显示状态
     if args.status and not (args.deploy or config.get("deploy")):
-        fe_host_status = args.fe_host or "127.0.0.1"
-        fe_query_port_status = args.fe_query_port or 9030
-        root_password = args.root_password
+        fe_host_status = config.get("fe_host") or "127.0.0.1"
+        fe_query_port_status = config.get("fe_query_port") or config.get("query_port") or 9030
+        root_password = config.get("root_password")
 
         # 校验 fe_host_status
         if fe_host_status and not InputValidator.validate_hostname(fe_host_status):
@@ -4739,10 +4765,6 @@ def main():
             fe_query_port=fe_query_port
         )
 
-        if success and args.verify:
-            time.sleep(5)  # 等待服务启动
-            deployer.verify_fe_started()
-
     elif deploy_type == "be":
         # 命令行参数优先，然后是配置文件
         storage_root_path = args.storage_root_path or config.get("storage_root_path")
@@ -4785,10 +4807,6 @@ def main():
             password=password_be
         )
 
-        if success and args.verify:
-            time.sleep(5)  # 等待服务启动
-            deployer.verify_be_started()
-
     elif deploy_type == "cn":
         # 命令行参数优先，然后是配置文件，最后是默认值
         be_port = args.be_port if args.be_port is not None else (config.get("be_port") or DEFAULT_CN_PORTS['be_port'])
@@ -4821,6 +4839,11 @@ def main():
             fe_query_port=fe_query_port,
             password=password_cn
         )
+
+    if success and args.verify:
+        time.sleep(5)
+        verify = deployer.verify_fe_started if deploy_type == "fe" else deployer.verify_be_started
+        success = verify()
 
     if success:
         logger.info("=== 部署成功 ===", extra={"to_stdout": True})

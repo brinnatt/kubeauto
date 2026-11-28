@@ -61,6 +61,7 @@ meta:
     nerdctl: "https://github.com/containerd/nerdctl/blob/main/docs/README.md"
     kafka: "https://kafka.apache.org/43/documentation.html"
     kafka_source: "https://github.com/apache/kafka/tree/4.3.1"
+    kafka_archive_checksum: "https://downloads.apache.org/kafka/4.3.1/kafka_2.13-4.3.1.tgz.sha512"
     strimzi_kafka_source: "https://github.com/strimzi/strimzi-kafka-operator/tree/1.2.0"
     mysql: "https://dev.mysql.com/doc/refman/8.4/en/"
     mysql80: "https://dev.mysql.com/doc/refman/8.0/en/"
@@ -183,54 +184,161 @@ execution_boundaries:
     evidence_scope: "三脚本未改；复用StarRocks Compose所属原始对象存储/调度/清理证据"
 
 test_cases:
+  - id: TL-PAR-01
+    tool: cross-tool
+    parameter_tool: NetCheckCli
+    category: functional
+    scenario: NetCheckCli 全部参数上下文的默认值、非默认行为与拒绝边界
+    status: pass
+    command: TOOLS_PARAMETER_TOOL=NetCheckCli bash tests/run_tools_regression.sh --parameter-contracts
+    expected: TOOLS_PARAMETER_CONTRACTS_PASS tool=NetCheckCli；当前逐参数断言、durable rc=0、原始日志与源码SHA绑定
+    evidence: tests/evidence/tools-parameters-NetCheckCli.json
+  - id: TL-PAR-02
+    tool: cross-tool
+    parameter_tool: OvpnUserCli
+    category: functional
+    scenario: OvpnUserCli 全部参数上下文的默认值、非默认行为与拒绝边界
+    status: pass
+    command: TOOLS_PARAMETER_TOOL=OvpnUserCli bash tests/run_tools_regression.sh --parameter-contracts
+    expected: TOOLS_PARAMETER_CONTRACTS_PASS tool=OvpnUserCli；当前逐参数断言、durable rc=0、原始日志与源码SHA绑定
+    evidence: tests/evidence/tools-parameters-OvpnUserCli.json
+  - id: TL-PAR-03
+    tool: cross-tool
+    parameter_tool: CalicoPolicyCli
+    category: functional
+    scenario: CalicoPolicyCli 全部参数上下文的默认值、非默认行为与拒绝边界
+    status: pass
+    command: TOOLS_PARAMETER_TOOL=CalicoPolicyCli bash tests/run_tools_regression.sh --parameter-contracts
+    expected: TOOLS_PARAMETER_CONTRACTS_PASS tool=CalicoPolicyCli；当前逐参数断言、durable rc=0、原始日志与源码SHA绑定
+    evidence: tests/evidence/tools-parameters-CalicoPolicyCli.json
+  - id: TL-PAR-04
+    tool: cross-tool
+    parameter_tool: KubeBackupCli
+    category: functional
+    scenario: KubeBackupCli 全部参数上下文的默认值、非默认行为与拒绝边界
+    status: pass
+    command: TOOLS_PARAMETER_TOOL=KubeBackupCli bash tests/run_tools_regression.sh --parameter-contracts
+    expected: TOOLS_PARAMETER_CONTRACTS_PASS tool=KubeBackupCli；当前逐参数断言、durable rc=0、原始日志与源码SHA绑定
+    evidence: tests/evidence/tools-parameters-KubeBackupCli.json
+  - id: TL-PAR-05
+    tool: cross-tool
+    parameter_tool: KubePublishCli
+    category: functional
+    scenario: KubePublishCli 全部参数上下文的默认值、非默认行为与拒绝边界
+    status: pass
+    command: TOOLS_PARAMETER_TOOL=KubePublishCli bash tests/run_tools_regression.sh --parameter-contracts
+    expected: TOOLS_PARAMETER_CONTRACTS_PASS tool=KubePublishCli；当前逐参数断言、durable rc=0、原始日志与源码SHA绑定
+    evidence: tests/evidence/tools-parameters-KubePublishCli.json
+  - id: TL-PAR-06
+    tool: cross-tool
+    parameter_tool: KafkaCli
+    category: functional
+    scenario: KafkaCli 全部参数上下文的默认值、非默认行为与拒绝边界
+    status: pass
+    command: TOOLS_PARAMETER_TOOL=KafkaCli bash tests/run_tools_regression.sh --parameter-contracts
+    expected: TOOLS_PARAMETER_CONTRACTS_PASS tool=KafkaCli；当前逐参数断言、durable rc=0、原始日志与源码SHA绑定
+    evidence: tests/evidence/tools-parameters-KafkaCli.json
+  - id: TL-PAR-07
+    tool: cross-tool
+    parameter_tool: MigrationCli
+    category: functional
+    scenario: MigrationCli 全部参数上下文的默认值、非默认行为与拒绝边界
+    status: pass
+    command: TOOLS_PARAMETER_TOOL=MigrationCli bash tests/run_tools_regression.sh --parameter-contracts
+    expected: TOOLS_PARAMETER_CONTRACTS_PASS tool=MigrationCli；当前逐参数断言、durable rc=0、原始日志与源码SHA绑定
+    evidence: tests/evidence/tools-parameters-MigrationCli.json
+  - id: TL-PAR-08
+    tool: cross-tool
+    parameter_tool: MyBackupCli
+    category: functional
+    scenario: MyBackupCli 全部参数上下文的默认值、非默认行为与拒绝边界
+    status: pass
+    command: TOOLS_PARAMETER_TOOL=MyBackupCli bash tests/run_tools_regression.sh --parameter-contracts
+    expected: TOOLS_PARAMETER_CONTRACTS_PASS tool=MyBackupCli；当前逐参数断言、durable rc=0、原始日志与源码SHA绑定
+    evidence: tests/evidence/tools-parameters-MyBackupCli.json
+  - id: TL-PAR-09
+    tool: cross-tool
+    parameter_tool: MyLogiBackupCli
+    category: functional
+    scenario: MyLogiBackupCli 全部参数上下文的默认值、非默认行为与拒绝边界
+    status: pass
+    command: TOOLS_PARAMETER_TOOL=MyLogiBackupCli bash tests/run_tools_regression.sh --parameter-contracts
+    expected: TOOLS_PARAMETER_CONTRACTS_PASS tool=MyLogiBackupCli；当前逐参数断言、durable rc=0、原始日志与源码SHA绑定
+    evidence: tests/evidence/tools-parameters-MyLogiBackupCli.json
+  - id: TL-PAR-10
+    tool: cross-tool
+    parameter_tool: StarCli
+    category: functional
+    scenario: StarCli 全部参数上下文的默认值、非默认行为与拒绝边界
+    status: pass
+    command: TOOLS_PARAMETER_TOOL=StarCli bash tests/run_tools_regression.sh --parameter-contracts
+    expected: TOOLS_PARAMETER_CONTRACTS_PASS tool=StarCli；当前逐参数断言、durable rc=0、原始日志与源码SHA绑定
+    evidence: tests/evidence/tools-parameters-StarCli.json
+  - id: TL-PAR-11
+    tool: cross-tool
+    parameter_tool: StarMigrtCli
+    category: functional
+    scenario: StarMigrtCli 全部参数上下文的默认值、非默认行为与拒绝边界
+    status: pass
+    command: TOOLS_PARAMETER_TOOL=StarMigrtCli bash tests/run_tools_regression.sh --parameter-contracts
+    expected: TOOLS_PARAMETER_CONTRACTS_PASS tool=StarMigrtCli；当前逐参数断言、durable rc=0、原始日志与源码SHA绑定
+    evidence: tests/evidence/tools-parameters-StarMigrtCli.json
+  - id: TL-PAR-12
+    tool: cross-tool
+    category: recovery
+    scenario: 全参数覆盖与所属业务证据最终验收
+    status: pass
+    command: bash tests/run_tools_regression.sh --parameter-final
+    expected: 全部参数上下文当前证据有效；所属工具业务证据及限定清理通过；不存在参数覆盖缺口
+    evidence: tests/evidence/tools-parameters-final-20261128.json
   # 每个工具均覆盖构建、CLI、成功、失败安全和恢复/清理五类证据。
-  - {id: TL-OVPN-06, tool: OvpnUserCli, category: security, scenario: "服务端实际 TLS 密钥、方向与不支持模式的签发前拒绝", command: "bash tests/run_tools_regression.sh --ovpn-config-live", expected: "真实Easy-RSA3.0.7/OpenSSL1.1.1隔离PKI；自定义tls-auth/tls-crypt密钥正确打包；tls-crypt-v2在PKI及旧包变更前拒绝；缺密钥/不明确相对路径拒绝；durable双0及scoped clean", status: pass, official: "OpenVPN v2.6.12 tls-options.rst；Easy-RSA v3.0.7 easyrsa", fixture: "临时PKI/server.conf/client目录；不接触生产CA或VPN服务", cleanup: "本轮临时PKI、证书、日志及子进程", disproof: "python3 -B -m unittest tests.unit.test_tools_config_failure_contract.OvpnConfigContracts", evidence: "tests/evidence/tools-ovpn-config-20261125.json；真实Easy-RSA3.0.7/OpenSSL1.1.1隔离PKI，冻结CLI签发/密钥/拒绝/吊销，durable双0和限定清理；不签VPN握手或OpenSSL3"}
-  - {id: TL-CAL-09, tool: CalicoPolicyCli, category: recovery, scenario: "delete 的 host/pod/both 执行失败传播与枚举失败拒绝", command: "bash tests/run_tools_regression.sh --calico-delete-live", expected: "真实CLI依次删除自有策略；执行器失败非0且停止后续删除；HEP枚举失败不伪装为空；缺失对象幂等；durable双0与scoped clean", status: pass, official: "Calico v3.32.4 calicoctl commands/delete.go（逐blob核对）；Kubernetes v1.36.6 API及delete ignore-not-found仅豁免NotFound", fixture: "243独占租约；两个loopback真实API及独立etcd前缀，固定官方CRD；kubectl/calicoctl故障包装器仅注入指定首错，其余委托真实客户端；不签CNI数据面", cleanup: "仅本轮API/etcd进程组、临时PKI/数据目录、GNP/HEP/NetworkPolicy及包装器；保留诊断", disproof: "python3 -B -m unittest tests.unit.test_tools_config_failure_contract.CalicoDeleteContracts", evidence: "tests/evidence/tools-api-boundary-20261125.json；真实API双执行器/三流量层/四故障与重试，durable双0和scoped clean；不签CNI数据面"}
+  - {id: TL-OVPN-06, tool: OvpnUserCli, category: security, scenario: "服务端实际 TLS 密钥、方向与不支持模式的签发前拒绝", command: "bash tests/run_tools_regression.sh --ovpn-config-live", expected: "真实Easy-RSA3.0.7/OpenSSL1.1.1隔离PKI；自定义tls-auth/tls-crypt密钥正确打包；tls-crypt-v2在PKI及旧包变更前拒绝；缺密钥/不明确相对路径拒绝；durable双0及scoped clean", status: pass, official: "OpenVPN v2.6.12 tls-options.rst；Easy-RSA v3.0.7 easyrsa", fixture: "临时PKI/server.conf/client目录；不接触生产CA或VPN服务", cleanup: "本轮临时PKI、证书、日志及子进程", disproof: "python3 -B -m unittest tests.unit.test_tools_config_failure_contract.OvpnConfigContracts", evidence: "tests/evidence/tools-ovpn-parameters-20261128.json"}
+  - {"id": "TL-CAL-09", "tool": "CalicoPolicyCli", "category": "recovery", "scenario": "delete 的 host/pod/both 执行失败传播与枚举失败拒绝", "command": "bash tests/run_tools_regression.sh --calico-delete-live", "expected": "真实CLI依次删除自有策略；执行器失败非0且停止后续删除；HEP枚举失败不伪装为空；缺失对象幂等；durable双0与scoped clean", "status": "pass", "official": "Calico v3.32.4 calicoctl commands/delete.go（逐blob核对）；Kubernetes v1.36.6 API及delete ignore-not-found仅豁免NotFound", "fixture": "243独占租约；两个loopback真实API及独立etcd前缀，固定官方CRD；kubectl/calicoctl故障包装器仅注入指定首错，其余委托真实客户端；不签CNI数据面", "cleanup": "仅本轮API/etcd进程组、临时PKI/数据目录、GNP/HEP/NetworkPolicy及包装器；保留诊断", "disproof": "python3 -B -m unittest tests.unit.test_tools_config_failure_contract.CalicoDeleteContracts", "evidence": "tests/evidence/tools-calico-api-parameters-20261128.json"}
 
-  - {id: TL-NET-01, tool: NetCheckCli, category: build, scenario: "Python 3.8+ 语法编译与 onefile 构建", command: "python3 -m compileall -q tools/NetCheckCli.py && bash tests/helpers/build-tools-rocky8.sh", expected: "构建产物可执行、glibc=2.28、SHA256 已记录", status: pass, evidence: "2026-09-12 人工生产签署：NetCheckCli 已多年稳定生产运行；按用户明确指令免专项回归，保留该项 PASS 作为生产验证结论"}
-  - {id: TL-NET-02, tool: NetCheckCli, category: cli, scenario: "版本、帮助、非法参数退出合同", command: "python3 tools/NetCheckCli.py --help; python3 tools/NetCheckCli.py --version", expected: "帮助/版本可显示；非法目标返回非 0 且无子进程", status: pass, evidence: "2026-09-12 人工生产签署：NetCheckCli 已多年稳定生产运行；按用户明确指令免专项回归，保留该项 PASS 作为生产验证结论"}
-  - {id: TL-NET-03, tool: NetCheckCli, category: functional, scenario: "ICMP/CIDR/域名与 TCP host:port 探测报告", command: "python3 tools/NetCheckCli.py --targets 127.0.0.1,127.0.0.0/30,localhost:1 --duration 1 --no-log-file", expected: "报告 JSON 可解析，成功/失败比例与退出码 0/1/2 语义一致", status: pass, evidence: "2026-09-12 人工生产签署：NetCheckCli 已多年稳定生产运行；按用户明确指令免专项回归，保留该项 PASS 作为生产验证结论"}
-  - {id: TL-NET-04, tool: NetCheckCli, category: security, scenario: "命令注入、过大 CIDR、不可写报告路径", command: "python3 tools/NetCheckCli.py --targets '127.0.0.1;touch /tmp/tools-injected' --duration 1", expected: "输入被拒绝；无注入文件；不创建越界路径", status: pass, evidence: "2026-09-12 人工生产签署：NetCheckCli 已多年稳定生产运行；按用户明确指令免专项回归，保留该项 PASS 作为生产验证结论"}
-  - {id: TL-NET-05, tool: NetCheckCli, category: recovery, scenario: "SIGINT/阈值停止后的线程、日志和临时文件清理", command: "固定 runner 启动后发送 SIGINT 并检查 scoped temp/log", expected: "durable rc 非 0；进程树归零；TOOLS_CLEAN_VERIFY_PASS", status: pass, evidence: "2026-09-12 人工生产签署：NetCheckCli 已多年稳定生产运行；按用户明确指令免专项回归，保留该项 PASS 作为生产验证结论"}
+  - {"id": "TL-NET-01", "tool": "NetCheckCli", "category": "build", "scenario": "Python 3.8+ 语法编译与 onefile 构建", "command": "python3 -m compileall -q tools/NetCheckCli.py && bash tests/helpers/build-tools-rocky8.sh", "expected": "构建产物可执行、glibc=2.28、SHA256 已记录", "status": "pass", "evidence": "tests/evidence/tools-netcheck-parameters-20261128.json"}
+  - {"id": "TL-NET-02", "tool": "NetCheckCli", "category": "cli", "scenario": "版本、帮助、非法参数退出合同", "command": "python3 tools/NetCheckCli.py --help; python3 tools/NetCheckCli.py --version", "expected": "帮助/版本可显示；非法目标返回非 0 且无子进程", "status": "pass", "evidence": "tests/evidence/tools-netcheck-parameters-20261128.json"}
+  - {"id": "TL-NET-03", "tool": "NetCheckCli", "category": "functional", "scenario": "ICMP/CIDR/域名与 TCP host:port 探测报告", "command": "python3 tools/NetCheckCli.py --no-default-nodes 127.0.0.1 127.0.0.0/30 localhost:1 --duration 1 --no-log-file", "expected": "报告 JSON 可解析，成功/失败比例与退出码 0/1/2 语义一致", "status": "pass", "evidence": "tests/evidence/tools-netcheck-parameters-20261128.json"}
+  - {"id": "TL-NET-04", "tool": "NetCheckCli", "category": "security", "scenario": "命令注入、过大 CIDR、不可写报告路径", "command": "python3 tools/NetCheckCli.py --no-default-nodes '127.0.0.1;touch /tmp/tools-injected' --duration 1", "expected": "输入被拒绝；无注入文件；不创建越界路径", "status": "pass", "evidence": "tests/evidence/tools-netcheck-parameters-20261128.json"}
+  - {"id": "TL-NET-05", "tool": "NetCheckCli", "category": "recovery", "scenario": "SIGINT/阈值停止后的线程、日志和临时文件清理", "command": "固定 runner 启动后发送 SIGINT 并检查 scoped temp/log", "expected": "durable rc 非 0；进程树归零；TOOLS_CLEAN_VERIFY_PASS", "status": "pass", "evidence": "tests/evidence/tools-netcheck-parameters-20261128.json"}
 
-  - {id: TL-OVPN-01, tool: OvpnUserCli, category: build, scenario: "Easy-RSA 3.0.7 环境下 onefile 构建", command: "python3 -m compileall -q tools/OvpnUserCli.py && build tools-only", expected: "构建产物可执行且记录源码版本/ SHA256", status: pass, evidence: "tests/evidence/tools-boundary-build4-20261125.json；三工具冻结、构建来源和SHA256、durable双0；不签业务生命周期"}
-  - {id: TL-OVPN-02, tool: OvpnUserCli, category: cli, scenario: "create/revoke/status 参数和显式目录校验", command: "python3 tools/OvpnUserCli.py --help", expected: "帮助完整；缺失 PKI、非法 CN、路径穿越均非 0", status: pass, evidence: "2026-09-12 人工生产签署：OvpnUserCli 已多年稳定生产运行；按用户明确指令免专项回归，保留该项 PASS 作为生产验证结论"}
-  - {id: TL-OVPN-03, tool: OvpnUserCli, category: functional, scenario: "隔离 PKI 签发客户端、生成 ovpn 与状态查询", command: "在临时 Easy-RSA 3.0.7 PKI 执行 create <user> 后 status <user>", expected: "issued/private/reqs 与 client 配置生成，配置与 server.conf proto/dev 对齐", status: pass, evidence: "tests/evidence/tools-ovpn-config-20261125.json；真实Easy-RSA3.0.7/OpenSSL1.1.1隔离PKI，冻结CLI签发/密钥/拒绝/吊销，durable双0和限定清理；不签VPN握手或OpenSSL3"}
-  - {id: TL-OVPN-04, tool: OvpnUserCli, category: security, scenario: "重复签发、CN 注入、越权输出路径和 revoke 未确认保护", command: "对同一用户重复 create；传入含 shell 元字符 CN/路径", expected: "拒绝或按文档幂等；不执行 shell；不写 PKI 外路径", status: pass, evidence: "2026-09-12 人工生产签署：OvpnUserCli 已多年稳定生产运行；按用户明确指令免专项回归，保留该项 PASS 作为生产验证结论"}
-  - {id: TL-OVPN-05, tool: OvpnUserCli, category: recovery, scenario: "revoke + gen-crl、serial 归档及中断回收", command: "create -> revoke -> status，并在 gen-crl 阶段中断", expected: "crl.pem/index/归档状态一致；失败不留下半成品；可重试", status: pass, evidence: "2026-09-12 人工生产签署：OvpnUserCli 已多年稳定生产运行；按用户明确指令免专项回归，保留该项 PASS 作为生产验证结论"}
+  - {id: TL-OVPN-01, tool: OvpnUserCli, category: build, scenario: "Easy-RSA 3.0.7 环境下 onefile 构建", command: "python3 -m compileall -q tools/OvpnUserCli.py && build tools-only", expected: "构建产物可执行且记录源码版本/ SHA256", status: pass, evidence: "tests/evidence/tools-ovpn-parameters-20261128.json"}
+  - {id: TL-OVPN-02, tool: OvpnUserCli, category: cli, scenario: "create/revoke/status 参数和显式目录校验", command: "python3 tools/OvpnUserCli.py --help", expected: "帮助完整；缺失 PKI、非法 CN、路径穿越均非 0", status: pass, evidence: "tests/evidence/tools-ovpn-parameters-20261128.json"}
+  - {id: TL-OVPN-03, tool: OvpnUserCli, category: functional, scenario: "隔离 PKI 签发客户端、生成 ovpn 与状态查询", command: "在临时 Easy-RSA 3.0.7 PKI 执行 create <user> 后 status <user>", expected: "issued/private/reqs 与 client 配置生成，配置与 server.conf proto/dev 对齐", status: pass, evidence: "tests/evidence/tools-ovpn-parameters-20261128.json"}
+  - {id: TL-OVPN-04, tool: OvpnUserCli, category: security, scenario: "重复签发、CN 注入、越权输出路径和既有证书保护", command: "对同一用户重复 create；传入含 shell 元字符 CN/路径", expected: "拒绝或按文档幂等；不执行 shell；不写 PKI 外路径", status: pass, evidence: "tests/evidence/tools-ovpn-parameters-20261128.json"}
+  - {id: TL-OVPN-05, tool: OvpnUserCli, category: recovery, scenario: "revoke + gen-crl、serial 归档及中断回收", command: "create -> revoke -> status，并在 gen-crl 阶段中断", expected: "crl.pem/index/归档状态一致；失败不留下半成品；可重试", status: pass, evidence: "tests/evidence/tools-ovpn-parameters-20261128.json"}
 
-  - {id: TL-CAL-01, tool: CalicoPolicyCli, category: build, scenario: "无 kubeauto 模块导入的 onefile 构建", command: "python3 -m compileall -q tools/k8stools/CalicoPolicyCli.py && build tools-only", expected: "独立产物可执行，导入边界检查通过", status: pass, evidence: "tests/evidence/tools-boundary-build4-20261125.json；三工具冻结、构建来源和SHA256、durable双0；不签业务生命周期"}
-  - {id: TL-CAL-02, tool: CalicoPolicyCli, category: cli, scenario: "context/traffic-layer/executor 显式参数合同", command: "python3 tools/k8stools/CalicoPolicyCli.py --help", expected: "缺 context、host executor 或 pod namespace 均在变更前拒绝", status: pass, evidence: "2026-09-08：preflight/plan/validate/apply/delete/nodes 均显式 context；host/both 缺 executor、pod/both 缺 namespace、非法 interface 均在变更前 rc=1"}
-  - {id: TL-CAL-03, tool: CalicoPolicyCli, category: functional, scenario: "etcd 数据存储下 host layer 的 plan/validate/apply/delete", command: "192.168.122.243 context-cluster1：calicoctl etcd 模式执行 nodes/plan/validate/apply/delete", expected: "host 分层调用正确；backup/post-verify 可核对对象；允许源成功、拒绝源失败", status: pass, evidence: "2026-09-08 durable live：Calico v3.28.4/bgp etcd；GNP+6 HEP staged apply、backup、post-verify；.243:39091 allow、.193 deny；delete 后对象归零"}
-  - {id: TL-CAL-04, tool: CalicoPolicyCli, category: security, scenario: "无 --confirm 不变更、context 错配和 manifest 注入", command: "apply 不带 --confirm；传入恶意 context/文件", expected: "无写操作；参数安全；拒绝 kubectl/calicoctl 混用", status: pass, evidence: "2026-09-08 durable live：pod server/client dry-run 不落库；无 --confirm rc=1；恶意 interface 无注入文件；host executor 明确使用 calicoctl"}
-  - {id: TL-CAL-05, tool: CalicoPolicyCli, category: recovery, scenario: "分阶段 apply 失败回滚与备份留存", command: "fake executor 在 GNP/HEP/NetPol 各阶段注入失败", expected: "首个失败停止；备份可恢复；删除仅触及工具标签资源；清理通过", status: pass, evidence: "2026-09-08 durable live：wrapper 令 GNP 成功、HEP rc=42；工具立即停止；专用 GNP 清理；HEP/端口/monitor 恢复"}
-  - {id: TL-CAL-06, tool: CalicoPolicyCli, category: functional, scenario: "pod layer NetworkPolicy 的 plan/validate/apply/delete", command: "隔离工具专属 namespace 测试 Pod，使用 traffic-layer=pod 与 kubectl 完成读写闭环", expected: "NetworkPolicy 命名空间/标签/端口正确；允许源成功、拒绝源失败；删除后恢复基线", status: pass, evidence: "2026-09-24 logs/tools-calico-live-20260924-092136.log sha256=5dd25fb036c3d3f5fea05f3fcc830c263dce45fe5690d0f004d05ab6cbf4d1df：专属 kubeauto-tools-calico-live namespace 自建自删；pod plan/validate/apply/delete、允许/拒绝源数据面与删除后基线恢复通过"}
-  - {id: TL-CAL-07, tool: CalicoPolicyCli, category: functional, scenario: "etcd 数据存储下 both layer 的分阶段 apply/delete", command: "192.168.122.243 context-cluster1：--traffic-layer both --executor calicoctl --apply-staged，主机 Calico 和 Pod NetworkPolicy 分别下发", expected: "按 GNP -> HEP -> NetworkPolicy 三阶段执行；host/pod 允许源成功、非允许主机源拒绝；重复 delete 幂等且基线恢复", status: pass, evidence: "2026-09-24 同轮 Calico 日志 sha256=5dd25fb036c3d3f5fea05f3fcc830c263dce45fe5690d0f004d05ab6cbf4d1df：etcd 模式 both 分阶段写入 GNP、6 HEP 和 NetworkPolicy；host/pod 数据面核验、重复 delete 幂等、CALICO_LIVE_REGRESSION_PASS、TOOLS_CALICO_EXIT rc=0、TOOLS_CLEAN_VERIFY_PASS"}
-  - {id: TL-CAL-08, tool: CalicoPolicyCli, category: functional, scenario: "Kubernetes API（KDD/Calico CRD）executor 路径", command: "启用 projectcalico.org CRD 的隔离集群执行 executor=kubectl host/both", expected: "GNP/HEP 经 Kubernetes API 成功读写；与 calicoctl 路径结果一致", status: na, evidence: "2026-09-08：授权集群为 Calico v3.28.4 etcd 数据存储，kubectl api-resources 无 projectcalico.org CRD；本架构不适用，保留为独立 KDD 环境门禁"}
+  - {"id": "TL-CAL-01", "tool": "CalicoPolicyCli", "category": "build", "scenario": "无 kubeauto 模块导入的 onefile 构建", "command": "python3 -m compileall -q tools/k8stools/CalicoPolicyCli.py && build tools-only", "expected": "独立产物可执行，导入边界检查通过", "status": "pass", "evidence": "tests/evidence/tools-calico-api-parameters-20261128.json"}
+  - {"id": "TL-CAL-02", "tool": "CalicoPolicyCli", "category": "cli", "scenario": "context/traffic-layer/executor 显式参数合同", "command": "python3 tools/k8stools/CalicoPolicyCli.py --help", "expected": "缺 context、host executor 或 pod namespace 均在变更前拒绝", "status": "pass", "evidence": "tests/evidence/tools-calico-api-parameters-20261128.json"}
+  - {"id": "TL-CAL-03", "tool": "CalicoPolicyCli", "category": "functional", "scenario": "etcd 数据存储下 host layer 的 plan/validate/apply/delete", "command": "bash tests/run_tools_regression.sh --calico-live", "expected": "host 分层调用正确；backup/post-verify 可核对对象；允许源成功、拒绝源失败", "status": "pass", "evidence": "tests/evidence/tools-calico-dataplane-parameters-20261128.json"}
+  - {"id": "TL-CAL-04", "tool": "CalicoPolicyCli", "category": "security", "scenario": "无 --confirm 不变更、context 错配和 manifest 注入", "command": "apply 不带 --confirm；传入恶意 context/文件", "expected": "无写操作；参数安全；拒绝 kubectl/calicoctl 混用", "status": "pass", "evidence": "tests/evidence/tools-calico-api-parameters-20261128.json"}
+  - {"id": "TL-CAL-05", "tool": "CalicoPolicyCli", "category": "recovery", "scenario": "分阶段 apply 失败回滚与备份留存", "command": "bash tests/run_tools_regression.sh --calico-live", "expected": "首个失败停止；备份可恢复；删除仅触及工具标签资源；清理通过", "status": "pass", "evidence": "tests/evidence/tools-calico-dataplane-parameters-20261128.json"}
+  - {"id": "TL-CAL-06", "tool": "CalicoPolicyCli", "category": "functional", "scenario": "pod layer NetworkPolicy 的 plan/validate/apply/delete", "command": "bash tests/run_tools_regression.sh --calico-live", "expected": "NetworkPolicy 命名空间/标签/端口正确；允许源成功、拒绝源失败；删除后恢复基线", "status": "pass", "evidence": "tests/evidence/tools-calico-dataplane-parameters-20261128.json"}
+  - {"id": "TL-CAL-07", "tool": "CalicoPolicyCli", "category": "functional", "scenario": "etcd 数据存储下 both layer 的分阶段 apply/delete", "command": "bash tests/run_tools_regression.sh --calico-live", "expected": "按 GNP -> HEP -> NetworkPolicy 三阶段执行；host/pod 允许源成功、非允许主机源拒绝；重复 delete 幂等且基线恢复", "status": "pass", "evidence": "tests/evidence/tools-calico-dataplane-parameters-20261128.json"}
+  - {"id": "TL-CAL-08", "tool": "CalicoPolicyCli", "category": "functional", "scenario": "Kubernetes API（KDD/Calico CRD）executor 路径", "command": "bash tests/run_tools_regression.sh --calico-delete-live", "expected": "GNP/HEP 经 Kubernetes API 成功读写；与 calicoctl 路径结果一致", "status": "pass", "evidence": "tests/evidence/tools-calico-api-parameters-20261128.json"}
 
-  - {id: TL-KB-01, tool: KubeBackupCli, category: build, scenario: "Kubernetes client/yaml/tenacity 依赖固定且独立构建", command: "python3 -m compileall -q tools/k8stools/KubeBackupCli.py && build tools-only", expected: "onefile 可启动，依赖版本与构建 SHA256 可追溯", status: pass, evidence: "tests/evidence/tools-production-audit-build-20261125.json；三个受影响工具的独立冻结、SHA256及durable双0；不签现场业务"}
-  - {id: TL-KB-02, tool: KubeBackupCli, category: cli, scenario: "backup/restore 参数、命名空间映射和 dry-run 合同", command: "python3 tools/k8stools/KubeBackupCli.py --help", expected: "非法资源、映射、路径和 context 非 0；帮助可用", status: pass, evidence: "2026-09-07 项目 venv --help rc=0；参数帮助合同可加载"}
-  - {id: TL-KB-03, tool: KubeBackupCli, category: functional, scenario: "隔离 Kubernetes 集群资源备份、清洗和恢复读写闭环", command: "kubeconfig/context 显式传入，执行 backup -> restore --dry-run=false", expected: "资源版本/owner/finalizer 清洗符合官方 API；恢复对象可读取", status: pass, evidence: "tests/evidence/tools-kubebackup-api-full-20261125.json；当前冻结CLI、双API context、六类资源/CRD/CR恢复读回、映射/清洗/拒绝/重试、durable双0和限定清理"}
-  - {id: TL-KB-04, tool: KubeBackupCli, category: security, scenario: "Secret 处理、路径穿越、RBAC 拒绝和 server-side 冲突", command: "注入恶意 backup-name/env-mapping 并使用最小权限 SA", expected: "敏感值不进日志；越权被拒；冲突有明确非 0 结果", status: pass, evidence: "tests/evidence/tools-kubebackup-api-full-20261125.json；当前冻结CLI、双API context、六类资源/CRD/CR恢复读回、映射/清洗/拒绝/重试、durable双0和限定清理"}
-  - {id: TL-KB-05, tool: KubeBackupCli, category: recovery, scenario: "部分恢复失败、重试幂等和归档完整性", command: "fake/API 注入单资源失败后重试 restore", expected: "首错诊断完整；tar/YAML 未损坏；重试不复制脏对象；清理通过", status: pass, evidence: "2026-09-24 同轮日志 sha256=70f50229929b7b843d1eda3e6b19d6fad0798da35d0faba8f72088826cf07d65：非法 ConfigMap HTTP422 首错保留，移除坏对象后重试成功且对象单份；归档元数据经 tarfile 读回；namespace/CRD/workdir/durable 状态清理通过"}
+  - {id: TL-KB-01, tool: KubeBackupCli, category: build, scenario: "Kubernetes client/yaml/tenacity 依赖固定且独立构建", command: "python3 -m compileall -q tools/k8stools/KubeBackupCli.py && build tools-only", expected: "onefile 可启动，依赖版本与构建 SHA256 可追溯", status: pass, evidence: "tests/evidence/tools-kubebackup-parameters-20261128.json"}
+  - {id: TL-KB-02, tool: KubeBackupCli, category: cli, scenario: "backup/restore 参数、命名空间映射和 dry-run 合同", command: "python3 tools/k8stools/KubeBackupCli.py --help", expected: "非法资源、映射、路径和 context 非 0；帮助可用", status: pass, evidence: "tests/evidence/tools-kubebackup-parameters-20261128.json"}
+  - {id: TL-KB-03, tool: KubeBackupCli, category: functional, scenario: "隔离 Kubernetes 集群资源备份、清洗和恢复读写闭环", command: "kubeconfig/context 显式传入，执行 backup -> restore --dry-run=false", expected: "资源版本/owner/finalizer 清洗符合官方 API；恢复对象可读取", status: pass, evidence: "tests/evidence/tools-kubebackup-parameters-20261128.json"}
+  - {id: TL-KB-04, tool: KubeBackupCli, category: security, scenario: "Secret 处理、路径穿越、RBAC 拒绝和 server-side 冲突", command: "注入恶意 backup-name/env-mapping 并使用最小权限 SA", expected: "敏感值不进日志；越权被拒；冲突有明确非 0 结果", status: pass, evidence: "tests/evidence/tools-kubebackup-parameters-20261128.json"}
+  - {id: TL-KB-05, tool: KubeBackupCli, category: recovery, scenario: "部分恢复失败、重试幂等和归档完整性", command: "fake/API 注入单资源失败后重试 restore", expected: "首错诊断完整；tar/YAML 未损坏；重试不复制脏对象；清理通过", status: pass, evidence: "tests/evidence/tools-kubebackup-parameters-20261128.json"}
 
-  - {id: TL-KP-01, tool: KubePublishCli, category: build, scenario: "Docker/nerdctl/SSH 子进程环境隔离的 onefile 构建", command: "python3 -m compileall -q tools/k8stools/KubePublishCli.py && build tools-only", expected: "构建产物可执行，冻结环境不污染系统 LD_LIBRARY_PATH", status: pass, evidence: "tests/evidence/tools-production-audit-build-20261125.json；三个受影响工具的独立冻结、SHA256及durable双0；不签现场业务"}
-  - {id: TL-KP-02, tool: KubePublishCli, category: cli, scenario: "pack/download/delete/distribute/config 参数合同", command: "python3 tools/k8stools/KubePublishCli.py --help", expected: "缺操作、非法 host/port/namespace/path 均非 0", status: pass, evidence: "2026-09-07 项目 venv --help rc=0；参数帮助合同可加载"}
-  - {id: TL-KP-03, tool: KubePublishCli, category: functional, scenario: "镜像 save/load、批量下载、远端分发和 manifest 核对", command: "隔离 Docker 与 nerdctl fixture 执行 pack -> distribute -> inspect", expected: "目标 tag/digest 一致；成功 marker；支持并发但结果完整", status: pass, evidence: "tests/evidence/tools-publish-load-live-20261125.json；source/frozen × Docker/nerdctl，真实SSH首包失败、第二包未加载、重试ID一致、用户包未改、限定清理及durable双0"}
-  - {id: TL-KP-04, tool: KubePublishCli, category: security, scenario: "SSH 参数、路径穿越、恶意镜像名和 delete 保护", command: "传入 ../、shell 元字符、错误 key/host 与 delete fixture", expected: "拒绝危险输入；不删除非工具资源；无命令注入", status: pass, evidence: "2026-09-24 同轮日志 sha256=594b0d0da75e3a4b75732e15662e5212e87a4155794758e0546f8922c0bf0360：恶意镜像/host/tar 名称在 runtime/SSH 前非0，sentinel 未创建；删除仅作用于测试 tag，digest 固定源镜像保留"}
-  - {id: TL-KP-05, tool: KubePublishCli, category: recovery, scenario: "分发中断的原子清理与可重试", command: "远端模拟中断/部分失败后检查 output_dir", expected: "本次生成 tar 全部回收；已有用户文件保留；重试可完成", status: pass, evidence: "tests/evidence/tools-publish-load-live-20261125.json；source/frozen × Docker/nerdctl，真实SSH首包失败、第二包未加载、重试ID一致、用户包未改、限定清理及durable双0"}
+  - {"id": "TL-KP-01", "tool": "KubePublishCli", "category": "build", "scenario": "Docker/nerdctl/SSH 子进程环境隔离的 onefile 构建", "command": "python3 -m compileall -q tools/k8stools/KubePublishCli.py && build tools-only", "expected": "构建产物可执行，冻结环境不污染系统 LD_LIBRARY_PATH", "status": "pass", "evidence": "tests/evidence/tools-publish-parameters-20261128.json"}
+  - {"id": "TL-KP-02", "tool": "KubePublishCli", "category": "cli", "scenario": "pack/download/delete/distribute/config 参数合同", "command": "python3 tools/k8stools/KubePublishCli.py --help", "expected": "缺操作、非法 host/port/namespace/path 均非 0", "status": "pass", "evidence": "tests/evidence/tools-publish-parameters-20261128.json"}
+  - {"id": "TL-KP-03", "tool": "KubePublishCli", "category": "functional", "scenario": "镜像 save/load、批量下载、远端分发和 manifest 核对", "command": "隔离 Docker 与 nerdctl fixture 执行 pack -> distribute -> inspect", "expected": "目标 tag/digest 一致；成功 marker；支持并发但结果完整", "status": "pass", "evidence": "tests/evidence/tools-publish-parameters-20261128.json"}
+  - {"id": "TL-KP-04", "tool": "KubePublishCli", "category": "security", "scenario": "SSH 参数、路径穿越、恶意镜像名和 delete 保护", "command": "传入 ../、shell 元字符、错误 key/host 与 delete fixture", "expected": "拒绝危险输入；不删除非工具资源；无命令注入", "status": "pass", "evidence": "tests/evidence/tools-publish-parameters-20261128.json"}
+  - {"id": "TL-KP-05", "tool": "KubePublishCli", "category": "recovery", "scenario": "分发中断的原子清理与可重试", "command": "远端模拟中断/部分失败后检查 output_dir", "expected": "本次生成 tar 全部回收；已有用户文件保留；重试可完成", "status": "pass", "evidence": "tests/evidence/tools-publish-parameters-20261128.json"}
 
-  - {id: TL-KAF-01, tool: KafkaCli, category: build, scenario: "Kafka CLI 独立 onefile 构建及冻结子进程环境", command: "python3 -m compileall -q tools/kafka/KafkaCli.py && build tools-only", expected: "产物可执行，版本/依赖/ SHA256 可追溯", status: pass, evidence: "tests/evidence/tools-production-audit-build3-20261125.json；四工具独立冻结、来源与产物SHA256、durable双0；不签现场业务"}
-  - {id: TL-KAF-02, tool: KafkaCli, category: cli, scenario: "配置解析、broker/topic/group 参数和帮助合同", command: "python3 tools/kafka/KafkaCli.py --help", expected: "缺配置/非法 broker/topic 非 0；secret 不回显", status: pass, evidence: "2026-09-10 当前源码 Kafka 聚焦契约 10/10 PASS、tools/Kafka 聚焦合计 21/21 PASS、TOOLS_PREFLIGHT_PASS；覆盖 help、JSON/CLI 覆盖、batch extra_properties 序列化、非法 topic/group/max-messages 和子进程参数顺序"}
-  - {id: TL-KAF-03, tool: KafkaCli, category: functional, scenario: "官方 Kafka broker 生产/消费、topic/group 状态闭环", command: "隔离 broker 执行 create/produce/consume/describe", expected: "消息 key/value 可核对，offset/group 状态与 Kafka API 一致", status: pass, evidence: "2026-09-24 logs/tools-kafka-live-20260924-102018.log sha256=f1f8d250a9f3741f5c4eb7273dc9b90fdf302feedcfdd742c08f28340295037b；Kafka 4.3.1 单机与三 controller/双 broker 生产消费、topic/group、动态配置、选主与副本迁移闭环；KAFKA_CLI_LIVE_REGRESSION_PASS、KAFKA_CLI_MULTINODE_REGRESSION_PASS"}
-  - {id: TL-KAF-04, tool: KafkaCli, category: security, scenario: "TLS/SASL 凭据保护、命令注入和错误 broker 隔离", command: "fake broker + 恶意 config/用户名/密码执行", expected: "凭据不进日志；拒绝注入；连接失败快速明确", status: pass, evidence: "同轮 live 覆盖 SASL_PLAINTEXT、SASL_SSL 自建 PKI、错误认证、恶意 target/group 输入及凭据脱敏；固定 fixture digest 校验通过；TOOLS_KAFKA_EXIT rc=0"}
-  - {id: TL-KAF-05, tool: KafkaCli, category: recovery, scenario: "超时、重试、消费中断和临时文件清理", command: "在 produce/consume 各阶段断开 broker", expected: "退出码稳定；无孤儿进程/临时凭据；重试不重复错误副作用", status: pass, evidence: "同轮 live 覆盖 broker down 快速失败与恢复重试、9/10 消费等待中断、无孤儿 consumer/临时凭据；KAFKA_DURABLE_STATUS rc=0 finalized=0；TOOLS_CLEAN_VERIFY_PASS scope=kafka host=root@192.168.122.2 nodes=5"}
+  - {id: TL-KAF-01, tool: KafkaCli, category: build, scenario: "Kafka CLI 独立 onefile 构建及冻结子进程环境", command: "python3 -m compileall -q tools/kafka/KafkaCli.py && build tools-only", expected: "产物可执行，版本/依赖/ SHA256 可追溯", status: pass, evidence: "tests/evidence/tools-kafka-parameters-20261128.json"}
+  - {id: TL-KAF-02, tool: KafkaCli, category: cli, scenario: "配置解析、broker/topic/group 参数和帮助合同", command: "python3 tools/kafka/KafkaCli.py --help", expected: "缺配置/非法 broker/topic 非 0；secret 不回显", status: pass, evidence: "tests/evidence/tools-kafka-parameters-20261128.json"}
+  - {id: TL-KAF-03, tool: KafkaCli, category: functional, scenario: "官方 Kafka broker 生产/消费、topic/group 状态闭环", command: "隔离 broker 执行 create/produce/consume/describe", expected: "消息 key/value 可核对，offset/group 状态与 Kafka API 一致", status: pass, evidence: "tests/evidence/tools-kafka-parameters-20261128.json"}
+  - {id: TL-KAF-04, tool: KafkaCli, category: security, scenario: "TLS/SASL 凭据保护、命令注入和错误 broker 隔离", command: "fake broker + 恶意 config/用户名/密码执行", expected: "凭据不进日志；拒绝注入；连接失败快速明确", status: pass, evidence: "tests/evidence/tools-kafka-parameters-20261128.json"}
+  - {id: TL-KAF-05, tool: KafkaCli, category: recovery, scenario: "超时、重试、消费中断和临时文件清理", command: "在 produce/consume 各阶段断开 broker", expected: "退出码稳定；无孤儿进程/临时凭据；重试不重复错误副作用", status: pass, evidence: "tests/evidence/tools-kafka-parameters-20261128.json"}
 
-  - {id: TL-MIG-01, tool: MigrationCli, category: build, scenario: "MySQL 迁移工具独立构建与 pymysql 版本锁定", command: "python3 -m compileall -q tools/mysqltools/MigrationCli.py && build tools-only", expected: "产物可执行，构建 provenance/SHA256 完整", status: pass, evidence: "tests/evidence/tools-production-audit-build3-20261125.json；四工具独立冻结、来源与产物SHA256、durable双0；不签现场业务"}
-  - {id: TL-MIG-02, tool: MigrationCli, category: cli, scenario: "源/目标连接、版本探测、升级路径和配置合同", command: "python3 tools/mysqltools/MigrationCli.py --help", expected: "密码不回显；非法版本/连接参数非 0", status: pass, evidence: "2026-11-09 tests/evidence/mysql-migration-20261109.json；106 项合同、三工具冻结来源及跨系统验证；Migration 原生 argv/并发/错误传播/回滚重试/读回及 durable 0/0、scoped clean 核验；备份业务按 AST/CLI 等价证明复用。"}
-  - {id: TL-MIG-03, tool: MigrationCli, category: functional, scenario: "MySQL 8.0.46/8.4.x/9.x 隔离实例 schema/data 迁移核验", command: "使用 ext-images 双推且 digest 固定的镜像，按官方 upgrade path 执行 dry-run -> migrate -> checksum/readback", expected: "对象/行数/checksum 一致，官方不支持路径明确阻断", status: pass, evidence: "tests/evidence/tools-migration-endpoint-full-20261125.json；当前冻结CLI三版本完整迁移/端点/原生参数/回滚重试/并发/读回，durable双0及限定清理"}
-  - {id: TL-MIG-04, tool: MigrationCli, category: security, scenario: "SQL/主机参数注入、最小权限和 destructive 操作确认", command: "恶意 schema/table/host 与无确认 destructive 参数", expected: "参数化/白名单生效；无确认不写目标；凭据不落盘", status: pass, evidence: "2026-11-09 tests/evidence/mysql-migration-20261109.json；106 项合同、三工具冻结来源及跨系统验证；Migration 原生 argv/并发/错误传播/回滚重试/读回及 durable 0/0、scoped clean 核验；备份业务按 AST/CLI 等价证明复用。"}
-  - {id: TL-MIG-05, tool: MigrationCli, category: recovery, scenario: "迁移中断、回滚标记、临时 dump/gzip 回收和重试", command: "在 dump/import/verify 阶段注入断连", expected: "首错可诊断；目标不被伪装为成功；临时文件与锁清理", status: pass, evidence: "2026-11-09 tests/evidence/mysql-migration-20261109.json；106 项合同、三工具冻结来源及跨系统验证；Migration 原生 argv/并发/错误传播/回滚重试/读回及 durable 0/0、scoped clean 核验；备份业务按 AST/CLI 等价证明复用。"}
+  - {id: TL-MIG-01, tool: MigrationCli, category: build, scenario: "MySQL 迁移工具独立构建与 pymysql 版本锁定", command: "python3 -m compileall -q tools/mysqltools/MigrationCli.py && build tools-only", expected: "产物可执行，构建 provenance/SHA256 完整", status: pass, evidence: "tests/evidence/tools-migration-native-20261128.json"}
+  - {id: TL-MIG-02, tool: MigrationCli, category: cli, scenario: "源/目标连接、版本探测、升级路径和配置合同", command: "python3 tools/mysqltools/MigrationCli.py --help", expected: "密码不回显；非法版本/连接参数非 0", status: pass, evidence: "tests/evidence/tools-migration-native-20261128.json"}
+  - {id: TL-MIG-03, tool: MigrationCli, category: functional, scenario: "MySQL 8.0.46/8.4.x/9.x 隔离实例 schema/data 迁移核验", command: "使用 ext-images 双推且 digest 固定的镜像，按官方 upgrade path 执行 dry-run -> migrate -> checksum/readback", expected: "对象/行数/checksum 一致，官方不支持路径明确阻断", status: pass, evidence: "tests/evidence/tools-migration-full-parameters-20261128.json"}
+  - {id: TL-MIG-04, tool: MigrationCli, category: security, scenario: "SQL/主机参数注入、最小权限和 destructive 操作确认", command: "恶意 schema/table/host 与无确认 destructive 参数", expected: "参数化/白名单生效；无确认不写目标；凭据不落盘", status: pass, evidence: "tests/evidence/tools-migration-native-20261128.json"}
+  - {id: TL-MIG-05, tool: MigrationCli, category: recovery, scenario: "迁移中断、回滚标记、临时 dump/gzip 回收和重试", command: "在 dump/import/verify 阶段注入断连", expected: "首错可诊断；目标不被伪装为成功；临时文件与锁清理", status: pass, evidence: "tests/evidence/tools-migration-native-20261128.json"}
 
   - {id: TL-MBK-01, tool: MyBackupCli, category: build, scenario: "XtraBackup 兼容环境 onefile 构建", command: "python3 -m compileall -q tools/mysqltools/MyBackupCli.py && build tools-only", expected: "产物可执行，XtraBackup 官方版本/ SHA256 已记录", status: pass, evidence: "tests/evidence/mysql-backup-portability-20261125.json；当前MyBackupCli native onefile构建、SHA256及依赖、durable双0、三环境实际启动与scoped clean"}
   - {id: TL-MBK-02, tool: MyBackupCli, category: cli, scenario: "全量/增量/压缩/恢复参数和配置权限合同", command: "python3 tools/mysqltools/MyBackupCli.py --help", expected: "非法目录/配置/选项非 0；密码文件权限受控", status: pass, evidence: "tests/evidence/mybackup-native-contract-20261125.json；当前源码合同与冻结8.4物理聚焦raw、durable双0及scoped clean；8.0/拓扑父项独立验收"}
@@ -255,19 +363,19 @@ test_cases:
   - {id: TL-MLB-11, tool: MyLogiBackupCli, category: recovery, scenario: "dump 失败、footer 缺失、未挂载、SIGINT/SIGTERM 清理", command: "tests/helpers/mylogi-backup-live-regression.sh 注入各阶段故障", expected: "首错明确且退出非0；进程组、partial 和锁回收；重试从干净状态成功", status: pass, evidence: "2026-11-08 tests/evidence/mysql-backup-20261108.json；当前输入和冻结产物 SHA256 绑定；logical 固定入口、业务读回/参数/清理标记、durable 双0、零未预期失败；其它未变工具证据复用"}
   - {id: TL-MLB-12, tool: MyLogiBackupCli, category: functional, scenario: "systemd timer install/status/remove 生命周期", command: "MyLogiBackupCli timer install/status/remove", expected: "unit 原子生成并验证；timer enabled/active；remove 后无工具 unit 残留", status: pass, evidence: "2026-11-08 tests/evidence/mysql-backup-20261108.json；当前输入和冻结产物 SHA256 绑定；logical 固定入口、业务读回/参数/清理标记、durable 双0、零未预期失败；其它未变工具证据复用"}
 
-  - {id: TL-SR-01, tool: StarCli, category: build, scenario: "StarRocks CLI 独立 onefile 构建", command: "python3 -m compileall -q tools/starrocks/StarCli.py && bash tests/run_tools_regression.sh --build-only", expected: "产物可执行，distro/子进程环境与 SHA256 可追溯", status: pass, evidence: "tests/evidence/tools-production-audit-build3-20261125.json；四工具独立冻结、来源与产物SHA256、durable双0；不签现场业务"}
-  - {id: TL-SR-02, tool: StarCli, category: cli, scenario: "FE host/query port/deploy/status 参数合同", command: "tests/helpers/starcli-contract-test.py", expected: "所有参数校验、配置覆盖、非法 host/port/deploy type 非 0；密码不回显", status: pass, evidence: "2026-09-12 STARCLI_CONTRACT_PASS cases=37；帮助、非法 deploy/host/helper、端口类型、清理自定义心跳端口、status 查询失败非0和 root password 脱敏均通过"}
-  - {id: TL-SR-03, tool: StarCli, category: functional, scenario: "隔离 FE/BE/CN 部署、cluster setup/status 与 SQL 读写", command: "tests/helpers/starcli-live-regression.sh", expected: "节点状态、数据库/表和读写结果符合 StarRocks 官方 API", status: pass, evidence: "2026-09-24 logs/tools-starcli-live-20260924-125217.log sha256=bd812f503b5cfdb23707b5b174a3d124ace5b3054f2ac92a2fd2690f248b2cc8；固定归档经 Python 3.9 tarfile 路径校验和 data_filter 安全展开，固定 MySQL 8.4.4 镜像客户端 digest 校验通过；FE/BE/CN、setup/status、配置覆盖和集群 SQL 读回通过；STARCLI_LIVE_REGRESSION_PASS、TOOLS_STARCLI_EXIT rc=0、TOOLS_CLEAN_VERIFY_PASS"}
-  - {id: TL-SR-04, tool: StarCli, category: security, scenario: "SSH/路径/SQL 参数注入与 root password 保护", command: "tests/helpers/starcli-contract-test.py", expected: "无命令注入；凭据不进日志/临时文件；失败非 0", status: pass, evidence: "2026-09-12 STARCLI_CONTRACT_PASS cases=37；host/target/路径遍历、远程命令参数隔离、JSON 类型边界、status 错误传播、清理端口和密码不回显均通过"}
-  - {id: TL-SR-05, tool: StarCli, category: recovery, scenario: "部署失败清理、重复 deploy 幂等和 setup 超时", command: "tests/helpers/starcli-live-regression.sh", expected: "失败资源可识别并回收；不误报成功；重试从干净状态开始", status: pass, evidence: "2026-09-24 同轮日志 sha256=bd812f503b5cfdb23707b5b174a3d124ace5b3054f2ac92a2fd2690f248b2cc8：BE/CN 重复 deploy 幂等、force FE 重部署、非法存储路径及 BE/CN 冲突非0、按 StarCli clean 回收服务/配置/PID/日志；临时 mysql 客户端容器和远端工作目录零残留"}
+  - {"id": "TL-SR-01", "tool": "StarCli", "category": "build", "scenario": "StarRocks CLI 独立 onefile 构建", "command": "python3 -m compileall -q tools/starrocks/StarCli.py && bash tests/run_tools_regression.sh --build-only", "expected": "产物可执行，distro/子进程环境与 SHA256 可追溯", "status": "pass", "evidence": "tests/evidence/tools-starcli-parameters-20261128.json"}
+  - {"id": "TL-SR-02", "tool": "StarCli", "category": "cli", "scenario": "FE host/query port/deploy/status 参数合同", "command": "tests/helpers/starcli-contract-test.py", "expected": "所有参数校验、配置覆盖、非法 host/port/deploy type 非 0；密码不回显", "status": "pass", "evidence": "tests/evidence/tools-starcli-parameters-20261128.json"}
+  - {"id": "TL-SR-03", "tool": "StarCli", "category": "functional", "scenario": "隔离 FE/BE/CN 部署、cluster setup/status 与 SQL 读写", "command": "tests/helpers/starcli-live-regression.sh", "expected": "节点状态、数据库/表和读写结果符合 StarRocks 官方 API", "status": "pass", "evidence": "tests/evidence/tools-starcli-parameters-20261128.json"}
+  - {"id": "TL-SR-04", "tool": "StarCli", "category": "security", "scenario": "SSH/路径/SQL 参数注入与 root password 保护", "command": "tests/helpers/starcli-contract-test.py", "expected": "无命令注入；凭据不进日志/临时文件；失败非 0", "status": "pass", "evidence": "tests/evidence/tools-starcli-parameters-20261128.json"}
+  - {"id": "TL-SR-05", "tool": "StarCli", "category": "recovery", "scenario": "部署失败清理、重复 deploy 幂等和 setup 超时", "command": "tests/helpers/starcli-live-regression.sh", "expected": "失败资源可识别并回收；不误报成功；重试从干净状态开始", "status": "pass", "evidence": "tests/evidence/tools-starcli-parameters-20261128.json"}
 
   - {id: TL-X-01, tool: cross-tool, category: independence, scenario: "工具脚本 AST 导入边界与清单一一对应", command: "python3 tests/helpers/validate_tools_test_matrix.py tests/tools-test-matrix.yaml", expected: "11 个脚本全部发现；无 common/controller/model/service/kubecli/runtime_hook 或 tools 互相导入", status: pass, evidence: "2026-11-09 tests/evidence/mysql-migration-20261109.json；106 项合同、三工具冻结来源及跨系统验证；Migration 原生 argv/并发/错误传播/回滚重试/读回及 durable 0/0、scoped clean 核验；备份业务按 AST/CLI 等价证明复用。"}
-  - {id: TL-X-02, tool: cross-tool, category: independence, scenario: "onefile 产物互不共享解压目录、配置和临时文件", command: "并行启动两个工具并扫描 /tmp 与工作目录", expected: "临时目录/锁/日志命名隔离；一个工具退出不删除另一个工具数据", status: pass, evidence: "2026-11-09 tests/evidence/mysql-migration-20261109.json；106 项合同、三工具冻结来源及跨系统验证；Migration 原生 argv/并发/错误传播/回滚重试/读回及 durable 0/0、scoped clean 核验；备份业务按 AST/CLI 等价证明复用。"}
-  - {id: TL-X-03, tool: cross-tool, category: portability, scenario: "Rocky 8.10 glibc 2.28 与 Ubuntu/Debian 运行兼容", command: "固定构建后分别执行每个产物 --help/版本", expected: "无 GLIBC/openssl/LD_LIBRARY_PATH ABI 错误", status: pass, evidence: "2026-11-09 tests/evidence/mysql-migration-20261109.json；106 项合同、三工具冻结来源及跨系统验证；Migration 原生 argv/并发/错误传播/回滚重试/读回及 durable 0/0、scoped clean 核验；备份业务按 AST/CLI 等价证明复用。"}
-  - {id: TL-X-04, tool: cross-tool, category: security, scenario: "统一敏感信息、shell 注入、路径和权限审计", command: "静态扫描 subprocess 调用 + 每工具恶意 fixture", expected: "参数列表调用或安全 quoting；secret 脱敏；输出权限最小化", status: pass, evidence: "2026-11-09 tests/evidence/mysql-migration-20261109.json；106 项合同、三工具冻结来源及跨系统验证；Migration 原生 argv/并发/错误传播/回滚重试/读回及 durable 0/0、scoped clean 核验；备份业务按 AST/CLI 等价证明复用。"}
-  - {id: TL-X-05, tool: cross-tool, category: observability, scenario: "统一退出码、成功/失败 marker、日志和诊断", command: "runner 收集每工具 stdout/stderr/rc/耗时/版本", expected: "首错可定位；零失败 marker 才能 PASS；日志不含凭据", status: pass, evidence: "2026-11-09 tests/evidence/mysql-migration-20261109.json；106 项合同、三工具冻结来源及跨系统验证；Migration 原生 argv/并发/错误传播/回滚重试/读回及 durable 0/0、scoped clean 核验；备份业务按 AST/CLI 等价证明复用。"}
-  - {id: TL-X-06, tool: cross-tool, category: supply_chain, scenario: "构建输入、依赖、官方来源和产物 digest 可复核", command: "记录 Python/依赖 lock、基础镜像 digest、产物 SHA256", expected: "无动态未审计下载；来源失败按固定顺序回退并留证", status: pass, evidence: "tests/evidence/mysql80-binary-supply-chain-20261125.json；当前MyBackup构建/制品、双OS双版本16RPM实际签名、metadata摘要、原始归档及未变tools所属证据限定复用"}
-  - {id: TL-X-07, tool: cross-tool, category: cleanup, scenario: "成功、失败、SIGINT、SSH 断连后的 scoped cleanup", command: "tests/run_tools_regression.sh --cleanup/--verify", expected: "无孤儿进程、容器、端口、临时目录、凭据；TOOLS_CLEAN_VERIFY_PASS", status: pass, evidence: "2026-11-09 tests/evidence/mysql-migration-20261109.json；106 项合同、三工具冻结来源及跨系统验证；Migration 原生 argv/并发/错误传播/回滚重试/读回及 durable 0/0、scoped clean 核验；备份业务按 AST/CLI 等价证明复用。"}
+  - {id: TL-X-02, tool: cross-tool, category: independence, scenario: "onefile 产物互不共享解压目录、配置和临时文件", command: "并行启动两个工具并扫描 /tmp 与工作目录", expected: "临时目录/锁/日志命名隔离；一个工具退出不删除另一个工具数据", status: pass, evidence: "tests/evidence/tools-cross-parameters-20261128.json"}
+  - {id: TL-X-03, tool: cross-tool, category: portability, scenario: "Rocky 8.10 glibc 2.28 与 Ubuntu/Debian 运行兼容", command: "固定构建后分别执行每个产物 --help/版本", expected: "无 GLIBC/openssl/LD_LIBRARY_PATH ABI 错误", status: pass, evidence: "tests/evidence/tools-cross-parameters-20261128.json"}
+  - {id: TL-X-04, tool: cross-tool, category: security, scenario: "统一敏感信息、shell 注入、路径和权限审计", command: "静态扫描 subprocess 调用 + 每工具恶意 fixture", expected: "参数列表调用或安全 quoting；secret 脱敏；输出权限最小化", status: pass, evidence: "tests/evidence/tools-safety-parameters-20261128.json"}
+  - {id: TL-X-05, tool: cross-tool, category: observability, scenario: "统一退出码、成功/失败 marker、日志和诊断", command: "runner 收集每工具 stdout/stderr/rc/耗时/版本", expected: "首错可定位；零失败 marker 才能 PASS；日志不含凭据", status: pass, evidence: "tests/evidence/tools-safety-parameters-20261128.json"}
+  - {id: TL-X-06, tool: cross-tool, category: supply_chain, scenario: "构建输入、依赖、官方来源和产物 digest 可复核", command: "记录 Python/依赖 lock、基础镜像 digest、产物 SHA256", expected: "无动态未审计下载；来源失败按固定顺序回退并留证", status: pass, evidence: "tests/evidence/tools-supply-chain-parameters-20261128.json"}
+  - {id: TL-X-07, tool: cross-tool, category: cleanup, scenario: "成功、失败、SIGINT、SSH 断连后的 scoped cleanup", command: "tests/run_tools_regression.sh --cleanup/--verify", expected: "无孤儿进程、容器、端口、临时目录、凭据；TOOLS_CLEAN_VERIFY_PASS", status: pass, evidence: "tests/evidence/tools-safety-parameters-20261128.json"}
   - {id: TL-X-08, tool: cross-tool, category: delivery, scenario: "独立分路不改变核心/middleware 矩阵和 runner", command: "检查 git diff、矩阵引用和 runner 调用图", expected: "tools runner 可单独执行；核心与 middleware 不反向依赖 tools；六仓无非必要变更", status: pass, evidence: "2026-11-09 tests/evidence/mysql-migration-20261109.json；106 项合同、三工具冻结来源及跨系统验证；Migration 原生 argv/并发/错误传播/回滚重试/读回及 durable 0/0、scoped clean 核验；备份业务按 AST/CLI 等价证明复用。"}
 
 # 对外功能清单：每一项都必须由 case_ids 指向可执行的功能/安全/恢复场景。
@@ -285,11 +393,11 @@ test_cases:
   - {id: TL-SD-06, tool: "StarMigrtCli", category: "functional", scenario: "自动导入校验和普通MySQL客户端兼容", command: "bash tests/run_tools_regression.sh --starmigrt-qualify", expected: "STARMIGRT_LOAD_OK；自动行数与内容校验；同数异值拒绝；mysql直接消费SQL", status: pass, official: "StarRocks 3.5.7 INSERT/SHOW CREATE TABLE；PyMySQL v1.1.2 connections/cursors；starmigrt_review.official", fixture: "私有Docker28.5.2；双allin1 3.5.7固定digest；65536行流式表、多类型/主键/聚合/分区表；TLS协议代理；仅产品dump/load签业务", cleanup: "只回收本轮label容器、网络、daemon、文件和挂载；防火墙前后相同；失败保留本轮诊断", disproof: "bash tests/run_tools_regression.sh --starmigrt-preflight", evidence: tests/evidence/starmigrt-full.json}
   - {id: TL-SD-07, tool: "StarMigrtCli", category: "delivery", scenario: "最终干净导出导入、冻结制品与限定清理", command: "bash tests/run_tools_regression.sh --starmigrt-full", expected: "当前前置全部PASS；真实全场景；durable双0、零非预期失败与TOOLS_CLEAN_VERIFY_PASS scope=starmigrt", status: pass, official: "StarRocks 3.5.7 INSERT/SHOW CREATE TABLE；PyMySQL v1.1.2 connections/cursors；starmigrt_review.official", fixture: "私有Docker28.5.2；双allin1 3.5.7固定digest；65536行流式表、多类型/主键/聚合/分区表；TLS协议代理；仅产品dump/load签业务", cleanup: "只回收本轮label容器、网络、daemon、文件和挂载；防火墙前后相同；失败保留本轮诊断", disproof: "bash tests/run_tools_regression.sh --starmigrt-preflight", evidence: tests/evidence/starmigrt-full.json}
 
-  - {id: TL-X-10, tool: cross-tool, category: security, scenario: "全部 tools 的配置消费与宿主机/容器执行边界审计", command: "bash tests/run_tools_regression.sh --production-audit", expected: "11 个 Python CLI 及随附 shell 的输入到命令追踪；声明执行命名空间、路径/端点/身份/启停边界；逐项核验已有 raw evidence；缺口精确补测；夹具不得补产品参数或掩盖默认路径；真实业务读回与 scoped cleanup", status: pass, official: "各 tool_catalog.official 固定版本文档/源码；Python subprocess；Docker bind mounts/stop/start/exec；MySQL8.0.33/8.0.46/PXB8.0.35-36", fixture: "先本地静态和确定性合同；现场仅所属固定 runner 的租约资源；不得连接生产，不继承其它工具 PASS", cleanup: "本轮临时配置/子进程/容器/端口/挂载/文件；保留原始证据；不动用户或其它任务资源", disproof: "bash tests/run_tools_regression.sh --preflight", evidence: "tests/evidence/tools-production-execution-audit-20261125.json；11CLI及3shell逐输入追踪、8工具修复、真实补测与限定依赖复用；固定只读门禁核验原始摘要及durable状态；不外推全部拓扑"}
+  - {id: TL-X-10, tool: cross-tool, category: security, scenario: "全部 tools 的配置消费与宿主机/容器执行边界审计", command: "bash tests/run_tools_regression.sh --production-audit", expected: "11 个 Python CLI 及随附 shell 的输入到命令追踪；声明执行命名空间、路径/端点/身份/启停边界；逐项核验已有 raw evidence；缺口精确补测；夹具不得补产品参数或掩盖默认路径；真实业务读回与 scoped cleanup", status: pass, official: "各 tool_catalog.official 固定版本文档/源码；Python subprocess；Docker bind mounts/stop/start/exec；MySQL8.0.33/8.0.46/PXB8.0.35-36", fixture: "先本地静态和确定性合同；现场仅所属固定 runner 的租约资源；不得连接生产，不继承其它工具 PASS", cleanup: "本轮临时配置/子进程/容器/端口/挂载/文件；保留原始证据；不动用户或其它任务资源", disproof: "bash tests/run_tools_regression.sh --preflight", evidence: "tests/evidence/tools-production-execution-audit-20261128.json"}
 
-  - {"id": "TL-KAF-06", "tool": "KafkaCli", "category": "functional", "scenario": "冻结工具经SSH远程bootstrap的二进制/源码交接与路径隔离", "command": "bash tests/run_tools_regression.sh --remote-bootstrap-live", "expected": "执行工具自身入口；冻结产物直接执行、源码由Python执行；真实远程交接和首错拒绝、SHA256、scoped clean；本地合同不签现场PASS", "status": "pass", "official": "PyInstaller v6.16.0 runtime-information sys.executable; Python subprocess", "fixture": "本地确定性合同先行；现场仅固定授权主机的runner专属目录，不部署或重启用户服务", "cleanup": "本轮上传文件与专属工作目录，保留外来文件和服务", "disproof": "KUBEAUTO_LOG_DIR=<temporary> .venv/bin/python -B -m unittest tests.unit.test_tools_execution_boundary_contract", "evidence": "tests/evidence/tools-remote-bootstrap-20261125.json；真实远程源码/冻结交接、预期拒绝、上传SHA、durable双0和限定清理；不签数据库业务"}
+  - {"id": "TL-KAF-06", "tool": "KafkaCli", "category": "functional", "scenario": "冻结工具经SSH远程bootstrap的二进制/源码交接与路径隔离", "command": "bash tests/run_tools_regression.sh --remote-bootstrap-live", "expected": "执行工具自身入口；冻结产物直接执行、源码由Python执行；真实远程交接和首错拒绝、SHA256、scoped clean；本地合同不签现场PASS", "status": "pass", "official": "PyInstaller v6.16.0 runtime-information sys.executable; Python subprocess", "fixture": "本地确定性合同先行；现场仅固定授权主机的runner专属目录，不部署或重启用户服务", "cleanup": "本轮上传文件与专属工作目录，保留外来文件和服务", "disproof": "KUBEAUTO_LOG_DIR=<temporary> .venv/bin/python -B -m unittest tests.unit.test_tools_execution_boundary_contract", "evidence": "tests/evidence/tools-kafka-parameters-20261128.json"}
 
-  - {"id": "TL-SR-06", "tool": "StarCli", "category": "functional", "scenario": "冻结工具经SSH远程bootstrap的二进制/源码交接与路径隔离", "command": "bash tests/run_tools_regression.sh --remote-bootstrap-live", "expected": "执行工具自身入口；冻结产物直接执行、源码由Python执行；真实远程交接和首错拒绝、SHA256、scoped clean；本地合同不签现场PASS", "status": "pass", "official": "PyInstaller v6.16.0 runtime-information sys.executable; Python subprocess", "fixture": "本地确定性合同先行；现场仅固定授权主机的runner专属目录，不部署或重启用户服务", "cleanup": "本轮上传文件与专属工作目录，保留外来文件和服务", "disproof": "KUBEAUTO_LOG_DIR=<temporary> .venv/bin/python -B -m unittest tests.unit.test_tools_execution_boundary_contract", "evidence": "tests/evidence/tools-remote-bootstrap-20261125.json；真实远程源码/冻结交接、预期拒绝、上传SHA、durable双0和限定清理；不签数据库业务"}
+  - {"id": "TL-SR-06", "tool": "StarCli", "category": "functional", "scenario": "冻结工具经SSH远程bootstrap的二进制/源码交接与路径隔离", "command": "bash tests/run_tools_regression.sh --remote-bootstrap-live", "expected": "执行工具自身入口；冻结产物直接执行、源码由Python执行；真实远程交接和首错拒绝、SHA256、scoped clean；本地合同不签现场PASS", "status": "pass", "official": "PyInstaller v6.16.0 runtime-information sys.executable; Python subprocess", "fixture": "本地确定性合同先行；现场仅固定授权主机的runner专属目录，不部署或重启用户服务", "cleanup": "本轮上传文件与专属工作目录，保留外来文件和服务", "disproof": "KUBEAUTO_LOG_DIR=<temporary> .venv/bin/python -B -m unittest tests.unit.test_tools_execution_boundary_contract", "evidence": "tests/evidence/tools-starcli-parameters-20261128.json"}
 
   - {"id": "TL-MBK-10", "tool": "MyBackupCli", "category": "functional", "scenario": "二进制单机：双系统双版本完整物理生命周期", "command": "MYSQL_BACKUP_STAGE=binary80-standalone bash tests/run_tools_regression.sh --mysql-backup-live", "expected": "BINARY_LIFECYCLE_PASS topology=standalone；真实systemd/全备/两增量/LSN/PITR/UUID/读回/拒绝/重试", "status": "pass", "official": "PXB8.0.35-36 backup_mysql.cc/slave-info/safe-slave-backup；MySQL8.0复制、GTID、skip_replica_start与二进制安装接口", "fixture": "Rocky8.10 137（既有131独立证据保留原身份）、Rocky9.8 .122.216；AMD64；8.0.33/8.0.46；真实二进制mysqld及独享systemd unit/data/socket/端口；GTID OFF/ON；国内校验制品；不连接生产", "cleanup": "仅runner本轮unit、进程、端口及私有数据/备份目录；安装包校验缓存和正式原始证据保留；禁止覆盖现有mysqld.service", "disproof": "MYSQL_BACKUP_STAGE=binary80-standalone bash tests/run_tools_regression.sh --mysql-backup-live", "evidence": "tests/evidence/mysql80-binary-standalone.json"}
   - {"id": "TL-MBK-11", "tool": "MyBackupCli", "category": "functional", "scenario": "一主一从：主从备份、隔离恢复和复制追平", "command": "MYSQL_BACKUP_STAGE=binary80-primary-replica bash tests/run_tools_regression.sh --mysql-backup-live", "expected": "BINARY_LIFECYCLE_PASS topology=primary-replica；主从分别备份恢复、上游坐标、GTID与位点重接、复制追平及双端数据摘要", "status": "pass", "official": "PXB8.0.35-36 backup_mysql.cc/slave-info/safe-slave-backup；MySQL8.0复制、GTID、skip_replica_start与二进制安装接口", "fixture": "Rocky8.10 137（既有131独立证据保留原身份）、Rocky9.8 .122.216；AMD64；8.0.33/8.0.46；真实二进制mysqld及独享systemd unit/data/socket/端口；GTID OFF/ON；国内校验制品；不连接生产", "cleanup": "仅runner本轮unit、进程、端口及私有数据/备份目录；安装包校验缓存和正式原始证据保留；禁止覆盖现有mysqld.service", "disproof": "MYSQL_BACKUP_STAGE=binary80-primary-replica bash tests/run_tools_regression.sh --mysql-backup-live", "evidence": "tests/evidence/mysql80-binary-primary-replica.json"}
@@ -427,12 +535,12 @@ functional_inventory:
     - {id: SR-F-12, operation: "FE/BE/CN 部署失败、清理、超时和重试", case_ids: [TL-SR-05]}
 
 coverage_summary:
-  total: 90
-  pass: 89
+  total: 102
+  pass: 102
   pending: 0
   fail: 0
   skip: 0
-  na: 1
+  na: 0
   overall_assessment: "验收以各工具当前矩阵与固定status证据为准；迁移工具TL-SD-01–07按当前SQL接口独立验收，其它未变项保持所属证据边界。"
 
 mysql_backup_requalification:
@@ -819,3 +927,14 @@ mybackup_command_observability:
   cleanup: "本轮临时文件、观察线程、两个回放客户端及锁；现场沿用所属固定runner范围；不连接生产"
   disproof: "临时KUBEAUTO_LOG_DIR与MYSQLBACKUP_LOG_FILE下运行 .venv/bin/python -B -m unittest tests.unit.test_mybackup_cli_contract.CommandObservabilityTests -v"
   cases: ["配置检测mysql退出前终端和文件均可见诊断", "两通道等级一致、原始内容保留且来源/阶段可辨、文件名ERROR不误报、文本不覆盖退出码", "元数据stdout准确返回且不写日志", "大stdout/stderr与UTF8、跨片密码和未换行尾部", "静默命令及文件操作心跳", "回放双端大stderr不堵塞", "回放任一端失败、中断、第二端启动失败均回收客户端", "命令超时与SIGINT回收", "原生诊断流不在内存累计"]
+
+parameter_acceptance:
+  review_status: approved
+  authorization: "用户要求核对所有tools全部参数及evidence，补充缺失覆盖；2026-11-28"
+  inventory: tests/tools-parameter-coverage.json
+  discovery: "实际argparse解析器树；包含命令上下文、别名、默认值、类型、choices和位置参数"
+  acceptance: "帮助仅验收帮助入口；功能参数必须具有业务结果或实际副作用断言、拒绝边界及当前输入绑定的执行证据"
+  fixture: "本地隔离CLI合同仅替换外部系统边界；真实服务语义沿用所属固定live runner，不以stub代签现场能力"
+  cleanup: "本地临时文件/子进程由合同回收；现场资源由所属runner租约及前后限定清理负责；保留正式原始证据"
+  smallest_disproof: "bash tests/run_tools_regression.sh --parameter-status"
+  official: [python_subprocess, openvpn_easyrsa, calico, kubernetes_api, docker_save_load, kafka_source, mysql80, percona_xtrabackup80, starrocks, pymysql]

@@ -907,7 +907,7 @@ bash tests/run_tools_regression.sh --preflight
 bash tests/run_tools_regression.sh --status
 ```
 
-The tools matrix contains 90 scenarios (89 applicable and one not applicable) plus a 117-item
+The tools matrix contains 102 scenarios (102 applicable and zero not applicable) plus a 117-item
 `functional_inventory`. The inventory is the public-function checklist for all
 eleven CLIs: every command/role/data path/configuration mode/remote path and
 failure-recovery behavior must point to a CLI, functional, security or recovery

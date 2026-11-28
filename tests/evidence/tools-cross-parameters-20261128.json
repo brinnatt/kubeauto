@@ -1,0 +1,39 @@
+{
+  "date": "2026-11-28",
+  "result": "pass",
+  "rc": 0,
+  "scope": [
+    "TL-X-02",
+    "TL-X-03"
+  ],
+  "markers": [
+    "TOOLS_CROSS_ISOLATION_PASS host=rocky-8.10",
+    "TOOLS_CROSS_ISOLATION_PASS host=debian-12",
+    "TOOLS_CROSS_ISOLATION_PASS host=ubuntu-24.04",
+    "TOOLS_CROSS_LIVE_REGRESSION_PASS host=138",
+    "TOOLS_CLEAN_VERIFY_PASS scope=cross-tools host=138",
+    "TOOLS_CROSS_RELEASE_EXIT rc=0"
+  ],
+  "files": {
+    "tests/helpers/tools-cross-host-regression.sh": "da25a0b1a1d1a5c5c87ec633f50119711d990b045e69d8e9d78903accd17799c",
+    "tools-onefile.spec": "7bb77b6db73a9c015aff2156120d94f7dc67a7a30e037f105d452bcbded45956",
+    "dist/NetCheckCli-rocky8": "4ae5e1e676e35f85ccffe9a6c6546ff9939d28ff4f7e8d04927b0fdceb60b14e",
+    "dist/OvpnUserCli-rocky8": "b1af95a40d0d31dece2c697210bc730a0402c13c5af1877a928650200754dc18",
+    "dist/CalicoPolicyCli-rocky8": "89c1aed36d7e3f246256515ece55ba13a8959d179039d677859addbc4cdb9861",
+    "dist/KubePublishCli-rocky8": "c7b204f5732e6245df62674b6c61b61f065c987e0cee6e74fe7150e071b13d35",
+    "dist/KafkaCli-rocky8": "ad9216073504580baa7ab376b38f8a6e5c5712acf48b42d11273525bd5834290",
+    "dist/StarCli-rocky8": "dde9a8bc288a035e83221ab81dae971ab4037522a9be014652d4ca5142267d3c",
+    "dist/MigrationCli-rocky8": "993003c684c994be912495124cb350fc108017e1e2218961ed760347cad5b56c",
+    "dist/KubeBackupCli-rocky8": "12c81433fd388bb2200abc09ca37f566c3eef134271ece493b1e17b568ba4986",
+    "dist/MyBackupCli-rocky8": "e74f5fbc61ff9ad0dd74bbd9121697f864acf09d5450fbb41a16ad604fc83d58",
+    "dist/MyLogiBackupCli-rocky8": "ee58b73608f84325cc3eb0d0f667c6c510f167075cc95473ae13aecc2bd2caf3",
+    "logs/tools-parameters-cross-clean-20261128.log": "812a736b70d13ab22d439ddd04d677b823a571a59ed6216a9e1748356fa843b7",
+    "logs/tools-parameters-cross-clean-20261128.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/tools-parameters-cross-clean-20261128.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/tools-execution-inputs/8603ec0aa9664ba2c4e62007d9f70efbce157550f0b107cdfc39a9bb659be081.sh": "8603ec0aa9664ba2c4e62007d9f70efbce157550f0b107cdfc39a9bb659be081"
+  },
+  "boundary": "Ten onefile artifacts, exact SHA readback, real concurrent help execution and a protected running NetCheck TCP probe. Other tools exiting must preserve its unpacked runtime and customer input; all runtime directories removed on completion. Real Ubuntu24.04 host, Rocky8.10 and Debian12 containers. StarMigrt uses its separately accepted source/runtime path; no claim that its onedir package was built for glibc2.28.",
+  "inputs": {
+    "tests/run_tools_regression.sh": "8603ec0aa9664ba2c4e62007d9f70efbce157550f0b107cdfc39a9bb659be081"
+  }
+}

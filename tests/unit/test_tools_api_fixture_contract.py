@@ -1,5 +1,8 @@
 """Execution boundaries of the real API fixture, without starting a control plane."""
 import importlib.util
+import json
+import contextlib
+import io
 from pathlib import Path
 import signal
 import socket
@@ -15,6 +18,46 @@ SPEC.loader.exec_module(FIXTURE)
 
 
 class ApiFixtureContracts(unittest.TestCase):
+    def test_calico_policy_plan_validation_precedes_apply_and_requires_field_readback(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            calls=[]
+            applied=[]
+            def apply(context,obj):
+                applied.append(obj)
+            def command(argv,name,**kwargs):
+                self.assertTrue(any(d['kind']=='Tier' and d['metadata']['name']=='default' for d in applied))
+                calls.append(('product',list(argv)))
+                if 'apply' in argv:
+                    backup=Path(argv[argv.index('--backup-dir')+1]);backup.mkdir(exist_ok=True)
+                    (backup/'gnp.yaml').write_text('fixture backup')
+                return subprocess.CompletedProcess(argv,0,'apiVersion: crd.projectcalico.org/v1\n','')
+            def kubectl(context,*args,**kwargs):
+                calls.append(('diagnostic',list(args)))
+                return subprocess.CompletedProcess(args,1 if 'networkpolicy' in args else 0,'{"items":[]}','')
+            def get(context,kind,name,namespace=None):
+                if kind.startswith('globalnetwork'):
+                    return {'spec':{'order':12.5,'applyOnForward':True,'performanceHints':['AssumeNeededOnEveryNode'],
+                                    'ingress':[{'destination':{'ports':[19100]},'source':{'nets':['fd00::/8']}}]}}
+                if kind.startswith('hostendpoint'):
+                    return {'spec':{'interfaceName':'eth0','profiles':['projectcalico-default-allow'],'expectedIPs':['198.51.100.2']}}
+                return {'spec':{'podSelector':{'matchLabels':{'app':'demo','tier':'backend'}}}}
+            with contextlib.redirect_stdout(io.StringIO()) as output:
+                FIXTURE.calico_policy_scenario(root,root,command,apply,get,kubectl)
+            self.assertIn('TOOLS_CALICO_POLICY_API_PASS',output.getvalue())
+            product=[args for tag,args in calls if tag=='product']
+            self.assertEqual(sum('plan' in args for args in product),6)
+            self.assertEqual(sum('apply' in args for args in product),12)
+            self.assertEqual(sum('delete' in args for args in product),6)
+            self.assertEqual(sum('--dry-run=server' in args for tag,args in calls if tag=='diagnostic'),3)
+            for i,(tag,args) in enumerate(calls):
+                if tag=='product' and 'apply' in args:
+                    self.assertIn('--post-verify',args)
+                    self.assertIn('--confirm',args)
+                    self.assertTrue(any(t=='product' and 'plan' in a for t,a in calls[:i]))
+            with self.assertRaisesRegex(ValueError,'GNP_FIELDS_CHANGED'):
+                FIXTURE.calico_policy_scenario(root,root,command,mock.Mock(),lambda *a:{'spec':{}},kubectl)
+
     def test_all_namespace_fixture_does_not_supply_conflicting_namespace(self):
         common=['tool','backup','--context','a']
         argv=FIXTURE.backup_arguments(common, 'owned', 'all', ['--all-namespaces','--resources','configmaps'])

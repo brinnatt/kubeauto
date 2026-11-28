@@ -65,6 +65,68 @@ def cleanup_owned(work, processes, streams):
     print('TOOLS_API_SCOPED_CLEAN_PASS processes=0 pki=removed ports=free', flush=True)
 
 
+def calico_policy_scenario(root, work, command, apply, get, kubectl):
+    """Real schema/admission/storage coverage, without any worker or CNI claim."""
+    namespace = 'tools-calico-policy'
+    apply('a', {'apiVersion':'v1','kind':'Namespace','metadata':{'name':namespace}})
+    apply('a', {'apiVersion':'crd.projectcalico.org/v1','kind':'Tier',
+                'metadata':{'name':'default'},'spec':{'order':1000000}})
+    apply('a', {'apiVersion':'v1','kind':'Node','metadata':{'name':'tools-fixture'}})
+    kubectl('a','patch','node','tools-fixture','--subresource=status','--type=merge','-p',json.dumps({
+        'status':{'addresses':[{'type':'InternalIP','address':'10.250.1.2'},
+                               {'type':'ExternalIP','address':'198.51.100.2'}]}}))
+    tool = str(root/'CalicoPolicyCli')
+    for executor in ('kubectl','calicoctl'):
+        for layer in ('host','pod','both'):
+            name = 'tools-'+executor+'-'+layer
+            common=[tool,'--context','a','--no-log-file','--executor',executor]
+            flags=['--traffic-layer',layer,'--port','19100','-a','10.0.0.0/8','-a','fd00::/8']
+            if layer in ('host','both'):
+                flags += ['--interface','eth0','--include-external-ip','--policy-name',name,
+                          '--hep-prefix',name,'--hep-profile','projectcalico-default-allow','--policy-order','12.5',
+                          '--gnp-tier','default','--gnp-apply-on-forward','--gnp-performance-hint','AssumeNeededOnEveryNode']
+            if layer in ('pod','both'):
+                flags += ['-n',namespace,'--pod-label','app=demo','--pod-label','tier=backend','--k8s-np-name',name]
+            plan=command(common+['plan',*flags],name+'-plan')
+            if not plan.stdout.startswith('apiVersion:') or 'INFO' in plan.stdout:
+                raise ValueError('TOOLS_CALICO_PLAN_NOT_YAML '+name)
+            # Submit the tool's kubectl plan to real server-side validation.
+            if executor=='kubectl':
+                kubectl('a','apply','--dry-run=server','-f','-',input=plan.stdout)
+            backup=work/(name+'-backup')
+            for attempt in ('create','update'):
+                command(common+['apply',*flags,'--confirm','--apply-staged','--post-verify',
+                        '--backup','--backup-dir',str(backup)],name+'-'+attempt)
+            if layer in ('host','both'):
+                gnp=get('a','globalnetworkpolicies.crd.projectcalico.org',name)
+                if gnp['spec'].get('order')!=12.5 or not gnp['spec'].get('applyOnForward'):
+                    raise ValueError('TOOLS_CALICO_GNP_FIELDS_CHANGED '+name)
+                if gnp['spec'].get('performanceHints')!=['AssumeNeededOnEveryNode']:
+                    raise ValueError('TOOLS_CALICO_GNP_HINT_CHANGED '+name)
+                if '19100' not in json.dumps(gnp['spec']) or 'fd00::/8' not in json.dumps(gnp['spec']):
+                    raise ValueError('TOOLS_CALICO_GNP_SCOPE_CHANGED '+name)
+                hep=get('a','hostendpoints.crd.projectcalico.org',name+'-tools-fixture')
+                if (hep['spec']['interfaceName']!='eth0' or hep['spec']['profiles']!=['projectcalico-default-allow']
+                        or '198.51.100.2' not in hep['spec']['expectedIPs']):
+                    raise ValueError('TOOLS_CALICO_HEP_FIELDS_CHANGED '+name)
+            if layer in ('pod','both'):
+                netpol=get('a','networkpolicy',name,namespace)
+                if netpol['spec']['podSelector']!={'matchLabels':{'app':'demo','tier':'backend'}}:
+                    raise ValueError('TOOLS_CALICO_POD_SELECTOR_CHANGED '+name)
+            if not list(backup.glob('*')):
+                raise ValueError('TOOLS_CALICO_BACKUP_EMPTY '+name)
+            command(common+['delete','--traffic-layer',layer,'--policy-name',name,'--delete-hostendpoints',
+                    '-n',namespace,'--k8s-np-name',name],name+'-delete')
+            for kind in (['globalnetworkpolicies.crd.projectcalico.org','hostendpoints.crd.projectcalico.org']
+                         if layer in ('host','both') else []):
+                if json.loads(kubectl('a','get',kind,'-o','json').stdout)['items']:
+                    raise ValueError('TOOLS_CALICO_DELETE_NOT_EMPTY '+name)
+            if layer in ('pod','both') and kubectl('a','get','networkpolicy',name,'-n',namespace,check=False).returncode==0:
+                raise ValueError('TOOLS_CALICO_POD_DELETE_NOT_EMPTY '+name)
+            print('TOOLS_CALICO_POLICY_API_CASE_PASS executor='+executor+' layer='+layer,flush=True)
+    print('TOOLS_CALICO_POLICY_API_PASS executors=2 layers=3 plan=validated update=readback backup=nonempty data_plane=unclaimed',flush=True)
+
+
 def backup_resource_scenario(root, work, command, apply, get, kubectl):
     tool = root/'KubeBackupCli'
     namespace, target = 'tools-kb-source', 'tools-kb-restored'
@@ -269,6 +331,7 @@ def main():
             kubectl('a','wait','--for=condition=Established','crd/'+crd['metadata']['name'],'--timeout=60s')
         apply('a',{'apiVersion':'crd.projectcalico.org/v1','kind':'ClusterInformation',
                    'metadata':{'name':'default'},'spec':{'calicoVersion':'v3.32.4','datastoreReady':True}})
+        calico_policy_scenario(root, work, command, apply, get, kubectl)
         calico=root/'CalicoPolicyCli'
         def seed():
             apply('a',{'apiVersion':'crd.projectcalico.org/v1','kind':'GlobalNetworkPolicy','metadata':{'name':'tools-owned'},'spec':{'selector':'all()','types':['Ingress']}})

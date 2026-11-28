@@ -1,0 +1,62 @@
+{
+  "date": "2026-11-28",
+  "result": "pass",
+  "rc": 0,
+  "scope": [
+    "TL-CAL-03",
+    "TL-CAL-05",
+    "TL-CAL-06",
+    "TL-CAL-07"
+  ],
+  "markers": [
+    "TOOLS_CALICO_FIXTURE_READY kubernetes=1.33.6 calico=3.28.4",
+    "TOOLS_CALICO_PROBE_SSH_PASS identity=ephemeral hostkey=authenticated",
+    "CALICO_HOST_DATAPLANE_PASS",
+    "CALICO_POD_DATAPLANE_PASS",
+    "CALICO_BOTH_DATAPLANE_PASS",
+    "CALICO_STAGED_FAILURE_RECOVERY_PASS",
+    "CALICO_BUSINESS_SCOPED_CLEAN_PASS",
+    "CALICO_LIVE_REGRESSION_PASS",
+    "TOOLS_CALICO_FIXTURE_SCOPED_CLEAN_PASS",
+    "TOOLS_CALICO_EXIT rc=0",
+    "TOOLS_CLEAN_VERIFY_PASS scope=calico stage=live",
+    "TOOLS_CALICO_RELEASE_EXIT rc=0"
+  ],
+  "files": {
+    "logs/tools-calico-live-20261128-115758/console.log": "f5ac2d88a17fd81c9cc0bfa96e4bceeffebd332e5b5fcdb97c3f299bb6e323c2",
+    "logs/tools-calico-live-20261128-115758/state.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/tools-calico-live-20261128-115758/state.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/tools-calico-live-20261128-115758/evidence.tar.gz": "1c79bf39863c3f7171ea7437877d620d3bd7c8cb428621cd6c57d63f8cbaef7e",
+    "logs/tools-parameters-calico-qualified-20261128.log": "f46995d84f12e4bbc83449f9eb25970ed6ed9b74568085f202c7f8830e472cb1",
+    "logs/tools-parameters-calico-qualified-20261128.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/tools-parameters-calico-qualified-20261128.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "tools/k8stools/CalicoPolicyCli.py": "7acaa79eb525499674849aa0fd59cbb27691990bd218c4ce105c07546f8d3da7",
+    "dist/CalicoPolicyCli-rocky8": "89c1aed36d7e3f246256515ece55ba13a8959d179039d677859addbc4cdb9861",
+    "dist/calico-build.json": "79c1a0d8bcf12599cfa04ffd311a113f9d436a30e4c8b75459c520b2ab754996",
+    "tests/helpers/tools-calico-lab.py": "b901582d11f9575030761d610c53a87c7fd258f80da0ff5a32270747e5776468",
+    "tests/helpers/tools-calico-delivery.py": "d7f2f0f34ff86a7f757cc038f9f02a6c636bb37b7b9599524b49341ea0c470fd",
+    "tests/helpers/calico-live-regression.sh": "998c62d603aea3637cee2a835a9f0820ca2d5920febf90b516d24a8fe3a857e4",
+    "tests/unit/test_tools_calico_lab_contract.py": "7b63e53495e39144aa2cc1588420344c4af402777fc385b537de025ce5a73908",
+    "tests/unit/test_calico_stage_failure_contract.py": "baa88140755bd77dfb5ed904ff08939361483373fe803c939ffa893aff7ed465",
+    "logs/tools-calico-probe-qualified-20261128.log": "722e47a2a09e5ff4b10886706783c7db2afae1eb176354abeb54d3e22a914ac4",
+    "logs/tools-parameters-preflight-current3-20261128.log": "8318c733695e955cf7a57ef169a2a7c1493e747ef129de3f192f9950d45c69e4",
+    "logs/tools-parameters-preflight-current3-20261128.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/tools-parameters-preflight-current3-20261128.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/tools-calico-official-20261128/hostendpoint.go": "2677caaaf1448bd37a642ef37cadd9b6b5eae214a6518355d01bc3850a6d284f",
+    "logs/tools-calico-official-20261128/globalnetworkpolicy.go": "b8b964b469e8bf0a905e1712b3da650a62a09d35c62fc2ed459b5fd71402ae61",
+    "logs/tools-execution-inputs/fba0f867ad776b1c443c988e2cd1fbc096cdd0061681943696470237fc2ad327.py": "fba0f867ad776b1c443c988e2cd1fbc096cdd0061681943696470237fc2ad327"
+  },
+  "official": [
+    {
+      "url": "https://github.com/projectcalico/api/blob/v3.28.4/pkg/apis/projectcalico/v3/hostendpoint.go",
+      "snapshot": "logs/tools-calico-official-20261128/hostendpoint.go",
+      "sha256": "2677caaaf1448bd37a642ef37cadd9b6b5eae214a6518355d01bc3850a6d284f"
+    },
+    {
+      "url": "https://github.com/projectcalico/api/blob/v3.28.4/pkg/apis/projectcalico/v3/globalnetworkpolicy.go",
+      "snapshot": "logs/tools-calico-official-20261128/globalnetworkpolicy.go",
+      "sha256": "b8b964b469e8bf0a905e1712b3da650a62a09d35c62fc2ed459b5fd71402ae61"
+    }
+  ],
+  "boundary": "Calico3.28.4 etcd datastore on a clean leased Kubernetes1.33.6 six-node fixture. CLI host/pod/both plan/validate/apply/delete; external allowed and denied host sources, pod allowed/denied sources, repeat apply/backup/post-verify, dry-run/refusals and deletion restores the baseline. Real staged HEP failure stops after GNP, retaining the verified recoverable boundary; all three stage failures are separately exercised through the real CLI in deterministic contracts. Exact temporary SSH authorization restored; namespace, HEP/GNP, listeners, six nodes and fixture directories cleaned."
+}

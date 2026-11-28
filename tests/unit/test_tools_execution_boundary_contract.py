@@ -14,9 +14,39 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class ExecutionBoundaryTests(unittest.TestCase):
+    def test_netcheck_fixture_requires_real_result_and_refuses_foreign_scope(self):
+        spec=importlib.util.spec_from_file_location('netcheck_fixture',ROOT/'tests/helpers/netcheck-live-fixture.py')
+        module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+        args=module.probe_arguments(Path('/tmp/owned'),['127.0.0.1-2','localhost'])
+        self.assertEqual(args[args.index('-d')+1], '8')
+        self.assertGreater(int(args[args.index('-d')+1]), 2*2)
+        self.assertEqual(args[args.index('--max-icmp-workers')+1], '2')
+        self.assertEqual(args[-2:], ['127.0.0.1-2','localhost'])
+        summary={'target_count':1,'overall_ok':False}
+        module.verify_result(subprocess.CompletedProcess([],2,''),summary,2,1,False)
+        for rc,body,count,ok in ((0,'',1,False),(2,'Traceback',1,False),(2,'',2,False),(2,'',1,True)):
+            with self.assertRaisesRegex(ValueError,'RESULT_REFUSED'):
+                module.verify_result(subprocess.CompletedProcess([],rc,body),summary,2,count,ok)
+        with mock.patch.object(module.Path,'cwd',return_value=Path('/tmp/foreign')),mock.patch.object(module.socket,'socket') as sock:
+            with self.assertRaisesRegex(ValueError,'SCOPE_REFUSED'):module.main()
+            sock.assert_not_called()
+
+    def test_kdd_crd_inventory_does_not_require_a_nonexistent_profile_crd(self):
+        spec=importlib.util.spec_from_file_location('boundary_inventory',ROOT/'tests/helpers/tools-execution-boundary-live.py')
+        module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+        docs=[{'metadata':{'name':name+'.crd.projectcalico.org'}}
+              for name in ('globalnetworkpolicies','hostendpoints','clusterinformations','tiers')]
+        self.assertEqual(module.select_calico_crds(docs),docs)
+        with self.assertRaisesRegex(ValueError,'CRD_INVENTORY_REFUSED'):
+            module.select_calico_crds(docs[:-1])
+
     def test_ovpn_live_refusal_requires_expected_error_and_unchanged_pki(self):
         spec = importlib.util.spec_from_file_location('ovpn_fixture', ROOT/'tests/helpers/ovpn-config-fixture.py')
         module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+        module.verify_revoked_certificate(subprocess.CompletedProcess([],2,'','error 23: certificate revoked'))
+        for rc,message in ((0,'certificate revoked'),(2,'unable to get issuer certificate'),(1,'')):
+            with self.assertRaisesRegex(ValueError,'REVOKED_CERTIFICATE_ACCEPTED_OR_UNRELATED_ERROR'):
+                module.verify_revoked_certificate(subprocess.CompletedProcess([],rc,'',message))
         with mock.patch.dict(os.environ, EASYRSA_BATCH='1'):
             self.assertNotIn('EASYRSA_BATCH', module.product_environment('/fixture', '/easy', '/logs'))
         with tempfile.TemporaryDirectory() as directory:

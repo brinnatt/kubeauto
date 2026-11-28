@@ -25,6 +25,7 @@ client.ovpn 默认与 server.conf 对齐；仅 --proto/--dev/--rhost/--rport 可
 from __future__ import print_function
 
 import argparse
+import ipaddress
 import logging
 import os
 import re
@@ -972,6 +973,20 @@ def validate_ovpn_proto(proto: str) -> str:
             hint="--proto 可选: {0}".format(", ".join(sorted(OVPN_PROTO_CHOICES))),
         )
     return value
+
+
+def validate_remote_host(host: str) -> str:
+    """A remote directive accepts one hostname or IP, never extra directives."""
+    try:
+        ipaddress.ip_address(host)
+        return host
+    except ValueError:
+        pass
+    if (host and len(host) <= 253 and all(
+            re.fullmatch(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?", label)
+            for label in host.rstrip(".").split("."))):
+        return host
+    raise GenovpnError("服务器地址无效", hint="--rhost 须为单个主机名、IPv4 或 IPv6 地址")
 
 
 def validate_ovpn_dev(dev: str) -> str:
@@ -1989,11 +2004,22 @@ def cmd_revoke(args):
     preflight()
     log.step_ok("环境就绪 ({0})".format(EASYRSA_DIR))
 
-    log.step(2, total, "确认用户 {0} 存在有效证书".format(user))
-    assert_revoke_allowed(user)
-    cert_path = issued_cert(user)
-    serial = cert_serial(cert_path)
-    cn = cert_common_name(cert_path)
+    log.step(2, total, "核对用户 {0} 的证书与吊销状态".format(user))
+    resume_crl = not has_valid_cert(user) and get_index_history(user) == HISTORY_REVOKED
+    if resume_crl:
+        serial = parse_index_for_user(user)[-1]['serial']
+        cert_path = revoked_archive_paths(serial).get('cert')
+        if (not cert_path or not os.path.isfile(cert_path)
+                or cert_common_name(cert_path) != user
+                or normalize_serial(cert_serial(cert_path)) != normalize_serial(serial)):
+            raise GenovpnError("吊销归档与 CA 记录不一致，无法继续生成 CRL")
+        cn = user
+        assert_revoke_done(user, serial)
+    else:
+        assert_revoke_allowed(user)
+        cert_path = issued_cert(user)
+        serial = cert_serial(cert_path)
+        cn = cert_common_name(cert_path)
     log.step_ok(
         "CN={0} serial={1}".format(cn, serial or "未知")
     )
@@ -2002,7 +2028,10 @@ def cmd_revoke(args):
     crl_path = pki_path("crl.pem")
 
     log.step(3, total, "吊销证书 (easyrsa revoke {0})".format(user))
-    easyrsa("revoke", user)
+    if resume_crl:
+        log.note(["CA 已记录此证书吊销，继续生成 CRL 并清理客户端配置"])
+    else:
+        easyrsa("revoke", user)
     assert_revoke_done(user, serial)
     sn = serial_for_pki_paths(serial)
     revoke_result = [
@@ -2016,12 +2045,16 @@ def cmd_revoke(args):
     log.result(revoke_result)
     log.note(
         [
-            "该用户无法新建 VPN 连接；已在线会话重连后将被拒绝",
+            "CA 吊销记录已更新；服务端拒绝此证书还须完成下述 CRL 生成与部署",
         ]
     )
 
     log.step(4, total, "更新 CRL (easyrsa gen-crl)")
-    easyrsa("gen-crl")
+    try:
+        easyrsa("gen-crl")
+    except GenovpnError as exc:
+        raise GenovpnError("CRL 更新失败，吊销尚未完成服务端生效",
+                           hint="重试同一 revoke 命令继续生成 CRL；不要分发此用户配置。\n" + str(exc))
     crl_after = crl_revoked_count()
     delta_text = ""
     if crl_before is not None and crl_after is not None:
@@ -2228,7 +2261,7 @@ def build_parser():
     p_revoke = sub.add_parser(
         "revoke",
         help="吊销用户证书并更新 CRL",
-        description="吊销有效证书，更新 pki/crl.pem，并删除客户端配置目录。",
+        description="吊销证书，更新 pki/crl.pem，并删除客户端配置目录；已吊销时核验归档后继续更新 CRL。",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:
@@ -2242,6 +2275,8 @@ def build_parser():
 
 末尾摘要: --- 吊销完成 · <用户名> ---；含 [核验 · 吊销结果]
 服务端须配置 crl-verify 指向 pki/crl.pem
+> CRL 生成失败或操作中断后，重试同一 revoke 命令；工具核验 CA 与归档身份后继续生成 CRL。
+> 生成并部署 CRL 前，服务端仍可能接受该证书；已在线会话需按服务端运维流程处理。
 {common}
 """.format(prog=prog_name(), common=USER_EPILOG),
     )
@@ -2290,11 +2325,7 @@ def main():
                     "端口号无效: {0}".format(args.rport),
                     hint="--rport 须为 1～65535 的整数",
                 )
-            if not args.rhost or args.rhost.isspace():
-                raise GenovpnError(
-                    "服务器地址无效",
-                    hint="请指定有效 --rhost，例如: 61.187.64.38",
-                )
+            args.rhost = validate_remote_host(args.rhost)
             if args.proto is not None:
                 args.proto = validate_ovpn_proto(args.proto)
             if args.dev is not None:

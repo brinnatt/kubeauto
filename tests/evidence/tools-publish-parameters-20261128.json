@@ -1,0 +1,37 @@
+{
+  "date": "2026-11-28",
+  "result": "pass",
+  "rc": 0,
+  "scope": [
+    "TL-KP-01",
+    "TL-KP-02",
+    "TL-KP-03",
+    "TL-KP-04",
+    "TL-KP-05"
+  ],
+  "markers": [
+    "TOOLS_PUBLISH_LOAD_LIVE_PASS",
+    "PUBLISH_LOAD_EXIT rc=0"
+  ],
+  "files": {
+    "tools/k8stools/KubePublishCli.py": "7cc43658604505a24bb5aa9e95ad15c3d35d4ec73b27dd042adb311c64d7d109",
+    "dist/KubePublishCli-rocky8": "c7b204f5732e6245df62674b6c61b61f065c987e0cee6e74fe7150e071b13d35",
+    "dist/kube-publish-build.json": "66347976abd8629c611de90faa2f5a60edd23bc532acbf513c62635e12c36fa1",
+    "tests/helpers/publish-load-fixture.py": "3609ae4ea362027017e61ac93151da5e921be6f5eb0570d9f8bcc62cfcca8dfc",
+    "tests/unit/test_kubepublish_parameters.py": "35e850d53abf48af7b5e7fed9be57741f44f54c0be8040d48575ff59307fe335",
+    "tests/unit/test_kube_publish_cli_contract.py": "3023d6af96674a8daefb220fe13fe0cb2bc2fbd63e782e4513a54c768c0db8c9",
+    "logs/tools-parameter-live-20261128/publish.log": "c709550450191566b7cd751ee0135e2069b11fad72f6bfb14bc364c1d7600756",
+    "logs/tools-parameter-live-20261128/publish.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/tools-parameter-live-20261128/publish.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/tools-parameters-preflight-current3-20261128.log": "8318c733695e955cf7a57ef169a2a7c1493e747ef129de3f192f9950d45c69e4",
+    "logs/tools-parameters-preflight-current3-20261128.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/tools-parameters-preflight-current3-20261128.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+  },
+  "boundary": "Source/frozen × Docker/nerdctl actual download/save/SSH load/readback/delete, first invalid archive stop, unchanged second archive and retry. Range expansion, CLI/config precedence, runtime namespace, explicit/global SSH ports and caller-owned tar preservation checked at their actual CLI-to-native-command boundaries. Own key/tag/namespace cleanup only.",
+  "qualification": {
+    "command": "bash tests/run_tools_regression.sh --preflight",
+    "log": "logs/tools-parameters-preflight-current3-20261128.log",
+    "tests": 298,
+    "scope": "当前本地合同资格；现场业务raw、退出码、源文件及归档均保持其实际执行身份。"
+  }
+}

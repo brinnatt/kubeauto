@@ -1,0 +1,2203 @@
+{
+  "date": "2026-11-28",
+  "result": "pass",
+  "scope": [
+    "TL-X-10"
+  ],
+  "scripts": {
+    "tools/NetCheckCli.py": {
+      "sha256": "61424b22f0c019eb6fd9b3745fd5e908b9467ad9ac757fe1391f90e66e050b5d",
+      "boundary": "NetCheckCli",
+      "parser_declarations": [
+        {
+          "line": 1103,
+          "options": [
+            "--version"
+          ]
+        },
+        {
+          "line": 1104,
+          "options": [
+            "-d",
+            "--duration"
+          ]
+        },
+        {
+          "line": 1108,
+          "options": [
+            "--no-default-nodes"
+          ]
+        },
+        {
+          "line": 1112,
+          "options": [
+            "-v",
+            "--verbose"
+          ]
+        },
+        {
+          "line": 1115,
+          "options": [
+            "--no-log-file"
+          ]
+        },
+        {
+          "line": 1119,
+          "options": [
+            "--log-file"
+          ]
+        },
+        {
+          "line": 1123,
+          "options": [
+            "--report-dir"
+          ]
+        },
+        {
+          "line": 1127,
+          "options": [
+            "--no-report-file"
+          ]
+        },
+        {
+          "line": 1131,
+          "options": [
+            "--json-summary"
+          ]
+        },
+        {
+          "line": 1135,
+          "options": [
+            "--dry-run"
+          ]
+        },
+        {
+          "line": 1139,
+          "options": [
+            "--max-expand"
+          ]
+        },
+        {
+          "line": 1146,
+          "options": [
+            "--max-icmp-workers"
+          ]
+        },
+        {
+          "line": 1153,
+          "options": [
+            "targets"
+          ]
+        }
+      ],
+      "configuration": "CLI目标、报告目录、探测时长/阈值；环境中的线程/展开上限",
+      "commands": "run_ping argv → ping；TCP socket；质量汇总与退出码",
+      "acceptance": "实际探测样本、时长、并发、输出及退出状态由当前参数合同和真实网络夹具读回。"
+    },
+    "tools/OvpnUserCli.py": {
+      "sha256": "84e83fde697b18f6590a422891c644c6303da9b65d87ef6215dab6a9e23138b0",
+      "boundary": "OvpnUserCli",
+      "parser_declarations": [
+        {
+          "line": 2226,
+          "options": [
+            "--user",
+            "-u"
+          ]
+        },
+        {
+          "line": 2229,
+          "options": [
+            "--rhost"
+          ]
+        },
+        {
+          "line": 2235,
+          "options": [
+            "--rport"
+          ]
+        },
+        {
+          "line": 2242,
+          "options": [
+            "--proto"
+          ]
+        },
+        {
+          "line": 2251,
+          "options": [
+            "--dev"
+          ]
+        },
+        {
+          "line": 2283,
+          "options": [
+            "--user",
+            "-u"
+          ]
+        },
+        {
+          "line": 2301,
+          "options": [
+            "--user",
+            "-u"
+          ]
+        }
+      ],
+      "configuration": "GENOVPN_*路径、server.conf的proto/dev/TLS密钥及方向、create/revoke/status",
+      "commands": "真实easyrsa build-client-full/revoke/gen-crl；openssl证书/CRL核验",
+      "acceptance": "服务配置的TLS密钥和方向、EasyRSA目录、签发/撤销/CRL中断重试由独立PKI验收；不外推VPN隧道握手。"
+    },
+    "tools/k8stools/CalicoPolicyCli.py": {
+      "sha256": "7acaa79eb525499674849aa0fd59cbb27691990bd218c4ce105c07546f8d3da7",
+      "boundary": "CalicoPolicyCli",
+      "parser_declarations": [
+        {
+          "line": 2260,
+          "options": [
+            "--traffic-layer"
+          ]
+        },
+        {
+          "line": 2271,
+          "options": [
+            "-n",
+            "--namespace"
+          ]
+        },
+        {
+          "line": 2277,
+          "options": [
+            "--pod-label"
+          ]
+        },
+        {
+          "line": 2288,
+          "options": [
+            "--pod-selector-all"
+          ]
+        },
+        {
+          "line": 2296,
+          "options": [
+            "--k8s-np-name"
+          ]
+        },
+        {
+          "line": 2305,
+          "options": [
+            "--interface"
+          ]
+        },
+        {
+          "line": 2319,
+          "options": [
+            "-a",
+            "--allow-net"
+          ]
+        },
+        {
+          "line": 2328,
+          "options": [
+            "--port"
+          ]
+        },
+        {
+          "line": 2330,
+          "options": [
+            "--include-external-ip"
+          ]
+        },
+        {
+          "line": 2335,
+          "options": [
+            "--no-hostendpoint"
+          ]
+        },
+        {
+          "line": 2340,
+          "options": [
+            "--hep-profile"
+          ]
+        },
+        {
+          "line": 2345,
+          "options": [
+            "--no-default-allow-profile"
+          ]
+        },
+        {
+          "line": 2354,
+          "options": [
+            "-a",
+            "--allow-net"
+          ]
+        },
+        {
+          "line": 2366,
+          "options": [
+            "--port"
+          ]
+        },
+        {
+          "line": 2367,
+          "options": [
+            "--policy-name"
+          ]
+        },
+        {
+          "line": 2372,
+          "options": [
+            "--hep-prefix"
+          ]
+        },
+        {
+          "line": 2374,
+          "options": [
+            "--include-external-ip"
+          ]
+        },
+        {
+          "line": 2379,
+          "options": [
+            "--no-hostendpoint"
+          ]
+        },
+        {
+          "line": 2387,
+          "options": [
+            "--policy-selector"
+          ]
+        },
+        {
+          "line": 2393,
+          "options": [
+            "--policy-order"
+          ]
+        },
+        {
+          "line": 2399,
+          "options": [
+            "--hep-profile"
+          ]
+        },
+        {
+          "line": 2404,
+          "options": [
+            "--no-default-allow-profile"
+          ]
+        },
+        {
+          "line": 2412,
+          "options": [
+            "--gnp-tier"
+          ]
+        },
+        {
+          "line": 2417,
+          "options": [
+            "--gnp-apply-on-forward"
+          ]
+        },
+        {
+          "line": 2422,
+          "options": [
+            "--gnp-performance-hint"
+          ]
+        },
+        {
+          "line": 2435,
+          "options": [
+            "--verbose",
+            "-v"
+          ]
+        },
+        {
+          "line": 2436,
+          "options": [
+            "--no-log-file"
+          ]
+        },
+        {
+          "line": 2437,
+          "options": [
+            "--kubectl"
+          ]
+        },
+        {
+          "line": 2442,
+          "options": [
+            "--context"
+          ]
+        },
+        {
+          "line": 2447,
+          "options": [
+            "--executor"
+          ]
+        },
+        {
+          "line": 2457,
+          "options": [
+            "--calicoctl"
+          ]
+        },
+        {
+          "line": 2477,
+          "options": [
+            "--version"
+          ]
+        },
+        {
+          "line": 2511,
+          "options": [
+            "--confirm"
+          ]
+        },
+        {
+          "line": 2519,
+          "options": [
+            "--backup"
+          ]
+        },
+        {
+          "line": 2530,
+          "options": [
+            "--backup-dir"
+          ]
+        },
+        {
+          "line": 2535,
+          "options": [
+            "--apply-staged"
+          ]
+        },
+        {
+          "line": 2544,
+          "options": [
+            "--dry-run"
+          ]
+        },
+        {
+          "line": 2553,
+          "options": [
+            "--post-verify"
+          ]
+        },
+        {
+          "line": 2568,
+          "options": [
+            "--confirm"
+          ]
+        },
+        {
+          "line": 2573,
+          "options": [
+            "-a",
+            "--allow-net"
+          ]
+        },
+        {
+          "line": 2582,
+          "options": [
+            "--port"
+          ]
+        },
+        {
+          "line": 2583,
+          "options": [
+            "--policy-name"
+          ]
+        },
+        {
+          "line": 2588,
+          "options": [
+            "--delete-hostendpoints"
+          ]
+        }
+      ],
+      "configuration": "context、executor、流量层、namespace、策略名、HEP/GNP参数",
+      "commands": "apply/delete/get执行器；首错非0且停止后续变更；空集合与枚举失败区分",
+      "acceptance": "参数合同覆盖生成/校验/执行/删除；双API验收执行器和删除首错；六节点Calico3.28.4验收host/pod/both实际允许/拒绝/删除恢复。"
+    },
+    "tools/k8stools/KubeBackupCli.py": {
+      "sha256": "1156f4efb24eadd8306c978e4a35e5361cbe2e6f7a871d2107d0b1c6e4022f9d",
+      "boundary": "KubeBackupCli",
+      "parser_declarations": [
+        {
+          "line": 3693,
+          "options": [
+            "-n",
+            "--namespace"
+          ]
+        },
+        {
+          "line": 3697,
+          "options": [
+            "--all-namespaces"
+          ]
+        },
+        {
+          "line": 3702,
+          "options": [
+            "-r",
+            "--resources"
+          ]
+        },
+        {
+          "line": 3707,
+          "options": [
+            "-o",
+            "--output-dir"
+          ]
+        },
+        {
+          "line": 3712,
+          "options": [
+            "--include-crds"
+          ]
+        },
+        {
+          "line": 3717,
+          "options": [
+            "--tar"
+          ]
+        },
+        {
+          "line": 3722,
+          "options": [
+            "--max-workers"
+          ]
+        },
+        {
+          "line": 3728,
+          "options": [
+            "--label-selector"
+          ]
+        },
+        {
+          "line": 3732,
+          "options": [
+            "--field-selector"
+          ]
+        },
+        {
+          "line": 3736,
+          "options": [
+            "--include-names"
+          ]
+        },
+        {
+          "line": 3740,
+          "options": [
+            "--exclude-names"
+          ]
+        },
+        {
+          "line": 3744,
+          "options": [
+            "--backup-name"
+          ]
+        },
+        {
+          "line": 3752,
+          "options": [
+            "--backup-dir"
+          ]
+        },
+        {
+          "line": 3757,
+          "options": [
+            "--namespace-mapping"
+          ]
+        },
+        {
+          "line": 3763,
+          "options": [
+            "--image-mapping"
+          ]
+        },
+        {
+          "line": 3768,
+          "options": [
+            "--env-mapping"
+          ]
+        },
+        {
+          "line": 3775,
+          "options": [
+            "--env-namespace-substitute"
+          ]
+        },
+        {
+          "line": 3782,
+          "options": [
+            "--merge-patch"
+          ]
+        },
+        {
+          "line": 3789,
+          "options": [
+            "--merge-patch-kind"
+          ]
+        },
+        {
+          "line": 3797,
+          "options": [
+            "--max-workers"
+          ]
+        },
+        {
+          "line": 3803,
+          "options": [
+            "--skip-crds"
+          ]
+        },
+        {
+          "line": 3808,
+          "options": [
+            "--skip-cluster-scoped"
+          ]
+        },
+        {
+          "line": 3813,
+          "options": [
+            "--create-namespaces",
+            "--create-namespace"
+          ]
+        },
+        {
+          "line": 3819,
+          "options": [
+            "--backup-name"
+          ]
+        },
+        {
+          "line": 3833,
+          "options": [
+            "-h",
+            "--help"
+          ]
+        },
+        {
+          "line": 3849,
+          "options": [
+            "--dry-run"
+          ]
+        },
+        {
+          "line": 3854,
+          "options": [
+            "--dry-run"
+          ]
+        },
+        {
+          "line": 3862,
+          "options": [
+            "--kubeconfig"
+          ]
+        },
+        {
+          "line": 3866,
+          "options": [
+            "--context"
+          ]
+        },
+        {
+          "line": 3870,
+          "options": [
+            "--debug"
+          ]
+        }
+      ],
+      "configuration": "kubeconfig/context、namespace、resources、selector、output/input目录与restore改写",
+      "commands": "动态discovery/list/create/patch；备份归档及恢复清单",
+      "acceptance": "显式context优先；真实API读回六类资源、CRD、映射、局部失败重试和immutable拒绝；不把API读回签作PV数据备份。"
+    },
+    "tools/k8stools/KubePublishCli.py": {
+      "sha256": "7cc43658604505a24bb5aa9e95ad15c3d35d4ec73b27dd042adb311c64d7d109",
+      "boundary": "KubePublishCli",
+      "parser_declarations": [
+        {
+          "line": 1440,
+          "options": [
+            "-h",
+            "--help"
+          ]
+        },
+        {
+          "line": 1447,
+          "options": [
+            "--local-runtime"
+          ]
+        },
+        {
+          "line": 1454,
+          "options": [
+            "--remote-runtime"
+          ]
+        },
+        {
+          "line": 1461,
+          "options": [
+            "--namespace"
+          ]
+        },
+        {
+          "line": 1468,
+          "options": [
+            "--pack"
+          ]
+        },
+        {
+          "line": 1475,
+          "options": [
+            "--download"
+          ]
+        },
+        {
+          "line": 1482,
+          "options": [
+            "--delete"
+          ]
+        },
+        {
+          "line": 1489,
+          "options": [
+            "--delete-hosts"
+          ]
+        },
+        {
+          "line": 1496,
+          "options": [
+            "--distribute"
+          ]
+        },
+        {
+          "line": 1503,
+          "options": [
+            "--tar"
+          ]
+        },
+        {
+          "line": 1510,
+          "options": [
+            "--config"
+          ]
+        },
+        {
+          "line": 1517,
+          "options": [
+            "--output-dir"
+          ]
+        },
+        {
+          "line": 1523,
+          "options": [
+            "--ssh-user"
+          ]
+        },
+        {
+          "line": 1529,
+          "options": [
+            "--ssh-port"
+          ]
+        },
+        {
+          "line": 1536,
+          "options": [
+            "--ssh-key"
+          ]
+        },
+        {
+          "line": 1542,
+          "options": [
+            "--disable-ssh-host-check"
+          ]
+        },
+        {
+          "line": 1548,
+          "options": [
+            "--cleanup"
+          ]
+        }
+      ],
+      "configuration": "CLI/JSON镜像、目标host:port、runtime、namespace、tar/output路径",
+      "commands": "pull/save→SSH传输→load；逐包load首个非0传播；delete显式确认",
+      "acceptance": "源码和冻结程序真实SSH docker/nerdctl加载首错停止及重试；save/load及清理绑定当前证据。"
+    },
+    "tools/kafka/KafkaCli.py": {
+      "sha256": "781010899313d5fa6210881aaa56aac2d0784026078e4b7d3feb54b222b00b42",
+      "boundary": "KafkaCli",
+      "parser_declarations": [
+        {
+          "line": 5237,
+          "options": [
+            "-h",
+            "--help"
+          ]
+        },
+        {
+          "line": 5248,
+          "options": [
+            "--config"
+          ]
+        },
+        {
+          "line": 5253,
+          "options": [
+            "--assume-kafka-version"
+          ]
+        },
+        {
+          "line": 5258,
+          "options": [
+            "--skip-kraft-version-check"
+          ]
+        },
+        {
+          "line": 5276,
+          "options": [
+            "--deploy"
+          ]
+        },
+        {
+          "line": 5283,
+          "options": [
+            "--kafka-home"
+          ]
+        },
+        {
+          "line": 5288,
+          "options": [
+            "--log-dirs"
+          ]
+        },
+        {
+          "line": 5293,
+          "options": [
+            "--metadata-log-dir"
+          ]
+        },
+        {
+          "line": 5298,
+          "options": [
+            "--node-id"
+          ]
+        },
+        {
+          "line": 5304,
+          "options": [
+            "--controller-scope"
+          ]
+        },
+        {
+          "line": 5313,
+          "options": [
+            "--advertised-host"
+          ]
+        },
+        {
+          "line": 5322,
+          "options": [
+            "--cluster-id"
+          ]
+        },
+        {
+          "line": 5329,
+          "options": [
+            "--generate-cluster-id"
+          ]
+        },
+        {
+          "line": 5335,
+          "options": [
+            "--use-disk-cluster-id"
+          ]
+        },
+        {
+          "line": 5340,
+          "options": [
+            "--controller-quorum-bootstrap-servers"
+          ]
+        },
+        {
+          "line": 5345,
+          "options": [
+            "--controller-listen-host"
+          ]
+        },
+        {
+          "line": 5352,
+          "options": [
+            "--controller-listen-port"
+          ]
+        },
+        {
+          "line": 5359,
+          "options": [
+            "--broker-listen-host"
+          ]
+        },
+        {
+          "line": 5366,
+          "options": [
+            "--broker-listen-port"
+          ]
+        },
+        {
+          "line": 5373,
+          "options": [
+            "--listeners"
+          ]
+        },
+        {
+          "line": 5379,
+          "options": [
+            "--extra-properties"
+          ]
+        },
+        {
+          "line": 5385,
+          "options": [
+            "--initial-controllers"
+          ]
+        },
+        {
+          "line": 5390,
+          "options": [
+            "--join-quorum"
+          ]
+        },
+        {
+          "line": 5396,
+          "options": [
+            "--java-home"
+          ]
+        },
+        {
+          "line": 5397,
+          "options": [
+            "--user"
+          ]
+        },
+        {
+          "line": 5402,
+          "options": [
+            "--group"
+          ]
+        },
+        {
+          "line": 5403,
+          "options": [
+            "--no-systemd"
+          ]
+        },
+        {
+          "line": 5408,
+          "options": [
+            "--verify"
+          ]
+        },
+        {
+          "line": 5413,
+          "options": [
+            "--force"
+          ]
+        },
+        {
+          "line": 5418,
+          "options": [
+            "--clean"
+          ]
+        },
+        {
+          "line": 5423,
+          "options": [
+            "--clean-data"
+          ]
+        },
+        {
+          "line": 5428,
+          "options": [
+            "--clean-first"
+          ]
+        },
+        {
+          "line": 5440,
+          "options": [
+            "--bootstrap-server"
+          ]
+        },
+        {
+          "line": 5448,
+          "options": [
+            "--bootstrap-controller"
+          ]
+        },
+        {
+          "line": 5454,
+          "options": [
+            "--status"
+          ]
+        },
+        {
+          "line": 5462,
+          "options": [
+            "--command-config"
+          ]
+        },
+        {
+          "line": 5467,
+          "options": [
+            "--kafka-user"
+          ]
+        },
+        {
+          "line": 5472,
+          "options": [
+            "--kafka-password"
+          ]
+        },
+        {
+          "line": 5477,
+          "options": [
+            "--kafka-sasl-mechanism"
+          ]
+        },
+        {
+          "line": 5483,
+          "options": [
+            "--deploy-sasl-plain"
+          ]
+        },
+        {
+          "line": 5488,
+          "options": [
+            "--deploy-sasl-ssl"
+          ]
+        },
+        {
+          "line": 5493,
+          "options": [
+            "--ssl-keystore-path"
+          ]
+        },
+        {
+          "line": 5498,
+          "options": [
+            "--ssl-keystore-password"
+          ]
+        },
+        {
+          "line": 5503,
+          "options": [
+            "--ssl-key-password"
+          ]
+        },
+        {
+          "line": 5508,
+          "options": [
+            "--ssl-truststore-path"
+          ]
+        },
+        {
+          "line": 5513,
+          "options": [
+            "--ssl-truststore-password"
+          ]
+        },
+        {
+          "line": 5525,
+          "options": [
+            "--target-host"
+          ]
+        },
+        {
+          "line": 5530,
+          "options": [
+            "--ssh-user"
+          ]
+        },
+        {
+          "line": 5531,
+          "options": [
+            "--ssh-port"
+          ]
+        },
+        {
+          "line": 5532,
+          "options": [
+            "--ssh-key"
+          ]
+        },
+        {
+          "line": 5533,
+          "options": [
+            "--disable-ssh-host-check"
+          ]
+        },
+        {
+          "line": 5538,
+          "options": [
+            "--remote-workdir"
+          ]
+        },
+        {
+          "line": 5543,
+          "options": [
+            "--batch"
+          ]
+        },
+        {
+          "line": 5558,
+          "options": [
+            "--topic-create"
+          ]
+        },
+        {
+          "line": 5559,
+          "options": [
+            "--topic-delete"
+          ]
+        },
+        {
+          "line": 5560,
+          "options": [
+            "--topic-describe"
+          ]
+        },
+        {
+          "line": 5561,
+          "options": [
+            "--topic-list"
+          ]
+        },
+        {
+          "line": 5562,
+          "options": [
+            "--topic"
+          ]
+        },
+        {
+          "line": 5563,
+          "options": [
+            "--partitions"
+          ]
+        },
+        {
+          "line": 5564,
+          "options": [
+            "--replication-factor"
+          ]
+        },
+        {
+          "line": 5570,
+          "options": [
+            "--group-list"
+          ]
+        },
+        {
+          "line": 5571,
+          "options": [
+            "--group-describe"
+          ]
+        },
+        {
+          "line": 5572,
+          "options": [
+            "--consumer-group"
+          ]
+        },
+        {
+          "line": 5578,
+          "options": [
+            "--produce"
+          ]
+        },
+        {
+          "line": 5579,
+          "options": [
+            "--consume"
+          ]
+        },
+        {
+          "line": 5580,
+          "options": [
+            "--message"
+          ]
+        },
+        {
+          "line": 5581,
+          "options": [
+            "--input-file"
+          ]
+        },
+        {
+          "line": 5582,
+          "options": [
+            "--max-messages"
+          ]
+        },
+        {
+          "line": 5590,
+          "options": [
+            "--metrics"
+          ]
+        },
+        {
+          "line": 5591,
+          "options": [
+            "--metrics-json"
+          ]
+        },
+        {
+          "line": 5597,
+          "options": [
+            "--config-describe-broker"
+          ]
+        },
+        {
+          "line": 5598,
+          "options": [
+            "--config-describe-topic"
+          ]
+        },
+        {
+          "line": 5599,
+          "options": [
+            "--config-entity-name"
+          ]
+        },
+        {
+          "line": 5605,
+          "options": [
+            "--quorum-add-controller"
+          ]
+        },
+        {
+          "line": 5618,
+          "options": [
+            "--broker-decommission-generate"
+          ]
+        },
+        {
+          "line": 5623,
+          "options": [
+            "--preferred-replica-election"
+          ]
+        },
+        {
+          "line": 5628,
+          "options": [
+            "--broker-decommission-execute"
+          ]
+        },
+        {
+          "line": 5633,
+          "options": [
+            "--broker-decommission-verify"
+          ]
+        },
+        {
+          "line": 5634,
+          "options": [
+            "--broker-list"
+          ]
+        },
+        {
+          "line": 5639,
+          "options": [
+            "--topics-to-move-json-file",
+            "--topics-to-move-json"
+          ]
+        },
+        {
+          "line": 5646,
+          "options": [
+            "--reassignment-json-file"
+          ]
+        },
+        {
+          "line": 5651,
+          "options": [
+            "--throttle"
+          ]
+        }
+      ],
+      "configuration": "CLI/JSON→_get_opt；kafka_home、角色/端点、存储身份、SSH与认证",
+      "commands": "Kafka4.3.1官方脚本与JVM；远端上传校验和路径quote",
+      "acceptance": "官方Kafka4.3.1发行版；当前完整单节点和3controller+2broker；SSH源码/冻结启动分别验证。"
+    },
+    "tools/mysqltools/MigrationCli.py": {
+      "sha256": "0c00135233ff14f747e4ab03ff4a9dd43f3613417d3b7ebc39b2a8f2de827f66",
+      "boundary": "MigrationCli",
+      "parser_declarations": [
+        {
+          "line": 2469,
+          "options": [
+            "--help-native"
+          ]
+        },
+        {
+          "line": 2471,
+          "options": [
+            "--native-option"
+          ]
+        },
+        {
+          "line": 2475,
+          "options": [
+            "--guide"
+          ]
+        },
+        {
+          "line": 2486,
+          "options": [
+            "-c",
+            "--config"
+          ]
+        },
+        {
+          "line": 2495,
+          "options": [
+            "-s",
+            "--source"
+          ]
+        },
+        {
+          "line": 2504,
+          "options": [
+            "-t",
+            "--target"
+          ]
+        },
+        {
+          "line": 2515,
+          "options": [
+            "--dry-run"
+          ]
+        },
+        {
+          "line": 2523,
+          "options": [
+            "--structure-only"
+          ]
+        },
+        {
+          "line": 2531,
+          "options": [
+            "--keep-dump-files"
+          ]
+        },
+        {
+          "line": 2542,
+          "options": [
+            "--max-workers"
+          ]
+        },
+        {
+          "line": 2549,
+          "options": [
+            "--max-workers-per-target-host"
+          ]
+        },
+        {
+          "line": 2556,
+          "options": [
+            "--no-per-table"
+          ]
+        },
+        {
+          "line": 2564,
+          "options": [
+            "--no-compress"
+          ]
+        },
+        {
+          "line": 2569,
+          "options": [
+            "--dump-timeout"
+          ]
+        },
+        {
+          "line": 2576,
+          "options": [
+            "--import-timeout"
+          ]
+        },
+        {
+          "line": 2583,
+          "options": [
+            "--complete-insert"
+          ]
+        },
+        {
+          "line": 2594,
+          "options": [
+            "--gtid-mode"
+          ]
+        },
+        {
+          "line": 2605,
+          "options": [
+            "--replication-target"
+          ]
+        },
+        {
+          "line": 2619,
+          "options": [
+            "--ssl-mode"
+          ]
+        },
+        {
+          "line": 2626,
+          "options": [
+            "--add-drop-table"
+          ]
+        },
+        {
+          "line": 2631,
+          "options": [
+            "--force-overwrite"
+          ]
+        },
+        {
+          "line": 2636,
+          "options": [
+            "--skip-target-empty-check"
+          ]
+        },
+        {
+          "line": 2641,
+          "options": [
+            "--no-fix-definer"
+          ]
+        },
+        {
+          "line": 2649,
+          "options": [
+            "--rollback-on-failure"
+          ]
+        },
+        {
+          "line": 2660,
+          "options": [
+            "--exact-row-count"
+          ]
+        },
+        {
+          "line": 2668,
+          "options": [
+            "--table-checksum"
+          ]
+        },
+        {
+          "line": 2676,
+          "options": [
+            "--skip-version-check"
+          ]
+        },
+        {
+          "line": 2684,
+          "options": [
+            "--report-dir"
+          ]
+        }
+      ],
+      "configuration": "source/target、全局/任务/CLI选项→连接与dump/import",
+      "commands": "driver预检→mysqldump argv→mysql argv→校验/审计；子进程首错传播",
+      "acceptance": "PyMySQL/mysql/mysqldump固定TCP；当前8.0.46到8.4.4/9.2.0真实结构/数据/校验/范围/安全/恢复。"
+    },
+    "tools/mysqltools/MyBackupCli.py": {
+      "sha256": "7ae02eb9ddc4d54462f0dc88018db18faaffad0220e9b455aa2a75fe8e0fed21",
+      "boundary": "MyBackupCli",
+      "parser_declarations": [
+        {
+          "line": 2053,
+          "options": [
+            "command"
+          ]
+        },
+        {
+          "line": 2059,
+          "options": [
+            "-c",
+            "--config"
+          ]
+        },
+        {
+          "line": 2065,
+          "options": [
+            "--date"
+          ]
+        },
+        {
+          "line": 2071,
+          "options": [
+            "--binlog-start-time"
+          ]
+        },
+        {
+          "line": 2077,
+          "options": [
+            "--binlog-stop-time"
+          ]
+        },
+        {
+          "line": 2083,
+          "options": [
+            "--confirm-destructive-restore"
+          ]
+        },
+        {
+          "line": 2088,
+          "options": [
+            "--confirm-replication-isolated"
+          ]
+        },
+        {
+          "line": 2092,
+          "options": [
+            "--offline-restore"
+          ]
+        },
+        {
+          "line": 2097,
+          "options": [
+            "--backup-days"
+          ]
+        },
+        {
+          "line": 2104,
+          "options": [
+            "--binlog-days"
+          ]
+        },
+        {
+          "line": 2111,
+          "options": [
+            "--help-config"
+          ]
+        },
+        {
+          "line": 2113,
+          "options": [
+            "--help-native"
+          ]
+        },
+        {
+          "line": 2115,
+          "options": [
+            "--native-option"
+          ]
+        }
+      ],
+      "configuration": "mysql_datadir/binlog_dir/binlog_index/socket/container/service/topology/defaults_file；压缩/线程/内存/DDL锁；配置注释说明默认、空值和执行者",
+      "commands": "full/incr显式路径与复制安全坐标→工作副本解压/prepare→真实停库/copy-back/SQL就绪→隔离PITR；native已停机入口核验真实mysqld/defaults文件，不自动重接复制",
+      "acceptance": "显式datadir/binlog目录/index和容器身份；双OS双8.0版本、GTID OFF/ON、宿主机/独立工具容器及二进制单机/主从/异步双主使用其完整当前有效生命周期证据。"
+    },
+    "tools/mysqltools/MyLogiBackupCli.py": {
+      "sha256": "3c2d7c22c6c832db3d31a845ea4983191e7396fa6da82c42c4fe598f2dbc0a18",
+      "boundary": "MyLogiBackupCli",
+      "parser_declarations": [
+        {
+          "line": 798,
+          "options": [
+            "--help-native"
+          ]
+        },
+        {
+          "line": 800,
+          "options": [
+            "--native-option"
+          ]
+        },
+        {
+          "line": 802,
+          "options": [
+            "--login-path"
+          ]
+        },
+        {
+          "line": 803,
+          "options": [
+            "--database"
+          ]
+        },
+        {
+          "line": 804,
+          "options": [
+            "--exclude-database"
+          ]
+        },
+        {
+          "line": 805,
+          "options": [
+            "--compression"
+          ]
+        },
+        {
+          "line": 866,
+          "options": [
+            "--help-native"
+          ]
+        },
+        {
+          "line": 868,
+          "options": [
+            "--version"
+          ]
+        },
+        {
+          "line": 872,
+          "options": [
+            "--host"
+          ]
+        },
+        {
+          "line": 873,
+          "options": [
+            "--port"
+          ]
+        },
+        {
+          "line": 874,
+          "options": [
+            "--user"
+          ]
+        },
+        {
+          "line": 875,
+          "options": [
+            "--login-path"
+          ]
+        },
+        {
+          "line": 892,
+          "options": [
+            "--at"
+          ]
+        },
+        {
+          "line": 893,
+          "options": [
+            "--exec-path"
+          ]
+        }
+      ],
+      "configuration": "login-path中的显式IPv4/port、库选择、挂载目录、压缩、timer与native options",
+      "commands": "mysql预检→mysqldump→压缩归档回读/摘要→原子发布；不提供物理restore",
+      "acceptance": "三版本真实逻辑备份、恢复、SQL读回、timer执行及归档诊断使用原始身份的有效证据；参数合同绑定当前源码。"
+    },
+    "tools/starrocks/StarCli.py": {
+      "sha256": "30f4cab4d42afa251310ef0dd59aca6dd77afaabdd2ec36bdd9edc10d79507c0",
+      "boundary": "StarCli",
+      "parser_declarations": [
+        {
+          "line": 4320,
+          "options": [
+            "-h",
+            "--help"
+          ]
+        },
+        {
+          "line": 4326,
+          "options": [
+            "--deploy"
+          ]
+        },
+        {
+          "line": 4332,
+          "options": [
+            "--starrocks-home"
+          ]
+        },
+        {
+          "line": 4337,
+          "options": [
+            "--config"
+          ]
+        },
+        {
+          "line": 4343,
+          "options": [
+            "--meta-dir"
+          ]
+        },
+        {
+          "line": 4348,
+          "options": [
+            "--http-port"
+          ]
+        },
+        {
+          "line": 4354,
+          "options": [
+            "--rpc-port"
+          ]
+        },
+        {
+          "line": 4360,
+          "options": [
+            "--query-port"
+          ]
+        },
+        {
+          "line": 4366,
+          "options": [
+            "--edit-log-port"
+          ]
+        },
+        {
+          "line": 4372,
+          "options": [
+            "--helper-address"
+          ]
+        },
+        {
+          "line": 4377,
+          "options": [
+            "--use-fqdn"
+          ]
+        },
+        {
+          "line": 4383,
+          "options": [
+            "--default-replication-num"
+          ]
+        },
+        {
+          "line": 4390,
+          "options": [
+            "--storage-root-path"
+          ]
+        },
+        {
+          "line": 4395,
+          "options": [
+            "--be-port"
+          ]
+        },
+        {
+          "line": 4401,
+          "options": [
+            "--be-http-port"
+          ]
+        },
+        {
+          "line": 4407,
+          "options": [
+            "--heartbeat-port"
+          ]
+        },
+        {
+          "line": 4413,
+          "options": [
+            "--brpc-port"
+          ]
+        },
+        {
+          "line": 4419,
+          "options": [
+            "--starlet-port"
+          ]
+        },
+        {
+          "line": 4428,
+          "options": [
+            "--priority-networks"
+          ]
+        },
+        {
+          "line": 4433,
+          "options": [
+            "--java-home"
+          ]
+        },
+        {
+          "line": 4438,
+          "options": [
+            "--user"
+          ]
+        },
+        {
+          "line": 4444,
+          "options": [
+            "--group"
+          ]
+        },
+        {
+          "line": 4450,
+          "options": [
+            "--no-systemd"
+          ]
+        },
+        {
+          "line": 4456,
+          "options": [
+            "--verify"
+          ]
+        },
+        {
+          "line": 4462,
+          "options": [
+            "--force"
+          ]
+        },
+        {
+          "line": 4468,
+          "options": [
+            "--clean"
+          ]
+        },
+        {
+          "line": 4474,
+          "options": [
+            "--fe-host"
+          ]
+        },
+        {
+          "line": 4479,
+          "options": [
+            "--fe-query-port"
+          ]
+        },
+        {
+          "line": 4486,
+          "options": [
+            "--setup"
+          ]
+        },
+        {
+          "line": 4492,
+          "options": [
+            "--root-password"
+          ]
+        },
+        {
+          "line": 4497,
+          "options": [
+            "--status"
+          ]
+        },
+        {
+          "line": 4504,
+          "options": [
+            "--target-host"
+          ]
+        },
+        {
+          "line": 4508,
+          "options": [
+            "--ssh-user"
+          ]
+        },
+        {
+          "line": 4513,
+          "options": [
+            "--ssh-port"
+          ]
+        },
+        {
+          "line": 4519,
+          "options": [
+            "--ssh-key"
+          ]
+        },
+        {
+          "line": 4524,
+          "options": [
+            "--disable-ssh-host-check"
+          ]
+        },
+        {
+          "line": 4529,
+          "options": [
+            "--remote-workdir"
+          ]
+        }
+      ],
+      "configuration": "CLI/JSON→角色、安装路径、FE/BE/CN端点与SSH",
+      "commands": "StarRocks3.5.7启停/成员SQL；bootstrap校验上传SHA并直接运行二进制",
+      "acceptance": "当前完整本地集群业务和真实SSH源码/冻结启动；compose BE/CN分别使用所属已验收证据。"
+    },
+    "tools/starrocks/starmigration/StarMigrtCli.py": {
+      "sha256": "adfcfcd7f06d82fa4c999dbf7867cd9000316dcb189c1d3ff75759e3f37227de",
+      "boundary": "StarMigrtCli",
+      "parser_declarations": [
+        {
+          "line": 760,
+          "options": [
+            "--host"
+          ]
+        },
+        {
+          "line": 761,
+          "options": [
+            "--port"
+          ]
+        },
+        {
+          "line": 762,
+          "options": [
+            "--user"
+          ]
+        },
+        {
+          "line": 763,
+          "options": [
+            "--password-env"
+          ]
+        },
+        {
+          "line": 764,
+          "options": [
+            "--password-file"
+          ]
+        },
+        {
+          "line": 765,
+          "options": [
+            "--ssl-ca"
+          ]
+        },
+        {
+          "line": 766,
+          "options": [
+            "--connect-timeout"
+          ]
+        },
+        {
+          "line": 767,
+          "options": [
+            "--query-timeout"
+          ]
+        },
+        {
+          "line": 776,
+          "options": [
+            "--version"
+          ]
+        },
+        {
+          "line": 781,
+          "options": [
+            "--database"
+          ]
+        },
+        {
+          "line": 782,
+          "options": [
+            "--databases"
+          ]
+        },
+        {
+          "line": 783,
+          "options": [
+            "--all-databases"
+          ]
+        },
+        {
+          "line": 784,
+          "options": [
+            "--output"
+          ]
+        },
+        {
+          "line": 785,
+          "options": [
+            "--check"
+          ]
+        },
+        {
+          "line": 786,
+          "options": [
+            "--table"
+          ]
+        },
+        {
+          "line": 787,
+          "options": [
+            "--exclude-table"
+          ]
+        },
+        {
+          "line": 788,
+          "options": [
+            "--exclude-database"
+          ]
+        },
+        {
+          "line": 789,
+          "options": [
+            "--target-database"
+          ]
+        },
+        {
+          "line": 790,
+          "options": [
+            "--database-map"
+          ]
+        },
+        {
+          "line": 792,
+          "options": [
+            "--schema-only"
+          ]
+        },
+        {
+          "line": 793,
+          "options": [
+            "--data-only"
+          ]
+        },
+        {
+          "line": 794,
+          "options": [
+            "--replication-num"
+          ]
+        },
+        {
+          "line": 795,
+          "options": [
+            "--batch-rows"
+          ]
+        },
+        {
+          "line": 796,
+          "options": [
+            "--batch-mib"
+          ]
+        },
+        {
+          "line": 799,
+          "options": [
+            "--input"
+          ]
+        }
+      ],
+      "configuration": "dump/load；显式FE、账号、库表范围、SQL文件与TLS",
+      "commands": "dump：流式SELECT→原子SQL；load：预检→顺序SQL→自动内容校验",
+      "acceptance": "当前dump/load参数合同及完整双实例回归，10000001行长文本/JSON基准；不声明未验收的glibc2.28包。"
+    },
+    "tools/starrocks/starrocks-3.5.7/fe-cn/scripts/healthcheck-cn.sh": {
+      "sha256": "bca0f1955c320d9a296f78d5d6ea04946e636e45a19058b67286798bc6182808",
+      "boundary": "StarRocksShells",
+      "parser_declarations": [],
+      "configuration": "RUSTFS_BUCKET/REGION/ACCESS_KEY/SECRET_KEY；Compose service DNS和固定端口",
+      "commands": "init-rustfs-cn.sh→aws；init-storage-volume-cn.sh→mysql TCP stdin；healthcheck-cn.sh→curl+mysql",
+      "acceptance": "三个独立shell分别用于RustFS bucket初始化、storage volume初始化及CN healthcheck；只签所属compose场景和真实清理。"
+    },
+    "tools/starrocks/starrocks-3.5.7/fe-cn/scripts/init-rustfs-cn.sh": {
+      "sha256": "92ec1d25a6a9fd54c4b1db707530ca55b4bd0559d535543b43c4a090a0357453",
+      "boundary": "StarRocksShells",
+      "parser_declarations": [],
+      "configuration": "RUSTFS_BUCKET/REGION/ACCESS_KEY/SECRET_KEY；Compose service DNS和固定端口",
+      "commands": "init-rustfs-cn.sh→aws；init-storage-volume-cn.sh→mysql TCP stdin；healthcheck-cn.sh→curl+mysql",
+      "acceptance": "三个独立shell分别用于RustFS bucket初始化、storage volume初始化及CN healthcheck；只签所属compose场景和真实清理。"
+    },
+    "tools/starrocks/starrocks-3.5.7/fe-cn/scripts/init-storage-volume-cn.sh": {
+      "sha256": "1d1aa652ce24f9284a64bc706d04852da198ae0fd6cbfffc9972733b626d4d0d",
+      "boundary": "StarRocksShells",
+      "parser_declarations": [],
+      "configuration": "RUSTFS_BUCKET/REGION/ACCESS_KEY/SECRET_KEY；Compose service DNS和固定端口",
+      "commands": "init-rustfs-cn.sh→aws；init-storage-volume-cn.sh→mysql TCP stdin；healthcheck-cn.sh→curl+mysql",
+      "acceptance": "三个独立shell分别用于RustFS bucket初始化、storage volume初始化及CN healthcheck；只签所属compose场景和真实清理。"
+    }
+  },
+  "boundaries": {
+    "NetCheckCli": {
+      "configuration": "CLI目标、报告目录、探测时长/阈值；环境中的线程/展开上限",
+      "namespace": "执行端网络命名空间；宿主机与容器的ICMP权限、DNS和路由分别成立",
+      "identity": "输入目标白名单/格式校验；不管理数据库或服务",
+      "commands": "run_ping argv → ping；TCP socket；质量汇总与退出码",
+      "paths": "report_dir/json_summary/log_file均为执行端路径",
+      "cleanup": "信号通知工作线程退出；只写本次报告和日志，不删用户数据",
+      "evidence_scope": "原用户生产签署保持原身份；新增审计不声称容器网络专项现场PASS"
+    },
+    "OvpnUserCli": {
+      "configuration": "GENOVPN_*路径、server.conf的proto/dev/TLS密钥及方向、create/revoke/status",
+      "namespace": "执行端PKI与OpenSSL；容器须显式挂载真实PKI和server.conf",
+      "identity": "Easy-RSA3.0.7目录/CA与CN；tls-crypt-v2签发前拒绝",
+      "commands": "真实easyrsa build-client-full/revoke/gen-crl；openssl证书/CRL核验",
+      "paths": "TLS绝对路径或显式绝对cd；不猜启动cwd，不分发server unwrap key",
+      "cleanup": "拒绝时不变更PKI/旧包；吊销后删除所属用户包，按serial保留撤销历史",
+      "evidence_scope": "TL-OVPN-03/06；OpenSSL1.1.1隔离PKI；不签VPN握手/OpenSSL3"
+    },
+    "CalicoPolicyCli": {
+      "configuration": "context、executor、流量层、namespace、策略名、HEP/GNP参数",
+      "namespace": "执行端kubectl/calicoctl kubeconfig；API对象属于显式目标集群",
+      "identity": "context/资源名/标签选择器；host/pod/both分别检查",
+      "commands": "apply/delete/get执行器；首错非0且停止后续变更；空集合与枚举失败区分",
+      "paths": "备份与日志为执行端路径；容器不能隐式继承宿主机kubeconfig",
+      "cleanup": "只回收本轮命名策略/HEP/namespace；不得删除外来网络策略",
+      "evidence_scope": "TL-CAL-09当前真实API双执行器/三流量层删除、故障停止及重试通过"
+    },
+    "KubeBackupCli": {
+      "configuration": "kubeconfig/context、namespace、resources、selector、output/input目录与restore改写",
+      "namespace": "执行端Kubernetes Python客户端→指定API；不要求数据库文件挂载",
+      "identity": "显式context优先于in-cluster/current-context；未知context连接前拒绝",
+      "commands": "动态discovery/list/create/patch；备份归档及恢复清单",
+      "paths": "kubeconfig、tar及目录为执行端路径；配置和凭据不因容器默认值切换实例",
+      "cleanup": "仅所属namespace/CRD夹具；归档路径穿越与失败返回非0",
+      "evidence_scope": "TL-KB-03/04当前双API、六类资源及CRD/CR完整恢复、安全拒绝与重试通过"
+    },
+    "KubePublishCli": {
+      "configuration": "CLI/JSON镜像、目标host:port、runtime、namespace、tar/output路径",
+      "namespace": "执行端Docker与远端runtime分别命名；容器需要真实daemon/socket权限",
+      "identity": "镜像digest/ID、目标SSH身份、nerdctl namespace",
+      "commands": "pull/save→SSH传输→load；逐包load首个非0传播；delete显式确认",
+      "paths": "本地归档与远端本次临时目录分开；用户提供tar不作为自动清理对象",
+      "cleanup": "成功/失败均仅回收本次生成tar/远端会话目录，保留用户文件",
+      "evidence_scope": "TL-KP-03/05当前source/frozen × Docker/nerdctl真实SSH首错、重试ID及限定清理通过"
+    },
+    "KafkaCli": {
+      "configuration": "CLI/JSON→_get_opt；kafka_home、角色/端点、存储身份、SSH与认证",
+      "namespace": "本地服务部署或远端SSH bootstrap；冻结产物直接执行，源码用Python",
+      "identity": "cluster.id、node.id、controller/broker职责、目标主机与监听/advertised端点",
+      "commands": "Kafka4.3.1官方脚本与JVM；远端上传校验和路径quote",
+      "paths": "kafka_home/log_dirs/metadata_log_dir属于实际执行节点；不可借用调用端同名路径",
+      "cleanup": "仅工具所属服务/进程/会话文件；不把远端参数拒绝称为broker业务PASS",
+      "evidence_scope": "TL-KAF-06当前真实SSH交接；原业务证据仅签其原边界"
+    },
+    "MigrationCli": {
+      "configuration": "source/target、全局/任务/CLI选项→连接与dump/import",
+      "namespace": "PyMySQL与原生mysql/mysqldump均为TCP；localhost指定端口不能落到默认socket",
+      "identity": "源目标host/port/schema、版本升级策略；默认参数文件隔离",
+      "commands": "driver预检→mysqldump argv→mysql argv→校验/审计；子进程首错传播",
+      "paths": "临时cnf/dump/report属于执行端；工具容器的localhost指其自身网络空间",
+      "cleanup": "临时凭据/dump/子进程；rollback只允许删除本次专用目标",
+      "evidence_scope": "TL-MIG-03当前native及完整迁移、读回/回滚/重试/并发隔离通过"
+    },
+    "MyBackupCli": {
+      "configuration": "mysql_datadir/binlog_dir/binlog_index/socket/container/service/topology/defaults_file；压缩/线程/内存/DDL锁；配置注释说明默认、空值和执行者",
+      "namespace": "二进制实例宿主机、容器实例宿主机或独立工具容器；native路径与SQL一致，容器路径由真实bind mount核对",
+      "identity": "SQL实例UUID/版本/GTID/通道；Docker64hex容器ID及映射或真实systemd unit；systemd不代管容器；copy-back保留目标UUID及持久变量",
+      "commands": "full/incr显式路径与复制安全坐标→工作副本解压/prepare→真实停库/copy-back/SQL就绪→隔离PITR；native已停机入口核验真实mysqld/defaults文件，不自动重接复制",
+      "paths": "data/logs/tmp分挂；index写回server可见路径；数字UID/GID保留",
+      "cleanup": "raw备份不可消耗；copy-back失败回滚原目录/外置binlog；新历史须新full",
+      "evidence_scope": "TL-MBK-07/08双系统双版本host/container×GTID及09容器最终；10/11/12二进制单机/主从/异步双主×双系统双版本GTID OFF/ON及13二进制最终；父项pending不能外推PASS"
+    },
+    "MyLogiBackupCli": {
+      "configuration": "login-path中的显式IPv4/port、库选择、挂载目录、压缩、timer与native options",
+      "namespace": "执行端TCP客户端；备份文件系统必须真实挂载；timer仅面向真实systemd宿主机",
+      "identity": "login-path endpoint与输出子目录host_port一致；同代客户端版本检查",
+      "commands": "mysql预检→mysqldump→压缩归档回读/摘要→原子发布；不提供物理restore",
+      "paths": "MYLOGI_*为显式执行端路径；容器需受控login文件和独立备份挂载",
+      "cleanup": "实例锁、partial文件与子进程树；保留成功归档，timer卸载不删除历史备份",
+      "evidence_scope": "复用未变源码的逻辑恢复/真实timer及三压缩raw evidence；不外推容器内systemd"
+    },
+    "StarCli": {
+      "configuration": "CLI/JSON→角色、安装路径、FE/BE/CN端点与SSH",
+      "namespace": "实际部署端或SSH远端；source/frozen按真实运行形式交接",
+      "identity": "节点角色、FE成员与目标主机；端口探测不替代成员及业务查询",
+      "commands": "StarRocks3.5.7启停/成员SQL；bootstrap校验上传SHA并直接运行二进制",
+      "paths": "安装/数据/日志路径属于执行端；远端工作目录独立且quote",
+      "cleanup": "仅本轮所属进程/安装/上传目录；不重启外来服务",
+      "evidence_scope": "TL-SR-06当前真实SSH交接；原业务证据保持原身份"
+    },
+    "StarMigrtCli": {
+      "configuration": "dump/load；显式FE、账号、库表范围、SQL文件与TLS",
+      "namespace": "执行端PyMySQL连接；SQL文件属于执行端，可离线传输",
+      "identity": "固定StarRocks3.5.7；只读源、空目标、文件完整性和原生列核验",
+      "commands": "dump：流式SELECT→原子SQL；load：预检→顺序SQL→自动内容校验",
+      "paths": "单SQL或gzip文件0600；不覆盖；partial仅归本次导出所有",
+      "cleanup": "导出失败清理本次partial；导入首错停止且不自动删除已提交目标",
+      "evidence_scope": "TL-SD-01–07当前源码、冻结制品和真实双实例往返独立验收"
+    },
+    "StarRocksShells": {
+      "configuration": "RUSTFS_BUCKET/REGION/ACCESS_KEY/SECRET_KEY；Compose service DNS和固定端口",
+      "namespace": "init与healthcheck容器自身网络；FE9030、CN8040、RustFS9000",
+      "identity": "head-bucket实际S3 API；be_configs实际CN调度；不拿宿主机目录模拟S3",
+      "commands": "init-rustfs-cn.sh→aws；init-storage-volume-cn.sh→mysql TCP stdin；healthcheck-cn.sh→curl+mysql",
+      "paths": "AWS配置仅init容器；credentials通过环境/SQL stdin，不写命令参数",
+      "cleanup": "set -euo pipefail首错停止；IF NOT EXISTS不替代已有存储卷配置变更",
+      "evidence_scope": "三脚本未改；复用StarRocks Compose所属原始对象存储/调度/清理证据"
+    }
+  },
+  "inputs": {
+    "tools/NetCheckCli.py": "61424b22f0c019eb6fd9b3745fd5e908b9467ad9ac757fe1391f90e66e050b5d",
+    "tools/OvpnUserCli.py": "84e83fde697b18f6590a422891c644c6303da9b65d87ef6215dab6a9e23138b0",
+    "tools/k8stools/CalicoPolicyCli.py": "7acaa79eb525499674849aa0fd59cbb27691990bd218c4ce105c07546f8d3da7",
+    "tools/k8stools/KubeBackupCli.py": "1156f4efb24eadd8306c978e4a35e5361cbe2e6f7a871d2107d0b1c6e4022f9d",
+    "tools/k8stools/KubePublishCli.py": "7cc43658604505a24bb5aa9e95ad15c3d35d4ec73b27dd042adb311c64d7d109",
+    "tools/kafka/KafkaCli.py": "781010899313d5fa6210881aaa56aac2d0784026078e4b7d3feb54b222b00b42",
+    "tools/mysqltools/MigrationCli.py": "0c00135233ff14f747e4ab03ff4a9dd43f3613417d3b7ebc39b2a8f2de827f66",
+    "tools/mysqltools/MyBackupCli.py": "7ae02eb9ddc4d54462f0dc88018db18faaffad0220e9b455aa2a75fe8e0fed21",
+    "tools/mysqltools/MyLogiBackupCli.py": "3c2d7c22c6c832db3d31a845ea4983191e7396fa6da82c42c4fe598f2dbc0a18",
+    "tools/starrocks/StarCli.py": "30f4cab4d42afa251310ef0dd59aca6dd77afaabdd2ec36bdd9edc10d79507c0",
+    "tools/starrocks/starmigration/StarMigrtCli.py": "adfcfcd7f06d82fa4c999dbf7867cd9000316dcb189c1d3ff75759e3f37227de",
+    "tools/starrocks/starrocks-3.5.7/fe-cn/scripts/healthcheck-cn.sh": "bca0f1955c320d9a296f78d5d6ea04946e636e45a19058b67286798bc6182808",
+    "tools/starrocks/starrocks-3.5.7/fe-cn/scripts/init-rustfs-cn.sh": "92ec1d25a6a9fd54c4b1db707530ca55b4bd0559d535543b43c4a090a0357453",
+    "tools/starrocks/starrocks-3.5.7/fe-cn/scripts/init-storage-volume-cn.sh": "1d1aa652ce24f9284a64bc706d04852da198ae0fd6cbfffc9972733b626d4d0d",
+    "tests/README.md": "76e36e97d373a32bcf2f7c156c241fb473c8447da00a5cc2d389dd43fd5d87ba",
+    "logs/tools-audit-doc-contract-20261128.log": "89a6d7fc390fcd18059621026f5e1cd5c43c7b3c299d4586ac221aadab28e255",
+    "logs/tools-audit-doc-contract-20261128.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/tools-audit-doc-contract-20261128.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "tools-onefile.spec": "7bb77b6db73a9c015aff2156120d94f7dc67a7a30e037f105d452bcbded45956",
+    "tests/helpers/tools-production-audit.py": "924414dd5a9c23521c50f82bf459d93a7eaabd2b24868b5aae1b25c7cbf013dc",
+    "tests/run_tools_regression.sh": "b06abe571af8b54cc4fd3c740c744a72825a0cc2b9379bf0de62455b677275c1",
+    "tests/helpers/tools-parameter-audit.py": "cca791f5a16efb363ecef5e2be2c2aff3c93dd8e7d4b6364fb9e6b2c6bd33b21",
+    "tests/tools-parameter-coverage.json": "b87477a0d41e8c37eee07b50aadbe72772b31cd66ea189db01d75df12f51da8e",
+    "tests/unit/test_tools_production_audit_contract.py": "b5c6a7411592cf81e9f0584e4e3db6bd610bc4cfec9dabf6d724f1cd22bf5637",
+    "tests/unit/test_tools_execution_inventory_contract.py": "0a53452e02b48157769804355bbc52c42981005317c039ec0b4a48ceda74bf5a",
+    "tests/unit/test_tools_parameter_audit_contract.py": "b1b6b90a14115a0f5b6f13adc53ae54c73a516195a2014c114e1977a51492421",
+    "tests/unit/test_tools_help_contract.py": "31ebcc100216758f018deb221c693b6126bf626d6342cf2d6fc12acaeb6b70f6",
+    "tests/helpers/tools-supply-chain-audit.py": "a1903be5b024717689b7bc86e6e33c3c82a3b973cc3346737be12f4550915f3f",
+    "tests/helpers/tools-calico-lab.py": "b901582d11f9575030761d610c53a87c7fd258f80da0ff5a32270747e5776468",
+    "tests/helpers/tools-calico-delivery.py": "d7f2f0f34ff86a7f757cc038f9f02a6c636bb37b7b9599524b49341ea0c470fd",
+    "tests/helpers/calico-live-regression.sh": "998c62d603aea3637cee2a835a9f0820ca2d5920febf90b516d24a8fe3a857e4",
+    "logs/tools-parameters-preflight-current3-20261128.log": "8318c733695e955cf7a57ef169a2a7c1493e747ef129de3f192f9950d45c69e4",
+    "logs/tools-parameters-preflight-current3-20261128.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/tools-parameters-preflight-current3-20261128.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/tools-production-audit-qualified-20261128.log": "1aa6c247dbbbe9578080dbb854223521245b5c7be19bfb65fde6de915eeb5fdf",
+    "logs/tools-production-audit-qualified-20261128.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/tools-production-audit-qualified-20261128.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/tools-execution-inputs/77f172254a1e2b8850a4cff3f82b2958cdb3d189bb41c1c634c984a739b7bbc5.py": "77f172254a1e2b8850a4cff3f82b2958cdb3d189bb41c1c634c984a739b7bbc5",
+    "logs/tools-execution-inputs/75e0ff401dcf71a65b4f563ffa8eba7af95c543a4fa0f6590ace9c6a0ae32c75.py": "75e0ff401dcf71a65b4f563ffa8eba7af95c543a4fa0f6590ace9c6a0ae32c75"
+  },
+  "evidence": {
+    "tools-netcheck-parameters-20261128": "62a4397635fcb3aa782ecfd80add5120907a6ea42e8051704a805b01d3efe79a",
+    "tools-ovpn-parameters-20261128": "a43432fbb710be318cb325d78dc9bb9aaec5a81026745bb10d24f5d0758ff31e",
+    "tools-calico-api-parameters-20261128": "6f2d085c07b9fec1f565f2f78468bedaba2823eb429fd091ef14743757a7de6e",
+    "tools-calico-dataplane-parameters-20261128": "a9b77e7b1218ad83d1dcda3db6f7c393dfdd70fede337dceb0e649c01aaf671c",
+    "tools-kubebackup-parameters-20261128": "4c6a80f18e18d8b146541930dd45bccb4969056366216b558b3838e86edc598e",
+    "tools-publish-parameters-20261128": "d7317c511844fef9712208db2529933ea48e0f2b4e3ad76652f4fc7e2be1e89a",
+    "tools-kafka-parameters-20261128": "df731a5f29e883bb087dcc0b3d27fda3ae9b3c0ab04fbc9ef0f6957a6c2b1ed1",
+    "tools-migration-full-parameters-20261128": "1f53cc73445c76fc9ecce0a41631c533d537b14493736fd07027103ed6ca3320",
+    "tools-starcli-parameters-20261128": "96da6c20aa11fa990c617afd74759a7be8bbed3564afbd5c1f03520c49d7094d",
+    "starrocks-compose-3.5.7-cn": "c1747dc5e8b5f51c3c0c2374b6c721f4973c7c07b2ebf64a0932448a82b11f37",
+    "starmigrt-full": "4eb6ae9e514a2f67a22cb307081956119f008fb1d6a5c9c081e7f9529ce3b5b4",
+    "tools-cross-parameters-20261128": "ad8c694ecfe8de8f1fc977d1cf5a4040230228901f81af65abdec6b5775cfbed",
+    "tools-safety-parameters-20261128": "f532ddda31b696abbbec9dd6e5830ed7bc21ed918838b3cf798f88192bc63fee",
+    "tools-supply-chain-parameters-20261128": "c1aed112cea0ee9a187cdaba1b30ecac43933dceac31df3baf72f2d47f1566f2",
+    "mysql84-physical-requal-20261125": "4ac18413ebc987e7afb5656f70e05abfb88e0fbe94856a05b749098341c3dbc3",
+    "mysql-backup-portability-20261125": "a47adab063d6efcb0cce0cf9709f24ed1a1bd67bcfed3c8609f2209775039529"
+  },
+  "parameters": {
+    "NetCheckCli": 14,
+    "OvpnUserCli": 12,
+    "CalicoPolicyCli": 81,
+    "KubeBackupCli": 35,
+    "KubePublishCli": 17,
+    "KafkaCli": 82,
+    "MigrationCli": 29,
+    "MyBackupCli": 14,
+    "MyLogiBackupCli": 34,
+    "StarCli": 37,
+    "StarMigrtCli": 36
+  },
+  "mysql_evidence": {
+    "physical80": "tests/evidence/mysql80-physical-full.json",
+    "binary80": "tests/evidence/mysql80-binary-full.json",
+    "logical": "tests/evidence/mysql-logical-requal-20261126.json"
+  },
+  "verification": "原始日志/归档SHA、准确产品和执行器输入、durable双0、业务读回、限定清理；未变化的有效证据按原范围复用。",
+  "official_sources": "tests/tools-test-matrix.yaml:tool_catalog及各所属正式证据的固定版本官方文档和源码；Calico3.28.4源码快照另见数据面证据。",
+  "boundaries_of_claim": [
+    "参数覆盖指391个命令上下文，包含默认/非默认行为、错误拒绝和帮助动作；不是所有参数值的笛卡尔积。",
+    "物理MySQL主机为AMD64 Rocky8.10/9.8；未认证加密/keyring、Galera或ARM物理恢复。",
+    "仅租约测试环境；无生产连接或发布；不代替客户签收。"
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "date": "2026-11-28",
+  "result": "pass",
+  "rc": 0,
+  "scope": [
+    "TL-SR-01",
+    "TL-SR-02",
+    "TL-SR-03",
+    "TL-SR-04",
+    "TL-SR-05",
+    "TL-SR-06"
+  ],
+  "markers": [
+    "STARCLI_LIVE_REGRESSION_PASS",
+    "TOOLS_STARCLI_EXIT rc=0",
+    "TOOLS_CLEAN_VERIFY_PASS scope=starcli",
+    "REMOTE_BOOTSTRAP_HANDOFF_PASS tool=StarCli mode=source",
+    "REMOTE_BOOTSTRAP_HANDOFF_PASS tool=StarCli mode=frozen"
+  ],
+  "files": {
+    "tools/starrocks/StarCli.py": "30f4cab4d42afa251310ef0dd59aca6dd77afaabdd2ec36bdd9edc10d79507c0",
+    "dist/StarCli-rocky8": "dde9a8bc288a035e83221ab81dae971ab4037522a9be014652d4ca5142267d3c",
+    "dist/starcli-build.json": "c7ffadc60e5e42fe84b7cea57dc2377a219ca72870a1f5454cf5ac63d85d789a",
+    "tests/helpers/starcli-live-regression.sh": "6b76eaa501f06129f36c6498ac11cec8683bc3ce4d230c3b900c0a1efa947494",
+    "tests/unit/test_starcli_parameters.py": "baf3ab56bfb236509ee33e3497191e6387fcd15fc4975c339e79a384ed0e5574",
+    "tests/unit/test_tools_remote_parameters.py": "086052a26faac8236db3a0e4bba925431007aeba6f3a978974f18ca8273638c7",
+    "logs/tools-parameter-live-20261128/star.log": "6ff8b3f8a16fb9343c65f0e051ec13b00bbbcd2c9b8cac0679b1aaeea9b7e78d",
+    "logs/tools-parameter-live-20261128/star.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/tools-parameter-live-20261128/star.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/tools-parameter-live-20261128/remote.log": "3229a80b3dadfe120abaafc9ca39e62363f4694eaee7d1289bc1c3a21866846a",
+    "logs/tools-parameter-live-20261128/remote.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/tools-parameter-live-20261128/remote.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/tools-parameters-preflight-current3-20261128.log": "8318c733695e955cf7a57ef169a2a7c1493e747ef129de3f192f9950d45c69e4",
+    "logs/tools-parameters-preflight-current3-20261128.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/tools-parameters-preflight-current3-20261128.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+  },
+  "boundary": "StarRocks3.5.12 FE/BE/CN lifecycle, JSON/CLI precedence, idempotency, SQL status readback, invalid storage/coexistence refusal and cleanup. Source/frozen SSH transport separately verified; actual native-client argv and service helper/FQDN composition checked by deterministic contracts. No StarMigrt or production-cluster mutation.",
+  "qualification": {
+    "command": "bash tests/run_tools_regression.sh --preflight",
+    "log": "logs/tools-parameters-preflight-current3-20261128.log",
+    "tests": 298,
+    "scope": "当前本地合同资格；现场业务raw、退出码、源文件及归档均保持其实际执行身份。"
+  }
+}

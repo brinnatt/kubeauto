@@ -25,6 +25,20 @@ MYSQL_CLIENT_IMAGE=hub.talkedu.cn/kubeauto/mysql-8.4:8.4.4
 MYSQL_CLIENT_DIGEST=sha256:c26ba5d7363cdae3f0a31665b2ab9106397324dde56ed536364776901b924b83
 MYSQL_CLIENT_REF="${MYSQL_CLIENT_IMAGE%:*}@$MYSQL_CLIENT_DIGEST"
 
+ensure_mysql_client() {
+  local candidate
+  for candidate in "$MYSQL_CLIENT_REF" "docker.io/brinnatt/mysql-8.4@$MYSQL_CLIENT_DIGEST"; do
+    if docker image inspect "$candidate" >/dev/null 2>&1 ||
+       timeout --signal=TERM --kill-after=15s 20m docker pull "$candidate"; then
+      docker image inspect "$candidate" >/dev/null 2>&1 || return 1
+      MYSQL_CLIENT_REF="$candidate"
+      echo "STARCLI_MYSQL_CLIENT_READY digest=$MYSQL_CLIENT_DIGEST reference=$MYSQL_CLIENT_REF"
+      return 0
+    fi
+  done
+  return 1
+}
+
 fail() { echo "STARCLI_LIVE_FAIL: $*" >&2; exit 1; }
 run() { echo "+ $*"; "$@"; }
 run_tool() { echo "+ StarCli $*"; "$TOOL" "$@"; }
@@ -46,7 +60,7 @@ echo "$ARCHIVE_SHA256  $ARCHIVE" | sha256sum -c - >/dev/null || fail "archive SH
 command -v java >/dev/null 2>&1 || fail "Java 17 prerequisite missing"
 java -version 2>&1 | grep -Eq 'version "(17|[2-9][0-9])' || fail "Java 17+ prerequisite missing"
 command -v docker >/dev/null 2>&1 || fail "Docker prerequisite missing for isolated mysql client"
-run timeout --signal=TERM --kill-after=15s 20m docker pull "$MYSQL_CLIENT_IMAGE"
+ensure_mysql_client || fail "fixed mysql client image unavailable"
 docker image inspect "$MYSQL_CLIENT_REF" >/dev/null 2>&1 || fail "mysql client image digest mismatch"
 rm -rf "$ROOT"; mkdir -p "$ROOT"
 run python3 - "$ARCHIVE" "$ROOT" <<'PY'

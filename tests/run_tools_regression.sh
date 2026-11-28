@@ -11,7 +11,7 @@ BUILD_GATE="/tmp/kubeauto-tools-build-gate"
 BUILD_LOG="/tmp/kubeauto-tools-build-live.log"
 TOOLS=(CalicoPolicyCli NetCheckCli KafkaCli MyBackupCli MyLogiBackupCli MigrationCli StarCli KubeBackupCli KubePublishCli OvpnUserCli)
 if [[ -n "${TOOLS_SELECTED:-}" ]]; then
-  [[ ( "$TOOLS_SELECTED" == MyBackupCli,MyLogiBackupCli || "$TOOLS_SELECTED" == MyBackupCli || "$TOOLS_SELECTED" == MyLogiBackupCli || "$TOOLS_SELECTED" == MigrationCli || "$TOOLS_SELECTED" == MyBackupCli,MyLogiBackupCli,MigrationCli || "$TOOLS_SELECTED" == KubeBackupCli || "$TOOLS_SELECTED" == KubePublishCli || "$TOOLS_SELECTED" == MyBackupCli,KubeBackupCli,KubePublishCli || "$TOOLS_SELECTED" == KafkaCli,StarCli || "$TOOLS_SELECTED" == MyBackupCli,KafkaCli,MigrationCli,StarCli || "$TOOLS_SELECTED" == MyBackupCli,CalicoPolicyCli,OvpnUserCli || "$TOOLS_SELECTED" == CalicoPolicyCli,OvpnUserCli || "$TOOLS_SELECTED" == CalicoPolicyCli,NetCheckCli,KafkaCli,MyBackupCli,MyLogiBackupCli,MigrationCli,StarCli,KubeBackupCli,KubePublishCli,OvpnUserCli ) && "${1:---preflight}" == --build-only ]] || { echo TOOLS_SELECTED_SCOPE_REFUSED >&2; exit 2; }
+  [[ ( "$TOOLS_SELECTED" == MyBackupCli,MyLogiBackupCli || "$TOOLS_SELECTED" == MyBackupCli || "$TOOLS_SELECTED" == MyLogiBackupCli || "$TOOLS_SELECTED" == MigrationCli || "$TOOLS_SELECTED" == MyBackupCli,MyLogiBackupCli,MigrationCli || "$TOOLS_SELECTED" == KubeBackupCli || "$TOOLS_SELECTED" == KubePublishCli || "$TOOLS_SELECTED" == MyBackupCli,KubeBackupCli,KubePublishCli || "$TOOLS_SELECTED" == KafkaCli,StarCli || "$TOOLS_SELECTED" == MyBackupCli,KafkaCli,MigrationCli,StarCli || "$TOOLS_SELECTED" == MyBackupCli,CalicoPolicyCli,OvpnUserCli || "$TOOLS_SELECTED" == OvpnUserCli || "$TOOLS_SELECTED" == NetCheckCli || "$TOOLS_SELECTED" == CalicoPolicyCli || "$TOOLS_SELECTED" == CalicoPolicyCli,OvpnUserCli || "$TOOLS_SELECTED" == NetCheckCli,CalicoPolicyCli,OvpnUserCli,KubePublishCli,KafkaCli,MigrationCli,StarCli || "$TOOLS_SELECTED" == CalicoPolicyCli,NetCheckCli,KafkaCli,MyBackupCli,MyLogiBackupCli,MigrationCli,StarCli,KubeBackupCli,KubePublishCli,OvpnUserCli ) && "${1:---preflight}" == --build-only ]] || { echo TOOLS_SELECTED_SCOPE_REFUSED >&2; exit 2; }
   IFS=, read -r -a TOOLS <<<"$TOOLS_SELECTED"
 fi
 BUILD_SUDO="sudo"
@@ -36,6 +36,9 @@ usage() {
   --starmigrt-full       前置1–6通过后，迁移工具最终干净完整回归
   --status     输出当前 tools 矩阵状态
   --production-audit  只读核验11个CLI及3个shell的配置消费、执行边界和原始证据
+  --parameter-status  只读核验实际参数树及逐参数行为证据，列出缺口
+  --parameter-final  最终核验全部参数、所属业务、当前源码和限定清理证据
+  --parameter-contracts  运行 TOOLS_PARAMETER_TOOL 指定工具的隔离参数合同
   --publish-load-live  仅KubePublish源码/冻结程序的Docker及nerdctl真实SSH加载故障与重试
   --build-only 在固定 Rocky 8.10/glibc 2.28 环境构建并校验十个冻结工具
   --star-artifact-prepare 从官方固定 URL 原子准备并校验 StarRocks 3.5.12 归档
@@ -54,6 +57,15 @@ EOF
 }
 
 case "${1:---preflight}" in
+  --parameter-status)
+    "$PY" -B "$ROOT/tests/helpers/tools-parameter-audit.py" status
+    ;;
+  --parameter-final)
+    "$PY" -B "$ROOT/tests/helpers/tools-production-audit.py" parameter-final
+    ;;
+  --parameter-contracts)
+    "$PY" -B "$ROOT/tests/helpers/tools-parameter-audit.py" run --tool "${TOOLS_PARAMETER_TOOL:?指定独立工具名}"
+    ;;
   --starmigrt-preflight)
     "$PY" -B "$ROOT/tests/helpers/validate_tools_test_matrix.py" "$MATRIX"
     STARMIGRT_TEST_TMP="$(mktemp -d /tmp/kubeauto-starmigrt-contract.XXXXXX)"
@@ -92,12 +104,21 @@ case "${1:---preflight}" in
       tests.unit.test_tools_api_fixture_contract \
       tests.unit.test_publish_load_fixture_contract tests.unit.test_mysql80_recovery_contract \
       tests.unit.test_lab_cleanup_process_contract tests.unit.test_mysql_portability_contract \
-      tests.unit.test_tools_production_audit_contract \
+      tests.unit.test_tools_production_audit_contract tests.unit.test_tools_supply_chain_contract \
+      tests.unit.test_tools_parameter_audit_contract tests.unit.test_tools_remote_parameters \
+      tests.unit.test_netcheck_parameters tests.unit.test_ovpn_parameters tests.unit.test_calico_parameters \
+      tests.unit.test_kubebackup_parameters tests.unit.test_kubepublish_parameters tests.unit.test_kafka_parameters \
+      tests.unit.test_migration_parameters tests.unit.test_mylogi_parameters tests.unit.test_mysql_parameter_routing \
+      tests.unit.test_starcli_parameters tests.unit.test_kafka_fixture_contract tests.unit.test_tools_calico_lab_contract \
+      tests.unit.test_calico_stage_failure_contract \
       tests.unit.test_kube_backup_cli tests.unit.test_kube_publish_cli_contract tests.unit.test_migration_cli_contract -q
     echo TOOLS_PREFLIGHT_PASS
     ;;
-  --remote-bootstrap-live|--ovpn-config-live|--calico-delete-live|--execution-audit-preflight|--publish-load-live)
+  --remote-bootstrap-live|--ovpn-config-live|--calico-delete-live|--execution-audit-preflight|--publish-load-live|--netcheck-live)
     "$PY" -B "$ROOT/tests/helpers/tools-execution-boundary-live.py" "${1#--}"
+    ;;
+  --supply-chain-audit)
+    "$PY" -B "$ROOT/tests/helpers/tools-supply-chain-audit.py"
     ;;
   --production-audit)
     "$PY" -B "$ROOT/tests/helpers/tools-production-audit.py" audit
@@ -140,12 +161,12 @@ for tool in sys.argv[3:]:
 pathlib.Path(sys.argv[2]).write_text(json.dumps({name: hashlib.sha256((root/name).read_bytes()).hexdigest() for name in files}))
 PY_BUILD_INPUTS
     evidence_log="$ROOT/logs/tools-build-failure-$(date +%Y%m%d-%H%M%S).log"
-    cleanup() {
+    cleanup() (
       set +e
       ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8 "$BUILD_HOST" \
         "$BUILD_SUDO docker rm -f kubeauto-rocky8-tools-build >/dev/null 2>&1 || true; $BUILD_SUDO rm -rf '$BUILD_SOURCE' '$BUILD_OUTPUT' '$BUILD_LOG' '${BUILD_GATE}.pid' '${BUILD_GATE}.exit' '${BUILD_GATE}.finalized' /tmp/build-tools-rocky8.sh /tmp/run-durable-gate.sh" >/dev/null 2>&1
       rm -rf "$stage"
-    }
+    )
     trap cleanup EXIT INT TERM
     ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8 "$BUILD_HOST" \
       "$BUILD_SUDO rm -rf '$BUILD_SOURCE' '$BUILD_OUTPUT'; $BUILD_SUDO mkdir -p '$BUILD_SOURCE'; $BUILD_SUDO chown -R '$BUILD_USER':'$BUILD_USER' '$BUILD_SOURCE'"
@@ -197,10 +218,10 @@ selected = set(sys.argv[2].split(','))
 for name, expected in json.loads(pathlib.Path(sys.argv[3]).read_text()).items():
     if hashlib.sha256((root/name).read_bytes()).hexdigest() != expected:
         raise SystemExit('TOOLS_BUILD_INPUT_CHANGED '+name)
-for tool, proof_name in (('KubeBackupCli', 'kube-backup-build.json'), ('KubePublishCli', 'kube-publish-build.json'), ('KafkaCli', 'kafka-build.json'), ('StarCli', 'starcli-build.json'), ('CalicoPolicyCli', 'calico-build.json'), ('OvpnUserCli', 'ovpn-build.json')):
+for tool, proof_name in (('NetCheckCli', 'netcheck-build.json'), ('KubeBackupCli', 'kube-backup-build.json'), ('KubePublishCli', 'kube-publish-build.json'), ('KafkaCli', 'kafka-build.json'), ('StarCli', 'starcli-build.json'), ('CalicoPolicyCli', 'calico-build.json'), ('OvpnUserCli', 'ovpn-build.json')):
     if tool in selected:
         directory = {'KafkaCli': 'kafka', 'StarCli': 'starrocks'}.get(tool, 'k8stools')
-        files = [('tools/OvpnUserCli.py' if tool == 'OvpnUserCli' else 'tools/' + directory + '/' + tool + '.py'), 'tools-onefile.spec', 'tests/helpers/build-tools-rocky8.sh']
+        files = [('tools/'+tool+'.py' if tool in ('OvpnUserCli','NetCheckCli') else 'tools/' + directory + '/' + tool + '.py'), 'tools-onefile.spec', 'tests/helpers/build-tools-rocky8.sh']
         proof = {'inputs': {name: hashlib.sha256((root/name).read_bytes()).hexdigest() for name in files},
                  'artifacts': {tool: hashlib.sha256((root/'dist'/(tool+'-rocky8')).read_bytes()).hexdigest()},
                  'runtime': 'Rocky 8.10; glibc 2.28; Python 3.12; PyInstaller 6.16.0',
@@ -371,26 +392,26 @@ PY_ARTIFACT_PROOF
   --cross-live)
     "$PY" "$ROOT/tests/helpers/validate_tools_test_matrix.py" "$MATRIX"
     bash -n "$ROOT/tests/helpers/tools-cross-host-regression.sh"
-    cross_host=root@192.168.47.131
-    cross_labels=(rocky-8.10 debian-12 ubuntu-24.04)
+    cross_host=root@192.168.47.138
+    cross_labels=(ubuntu-24.04 rocky-8.10 debian-12)
     cross_images=(
+      rockylinux/rockylinux@sha256:e8a49c5403b687db05d4d67333fa45808fbe74f36e683cec7abb1f7d0f2338c6
       swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/library/debian@sha256:9df39a1d5bfac0249f0eef61a3ff74fcf7576c5947f23127c57e92267ad98ced
-      swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/library/ubuntu@sha256:b0c08a4b639b5fca9aa4943ecec614fe241a0cebd1a7b460093ccaeae70df698
     )
     cross_root=/tmp/kubeauto-tools-cross-live
     gate_log="$ROOT/logs/tools-cross-live-$(date +%Y%m%d-%H%M%S).log"
     mkdir -p "$ROOT/logs"
-    cleanup_cross_live() {
+    cleanup_cross_live() (
       set +e
       ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8 "$cross_host" \
-        "docker rm -f kubeauto-tools-cross-debian-12 kubeauto-tools-cross-ubuntu-24-04 >/dev/null 2>&1 || true; rm -rf '$cross_root'; rm -f /tmp/tools-cross-host-regression.sh /tmp/run-durable-gate.sh /tmp/tools-cross-debian-pull.log /tmp/tools-cross-ubuntu-pull.log /tmp/kubeauto-tools-cross-*.pid /tmp/kubeauto-tools-cross-*.exit /tmp/kubeauto-tools-cross-*.finalized /tmp/kubeauto-tools-cross-*.log" >/dev/null 2>&1 || true
-    }
+        "docker rm -f kubeauto-tools-cross-debian-12 kubeauto-tools-cross-rocky-8-10 >/dev/null 2>&1 || true; rm -rf '$cross_root'; rm -f /tmp/tools-cross-host-regression.sh /tmp/run-durable-gate.sh /tmp/tools-cross-debian-pull.log /tmp/tools-cross-ubuntu-pull.log /tmp/kubeauto-tools-cross-*.pid /tmp/kubeauto-tools-cross-*.exit /tmp/kubeauto-tools-cross-*.finalized /tmp/kubeauto-tools-cross-*.log" >/dev/null 2>&1 || true
+    )
     verify_cross_clean() {
       ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8 "$cross_host" \
-        "test ! -e '$cross_root'; test ! -e /tmp/tools-cross-host-regression.sh; test ! -e /tmp/run-durable-gate.sh; ! docker ps -a --format '{{.Names}}' | grep -Eq '^kubeauto-tools-cross-(debian-12|ubuntu-24-04)$'; ! compgen -G '/tmp/kubeauto-tools-cross-*.*' >/dev/null"
+        "test ! -e '$cross_root'; test ! -e /tmp/tools-cross-host-regression.sh; test ! -e /tmp/run-durable-gate.sh; ! docker ps -a --format '{{.Names}}' | grep -Eq '^kubeauto-tools-cross-(debian-12|rocky-8-10)$'; ! compgen -G '/tmp/kubeauto-tools-cross-*.*' >/dev/null"
     }
     ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8 "$cross_host" \
-      "docker info >/dev/null; test \"\$(docker info --format '{{.DockerRootDir}}')\" = /data/docker; test \"\$(findmnt -T /data -rn -o TARGET)\" = /data"
+      "docker info >/dev/null; test \"\$(docker info --format '{{.DockerRootDir}}')\" = /data/docker; test \"\$(df -Pk /data/docker | awk 'NR==2{print \$4}')\" -ge 4194304"
     trap cleanup_cross_live EXIT
     trap 'exit 130' INT
     trap 'exit 143' TERM
@@ -412,11 +433,11 @@ PY_ARTIFACT_PROOF
       "chmod 0755 '$cross_root'/bin/* /tmp/tools-cross-host-regression.sh /tmp/run-durable-gate.sh"
     for image in "${cross_images[@]}"; do
       ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8 "$cross_host" \
-        "docker pull '$image' >/dev/null; docker image inspect '$image' --format '{{json .RepoDigests}}' | grep -Fq '${image##*@}'"
+        "if ! docker image inspect '$image' >/dev/null 2>&1; then timeout 20m docker pull '$image' >/dev/null; fi; docker image inspect '$image' --format '{{json .RepoDigests}}' | grep -Fq '${image##*@}'"
     done
-    state=/tmp/kubeauto-tools-cross-rocky-8.10
+    state=/tmp/kubeauto-tools-cross-ubuntu-24.04
     ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8 "$cross_host" \
-      "nohup env TOOLS_CROSS_ROOT='$cross_root/bin' TOOLS_CROSS_WORK='$cross_root/work-rocky-8.10' TOOLS_CROSS_HOST_LABEL=rocky-8.10 bash /tmp/run-durable-gate.sh '$state' TOOLS_CROSS_EXIT bash /tmp/tools-cross-host-regression.sh >'$state'.log 2>&1 </dev/null &"
+      "nohup env TOOLS_CROSS_ROOT='$cross_root/bin' TOOLS_CROSS_WORK='$cross_root/work-ubuntu-24.04' TOOLS_CROSS_HOST_LABEL=ubuntu-24.04 bash /tmp/run-durable-gate.sh '$state' TOOLS_CROSS_EXIT bash /tmp/tools-cross-host-regression.sh >'$state'.log 2>&1 </dev/null &"
     for i in "${!cross_images[@]}"; do
       label="${cross_labels[$((i + 1))]}"; image="${cross_images[$i]}"; state="/tmp/kubeauto-tools-cross-$label"; container="kubeauto-tools-cross-${label//./-}"
       ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8 "$cross_host" \
@@ -454,48 +475,13 @@ PY_ARTIFACT_PROOF
     ! grep -Eq 'TOOLS_CROSS_EXIT rc=[^0]' "$gate_log"
     cleanup_cross_live
     verify_cross_clean
-    echo "TOOLS_CROSS_LIVE_REGRESSION_PASS host=131 runtimes=rocky-8.10,debian-12,ubuntu-24.04 tools=${#TOOLS[@]}" | tee -a "$gate_log"
-    echo "TOOLS_CLEAN_VERIFY_PASS scope=cross-tools host=131" | tee -a "$gate_log"
+    echo "TOOLS_CROSS_LIVE_REGRESSION_PASS host=138 runtimes=rocky-8.10,debian-12,ubuntu-24.04 tools=${#TOOLS[@]}" | tee -a "$gate_log"
+    echo "TOOLS_CLEAN_VERIFY_PASS scope=cross-tools host=138" | tee -a "$gate_log"
     ;;
-  --calico-live)
-    CALICO_HOST="${CALICO_TEST_HOST:-root@192.168.122.243}"
-    CALICO_CONTEXT="${CALICO_TEST_CONTEXT:-context-cluster1}"
-    CALICO_DENY_HOST="${CALICO_TEST_DENY_HOST:-192.168.122.193}"
-    [[ "$CALICO_HOST" == root@192.168.122.243 ]] || { echo "CALICO_LIVE_BLOCKED_UNAUTHORIZED_HOST" >&2; exit 2; }
-    [[ "$CALICO_DENY_HOST" == 192.168.122.193 ]] || { echo "CALICO_LIVE_BLOCKED_UNAUTHORIZED_DENY_SOURCE" >&2; exit 2; }
-    "$PY" "$ROOT/tests/helpers/validate_tools_test_matrix.py" "$MATRIX"
-    lock="${TMPDIR:-/tmp}/kubeauto-tools-calico-run.lock"
-    exec 9>"$lock"
-    flock -n 9 || { echo "CALICO_LIVE_BLOCKED: another tools run owns $lock" >&2; exit 2; }
-    state="${TMPDIR:-/tmp}/kubeauto-tools-calico-live"
-    gate_log="$ROOT/logs/tools-calico-live-$(date +%Y%m%d-%H%M%S).log"
-    stage="$(mktemp -d /tmp/kubeauto-calico-live.XXXXXX)"
-    cleanup_live() {
-      set +e
-      rm -rf "$stage"
-      ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8 "$CALICO_HOST" \
-        "rm -f /tmp/CalicoPolicyCli.py /tmp/calico-live-regression.sh" >/dev/null 2>&1
-    }
-    trap cleanup_live EXIT INT TERM
-    scp -q -o BatchMode=yes -o StrictHostKeyChecking=no "$ROOT/tools/k8stools/CalicoPolicyCli.py" \
-      "$CALICO_HOST:/tmp/CalicoPolicyCli.py"
-    scp -q -o BatchMode=yes -o StrictHostKeyChecking=no "$ROOT/tests/helpers/calico-live-regression.sh" \
-      "$CALICO_HOST:/tmp/calico-live-regression.sh"
-    rm -f "${state}.pid" "${state}.exit" "${state}.finalized"
-    set +e
-    bash "$ROOT/tests/helpers/run-durable-gate.sh" "$state" TOOLS_CALICO_EXIT \
-      ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8 "$CALICO_HOST" \
-      "chmod 0755 /tmp/calico-live-regression.sh; CALICO_TOOL=/tmp/CalicoPolicyCli.py CALICO_CONTEXT='$CALICO_CONTEXT' CALICO_DENY_HOST='$CALICO_DENY_HOST' bash /tmp/calico-live-regression.sh" \
-      2>&1 | tee "$gate_log"
-    gate_rc=${PIPESTATUS[0]}
-    set -e
-    test "$gate_rc" -eq 0
-    test "$(cat "${state}.exit")" = 0
-    test "$(cat "${state}.finalized")" = 0
-    grep -q '^CALICO_LIVE_REGRESSION_PASS ' "$gate_log"
-    ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8 "$CALICO_HOST" \
-      "! calicoctl get globalnetworkpolicy kubeauto-delivery-cal-host-39091 >/dev/null 2>&1; ! calicoctl get globalnetworkpolicy kubeauto-delivery-cal-both-39093 >/dev/null 2>&1; ! kubectl get namespace kubeauto-tools-calico-live >/dev/null 2>&1; for p in 39091 39092 39093; do ! ss -ltn 'sport = :'\$p | tail -n +2 | grep -q .; done"
-    echo "TOOLS_CLEAN_VERIFY_PASS scope=calico host=$CALICO_HOST"
+  --calico-stage|--calico-live)
+    "$PY" -B "$ROOT/tests/helpers/validate_tools_test_matrix.py" "$MATRIX"
+    bash -n "$ROOT/tests/helpers/calico-live-regression.sh"
+    "$PY" -B "$ROOT/tests/helpers/tools-calico-delivery.py" "${1#--calico-}"
     ;;
   --kube-backup-live)
     KUBE_BACKUP_HOST="${KUBE_BACKUP_TEST_HOST:-root@192.168.122.243}"
@@ -524,11 +510,8 @@ PY_ARTIFACT_PROOF
     ;;
   --kafka-live)
     KAFKA_HOST="${KAFKA_TEST_HOST:-root@192.168.122.2}"
-    KAFKA_MULTI_NODES=(192.168.122.217 192.168.122.246 192.168.122.193 192.168.122.210 192.168.122.216)
+    KAFKA_MULTI_NODES=(192.168.122.243 192.168.122.246 192.168.122.193 192.168.122.210 192.168.122.216)
     KAFKA_MULTI_ROOT=/tmp/kafka-cli-multi
-    KAFKA_FIXTURE_REPOSITORY=quay.io/strimzi/kafka
-    KAFKA_FIXTURE_IMAGE=quay.io/strimzi/kafka:1.2.0-kafka-4.3.1
-    KAFKA_FIXTURE_DIGEST=sha256:fef34b5438e8556cc08c01f3e254e47346f061b53a4e38d4289853777e0ea7f1
     [[ "$KAFKA_HOST" == root@192.168.122.2 ]] || { echo "KAFKA_LIVE_BLOCKED_UNAUTHORIZED_HOST" >&2; exit 2; }
     "$PY" "$ROOT/tests/helpers/validate_tools_test_matrix.py" "$MATRIX"
     lock="${TMPDIR:-/tmp}/kubeauto-tools-kafka-run.lock"; exec 9>"$lock"
@@ -540,7 +523,7 @@ PY_ARTIFACT_PROOF
     cleanup_kafka_live() (
       set +e
       ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8 "$KAFKA_HOST" \
-        "pkill -f '[k]afka.Kafka.*kafka-cli-' || true; rm -f /tmp/KafkaCli.py /tmp/kafka-cli-live-regression.sh /tmp/kafka-cli-multinode-regression.sh /tmp/run-durable-gate.sh '$remote_log' '${state}.pid' '${state}.exit' '${state}.finalized' /tmp/kafka-cli-multi-broker-down.out; rm -rf /tmp/kafka-cli-live '$KAFKA_MULTI_ROOT'"
+        "pkill -f '[k]afka.Kafka.*kafka-cli-' || true; rm -f /tmp/KafkaCli.py /tmp/kafka-fixture-prepare.py /tmp/kafka-cli-live-regression.sh /tmp/kafka-cli-multinode-regression.sh /tmp/run-durable-gate.sh '$remote_log' '${state}.pid' '${state}.exit' '${state}.finalized' /tmp/kafka-cli-multi-broker-down.out; rm -rf /tmp/kafka-cli-live '$KAFKA_MULTI_ROOT'"
       if [[ "$kafka_leases_ready" == yes ]]; then
         for node in "${KAFKA_MULTI_NODES[@]}"; do
           ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=8 "root@$node" \
@@ -551,12 +534,12 @@ PY_ARTIFACT_PROOF
     trap cleanup_kafka_live EXIT INT TERM
     echo "KAFKA_LIVE_STAGE control-ssh-bootstrap"
     bash "$ROOT/tests/helpers/lab-control-ssh-bootstrap.sh" "$KAFKA_HOST" \
-      root@192.168.122.217 root@192.168.122.246 root@192.168.122.193 \
+      root@192.168.122.243 root@192.168.122.246 root@192.168.122.193 \
       root@192.168.122.210 root@192.168.122.216
     echo "KAFKA_LIVE_STAGE pre-clean"
     cleanup_kafka_live
     ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8 "$KAFKA_HOST" \
-      "! pgrep -af '[k]afka.Kafka.*kafka-cli-'; ! test -e /tmp/KafkaCli.py; ! test -e /tmp/kafka-cli-live-regression.sh; ! test -e /tmp/kafka-cli-multinode-regression.sh; ! test -e /tmp/run-durable-gate.sh; ! test -e '$remote_log'; ! test -e '${state}.pid'; ! test -e '${state}.exit'; ! test -e '${state}.finalized'; ! test -e /tmp/kafka-cli-multi-broker-down.out; ! test -d /tmp/kafka-cli-live; ! test -d '$KAFKA_MULTI_ROOT'; ! find /tmp -maxdepth 1 -type f -name 'kafkacli-*.client.properties' -print -quit | grep -q ."
+      "! pgrep -af '[k]afka.Kafka.*kafka-cli-'; ! test -e /tmp/KafkaCli.py; ! test -e /tmp/kafka-fixture-prepare.py; ! test -e /tmp/kafka-cli-live-regression.sh; ! test -e /tmp/kafka-cli-multinode-regression.sh; ! test -e /tmp/run-durable-gate.sh; ! test -e '$remote_log'; ! test -e '${state}.pid'; ! test -e '${state}.exit'; ! test -e '${state}.finalized'; ! test -e /tmp/kafka-cli-multi-broker-down.out; ! test -d /tmp/kafka-cli-live; ! test -d '$KAFKA_MULTI_ROOT'; ! find /tmp -maxdepth 1 -type f -name 'kafkacli-*.client.properties' -print -quit | grep -q ."
     for node in "${KAFKA_MULTI_NODES[@]}"; do
       ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=8 "root@$node" \
         "! pgrep -af '[k]afka.Kafka.*kafka-cli-multi'; ! test -d '$KAFKA_MULTI_ROOT'; ! find /tmp -maxdepth 1 -type f -name 'kafkacli-*.client.properties' -print -quit | grep -q ."
@@ -570,10 +553,8 @@ PY_ARTIFACT_PROOF
     done
     kafka_leases_ready=yes
     echo "KAFKA_LIVE_STAGE control-fixture-extract"
-    scp -q -o BatchMode=yes -o StrictHostKeyChecking=no "$ROOT/tools/kafka/KafkaCli.py" "$ROOT/tests/helpers/kafka-cli-live-regression.sh" "$ROOT/tests/helpers/kafka-cli-multinode-regression.sh" "$ROOT/tests/helpers/run-durable-gate.sh" "$KAFKA_HOST:/tmp/"
-    ssh -o BatchMode=yes -o StrictHostKeyChecking=no "$KAFKA_HOST" "set -euo pipefail; command -v python3 >/dev/null; if ! command -v java >/dev/null 2>&1; then dnf install -y java-17-openjdk-headless || exit 42; fi; java -version; rm -rf /tmp/kafka-cli-live '$KAFKA_MULTI_ROOT'; mkdir -p '$KAFKA_MULTI_ROOT'; cid=\$(docker create '$KAFKA_FIXTURE_IMAGE'); docker cp \"\$cid:/opt/kafka\" '$KAFKA_MULTI_ROOT/kafka'; docker rm \"\$cid\" >/dev/null; cd '$KAFKA_MULTI_ROOT'; python3 -m tarfile -c kafka.tgz kafka; test -x '$KAFKA_MULTI_ROOT/kafka/bin/kafka-storage.sh'; set +e; runtime_output=\$('$KAFKA_MULTI_ROOT/kafka/bin/kafka-storage.sh' random-uuid 2>&1); runtime_rc=\$?; set -e; printf 'KAFKA_FIXTURE_RUNTIME_RC rc=%s\\n%s\\n' \"\$runtime_rc\" \"\$runtime_output\"; test \"\$runtime_rc\" -eq 0; grep -Eq '^[A-Za-z0-9_-]{20,30}$' <<<\"\$runtime_output\"; echo KAFKA_FIXTURE_RUNTIME_PASS"
-    fixture_repo_digests="$(ssh -o BatchMode=yes -o StrictHostKeyChecking=no "$KAFKA_HOST" "docker image inspect '$KAFKA_FIXTURE_IMAGE' --format '{{json .RepoDigests}}'")"
-    [[ "$fixture_repo_digests" == *"$KAFKA_FIXTURE_REPOSITORY@$KAFKA_FIXTURE_DIGEST"* ]] || { echo "KAFKA_FIXTURE_DIGEST_MISMATCH" >&2; exit 3; }
+    scp -q -o BatchMode=yes -o StrictHostKeyChecking=no "$ROOT/tools/kafka/KafkaCli.py" "$ROOT/tests/helpers/kafka-fixture-prepare.py" "$ROOT/tests/helpers/kafka-cli-live-regression.sh" "$ROOT/tests/helpers/kafka-cli-multinode-regression.sh" "$ROOT/tests/helpers/run-durable-gate.sh" "$KAFKA_HOST:/tmp/"
+    ssh -o BatchMode=yes -o StrictHostKeyChecking=no "$KAFKA_HOST" "set -euo pipefail; command -v python3 >/dev/null; if ! command -v java >/dev/null 2>&1; then dnf install -y java-17-openjdk-headless || exit 42; fi; java -version; rm -rf /tmp/kafka-cli-live '$KAFKA_MULTI_ROOT'; mkdir -p '$KAFKA_MULTI_ROOT'; python3 /tmp/kafka-fixture-prepare.py '$KAFKA_MULTI_ROOT'; cd '$KAFKA_MULTI_ROOT'; python3 -m tarfile -c kafka.tgz kafka; test -x '$KAFKA_MULTI_ROOT/kafka/bin/kafka-storage.sh'; set +e; runtime_output=\$('$KAFKA_MULTI_ROOT/kafka/bin/kafka-storage.sh' random-uuid 2>&1); runtime_rc=\$?; set -e; printf 'KAFKA_FIXTURE_RUNTIME_RC rc=%s\\n%s\\n' \"\$runtime_rc\" \"\$runtime_output\"; test \"\$runtime_rc\" -eq 0; grep -Eq '^[A-Za-z0-9_-]{20,30}$' <<<\"\$runtime_output\"; echo KAFKA_FIXTURE_RUNTIME_PASS"
     echo "KAFKA_LIVE_STAGE node-fixture-distribute"
     for node in "${KAFKA_MULTI_NODES[@]}"; do
       echo "KAFKA_LIVE_STAGE node-fixture-copy host=$node"
@@ -587,7 +568,7 @@ PY_ARTIFACT_PROOF
     echo "KAFKA_LIVE_STAGE durable-follow"
     while ! ssh -o BatchMode=yes -o StrictHostKeyChecking=no "$KAFKA_HOST" "test -s '${state}.exit'" >/dev/null 2>&1; do ssh -o BatchMode=yes -o StrictHostKeyChecking=no "$KAFKA_HOST" "tail -n 20 '$remote_log'" || true; sleep 10; done
     {
-      echo "KAFKA_FIXTURE_IMAGE image=$KAFKA_FIXTURE_IMAGE digest=$KAFKA_FIXTURE_DIGEST"
+      echo "KAFKA_FIXTURE_ARCHIVE version=4.3.1 checksum=Apache-SHA512"
       ssh -o BatchMode=yes -o StrictHostKeyChecking=no "$KAFKA_HOST" "cat '$remote_log'"
     } | tee "$gate_log"
     gate_rc="$(ssh -o BatchMode=yes -o StrictHostKeyChecking=no "$KAFKA_HOST" "cat '${state}.exit'")"; test "$gate_rc" -eq 0
@@ -596,7 +577,7 @@ PY_ARTIFACT_PROOF
     grep -q '^KAFKA_CLI_LIVE_REGRESSION_PASS ' "$gate_log"
     grep -q '^KAFKA_CLI_MULTINODE_REGRESSION_PASS ' "$gate_log"
     cleanup_kafka_live
-    ssh -o BatchMode=yes -o StrictHostKeyChecking=no "$KAFKA_HOST" "! pgrep -af '[k]afka.Kafka.*kafka-cli-'; ! test -e /tmp/KafkaCli.py; ! test -e /tmp/kafka-cli-live-regression.sh; ! test -e /tmp/kafka-cli-multinode-regression.sh; ! test -e /tmp/run-durable-gate.sh; ! test -e '$remote_log'; ! test -e '${state}.pid'; ! test -e '${state}.exit'; ! test -e '${state}.finalized'; ! test -e /tmp/kafka-cli-multi-broker-down.out; ! test -d /tmp/kafka-cli-live; ! test -d '$KAFKA_MULTI_ROOT'; ! find /tmp -maxdepth 1 -type f -name 'kafkacli-*.client.properties' -print -quit | grep -q ."
+    ssh -o BatchMode=yes -o StrictHostKeyChecking=no "$KAFKA_HOST" "! pgrep -af '[k]afka.Kafka.*kafka-cli-'; ! test -e /tmp/KafkaCli.py; ! test -e /tmp/kafka-fixture-prepare.py; ! test -e /tmp/kafka-cli-live-regression.sh; ! test -e /tmp/kafka-cli-multinode-regression.sh; ! test -e /tmp/run-durable-gate.sh; ! test -e '$remote_log'; ! test -e '${state}.pid'; ! test -e '${state}.exit'; ! test -e '${state}.finalized'; ! test -e /tmp/kafka-cli-multi-broker-down.out; ! test -d /tmp/kafka-cli-live; ! test -d '$KAFKA_MULTI_ROOT'; ! find /tmp -maxdepth 1 -type f -name 'kafkacli-*.client.properties' -print -quit | grep -q ."
     for node in "${KAFKA_MULTI_NODES[@]}"; do
       ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=8 "root@$node" \
         "! pgrep -af '[k]afka.Kafka.*kafka-cli-multi'; ! test -d '$KAFKA_MULTI_ROOT'; ! find /tmp -maxdepth 1 -type f -name 'kafkacli-*.client.properties' -print -quit | grep -q ."
@@ -615,11 +596,11 @@ PY_ARTIFACT_PROOF
     state="/tmp/kubeauto-tools-kube-publish-live"
     remote_log="/tmp/kubeauto-tools-kube-publish-live.log"
     gate_log="$ROOT/logs/tools-kube-publish-live-$(date +%Y%m%d-%H%M%S).log"
-    cleanup_publish_live() {
+    cleanup_publish_live() (
       set +e
       ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8 "$KUBE_PUBLISH_HOST" \
         "rm -f /tmp/KubePublishCli.py /tmp/kube-publish-live-regression.sh /tmp/run-durable-gate.sh '$remote_log' '${state}.pid' '${state}.exit' '${state}.finalized'" >/dev/null 2>&1
-    }
+    )
     trap cleanup_publish_live EXIT INT TERM
     scp -q -o BatchMode=yes -o StrictHostKeyChecking=no "$ROOT/tools/k8stools/KubePublishCli.py" \
       "$ROOT/tests/helpers/kube-publish-live-regression.sh" "$ROOT/tests/helpers/run-durable-gate.sh" "$KUBE_PUBLISH_HOST:/tmp/"
@@ -659,7 +640,7 @@ required = {'TL-MIG-01', 'TL-MIG-02', 'TL-MIG-04', 'TL-MIG-05'} | {'TL-X-0'+str(
 refused = [c['id'] for c in matrix['test_cases'] if c['id'] in required and c['status'] != 'pass']
 if refused:
     raise SystemExit('MIGRATION_FINAL_PREREQUISITES_REFUSED '+','.join(refused))
-proof = json.loads((root/'tests/evidence/tools-migration-native-20261125.json').read_text())
+proof = json.loads((root/'tests/evidence/tools-migration-native-20261128.json').read_text())
 for name, digest in proof['inputs'].items():
     if hashlib.sha256((root/name).read_bytes()).hexdigest() != digest:
         raise SystemExit('MIGRATION_FINAL_STALE_INPUT '+name)
@@ -736,11 +717,11 @@ PYMIGBUILD
     state="${TMPDIR:-/tmp}/kubeauto-tools-mybackup-live"
     gate_log="$ROOT/logs/tools-mybackup-live-$(date +%Y%m%d-%H%M%S).log"
     remote_log=/tmp/tools-mybackup-live.log
-    cleanup_mybackup_live() {
+    cleanup_mybackup_live() (
       set +e
       ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8 "$MYBACKUP_HOST" \
         "docker rm -f tools-mbk-mysql >/dev/null 2>&1 || true; rm -rf /tmp/tools-mbk-live /tmp/MyBackupCli-tools-live.py /tmp/mybackup-cli-live-regression.sh /tmp/run-durable-gate.sh '$remote_log' /tmp/mybackup-9x.out /tmp/tools-mybackup-file.log" >/dev/null 2>&1 || true
-    }
+    )
     trap cleanup_mybackup_live EXIT INT TERM
     scp -q -o BatchMode=yes -o StrictHostKeyChecking=no "$ROOT/tools/mysqltools/MyBackupCli.py" "$ROOT/tests/helpers/mybackup-cli-live-regression.sh" "$ROOT/tests/helpers/run-durable-gate.sh" "$MYBACKUP_HOST:/tmp/"
     ssh -o BatchMode=yes -o StrictHostKeyChecking=no "$MYBACKUP_HOST" "mv /tmp/MyBackupCli.py /tmp/MyBackupCli-tools-live.py"
@@ -777,14 +758,14 @@ PYMIGBUILD
     compressions=(gz bz2 xz gz)
     gate_log="$ROOT/logs/tools-mylogi-backup-live-$(date +%Y%m%d-%H%M%S).log"
     mkdir -p "$ROOT/logs"
-    cleanup_mylogi_live() {
+    cleanup_mylogi_live() (
       set +e
       for i in "${!hosts[@]}"; do
         host="${hosts[$i]}"; version="${versions[$i]}"; state="/tmp/kubeauto-tools-mylogi-${version}"
         ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8 "$host" \
           "docker rm -f mylogi-${version//./-}-signal mylogi-${version//./-}-restore mylogi-${version//./-}-tool mylogi-${version//./-}-db >/dev/null 2>&1 || true; rm -rf /data/kubeauto-tools/mylogi-backup-${version} /tmp/MyLogiBackupCli /tmp/mylogi-backup-live-regression.sh /tmp/run-durable-gate.sh /tmp/mylogi-${version}-pull.out /tmp/mylogi-${version}-negative.out '$state'.pid '$state'.exit '$state'.finalized '$state'.log" >/dev/null 2>&1 || true
       done
-    }
+    )
     verify_mylogi_clean() {
       for i in "${!hosts[@]}"; do
         host="${hosts[$i]}"; version="${versions[$i]}"; state="/tmp/kubeauto-tools-mylogi-${version}"
@@ -883,11 +864,11 @@ PYMIGBUILD
       ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8 "$STAR_HOST" \
         "for unit in starrocks-cn starrocks-be starrocks-fe; do test ! -e /etc/systemd/system/\$unit.service || exit 1; ! systemctl is-active --quiet \$unit || exit 1; done; test ! -e /tmp/starcli-live; ! docker ps -a --format '{{.Names}}' | grep -q '^starcli-mysql-client-'; ps -eo comm=,args= | awk '\$1 == \"java\" || \$1 == \"starrocks_be\" { if (index(\$0, \"/tmp/starcli-live/\")) found=1 } END { exit found }'"
     }
-    cleanup_star_live() {
+    cleanup_star_live() (
       set +e
       ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8 "$STAR_HOST" \
         "for unit in starrocks-cn starrocks-be starrocks-fe; do systemctl disable --now \$unit >/dev/null 2>&1 || true; systemctl kill --kill-who=all \$unit >/dev/null 2>&1 || true; rm -f /etc/systemd/system/\$unit.service; done; docker ps -aq --filter 'name=^/starcli-mysql-client-' | xargs -r docker rm -f >/dev/null 2>&1 || true; systemctl daemon-reload >/dev/null 2>&1 || true; rm -rf /tmp/starcli-live /tmp/StarCli.py /tmp/StarCli-tools-live.py /tmp/starcli-live-regression.sh /tmp/run-durable-gate.sh '$remote_log' '${state}.pid' '${state}.exit' '${state}.finalized'" >/dev/null 2>&1 || true
-    }
+    )
     trap cleanup_star_live EXIT INT TERM
     echo "STARCLI_LIVE_STAGE pre-clean"
     verify_star_live_clean

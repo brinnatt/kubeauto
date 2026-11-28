@@ -6,8 +6,10 @@ import os
 from pathlib import Path
 import secrets
 import shutil
+import signal
 import subprocess
 import sys
+import time
 
 
 def digest(path):
@@ -34,6 +36,55 @@ def refusal_unchanged(command, env, base, expected):
         raise ValueError('OVPN_EXPECTED_REFUSAL_MISSING ' + expected)
     if snapshot(base) != before:
         raise ValueError('OVPN_REFUSAL_MUTATED_PKI_OR_BUNDLE')
+
+
+def verify_revoked_certificate(result):
+    if result.returncode == 0 or 'certificate revoked' not in result.stdout + result.stderr:
+        raise ValueError('OVPN_REVOKED_CERTIFICATE_ACCEPTED_OR_UNRELATED_ERROR')
+
+
+def interrupt_crl(tool, user, env, easy, base, logs):
+    checkpoint=base/'crl-checkpoint'
+    wrapper=base/'openssl-interrupt'
+    wrapper.write_text('#!'+sys.executable+'\n'+
+        'import os,pathlib,sys,time\n'
+        'if "-gencrl" in sys.argv[1:]:\n'
+        '    pathlib.Path(os.environ["OVPN_CRL_CHECKPOINT"]).write_text("ready")\n'
+        '    while True: time.sleep(.1)\n'
+        'os.execv('+repr(shutil.which('openssl'))+', ['+repr(shutil.which('openssl'))+']+sys.argv[1:])\n')
+    wrapper.chmod(0o700)
+    crl=easy/'pki/crl.pem'
+    previous=digest(crl) if crl.exists() else None
+    raw=logs/(user+'-interrupted-crl.log')
+    with raw.open('w') as stream:
+        process=subprocess.Popen([str(tool),'revoke','--user',user],env=dict(env,
+            EASYRSA_OPENSSL=str(wrapper),OVPN_CRL_CHECKPOINT=str(checkpoint)),
+            stdout=stream,stderr=subprocess.STDOUT,start_new_session=True)
+        try:
+            deadline=time.monotonic()+60
+            while not checkpoint.exists():
+                if process.poll() is not None or time.monotonic()>deadline:
+                    raise ValueError('OVPN_CRL_INTERRUPTION_CHECKPOINT_MISSING')
+                time.sleep(.1)
+            os.killpg(process.pid,signal.SIGINT)
+            if process.wait(timeout=20)==0:
+                raise ValueError('OVPN_INTERRUPTION_REPORTED_SUCCESS')
+        finally:
+            if process.poll() is None:
+                os.killpg(process.pid,signal.SIGKILL);process.wait(timeout=10)
+    if (digest(crl) if crl.exists() else None)!=previous:
+        raise ValueError('OVPN_INTERRUPTION_REPLACED_EXISTING_CRL')
+    rows=[line.split('\t') for line in (easy/'pki/index.txt').read_text().splitlines()
+          if line.endswith('/CN='+user)]
+    if not rows or rows[-1][0]!='R' or (easy/'pki/issued'/(user+'.crt')).exists():
+        raise ValueError('OVPN_INTERRUPTION_CA_STATE_MISMATCH')
+    deadline=time.monotonic()+5
+    while True:
+        try:os.killpg(process.pid,0)
+        except ProcessLookupError:break
+        if time.monotonic()>deadline:raise ValueError('OVPN_INTERRUPTION_ORPHAN_PROCESS_GROUP')
+        time.sleep(.1)
+    print('OVPN_CRL_INTERRUPTION_PASS user='+user+' old_crl=preserved ca=revoked processes=reaped',flush=True)
 
 
 def main():
@@ -106,12 +157,21 @@ def main():
                 configure(bad)
                 refusal_unchanged([str(tool), 'create', '--user', user], env, base, message)
             configure(directive)
+            if user=='cryptuser':
+                interrupt_crl(tool,user,env,easy,base,logs)
             execute([tool, 'revoke', '--user', user], user + '-revoke')
             if bundle.exists() or cert.exists() or not (easy / 'pki/revoked/certs_by_serial' / (serial + '.crt')).is_file():
                 raise ValueError('OVPN_REVOKE_ARCHIVE_MISMATCH')
             execute(['openssl', 'crl', '-in', easy / 'pki/crl.pem', '-noout', '-verify', '-CAfile', easy / 'pki/ca.crt'], user + '-crl')
+            result=subprocess.run(['openssl','verify','-CAfile',str(easy/'pki/ca.crt'),
+                '-CRLfile',str(easy/'pki/crl.pem'),'-crl_check',
+                str(easy/'pki/revoked/certs_by_serial'/(serial+'.crt'))],
+                capture_output=True,text=True,env=env,timeout=15)
+            (logs/(user+'-crl-rejection.log')).write_text(result.stdout+result.stderr)
+            verify_revoked_certificate(result)
             execute([tool, 'status', '--user', user], user + '-revoked-status')
             print('OVPN_CONFIG_REFUSAL_REVOKE_PASS user=' + user, flush=True)
+        print('OVPN_CRL_INTERRUPT_RETRY_PASS old_crl=preserved retry=verified revoked_certificate=rejected',flush=True)
         print('OVPN_CONFIG_LIVE_PASS easyrsa=3.0.7 mode=frozen', flush=True)
     finally:
         shutil.rmtree(base)

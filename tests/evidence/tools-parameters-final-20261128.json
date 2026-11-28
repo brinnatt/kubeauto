@@ -1,0 +1,52 @@
+{
+  "date": "2026-11-28",
+  "result": "pass",
+  "rc": 0,
+  "scope": [
+    "TL-PAR-12"
+  ],
+  "markers": [
+    "TOOLS_ALL_PARAMETERS_ACCEPTANCE_PASS tools=11 contexts=391",
+    "TOOLS_CLEAN_VERIFY_PASS scope=all-tools-parameter-acceptance",
+    "TOOLS_PARAMETERS_FINAL_EXIT rc=0"
+  ],
+  "inputs": {
+    "tests/helpers/tools-production-audit.py": "924414dd5a9c23521c50f82bf459d93a7eaabd2b24868b5aae1b25c7cbf013dc",
+    "tests/run_tools_regression.sh": "b06abe571af8b54cc4fd3c740c744a72825a0cc2b9379bf0de62455b677275c1"
+  },
+  "files": {
+    "logs/tools-parameters-final-qualified-20261128.log": "08b3862bd93962844c65b45f3539a34e6c0ca8d1d6a1f981df1fc6591ec1d70f",
+    "logs/tools-parameters-final-qualified-20261128.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/tools-parameters-final-qualified-20261128.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "tests/evidence/tools-production-execution-audit-20261128.json": "7165bcb144fdcbd26731af85eaa2c07697fb9491cb73e980ef73f89279442a0e",
+    "tests/tools-parameter-coverage.json": "b87477a0d41e8c37eee07b50aadbe72772b31cd66ea189db01d75df12f51da8e",
+    "tests/evidence/tools-parameters-StarMigrtCli.json": "e60e10f32744ffc2000e1d7274a38c3bdc3f700ca51242e7a22af85848f27c17",
+    "tests/evidence/tools-parameters-CalicoPolicyCli.json": "bc861333b6251ea33cb61a41530371234806c97567ea69dbbcce44e3fb8a3ad7",
+    "tests/evidence/tools-parameters-NetCheckCli.json": "c961f576f69cf2ba106bd857eb11fcab07b18cce8d023c4327e17420f25bc541",
+    "tests/evidence/tools-parameters-StarCli.json": "4c45d140958ea9f6180f939d18157c96cfbe36010b15c8a85150e6c61afc7e09",
+    "tests/evidence/tools-parameters-KubeBackupCli.json": "102bc0f4c90a01b89a827fe969b2744c54311ebf41b5e95cb0d14a0e104a2257",
+    "tests/evidence/tools-parameters-MyLogiBackupCli.json": "aac19f0064568fbb1eb668d5475c93bb76d2a995ff750b05574dfc0254c3db47",
+    "tests/evidence/tools-parameters-OvpnUserCli.json": "31d6daa0196c3a39ff4c93c0b82dbe68c9f33c1542523fbf898ee51d45bb0da8",
+    "tests/evidence/tools-parameters-KubePublishCli.json": "30e489196c196868acebeef1d3e217a22127b8623d55b79d48d7f2d4a16ca4bf",
+    "tests/evidence/tools-parameters-KafkaCli.json": "0a174d2c94b867a3e6b706f3687ff086b9d935eeaa904bc8b7f9d4f8589194ba",
+    "tests/evidence/tools-parameters-MyBackupCli.json": "cdafcf9134ac0067c15cb2648c122c60b443ee660f4c3c364a2604b16ac6e89d",
+    "tests/evidence/tools-parameters-MigrationCli.json": "b658ea8fd1ab3fd2a37fffa7a1f1cf0d973cdbdee95e8970fb562522232d3606",
+    "tests/evidence/tools-netcheck-parameters-20261128.json": "62a4397635fcb3aa782ecfd80add5120907a6ea42e8051704a805b01d3efe79a",
+    "tests/evidence/tools-ovpn-parameters-20261128.json": "a43432fbb710be318cb325d78dc9bb9aaec5a81026745bb10d24f5d0758ff31e",
+    "tests/evidence/tools-calico-api-parameters-20261128.json": "6f2d085c07b9fec1f565f2f78468bedaba2823eb429fd091ef14743757a7de6e",
+    "tests/evidence/tools-calico-dataplane-parameters-20261128.json": "a9b77e7b1218ad83d1dcda3db6f7c393dfdd70fede337dceb0e649c01aaf671c",
+    "tests/evidence/tools-kubebackup-parameters-20261128.json": "4c6a80f18e18d8b146541930dd45bccb4969056366216b558b3838e86edc598e",
+    "tests/evidence/tools-publish-parameters-20261128.json": "d7317c511844fef9712208db2529933ea48e0f2b4e3ad76652f4fc7e2be1e89a",
+    "tests/evidence/tools-kafka-parameters-20261128.json": "df731a5f29e883bb087dcc0b3d27fda3ae9b3c0ab04fbc9ef0f6957a6c2b1ed1",
+    "tests/evidence/tools-migration-full-parameters-20261128.json": "1f53cc73445c76fc9ecce0a41631c533d537b14493736fd07027103ed6ca3320",
+    "tests/evidence/tools-starcli-parameters-20261128.json": "96da6c20aa11fa990c617afd74759a7be8bbed3564afbd5c1f03520c49d7094d",
+    "tests/evidence/starrocks-compose-3.5.7-cn.json": "c1747dc5e8b5f51c3c0c2374b6c721f4973c7c07b2ebf64a0932448a82b11f37",
+    "tests/evidence/starmigrt-full.json": "4eb6ae9e514a2f67a22cb307081956119f008fb1d6a5c9c081e7f9529ce3b5b4",
+    "tests/evidence/tools-cross-parameters-20261128.json": "ad8c694ecfe8de8f1fc977d1cf5a4040230228901f81af65abdec6b5775cfbed",
+    "tests/evidence/tools-safety-parameters-20261128.json": "f532ddda31b696abbbec9dd6e5830ed7bc21ed918838b3cf798f88192bc63fee",
+    "tests/evidence/tools-supply-chain-parameters-20261128.json": "c1aed112cea0ee9a187cdaba1b30ecac43933dceac31df3baf72f2d47f1566f2",
+    "tests/evidence/mysql84-physical-requal-20261125.json": "4ac18413ebc987e7afb5656f70e05abfb88e0fbe94856a05b749098341c3dbc3",
+    "tests/evidence/mysql-backup-portability-20261125.json": "a47adab063d6efcb0cce0cf9709f24ed1a1bd67bcfed3c8609f2209775039529"
+  },
+  "boundary": "Current complete parser inventory, every behavioral assertion plan and raw outcome, all owning clean business scenarios, build provenance, security and cleanup verified. Unchanged accepted MySQL and StarMigrt business evidence retains its exact scope; this final acceptance does not relabel it as newly executed."
+}

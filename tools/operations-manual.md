@@ -43,11 +43,15 @@ KubePublishCli --config publish.json --local-runtime docker \
 
 执行前确认本地已有该镜像、目标主机密钥已登记、执行账户能调用对应 runtime。分发必须等待远端 `load` 成功；遇到非零退出先检查错误和已加载目标，不把已成功加载的镜像当作自动回滚。`--cleanup` 仅按帮助清理自动生成归档；用户通过 `--tar` 提供的文件不是本次自动清理对象。
 
-**StarCli。** 现有字段合并规则并不完全统一：`deploy`、`starrocks_home`、`target_host`、SSH 及部分密码使用路径优先取非空 JSON；多数部署端口和目录优先取 CLI。禁止在 JSON 和 CLI 为同一字段填写冲突值。布尔开关“没有传入”不表示能覆盖 JSON 中的 `true`。`--force`/`--clean` 会操作真实服务、目录和数据，必须先核对目标并独立备份。
+**StarCli。** 显式 CLI 参数优先于同名 JSON 字段，JSON 优先于程序默认值。未传入布尔开关不会取消 JSON 中的 `true`；需要关闭时修改配置。`--helper-address` 与 `--use-fqdn` 可同时使用，分别指定加入集群的 FE 和本机 FQDN 身份。`--force`/`--clean` 会操作真实服务、目录和数据，必须先核对目标并独立备份。
 
-**KafkaCli。** 按根帮助和 JSON 模板填写角色、存储目录、cluster ID 以及节点编号。环境变量主要用于帮助所列认证或默认值，不替代必填拓扑。模板中的第二、三台 controller 的 cluster ID 是待替换占位值，不可直接执行整份模板；首次格式化、后续 observer 加入和 `quorum-add-controller` 是不同步骤。
+**KafkaCli。** 显式 CLI 参数优先于同名 JSON 字段，JSON 优先于程序默认值。按根帮助和 JSON 模板填写角色、存储目录、cluster ID 以及节点编号。环境变量主要用于帮助所列认证或默认值，不替代必填拓扑。模板中的第二、三台 controller 的 cluster ID 是待替换占位值，不可直接执行整份模板；首次格式化、后续 observer 加入和 `quorum-add-controller` 是不同步骤。预先声明首批选民时，所有首批 Controller 使用相同 `--initial-controllers` 列表及显式 `--cluster-id`，不加 `--join-quorum`。`--batch` 在执行第一台前检查全部节点目标，任一节点执行失败即停止后续节点。指标采集的文本和 JSON 两种输出均保留各段结果，全部成功退出 `0`，任一段失败退出 `1`；仅有 Controller 时，Broker 相关段失败也会返回 `1`。
 
 **MigrationCli。** 按 `--guide` 的全局 options、单任务 options 和 CLI 合并规则选择配置；密码可引用 `${ENV_VAR}`。`--dry-run` 会实际连接源端和目标端预检，不是完全离线检查。工具不自动冻结业务写入，也不把 SQL 迁移变成复制拓扑管理。
+
+**OvpnUserCli。** `revoke --user USER` 完成 CA 吊销、CRL 生成和客户端配置清理。服务端应配置 `crl-verify` 并部署生成的 CRL，按服务端流程处理已在线会话。
+
+> CRL 生成失败或中断时，CA 可能已经记录吊销，但服务端仍使用原 CRL。重试同一 `revoke` 命令，工具会核验 CA 记录及归档证书的 CN、serial 后继续生成 CRL；归档身份不一致则拒绝。不要继续分发此用户的配置，也不要把 CA 的 `R` 状态单独当作服务端已拒绝连接的证明。
 
 ## 宿主机、工具容器与远程节点
 
@@ -62,6 +66,8 @@ MyBackupCli 同时需要 SQL 连接和文件读取。宿主机看到的 datadir 
 Kubernetes 工具通过 API 访问集群，但 kubeconfig、归档和日志仍属于执行端。KubeBackupCli 显式传入 kubeconfig 或 context 时读取 kubeconfig；两者都未指定才先尝试 in-cluster、失败后使用默认 kubeconfig。CalicoPolicyCli 则要求显式 context，不能把二者的默认连接方式混为一谈。网络策略变更可能切断运维连接，应先审阅 `plan` 输出并按其手册保留恢复入口。
 
 NetCheckCli 观测的是当前网络命名空间；在工具容器中运行会使用该容器的路由和 DNS。生产探测自选目标建议使用 `--no-default-nodes`，避免同时探测源码内置目标。`--dry-run` 只验证参数和前置，不能证明连通性。退出码 `2` 表示测量完成但未达到程序阈值，`0` 也不替代业务可用性探针。
+
+> 多目标 ICMP 按工作线程分片轮询，每个目标的一批 ping 需要采样时间。测试时长应足以让每个目标完成采样；尚未采样的目标会保留在摘要中，标明“无数据”并使质量检查不通过。增加 `--duration` 或在资源允许时调整 `--max-icmp-workers` 后重新测量。用户中断退出 `1`，仍保留已生成的报告和摘要。
 
 ## 随附 shell 的边界
 

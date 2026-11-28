@@ -602,7 +602,7 @@ def setup_logging(verbose: bool = False, no_file: bool = False) -> logging.Logge
     log.setLevel(level)
     log.propagate = False
     fmt = logging.Formatter(DEFAULT_FORMAT, DEFAULT_DATEFMT)
-    sh = logging.StreamHandler(sys.stdout)
+    sh = logging.StreamHandler(sys.stderr)
     sh.setFormatter(fmt)
     log.addHandler(sh)
     if not no_file:
@@ -1162,6 +1162,31 @@ def _require_explicit_traffic_layer(args: argparse.Namespace, subcmd: str) -> No
         )
 
 
+def manifest_for_executor(manifest: str, executor: str, kubectl: str, context: Optional[str]) -> str:
+    """Use the API actually advertised by kubectl; calicoctl consumes the v3 model."""
+    if executor != "kubectl" or "apiVersion: projectcalico.org/v3" not in manifest:
+        return manifest
+    result = run_cmd([*kubectl_base(kubectl, context), "api-resources", "-o", "name"],
+                     timeout=_timeout_sec())
+    if result.returncode:
+        raise CalicoHostFwError("无法发现 Calico Kubernetes API: " + (result.stderr or result.stdout).strip())
+    resources = set(result.stdout.split())
+    parts = []
+    for document in manifest.split("\n---\n"):
+        for kind, resource in (("GlobalNetworkPolicy", "globalnetworkpolicies"),
+                               ("HostEndpoint", "hostendpoints")):
+            if "\nkind: " + kind + "\n" not in document:
+                continue
+            if resource + ".projectcalico.org" in resources:
+                break
+            if resource + ".crd.projectcalico.org" not in resources:
+                raise CalicoHostFwError("Kubernetes API 未注册 Calico 资源: " + resource)
+            document = document.replace("apiVersion: projectcalico.org/v3",
+                                          "apiVersion: crd.projectcalico.org/v1", 1)
+        parts.append(document)
+    return "\n---\n".join(parts)
+
+
 def apply_manifest(
     manifest: str,
     *,
@@ -1176,6 +1201,7 @@ def apply_manifest(
             "清单中含 kubernetes.io NetworkPolicy，必须使用 kubectl apply（请使用 --executor kubectl）"
         )
     if executor == "kubectl":
+        manifest = manifest_for_executor(manifest, executor, kubectl, context)
         base = kubectl_base(kubectl, context)
         argv = [*base, "apply", "-f", "-"]
         if dry_run == "client":
@@ -1569,7 +1595,8 @@ def cmd_plan(args: argparse.Namespace) -> int:
                 np_name, ns, pl, allow_v4, allow_v6, args.port
             ).rstrip()
         )
-    sys.stdout.write("\n---\n".join(parts) + "\n")
+    manifest = "\n---\n".join(parts) + "\n"
+    sys.stdout.write(manifest_for_executor(manifest, str(args.executor), args.kubectl, args.context))
     return 0
 
 
@@ -2584,6 +2611,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     args = build_parser().parse_args(argv)
     setup_logging(verbose=args.verbose, no_file=args.no_log_file)
     try:
+        if hasattr(args, "port") and not (MIN_PORT <= args.port <= MAX_PORT):
+            raise CalicoHostFwError(f"端口范围非法: {args.port}")
         if args.command == "preflight":
             return cmd_preflight(args)
         if args.command == "plan":

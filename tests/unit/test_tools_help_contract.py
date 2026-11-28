@@ -134,6 +134,15 @@ runpy.run_path(sys.argv[0],run_name="__main__")
             with self.subTest(tool=tool, arguments=arguments):
                 self.assertTrue(self.cli('tools/mysqltools/' + tool + '.py', *arguments))
 
+    def test_version_actions_are_offline_and_create_no_output_files(self):
+        self.env['PATH']=''
+        for relative in ('tools/NetCheckCli.py','tools/k8stools/CalicoPolicyCli.py',
+                         'tools/mysqltools/MyLogiBackupCli.py','tools/starrocks/starmigration/StarMigrtCli.py'):
+            with self.subTest(tool=relative):
+                before=set(Path(self.tmp.name).rglob('*'))
+                self.assertTrue(self.cli(relative,'--version').strip())
+                self.assertEqual(set(Path(self.tmp.name).rglob('*')),before)
+
     def test_preflight_and_dry_run_do_not_claim_zero_local_side_effects(self):
         text = self.cli('tools/mysqltools/MyLogiBackupCli.py', '--help')
         self.assertIn('创建本地备份目录', text)

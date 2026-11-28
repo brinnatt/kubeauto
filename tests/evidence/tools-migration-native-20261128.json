@@ -1,0 +1,67 @@
+{
+  "date": "2026-11-28",
+  "scope": [
+    "TL-MIG-01",
+    "TL-MIG-02",
+    "TL-MIG-04",
+    "TL-MIG-05"
+  ],
+  "result": "pass",
+  "rc": 0,
+  "inputs": {
+    "tools/mysqltools/MigrationCli.py": "0c00135233ff14f747e4ab03ff4a9dd43f3613417d3b7ebc39b2a8f2de827f66",
+    "tools-onefile.spec": "7bb77b6db73a9c015aff2156120d94f7dc67a7a30e037f105d452bcbded45956",
+    "tests/helpers/migration-live-regression.sh": "337a15aea7e05af926b2fda43ca312a233e11180720e60af10f70a1f9b8df31c",
+    "tests/helpers/supervise-migration.py": "bfddf47bd597cd0996330d87a16441ac47da324f9415ab6c094622ed0f841ab9",
+    "tests/helpers/run-durable-gate.sh": "352244f3c876f5f9626c0c21f574de3aecb61642e0be10324623b15b6b9b1843",
+    "dist/mysql-migration-build.json": "c44964b32a007fa0e585b6da2fbe51c3dc7fc4152999d9b79ac226774186b35c",
+    "dist/MigrationCli-rocky8": "993003c684c994be912495124cb350fc108017e1e2218961ed760347cad5b56c",
+    "dist/MyBackupCli-rocky8": "e74f5fbc61ff9ad0dd74bbd9121697f864acf09d5450fbb41a16ad604fc83d58",
+    "dist/MyLogiBackupCli-rocky8": "ee58b73608f84325cc3eb0d0f667c6c510f167075cc95473ae13aecc2bd2caf3"
+  },
+  "launcher": {
+    "snapshot": "logs/tools-execution-inputs/fac1efd5792b3a4625dbd0bd8270d7cfade1a917c494a0f3dde21fa339cecef2.sh",
+    "sha256": "fac1efd5792b3a4625dbd0bd8270d7cfade1a917c494a0f3dde21fa339cecef2",
+    "boundary": "Owning migration execution and global header equal the preserved launcher; unrelated dispatch changes excluded."
+  },
+  "runs": {
+    "native": {
+      "log": "logs/tools-migration-native-20261128-103045.log",
+      "sha256": "e373bef12312af0a63bc7734b8e1f537e19d98b76684ff57470ae8e069a4446e",
+      "archive": "logs/tools-migration-native-20261128-103045.evidence.tar.gz",
+      "archive_sha256": "298fe1918fcc8fb1035c9033a8c748fd52b59b89cf8d03339a8c9bff774cbd39",
+      "remote_status": "logs/tools-migration-native-20261128-103045.remote-status",
+      "status": [
+        0,
+        0
+      ],
+      "required_markers": [
+        "MIGRATION_NATIVE_ARGV_READBACK_PASS",
+        "MIGRATION_NATIVE_FAILURE_RECOVERY_PASS",
+        "MIGRATION_NATIVE_IMPORT_ROLLBACK_RETRY_PASS",
+        "MIGRATION_NATIVE_CONCURRENT_ISOLATION_PASS",
+        "MIGRATION_CLI_LIVE_REGRESSION_PASS stage=native",
+        "TOOLS_CLEAN_VERIFY_PASS scope=migration stage=native",
+        "TOOLS_MIGRATION_EXIT rc=0"
+      ]
+    }
+  },
+  "markers": [
+    "MIGRATION_NATIVE_ARGV_READBACK_PASS",
+    "MIGRATION_NATIVE_FAILURE_RECOVERY_PASS",
+    "MIGRATION_NATIVE_IMPORT_ROLLBACK_RETRY_PASS",
+    "MIGRATION_NATIVE_CONCURRENT_ISOLATION_PASS",
+    "MIGRATION_CLI_LIVE_REGRESSION_PASS stage=native",
+    "TOOLS_CLEAN_VERIFY_PASS scope=migration stage=native",
+    "TOOLS_MIGRATION_EXIT rc=0"
+  ],
+  "files": {
+    "logs/tools-migration-native-20261128-103045.log": "e373bef12312af0a63bc7734b8e1f537e19d98b76684ff57470ae8e069a4446e",
+    "logs/tools-migration-native-20261128-103045.remote-status": "0ccdb5a77ba5bf7687f2565a8ed97dfb9c1af45503c496fb646312239fab5101",
+    "logs/tools-migration-native-20261128-103045.evidence.tar.gz": "298fe1918fcc8fb1035c9033a8c748fd52b59b89cf8d03339a8c9bff774cbd39",
+    "logs/tools-parameters-migration-native-qualification-20261128.log": "69ee06e859fb7d77062cac0e1aa419613151dd6bb3cbf4574b7ec990be040de7",
+    "logs/tools-parameters-migration-native-qualification-20261128.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/tools-parameters-migration-native-qualification-20261128.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+  },
+  "boundary": "Current frozen native migration argv, rejection, rollback/retry and concurrent isolation with real MySQL readback; final three-version migration is separate."
+}

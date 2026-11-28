@@ -33,7 +33,7 @@ KRaft 节点编号（与 KAFKACLI_PARSER_DESCRIPTION【KRaft 节点编号】、-
 部署前置与失败回滚（与 KAFKACLI_PARSER_DESCRIPTION【部署前置与失败回滚】、deploy_* 实现一致）：
   · 写入生成配置前：对本次涉及的 metadata.log.dir 与 log.dirs 各根路径检查 meta.properties 中 cluster.id 是否一致；不一致则拒绝部署。
   · standalone/controller：cluster.id 须三选一（--cluster-id / --generate-cluster-id / --use-disk-cluster-id）；数据路径与 node.id 须显式给出，无隐式默认目录。
-  · 多节点仅 controller：须指定 --controller-scope cluster；首台空盘仅允许 --generate-cluster-id（禁止手填 --cluster-id），后续须同一 --cluster-id（首台输出）且 --join-quorum。单台 controller 用 --controller-scope single。首台若误对空盘用 --no-initial-controllers，可能导致 MetadataVersion 不足以支持 KIP-919。
+  · 多节点仅 controller：须指定 --controller-scope cluster；逐台加入时首台空盘使用 --generate-cluster-id；预先声明首批选民时使用 --initial-controllers + --cluster-id，后续须同一 --cluster-id（首台输出）且 --join-quorum。单台 controller 用 --controller-scope single。首台若误对空盘用 --no-initial-controllers，可能导致 MetadataVersion 不足以支持 KIP-919。
   · --deploy standalone（单机 combined）：kafka-storage 使用 format --standalone --cluster-id …（与多机仅 controller 首台共用 StorageTool 的 --standalone 选项名，场景不同）。
   · --deploy controller：须显式指定 --controller-listen-host（及可选 --controller-listen-port，默认 9093；JSON 兼容旧键 controller_port）用于 CONTROLLER 监听的绑定；与 --advertised-host 分工不同（宣告 vs 绑定）。
   · --deploy broker（Kafka 4.x）：须显式指定 --broker-listen-host（及可选 --broker-listen-port，默认 9092），用于生成 listeners 绑定地址（禁止仅 127.0.0.1）；与 --advertised-host 分工不同（宣告 vs 绑定）。脚本生成的 server-broker-*.properties 须含 controller.listener.names 与 listener.security.protocol.map（含 CONTROLLER:PLAINTEXT），以满足 kafka-storage format。若完全自定义 --listeners 且非内置模板，须在 extra_properties 中自行给出与 Quorum 一致的映射。
@@ -2584,7 +2584,8 @@ class KafkaDeployer:
 
         须由 main 传入 controller_scope（CONTROLLER_SCOPE_SINGLE | CONTROLLER_SCOPE_CLUSTER）并在命令行校验组合：
         - single：单节点 controller；空盘 format --standalone（--generate-cluster-id 或 --cluster-id）。
-        - cluster：多节点仲裁；首台空盘仅允许 --generate-cluster-id（或磁盘幂等）；后续须 --cluster-id + --join-quorum。
+        - cluster：多节点仲裁；逐台加入的首台使用 --generate-cluster-id；后续使用 --cluster-id + --join-quorum。
+        首批同时初始化可使用相同的 --initial-controllers 列表和显式 --cluster-id。
         enable_sasl_plain / sasl_ssl_material：Quorum 仍为 CONTROLLER:PLAINTEXT；仅写入 kafkacli.client.properties。
 
         node.id 须与本集群内其它 controller 及全部 broker 的编号互不重复（全局唯一）。
@@ -4309,10 +4310,10 @@ def _validate_controller_scope_rules(
     """
     ic = (initial_controllers or "").strip()
     if ic:
-        return (
-            "已弃用与本约束并存：请移除 --initial-controllers；"
-            "多节点仲裁请用 --controller-scope cluster：首台仅 --generate-cluster-id，后续 --cluster-id + --join-quorum"
-        )
+        if scope != CONTROLLER_SCOPE_CLUSTER or not cid_s or gen_cid or use_disk_cid or join_q:
+            return ("--initial-controllers 须与 --controller-scope cluster 和显式 --cluster-id 合用；"
+                    "所有首批 Controller 使用相同选民列表和 cluster.id，不能同时生成 ID、读取磁盘 ID 或加入已有仲裁")
+        return None
     if scope not in (CONTROLLER_SCOPE_SINGLE, CONTROLLER_SCOPE_CLUSTER):
         return f"--controller-scope 须为 {CONTROLLER_SCOPE_SINGLE} 或 {CONTROLLER_SCOPE_CLUSTER}（或 JSON controller_scope）"
     if scope == CONTROLLER_SCOPE_SINGLE:
@@ -4710,12 +4711,13 @@ def _build_remote_command(
         if skip_next:
             skip_next = False
             continue
-        if arg in flags_no_value:
+        option, separator, _value = arg.partition("=")
+        if option in flags_no_value:
             continue
-        if arg in flags_with_value:
-            if arg == "--config" and remote_config_path:
+        if option in flags_with_value:
+            if option == "--config" and remote_config_path:
                 filtered.extend(["--config", remote_config_path])
-            skip_next = True
+            skip_next = not separator
             continue
         filtered.append(arg)
     # 批量部署时 argv 不含 --config，但已复制配置到远程，需显式传入
@@ -4828,29 +4830,48 @@ def _run_remote_deploy(
         if not remote_script:
             ssh.run_command(f"mkdir -p {shlex.quote(remote_workdir)}", timeout=20)
         remote_config_path = f"{remote_workdir}/config.json"
-        if not ssh.copy_file(str(Path(args.config).resolve()), remote_config_path):
+        # SSH routing belongs to this caller. The target consumes only its
+        # business configuration, so it cannot recursively forward itself.
+        local_keys = {"target_host", "ssh_user", "ssh_port", "ssh_key", "remote_workdir",
+                      "disable_ssh_host_check", "nodes", "batch"}
+        payload = {key: value for key, value in config.items() if key not in local_keys}
+        with tempfile.TemporaryDirectory(prefix="cli-remote-config-") as directory:
+            transport = Path(directory) / "config.json"
+            with transport.open("x", encoding="utf-8") as stream:
+                os.chmod(str(transport), 0o600)
+                json.dump(payload, stream, ensure_ascii=False)
+            copied = ssh.copy_file(str(transport), remote_config_path)
+        if not copied:
             logger.error("复制配置文件到远程失败", extra={"to_stdout": True})
             sys.exit(EXIT_ERROR)
 
     remote_cmd = _build_remote_command(argv, remote_config_path, remote_script,
                                        remote_python=not getattr(sys, "frozen", False))
+    def redact(text: str) -> str:
+        for key in set(config) | set(vars(args)):
+            if "password" in key:
+                for value in (config.get(key), getattr(args, key, None)):
+                    if value:
+                        text = text.replace(shlex.quote(str(value)), "***").replace(str(value), "***")
+        return text
+
     logger.info(f"正在远程主机 {host}:{port} 执行...", extra={"to_stdout": True})
-    logger.info(f"远程命令: {remote_cmd}", extra={"to_stdout": True})
+    logger.info(f"远程命令: {redact(remote_cmd)}", extra={"to_stdout": True})
     success, output = ssh.run_command(f"{remote_cmd} 2>&1", timeout=3600)
     if success:
         if output:
             for line in output.strip().split("\n"):
-                logger.info(line, extra={"to_stdout": True})
+                logger.info(redact(line), extra={"to_stdout": True})
         if not exit_on_finish:
             return True
         sys.exit(EXIT_OK)
     if output:
         logger.error("远程执行失败，完整输出:", extra={"to_stdout": True})
         for line in output.strip().split("\n"):
-            logger.error(f"  {line}", extra={"to_stdout": True})
+            logger.error(f"  {redact(line)}", extra={"to_stdout": True})
     else:
         logger.error("远程执行失败（无输出）", extra={"to_stdout": True})
-    logger.error(f"命令: {remote_cmd}", extra={"to_stdout": True})
+    logger.error(f"命令: {redact(remote_cmd)}", extra={"to_stdout": True})
     logger.error(f"目标: {host}:{port} (用户: {ssh_user})", extra={"to_stdout": True})
     if not output:
         logger.error("远程失败排查（本脚本约定，非 Kafka 项目文档）：", extra={"to_stdout": True})
@@ -4897,7 +4918,7 @@ Apache Kafka（KRaft）运维脚本：在 --kafka-home 下调用发行版 bin/ka
 【advertised 与 Quorum】与 Apache Kafka 文档一致：每个进程在 advertised.listeners 中宣告本机对外可达地址；
   多节点时分别在每台主机部署一次，各使用本机的 --advertised-host（或 JSON advertised_host），不是一条命令传入多个 advertise。
   controller.quorum.bootstrap.servers 为全部 Controller 端点的逗号分隔列表，供进程发现仲裁；其中主机名须与各节点 advertised 及网络实际可达性一致。
-【多节点 Controller 与 kafka-storage】部署 controller 须必选 --controller-scope single|cluster（或 JSON controller_scope）。cluster：首台空盘仅允许 --generate-cluster-id（禁止手填 cluster.id）；第 2 台起须使用与首台同一 cluster.id（首台输出）且 --join-quorum（format --no-initial-controllers），启动为 observer 后须在该新节点执行 --quorum-add-controller 将其加入动态仲裁。single：单台 controller，空盘可用 --generate-cluster-id 或 --cluster-id。若误对 cluster 首台空盘用 --no-initial-controllers，可能导致 MetadataVersion/KIP-919 问题。
+【多节点 Controller 与 kafka-storage】部署 controller 须必选 --controller-scope single|cluster（或 JSON controller_scope）。cluster：逐台加入时首台空盘使用 --generate-cluster-id；第 2 台起须使用与首台同一 cluster.id（首台输出）且 --join-quorum（format --no-initial-controllers），启动为 observer 后须在该新节点执行 --quorum-add-controller 将其加入动态仲裁。single：单台 controller，空盘可用 --generate-cluster-id 或 --cluster-id。也可一次声明首批选民：各节点使用相同 --initial-controllers 列表和显式 --cluster-id，不加 --join-quorum；该列表格式为 id@host:port:directoryId，directoryId 须为每节点独立生成的 Kafka UUID。若误对首台空盘用 --no-initial-controllers，可能导致 MetadataVersion/KIP-919 问题。
   （勿与「--deploy standalone」混淆：后者指单机 combined 角色部署，也调用 kafka-storage 的 --standalone，但是单进程 broker+controller 场景。）
 【Controller / Broker 监听与 kafka-storage（Kafka 4.x）】--deploy controller 须显式指定 --controller-listen-host（及可选 --controller-listen-port，默认 9093；JSON 兼容 controller_port）用于 CONTROLLER 监听绑定；--deploy broker 须显式指定 --broker-listen-host（及可选 --broker-listen-port，默认 9092）用于业务监听绑定；均禁止仅回环，且与 --advertised-host（宣告）分工不同。kafka-storage format 会加载完整 KafkaConfig；broker 须声明 controller.listener.names（脚本默认写 CONTROLLER）及 listener.security.protocol.map（须含 CONTROLLER:PLAINTEXT 与业务监听名映射）。脚本对默认 PLAINTEXT 与内置 SASL 模板自动补全；自定义 listeners 时须在 extra_properties 中写全，否则会报 Missing required configuration。
 【部署前置与失败回滚】
@@ -5364,7 +5385,7 @@ def main():
     g_dep.add_argument(
         "--initial-controllers",
         metavar="LIST",
-        help="多 controller 首次集群化时的 initial-controllers 参数（见 kafka-storage.sh format）。",
+        help="首批 Controller 初始化选民列表，格式 id@host:port:directoryId，逗号分隔。须 cluster scope 和显式 cluster-id；所有首批节点使用相同列表/ID，不能与 join-quorum、generate-cluster-id、use-disk-cluster-id 混用。",
     )
     g_dep.add_argument(
         "--join-quorum",
@@ -5566,8 +5587,8 @@ def main():
         " --bootstrap-server / --bootstrap-controller 支持逗号分隔多地址；TCP 预检仅首项。"
         " 若集群仅有 Controller、无 Broker 监听 9092，则 broker 侧段落可能报错，属预期；可配合 --bootstrap-controller 看 quorum 段。",
     )
-    g_met.add_argument("--metrics", action="store_true", help="人类可读多段输出。")
-    g_met.add_argument("--metrics-json", action="store_true", help="同上，JSON 结构便于脚本解析。")
+    g_met.add_argument("--metrics", action="store_true", help="人类可读多段输出；全部采集成功返回0，任一段失败返回1并保留其余结果。")
+    g_met.add_argument("--metrics-json", action="store_true", help="JSON 输出；各段 ok 表示该项采集结果；全部成功返回0，否则返回1。")
 
     g_cf = parser.add_argument_group(
         "动态配置（kafka-configs.sh）",
@@ -5643,6 +5664,26 @@ def main():
     config = {}
     if args.config:
         config = load_json_config(args.config)
+    explicit_options = {token.split('=', 1)[0] for token in sys.argv[1:]}
+    for action in parser._actions:
+        name = action.dest
+        if name in ('help', 'config'):
+            continue
+        if explicit_options.intersection(action.option_strings):
+            config[name] = getattr(args, name)
+        elif name in config and config[name] is not None:
+            value = config[name]
+            try:
+                if isinstance(action, (argparse._StoreTrueAction, argparse._StoreFalseAction)):
+                    if not isinstance(value, bool):
+                        raise ValueError('须为 JSON true 或 false')
+                elif action.type is not None:
+                    value = action.type(value)
+                if action.choices is not None and value not in action.choices:
+                    raise ValueError('不在允许值内')
+            except (TypeError, ValueError) as error:
+                parser.error(f'配置 {name} 无效: {error}')
+            setattr(args, name, value)
 
     # 远程部署：在前置机执行时，将命令转发到目标机并回显日志
     target_host = config.get("target_host") or args.target_host
@@ -5663,12 +5704,14 @@ def main():
         _require(nodes, "--batch 需在配置文件中提供 nodes 数组")
         _require(isinstance(nodes, list) and len(nodes) > 0, "--batch 需在配置文件中提供非空 nodes 数组")
         for i, node in enumerate(nodes):
-            if not isinstance(node, dict):
-                continue
-            th = node.get("target_host")
-            if not th:
-                logger.warning(f"nodes[{i}] 缺少 target_host，跳过", extra={"to_stdout": True})
-                continue
+            _require(isinstance(node, dict) and bool(node.get("target_host")),
+                     f"nodes[{i}] 必须是含 target_host 的节点对象；尚未执行任何节点")
+            try:
+                _parse_target_host(node["target_host"], int(node.get("ssh_port") or config.get("ssh_port") or args.ssh_port))
+            except (ValueError, TypeError) as error:
+                _require(False, f"nodes[{i}] SSH 目标无效: {error}；尚未执行任何节点")
+        for i, node in enumerate(nodes):
+            th = node["target_host"]
             logger.info(f"=== 批量部署 [{i+1}/{len(nodes)}] 目标: {th} ===", extra={"to_stdout": True})
             # 合并 node 与 config，构建远程执行的 argv（不含 --target-host / --batch）
             argv_parts = [sys.argv[0]]
@@ -5847,7 +5890,9 @@ def main():
             print(json.dumps(data.get("consumer_group_inventory", {}), ensure_ascii=False))
             print("=== Consumer Lag ===")
             print(json.dumps(data.get("consumer_lag", {}), ensure_ascii=False))
-        sys.exit(EXIT_OK)
+        sections = ("broker_connect", "quorum", "partition_health", "topic_inventory",
+                    "consumer_group_inventory", "consumer_lag")
+        sys.exit(EXIT_OK if all(data.get(name, {}).get("ok") is True for name in sections) else EXIT_ERROR)
 
     if getattr(args, "config_describe_broker", False):
         _require(kafka_home, "--config-describe-broker 需指定 --kafka-home")

@@ -10,15 +10,34 @@ import re
 import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
-AUDIT = 'tests/evidence/tools-production-execution-audit-20261125.json'
+AUDIT = 'tests/evidence/tools-production-execution-audit-20261128.json'
 FINAL = 'mysql-backup-final-20261125'
+NATIVE_CONTRACT = 'mybackup-native-contract-20261128'
+PARAMETER_LIVE_RECORDS = {
+    'tools-calico-dataplane-parameters-20261128': ('TL-CAL-03', 'TL-CAL-05', 'TL-CAL-06', 'TL-CAL-07'),
+    'tools-migration-full-parameters-20261128': ('TL-MIG-03',),
+    'tools-kubebackup-parameters-20261128': tuple('TL-KB-%02d' % n for n in range(1, 6)),
+    'tools-safety-parameters-20261128': ('TL-X-04', 'TL-X-05', 'TL-X-07'),
+    'tools-migration-native-20261128': ('TL-MIG-01', 'TL-MIG-02', 'TL-MIG-04', 'TL-MIG-05'),
+    'tools-kafka-parameters-20261128': tuple('TL-KAF-%02d' % n for n in range(1, 7)),
+    'tools-cross-parameters-20261128': ('TL-X-02', 'TL-X-03'),
+    'tools-ovpn-parameters-20261128': tuple('TL-OVPN-%02d' % n for n in range(1, 7)),
+    'tools-netcheck-parameters-20261128': tuple('TL-NET-%02d' % n for n in range(1, 6)),
+    'tools-starcli-parameters-20261128': tuple('TL-SR-%02d' % n for n in range(1, 7)),
+    'tools-publish-parameters-20261128': tuple('TL-KP-%02d' % n for n in range(1, 6)),
+    'tools-calico-api-parameters-20261128': ('TL-CAL-01', 'TL-CAL-02', 'TL-CAL-04', 'TL-CAL-08', 'TL-CAL-09'),
+}
 RECORDS = (
-    'tools-remote-bootstrap-20261125', 'tools-ovpn-config-20261125',
-    'tools-api-boundary-20261125', 'tools-kubebackup-api-full-20261125',
-    'tools-publish-load-live-20261125', 'tools-migration-endpoint-full-20261125',
-    'starrocks-compose-3.5.7-cn', 'starmigrt-full',
+    'tools-netcheck-parameters-20261128', 'tools-ovpn-parameters-20261128',
+    'tools-calico-api-parameters-20261128', 'tools-calico-dataplane-parameters-20261128',
+    'tools-kubebackup-parameters-20261128', 'tools-publish-parameters-20261128',
+    'tools-kafka-parameters-20261128', 'tools-migration-full-parameters-20261128',
+    'tools-starcli-parameters-20261128', 'starrocks-compose-3.5.7-cn', 'starmigrt-full',
+    'tools-cross-parameters-20261128', 'tools-safety-parameters-20261128',
+    'tools-supply-chain-parameters-20261128',
     'mysql84-physical-requal-20261125', 'mysql-backup-portability-20261125',
 )
+
 
 # Existing successful native runs already passed the old port preflight. This
 # exact gate repair changes neither their MySQL/PXB execution nor raw results.
@@ -78,10 +97,22 @@ def compatible_file(name, expected, owner):
     old = snapshot(name, expected)
     current = path.read_text()
     branches = {
+        'tools-migration-full-parameters-20261128': '--migration-live',
+        'tools-cross-parameters-20261128': '--cross-live',
         'tools-migration-endpoint-full-20261125': '--migration-live',
         'starrocks-compose-3.5.7-cn': '--star-compose-preflight|--star-compose-status|--star-compose-be|--star-compose-cn|--star-compose-full',
         'starmigrt-full': '--starmigrt-status|--starmigrt-qualify|--starmigrt-full',
+        FINAL: '--mysql-backup-live',
+        'mysql80-binary-standalone': '--mysql-backup-live',
+        'mysql80-binary-primary-replica': '--mysql-backup-live',
+        'mysql80-binary-dual-primary': '--mysql-backup-live',
+        'mysql80-binary-full': '--mysql-backup-live',
     }
+    if owner == FINAL and name in (AUDIT, 'tests/evidence/tools-production-execution-audit-20261125.json', 'tests/helpers/tools-production-audit.py'):
+        # Preserve the exact metadata reviewed at execution time. Current
+        # cross-tool acceptance is a separate matrix item; these references
+        # cannot claim that changed tools have passed a MySQL lifecycle.
+        return
     if name == 'tests/helpers/mysql80-binary-live.py' and owner in (
             'mysql80-binary-standalone', 'mysql80-binary-primary-replica', 'mysql80-binary-dual-primary'):
         candidate = old
@@ -118,7 +149,7 @@ def compatible_file(name, expected, owner):
         before, rest = current.split('MySQL 8.0 的物理生命周期补充', 1)
         _, after = rest.split('每轮 `logs/mysql-backups-', 1)
         def inventory_counts(text):
-            text = re.sub(r'The tools matrix contains \d+ scenarios \(\d+ applicable and one not applicable\) plus a \d+-item',
+            text = re.sub(r'The tools matrix contains \d+ scenarios \(\d+ applicable and (?:one|zero) not applicable\) plus a \d+-item',
                           'The tools matrix contains CURRENT scenarios and inventory', text)
             # Shared governance prose moved here from AGENTS.md; product
             # commands and executed fixtures remain independently bound.
@@ -278,24 +309,106 @@ def record_final(log):
 def status():
     matrix = yaml.safe_load((ROOT/'tests/tools-test-matrix.yaml').read_text())
     cases = {case['id']: case['status'] for case in matrix['test_cases']}
+    records = {case['id']: case for case in matrix['test_cases']}
+    parameter_acceptance(matrix)
+    for owner, scope in PARAMETER_LIVE_RECORDS.items():
+        accepted = [identity for identity in scope if cases.get(identity) == 'pass']
+        if accepted:
+            proof = verify_record(owner)
+            if set(proof['scope']) != set(scope) or any(
+                    'tests/evidence/' + owner + '.json' not in records[identity].get('evidence', '')
+                    for identity in accepted):
+                raise ValueError('TOOLS_PARAMETER_LIVE_SCOPE_REFUSED ' + owner)
     if cases['TL-MBK-01'] == 'pass':
         verify_record('mysql-backup-portability-20261125')
     if any(cases['TL-MBK-%02d'%n] == 'pass' for n in (2, 4)):
-        verify_record('mybackup-native-contract-20261125')
+        verify_record(NATIVE_CONTRACT)
     if any(cases['TL-MBK-%02d'%n] == 'pass' for n in (3, 5, 6)):
         verify_record('mysql84-physical-requal-20261125')
     if cases.get('TL-X-06') == 'pass':
-        verify_record('mysql80-binary-supply-chain-20261125')
+        verify_record('tools-supply-chain-parameters-20261128')
     if cases['TL-X-10'] == 'pass':
         audit()
+    if cases.get('TL-PAR-12') == 'pass':
+        proof = verify_record('tools-parameters-final-20261128')
+        if proof.get('scope') != ['TL-PAR-12']:
+            raise ValueError('TOOLS_PARAMETER_FINAL_SCOPE_REFUSED')
     if cases['TL-X-09'] == 'pass':
         verify_record(FINAL)
+        logical_evidence()
         print('TOOLS_AFFECTED_FINAL_EVIDENCE_PASS')
+
+
+def parameter_acceptance(matrix):
+    parents = [case for case in matrix['test_cases']
+               if case.get('parameter_tool') and case['status'] == 'pass']
+    if not parents:
+        return
+    spec = importlib.util.spec_from_file_location('tools_parameter_acceptance', ROOT/'tests/helpers/tools-parameter-audit.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    inventory = json.loads(module.INVENTORY.read_text())
+    errors = module.validate(inventory, module.discover())
+    if errors:
+        raise ValueError('TOOLS_PARAMETER_CURRENT_EVIDENCE_REFUSED ' + '\n'.join(errors))
+    for parent in parents:
+        tool = parent['parameter_tool']
+        rows = inventory['tools'][tool]['parameters']
+        business = [case for case in matrix['test_cases'] if case['tool'] == tool]
+        if (not rows or any(row['status'] != 'pass' for row in rows)
+                or not business or any(case['status'] != 'pass' for case in business)
+                or any(parent['evidence'] not in row['evidence'] for row in rows)):
+            raise ValueError('TOOLS_PARAMETER_PARENT_REFUSED ' + parent['id'])
+
+
+def parameter_final():
+    matrix = yaml.safe_load((ROOT/'tests/tools-test-matrix.yaml').read_text())
+    refused = [case['id'] for case in matrix['test_cases']
+               if case['id'] != 'TL-PAR-12' and case['status'] != 'pass']
+    parents = [case for case in matrix['test_cases'] if case.get('parameter_tool')]
+    if refused or len(parents) != 11 or len({case['parameter_tool'] for case in parents}) != 11:
+        raise ValueError('TOOLS_PARAMETER_FINAL_PREREQUISITES_REFUSED ' + ','.join(refused))
+    status()
+    audit()
+    print('TOOLS_ALL_PARAMETERS_ACCEPTANCE_PASS tools=11 contexts=391', flush=True)
+    print('TOOLS_CLEAN_VERIFY_PASS scope=all-tools-parameter-acceptance', flush=True)
+
+
+def record_parameter_final(log):
+    parameter_final()
+    raw = Path(log).resolve()
+    if raw.parent != ROOT/'logs' or not raw.name.startswith('tools-parameters-final-') or raw.suffix != '.log':
+        raise ValueError('TOOLS_PARAMETER_FINAL_LOG_SCOPE_REFUSED')
+    names = [raw.with_suffix(suffix) for suffix in ('.log', '.exit', '.finalized')]
+    for path in names[1:]:
+        if path.read_text().strip() != '0':
+            raise ValueError('TOOLS_PARAMETER_FINAL_DURABLE_REFUSED')
+    markers = ['TOOLS_ALL_PARAMETERS_ACCEPTANCE_PASS tools=11 contexts=391',
+               'TOOLS_CLEAN_VERIFY_PASS scope=all-tools-parameter-acceptance',
+               'TOOLS_PARAMETERS_FINAL_EXIT rc=0']
+    text = raw.read_text()
+    if any(marker not in text for marker in markers) or re.search(r'Traceback|_FAILED|_FAIL\b', text):
+        raise ValueError('TOOLS_PARAMETER_FINAL_MARKERS_REFUSED')
+    names += [ROOT/AUDIT, ROOT/'tests/tools-parameter-coverage.json']
+    names += list((ROOT/'tests/evidence').glob('tools-parameters-*.json'))
+    names = [path for path in names if path.name != 'tools-parameters-final-20261128.json']
+    names += [ROOT/('tests/evidence/'+owner+'.json') for owner in RECORDS]
+    proof = dict(date='2026-11-28', result='pass', rc=0, scope=['TL-PAR-12'], markers=markers,
+                 inputs={name: sha(ROOT/name) for name in (
+                     'tests/helpers/tools-production-audit.py', 'tests/run_tools_regression.sh')},
+                 files={str(path.relative_to(ROOT)): sha(path) for path in names},
+                 boundary='Current complete parser inventory, every behavioral assertion plan and raw outcome, '
+                          'all owning clean business scenarios, build provenance, security and cleanup verified. '
+                          'Unchanged accepted MySQL and StarMigrt business evidence retains its exact scope; '
+                          'this final acceptance does not relabel it as newly executed.')
+    (ROOT/'tests/evidence/tools-parameters-final-20261128.json').write_text(
+        json.dumps(proof, ensure_ascii=False, indent=2)+'\n')
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('stage', choices=('dependencies', 'audit', 'status', 'record-final'))
+    parser.add_argument('stage', choices=('dependencies', 'audit', 'status', 'record-final',
+                                         'parameter-final', 'record-parameter-final'))
     parser.add_argument('log', nargs='?')
     args = parser.parse_args()
     if args.stage == 'dependencies':
@@ -305,5 +418,9 @@ if __name__ == '__main__':
         audit()
     elif args.stage == 'status':
         status()
+    elif args.stage == 'parameter-final':
+        parameter_final()
+    elif args.stage == 'record-parameter-final':
+        record_parameter_final(args.log)
     else:
         record_final(args.log)

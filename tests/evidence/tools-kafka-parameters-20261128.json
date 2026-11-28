@@ -1,0 +1,42 @@
+{
+  "date": "2026-11-28",
+  "result": "pass",
+  "rc": 0,
+  "scope": [
+    "TL-KAF-01",
+    "TL-KAF-02",
+    "TL-KAF-03",
+    "TL-KAF-04",
+    "TL-KAF-05",
+    "TL-KAF-06"
+  ],
+  "markers": [
+    "KAFKA_INITIAL_VOTERS_FORMAT_PASS cluster_node_directory=verified",
+    "KAFKA_CLI_LIVE_REGRESSION_PASS",
+    "KAFKA_CLI_MULTINODE_REGRESSION_PASS controllers=3 brokers=2",
+    "TOOLS_KAFKA_EXIT rc=0",
+    "KAFKA_DURABLE_STATUS rc=0 finalized=0",
+    "TOOLS_CLEAN_VERIFY_PASS scope=kafka",
+    "TOOLS_KAFKA_RELEASE_EXIT rc=0",
+    "REMOTE_BOOTSTRAP_HANDOFF_PASS tool=KafkaCli mode=source",
+    "REMOTE_BOOTSTRAP_HANDOFF_PASS tool=KafkaCli mode=frozen"
+  ],
+  "files": {
+    "tools/kafka/KafkaCli.py": "781010899313d5fa6210881aaa56aac2d0784026078e4b7d3feb54b222b00b42",
+    "dist/KafkaCli-rocky8": "ad9216073504580baa7ab376b38f8a6e5c5712acf48b42d11273525bd5834290",
+    "dist/kafka-build.json": "46cad1eb4ed8ac9e75f388836c9f55ce915b60af671260588babfeb07d2cd8c1",
+    "tests/helpers/kafka-fixture-prepare.py": "17d4a0afb6259f27e0cf161e79c480b81a838f9c0022c9dd1d3c4a36b8a76669",
+    "tests/helpers/kafka-cli-live-regression.sh": "ae9f7eedc157c1d3d52534c9f81675670ff21e9e583eb574d593446b235cf9f0",
+    "tests/helpers/kafka-cli-multinode-regression.sh": "2fcd76e2e7418b4dea79de765bd7912f8d6be602daa9a8831151dff299d20596",
+    "tests/unit/test_kafka_fixture_contract.py": "fa8b7b9dbfb4120f5dc3f1d7f96c5501204b6197b3cf5f3193f057f67af3070a",
+    "tests/unit/test_kafka_parameters.py": "518beaf0a1b63f5aed7c243350ac35cbec4f0685996bc26fcfc35c5212717f05",
+    "logs/tools-kafka-supply-chain-20261128/apache-sha512.txt": "129ad222659cd5af6747b5e26ee34bc1319cd41b7f7f787844bb257f6e4bddbc",
+    "logs/tools-parameters-kafka-release-retry-20261128.log": "7c6806c2829f9e2e7653d9066889c70fe1ed00660ac783e87ccc83142efca222",
+    "logs/tools-parameters-kafka-release-retry-20261128.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/tools-parameters-kafka-release-retry-20261128.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/tools-parameters-remote-current-20261128.log": "77f026702eb86e7c1fd8372684dae89b250a2ad85e20c7c4355683a56dfffe8e",
+    "logs/tools-parameters-remote-current-20261128.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/tools-parameters-remote-current-20261128.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+  },
+  "boundary": "Kafka4.3.1 official binary SHA512 verified; real CLI single-node and split 3-controller/2-broker lifecycle, initial voters format IDs read back, produce/consume and groups, authenticated and TLS clients, dynamic quorum and replica movement/decommission, remote source/frozen handoff, failure recovery and scoped cleanup. Deterministic parameter assertions complement real service readback."
+}

@@ -14,6 +14,134 @@ spec.loader.exec_module(GATE)
 
 
 class ProductionAuditContracts(unittest.TestCase):
+    def test_final_launcher_calls_the_real_read_only_admission(self):
+        launcher = (ROOT/'tests/run_tools_regression.sh').read_text()
+        header, branch = GATE.launcher_execution(launcher, '--parameter-final')
+        self.assertEqual(branch.strip(), '"$PY" -B "$ROOT/tests/helpers/tools-production-audit.py" parameter-final')
+        self.assertIn('set -euo pipefail', header)
+        # Exercise the actual shell entry point with a pending business item.
+        # Copy the real helper so its root resolves to this isolated fixture.
+        import os
+        import shutil
+        import subprocess
+        import sys
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root/'tests/helpers').mkdir(parents=True)
+            for name in ('tests/run_tools_regression.sh', 'tests/helpers/tools-production-audit.py'):
+                shutil.copy2(ROOT/name, root/name)
+            cases = [dict(id='TL-PAR-%02d'%n, parameter_tool='tool'+str(n), status='pass')
+                     for n in range(1, 12)]
+            cases += [dict(id='TL-CAL-03', status='pending'), dict(id='TL-PAR-12', status='pending')]
+            (root/'tests/tools-test-matrix.yaml').write_text(json.dumps(dict(test_cases=cases)))
+            result = subprocess.run(['bash', str(root/'tests/run_tools_regression.sh'), '--parameter-final'],
+                                    env=dict(os.environ, PYTHON=sys.executable, KUBEAUTO_LOG_DIR=directory),
+                                    capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('TOOLS_PARAMETER_FINAL_PREREQUISITES_REFUSED TL-CAL-03', result.stderr)
+        self.assertNotIn('TOOLS_CLEAN_VERIFY_PASS', result.stdout)
+
+    def test_parameter_final_refuses_missing_business_or_stale_current_evidence(self):
+        parents=[dict(id='TL-PAR-%02d'%n,parameter_tool='tool'+str(n),status='pass') for n in range(1,12)]
+        cases=parents+[dict(id='TL-X-10',status='pending'),dict(id='TL-PAR-12',status='pending')]
+        with tempfile.TemporaryDirectory() as directory,mock.patch.object(GATE,'ROOT',Path(directory)):
+            path=Path(directory)/'tests/tools-test-matrix.yaml';path.parent.mkdir()
+            def save():path.write_text(json.dumps(dict(test_cases=cases)))
+            save()
+            with mock.patch.object(GATE,'status') as status,mock.patch.object(GATE,'audit') as audit:
+                with self.assertRaisesRegex(ValueError,'PREREQUISITES_REFUSED'):GATE.parameter_final()
+                status.assert_not_called();audit.assert_not_called()
+                cases[-2]['status']='pass';save();status.side_effect=ValueError('stale current evidence')
+                with self.assertRaisesRegex(ValueError,'stale current evidence'):GATE.parameter_final()
+                audit.assert_not_called()
+                status.side_effect=None;GATE.parameter_final();audit.assert_called_once()
+                cases.pop(0);save()
+                with self.assertRaisesRegex(ValueError,'PREREQUISITES_REFUSED'):GATE.parameter_final()
+
+    def test_parameter_parent_requires_current_rows_and_accepted_owning_business(self):
+        parent=dict(id='TL-PAR-01',tool='cross-tool',parameter_tool='NetCheckCli',status='pass',evidence='proof')
+        business=dict(id='TL-NET-03',tool='NetCheckCli',status='pass')
+        module=mock.Mock()
+        module.validate.return_value=[]
+        row=dict(status='pass',evidence=['proof'])
+        with tempfile.TemporaryDirectory() as directory:
+            module.INVENTORY=Path(directory)/'inventory.json'
+            def save():module.INVENTORY.write_text(json.dumps({'tools':{'NetCheckCli':{'parameters':[row]}}}))
+            save()
+            with mock.patch.object(GATE.importlib.util,'module_from_spec',return_value=module), \
+                    mock.patch.object(GATE.importlib.util,'spec_from_file_location') as spec:
+                GATE.parameter_acceptance({'test_cases':[parent,business]})
+                business['status']='pending'
+                with self.assertRaisesRegex(ValueError,'PARENT_REFUSED'):GATE.parameter_acceptance({'test_cases':[parent,business]})
+                business['status']='pass';row['status']='pending';save()
+                with self.assertRaisesRegex(ValueError,'PARENT_REFUSED'):GATE.parameter_acceptance({'test_cases':[parent,business]})
+                row['status']='pass';save();module.validate.return_value=['stale product SHA']
+                with self.assertRaisesRegex(ValueError,'CURRENT_EVIDENCE_REFUSED'):GATE.parameter_acceptance({'test_cases':[parent,business]})
+    def test_parameter_live_acceptance_requires_declared_scope_and_raw_verification(self):
+        with tempfile.TemporaryDirectory() as directory,mock.patch.object(GATE,'ROOT',Path(directory)):
+            path=Path(directory)/'tests/tools-test-matrix.yaml';path.parent.mkdir()
+            owner='tools-netcheck-parameters-20261128'
+            cases=[dict(id='TL-NET-03',status='pass',evidence='tests/evidence/'+owner+'.json')]
+            cases += [dict(id='TL-MBK-%02d'%n,status='pending') for n in range(1,7)]
+            cases += [dict(id=key,status='pending') for key in ('TL-X-09','TL-X-10')]
+            path.write_text(json.dumps(dict(test_cases=cases)))
+            with mock.patch.object(GATE,'verify_record',return_value=dict(scope=GATE.PARAMETER_LIVE_RECORDS[owner])) as verify:
+                GATE.status();verify.assert_called_once_with(owner)
+                verify.return_value=dict(scope=['TL-NET-03'])
+                with self.assertRaisesRegex(ValueError,'SCOPE_REFUSED'):GATE.status()
+                verify.side_effect=ValueError('TOOLS_AUDIT_STALE')
+                with self.assertRaisesRegex(ValueError,'AUDIT_STALE'):GATE.status()
+
+    def test_mysql_final_metadata_reuse_requires_exact_snapshot_and_execution_binding(self):
+        with tempfile.TemporaryDirectory() as directory,mock.patch.object(GATE,'ROOT',Path(directory)):
+            root=Path(directory)
+            for name in (GATE.AUDIT,'tests/helpers/tools-production-audit.py'):
+                path=root/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_text('current metadata')
+                old='accepted metadata';digest=hashlib.sha256(old.encode()).hexdigest()
+                with self.assertRaisesRegex(ValueError,'SNAPSHOT_MISSING'):
+                    GATE.compatible_file(name,digest,GATE.FINAL)
+                saved=root/'logs/tools-execution-inputs'/(digest+Path(name).suffix);saved.parent.mkdir(parents=True,exist_ok=True)
+                saved.write_text(old)
+                GATE.compatible_file(name,digest,GATE.FINAL)
+                saved.write_text('tampered')
+                with self.assertRaisesRegex(ValueError,'SNAPSHOT_MISSING'):
+                    GATE.compatible_file(name,digest,GATE.FINAL)
+            name='tools/mysqltools/MyBackupCli.py'
+            path=root/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_text('changed product')
+            digest=hashlib.sha256(b'accepted product').hexdigest()
+            (root/'logs/tools-execution-inputs'/(digest+'.py')).write_text('accepted product')
+            with self.assertRaisesRegex(ValueError,'AUDIT_STALE'):
+                GATE.compatible_file(name,digest,GATE.FINAL)
+
+    def test_physical_reuse_allows_only_build_selection_and_unrelated_dispatch_changes(self):
+        physical=GATE.physical_module()
+        names=['tests/helpers/build-tools-rocky8.sh','tests/run_tools_regression.sh']
+        with tempfile.TemporaryDirectory() as directory,mock.patch.object(physical,'ROOT',Path(directory)),mock.patch.object(physical,'FILES',names):
+            root=Path(directory);snapshots=root/'logs/mysql80-execution-inputs';snapshots.mkdir(parents=True)
+            recorded={}
+            for name in names:
+                before=(ROOT/name).read_text()
+                for selection in ('OvpnUserCli', 'NetCheckCli', 'CalicoPolicyCli',
+                        'NetCheckCli,CalicoPolicyCli,OvpnUserCli,KubePublishCli,KafkaCli,MigrationCli,StarCli'):
+                    before=before.replace(' || "$TOOLS_SELECTED" == '+selection+' ||',' ||')
+                if name.endswith('run_tools_regression.sh'):
+                    before=before.replace('PARAMETER_TOOL','UNRELATED_PARAMETER_TOOL')
+                before=before.encode()
+                expected=hashlib.sha256(before).hexdigest();recorded[name]=expected
+                (snapshots/(expected+'.sh')).write_bytes(before)
+                path=root/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_text((ROOT/name).read_text())
+            self.assertTrue(physical.compatible_inputs(recorded))
+            for name,old,new in ((names[0],'PyInstaller==6.16.0','PyInstaller==6.17.0'),
+                                  (names[1],'set -euo pipefail','set +e'),
+                                  (names[1],'physical80-*','physical80-bypassed')):
+                path=root/name;original=path.read_text()
+                if old=='PyInstaller==6.16.0':
+                    old='PRIMARY_IMAGE=';new='WRONG_IMAGE='
+                self.assertIn(old,original)
+                path.write_text(original.replace(old,new,1))
+                self.assertFalse(physical.compatible_inputs(recorded),name)
+                path.write_text(original)
+
     def test_supply_chain_runbook_reuse_accepts_only_explicit_host_notes(self):
         name = 'tests/README.md'; owner = 'mysql80-binary-supply-chain-20261125'
         old = 'Rocky Linux 8.10（131）\n仍使用 131 与 .122.216，两端实际\nSHA256 unchanged\n每轮 `logs/mysql-backups-example`\n'
@@ -126,8 +254,8 @@ class ProductionAuditContracts(unittest.TestCase):
             with mock.patch.object(GATE,'verify_record') as verify:
                 GATE.status()
                 self.assertEqual([call.args[0] for call in verify.call_args_list],
-                    ['mysql-backup-portability-20261125','mybackup-native-contract-20261125','mysql84-physical-requal-20261125',
-                     'mysql80-binary-supply-chain-20261125'])
+                    ['mysql-backup-portability-20261125',GATE.NATIVE_CONTRACT,'mysql84-physical-requal-20261125',
+                     'tools-supply-chain-parameters-20261128'])
                 verify.side_effect=ValueError('TOOLS_AUDIT_RAW_STALE')
                 with self.assertRaisesRegex(ValueError,'RAW_STALE'):GATE.status()
 
@@ -160,6 +288,10 @@ class ProductionAuditContracts(unittest.TestCase):
             root=Path(directory); name='tests/README.md'; path=root/name;path.parent.mkdir();path.write_text(current)
             expected=hashlib.sha256(old.encode()).hexdigest()
             saved=root/'logs/tools-execution-inputs'/(expected+'.md');saved.parent.mkdir(parents=True);saved.write_text(old)
+            GATE.compatible_file(name,expected,'starmigrt-full')
+            current=current.replace('90 scenarios (89 applicable and one not applicable)',
+                                    '102 scenarios (102 applicable and zero not applicable)')
+            path.write_text(current)
             GATE.compatible_file(name,expected,'starmigrt-full')
             path.write_text(current.replace('STARMIGRT commands unchanged','STARMIGRT changed command'))
             with self.assertRaisesRegex(ValueError,'AUDIT_STALE'):

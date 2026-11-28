@@ -1775,7 +1775,10 @@ def main():
         # 解析删除主机列表
         delete_hosts = None
         if hosts_to_delete:
-            delete_hosts = [parse_host_with_port(host_str) for host_str in hosts_to_delete]
+            delete_hosts = []
+            for host_str in hosts_to_delete:
+                host, port = parse_host_with_port(host_str)
+                delete_hosts.append((host, port if ":" in host_str else args.ssh_port))
         
         # 如果指定了远程主机，使用remote_runtime；否则使用local_runtime
         delete_runtime = args.remote_runtime if delete_hosts else args.local_runtime
@@ -1815,7 +1818,7 @@ def main():
         for host_str in hosts_to_distribute:
             host, port = parse_host_with_port(host_str)
             # 如果在host参数中指定了端口，使用它；否则使用ssh-port参数
-            if port == 22:  # 默认端口，可能没有指定
+            if ":" not in host_str:
                 port = args.ssh_port
             hosts_with_ports.append((host, port))
 

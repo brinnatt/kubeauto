@@ -1,0 +1,39 @@
+{
+  "date": "2026-11-28",
+  "scope": [
+    "TL-X-04",
+    "TL-X-05",
+    "TL-X-07"
+  ],
+  "result": "pass",
+  "rc": 0,
+  "files": {
+    "tests/helpers/tools-parameter-audit.py": "cca791f5a16efb363ecef5e2be2c2aff3c93dd8e7d4b6364fb9e6b2c6bd33b21",
+    "logs/tools-parameters-preflight-qualified-20261128.log": "6014c762ce98031642a29c2a593e85b30356465ae02eae125c44266cc010a4a5",
+    "logs/tools-parameters-preflight-qualified-20261128.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/tools-parameters-preflight-qualified-20261128.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/tools-execution-inputs/9e26662e13ed61518e4038b66fb901325a840e8086a2964fbb06bf2cf62353b1.py": "9e26662e13ed61518e4038b66fb901325a840e8086a2964fbb06bf2cf62353b1",
+    "logs/tools-execution-inputs/66621f4cd9a201e4396ac5582bcd8acb06ee2f1f928e07c4d36d83e43a10a6d8.py": "66621f4cd9a201e4396ac5582bcd8acb06ee2f1f928e07c4d36d83e43a10a6d8",
+    "logs/tools-parameters-safety-20261128.log": "a400119abe12ecb811028bef74f14bd04aa555c0f4101b87a703c8ee6c9e06d3",
+    "logs/tools-parameters-safety-20261128.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "logs/tools-parameters-safety-20261128.finalized": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "tests/evidence/tools-parameters-StarMigrtCli.json": "e60e10f32744ffc2000e1d7274a38c3bdc3f700ca51242e7a22af85848f27c17",
+    "tests/evidence/tools-parameters-CalicoPolicyCli.json": "bc861333b6251ea33cb61a41530371234806c97567ea69dbbcce44e3fb8a3ad7",
+    "tests/evidence/tools-parameters-NetCheckCli.json": "c961f576f69cf2ba106bd857eb11fcab07b18cce8d023c4327e17420f25bc541",
+    "tests/evidence/tools-parameters-StarCli.json": "4c45d140958ea9f6180f939d18157c96cfbe36010b15c8a85150e6c61afc7e09",
+    "tests/evidence/tools-parameters-KubeBackupCli.json": "102bc0f4c90a01b89a827fe969b2744c54311ebf41b5e95cb0d14a0e104a2257",
+    "tests/evidence/tools-parameters-MyLogiBackupCli.json": "aac19f0064568fbb1eb668d5475c93bb76d2a995ff750b05574dfc0254c3db47",
+    "tests/evidence/tools-parameters-OvpnUserCli.json": "31d6daa0196c3a39ff4c93c0b82dbe68c9f33c1542523fbf898ee51d45bb0da8",
+    "tests/evidence/tools-parameters-KubePublishCli.json": "30e489196c196868acebeef1d3e217a22127b8623d55b79d48d7f2d4a16ca4bf",
+    "tests/evidence/tools-parameters-KafkaCli.json": "0a174d2c94b867a3e6b706f3687ff086b9d935eeaa904bc8b7f9d4f8589194ba",
+    "tests/evidence/tools-parameters-MyBackupCli.json": "cdafcf9134ac0067c15cb2648c122c60b443ee660f4c3c364a2604b16ac6e89d",
+    "tests/evidence/tools-parameters-MigrationCli.json": "b658ea8fd1ab3fd2a37fffa7a1f1cf0d973cdbdee95e8970fb562522232d3606"
+  },
+  "markers": [
+    "TOOLS_CURRENT_SECURITY_ACCEPTANCE_PASS tools=11",
+    "TOOLS_CURRENT_OBSERVABILITY_ACCEPTANCE_PASS tools=11",
+    "TOOLS_CURRENT_CLEANUP_ACCEPTANCE_PASS tools=11",
+    "TOOLS_SAFETY_EXIT rc=0"
+  ],
+  "boundary": "All 391 executed parameter assertion plans and current raw evidence plus 287 focused contracts; owning current live security, failures, logs/exit/readback and scoped cleanup evidence verified. Real interruption checks are in the NetCheck, OpenVPN, native subprocess/pipeline and owning MySQL/StarMigrt evidence; API/SSH transport errors are explicitly distinguished from successful rejection. Business topology acceptance is separately owned by each tool."
+}

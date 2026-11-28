@@ -17,7 +17,7 @@ class MigrationEvidenceContracts(unittest.TestCase):
     def test_native_execution_binding_accepts_only_unchanged_owning_inputs(self):
         runner = (ROOT/'tests/run_tools_regression.sh').read_text()
         code = runner.split("<<'PYMIGFINAL'\n", 1)[1].split('\nPYMIGFINAL', 1)[0]
-        proof = json.loads((ROOT/'tests/evidence/tools-migration-native-20261125.json').read_text())
+        proof = json.loads((ROOT/'tests/evidence/tools-migration-native-20261128.json').read_text())
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             def write(name, value):
@@ -38,7 +38,7 @@ class MigrationEvidenceContracts(unittest.TestCase):
             record['sha256'] = write(record['log'], '\n'.join(record['required_markers']))
             record['archive_sha256'] = write(record['archive'], 'archive')
             write(record['remote_status'], '0 0\n')
-            write('tests/evidence/tools-migration-native-20261125.json', json.dumps(proof))
+            write('tests/evidence/tools-migration-native-20261128.json', json.dumps(proof))
             def admit():
                 return subprocess.run([sys.executable, '-B', '-c', code, str(root)], capture_output=True, text=True)
             result = admit(); self.assertEqual(result.returncode, 0, result.stderr)

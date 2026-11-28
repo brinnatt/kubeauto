@@ -403,7 +403,9 @@ def collect_preflight_issues(args: argparse.Namespace, log: logging.Logger) -> L
 
     if args.json_summary:
         jp = Path(args.json_summary)
-        if not _probe_path_writable(jp, False):
+        if jp.exists() and not jp.is_file():
+            err.append("JSON 摘要输出路径不是普通文件: %s" % jp.resolve())
+        elif not _probe_path_writable(jp, False):
             err.append("JSON 摘要输出路径父目录不可写或无法创建: %s" % jp.resolve())
 
     if not args.no_log_file:
@@ -726,6 +728,11 @@ class NetworkTester:
 
         all_icmp.extend(icmp_cli)
         all_icmp = ordered_dedupe(all_icmp)
+        # Keep every requested target in the report, including targets whose
+        # first sampling turn falls after the deadline. Empty data must fail
+        # the quality check rather than silently disappear from the result.
+        for target in ordered_dedupe(all_icmp + tcp_cli):
+            self.results[target]
 
         if icmp_cli:
             logger.info("命令行展开 ICMP 目标数: %d（已与默认列表去重合并）", len(icmp_cli))
@@ -1224,7 +1231,11 @@ def main() -> int:
         return 0
 
     tester = NetworkTester()
-    _install_signal_handlers(tester.request_shutdown)
+    interrupted = threading.Event()
+    def request_shutdown() -> None:
+        interrupted.set()
+        tester.request_shutdown()
+    _install_signal_handlers(request_shutdown)
 
     tester.start_test(
         args.duration,
@@ -1243,7 +1254,8 @@ def main() -> int:
             Path(args.json_summary).write_text(summary.to_json(), encoding="utf-8")
             logger.info("JSON 摘要已写入: %s", Path(args.json_summary).resolve())
         except OSError as e:
-            logger.warning("无法写入 JSON 摘要: %s", e)
+            logger.error("无法写入 JSON 摘要: %s", e)
+            return 1
 
     if not args.no_report_file:
         filename = args.report_dir_resolved / (
@@ -1257,9 +1269,10 @@ def main() -> int:
             print("报告已保存: %s" % filename.resolve())
             print("=" * 80)
         except OSError as e:
-            logger.warning("无法写入报告文件: %s", e)
+            logger.error("无法写入报告文件: %s", e)
+            return 1
 
-    if not tester.results:
+    if interrupted.is_set() or not tester.results:
         return 1
     return 0 if summary.overall_ok else 2
 

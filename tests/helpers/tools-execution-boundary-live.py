@@ -120,6 +120,42 @@ def remote_bootstrap():
         remote_bootstrap_owned()
 
 
+def netcheck_live():
+    product='tools/NetCheckCli.py'
+    artifact=ROOT/'dist/NetCheckCli-rocky8'
+    proof=json.loads((ROOT/'dist/netcheck-build.json').read_text())
+    if proof['inputs'][product]!=sha(ROOT/product) or proof['artifacts']['NetCheckCli']!=sha(artifact):
+        raise ValueError('NETCHECK_BUILD_STALE')
+    base='/tmp/tools-netcheck-'+uuid.uuid4().hex[:12]
+    output=ROOT/'logs'/Path(base).name;output.mkdir(mode=0o700)
+    with remote_lease():
+        remote_command('command -v ping >/dev/null; test ! -e '+base+' && mkdir -m 700 '+base)
+        try:
+            files=[(ROOT/product,'NetCheckCli.py'),(artifact,'NetCheckCli'),
+                   (ROOT/'tests/helpers/netcheck-live-fixture.py','fixture.py'),
+                   (ROOT/'tests/helpers/run-durable-gate.sh','durable.sh')]
+            for path,name in files:
+                subprocess.run(['scp','-q','-o','BatchMode=yes',str(path),REMOTE+':'+base+'/'+name],check=True)
+                actual=remote_command('sha256sum '+base+'/'+name,capture_output=True).stdout.split()[0]
+                if actual!=sha(path):raise ValueError('NETCHECK_UPLOAD_STALE '+name)
+            process=subprocess.Popen([*SSH,REMOTE,'cd '+base+' && bash durable.sh state NETCHECK_EXIT timeout --signal=TERM --kill-after=15s 120s python3 -B fixture.py'],
+                                     text=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+            with (output/'console.log').open('w') as log:
+                for line in process.stdout:
+                    log.write(line);log.flush();print(line,end='',flush=True)
+            if process.wait(timeout=20):raise ValueError('NETCHECK_REMOTE_NONZERO')
+        finally:
+            subprocess.run(['scp','-q','-r','-o','BatchMode=yes',REMOTE+':'+base+'/diagnostics',str(output)],check=False)
+            for suffix in ('exit','finalized'):
+                subprocess.run(['scp','-q','-o','BatchMode=yes',REMOTE+':'+base+'/state.'+suffix,str(output/('state.'+suffix))],check=False)
+            remote_command('test ! -e '+base+'/fixture')
+            remote_command('python3 -c '+shlex.quote('import shutil; shutil.rmtree('+repr(base)+')'))
+            remote_command('test ! -e '+base)
+        if any((output/('state.'+suffix)).read_text().strip()!='0' for suffix in ('exit','finalized')):
+            raise ValueError('NETCHECK_DURABLE_REFUSED')
+    print('TOOLS_NETCHECK_LIVE_PASS scope=loopback-only cleanup=verified',flush=True)
+
+
 def ovpn_config():
     host = 'root@192.168.47.130'
     source = Path('/tmp/kubeauto-easyrsa-3.0.7')
@@ -158,6 +194,17 @@ def ovpn_config():
             print('TOOLS_OVPN_SCOPED_CLEAN_PASS host=' + host, flush=True)
 
 
+def select_calico_crds(documents):
+    # KDD Profiles are synthesized from Kubernetes namespaces/service accounts,
+    # not registered as a profiles.crd.projectcalico.org CRD.
+    names = {'globalnetworkpolicies.crd.projectcalico.org', 'hostendpoints.crd.projectcalico.org',
+             'clusterinformations.crd.projectcalico.org', 'tiers.crd.projectcalico.org'}
+    crds = [d for d in documents if d and d.get('metadata', {}).get('name') in names]
+    if {d['metadata']['name'] for d in crds} != names:
+        raise ValueError('TOOLS_API_CRD_INVENTORY_REFUSED')
+    return crds
+
+
 def api_boundary():
     import yaml
     host = 'root@192.168.122.243'
@@ -166,11 +213,7 @@ def api_boundary():
     source = json.loads(manifest.with_suffix('.yaml.json').read_text())
     if source['version'] != 'v3.32.4' or source['sha256'] != sha(manifest):
         raise ValueError('TOOLS_API_CRD_SOURCE_REFUSED')
-    names = {'globalnetworkpolicies.crd.projectcalico.org', 'hostendpoints.crd.projectcalico.org',
-             'clusterinformations.crd.projectcalico.org'}
-    crds = [d for d in yaml.safe_load_all(manifest.read_text()) if d and d.get('metadata', {}).get('name') in names]
-    if {d['metadata']['name'] for d in crds} != names:
-        raise ValueError('TOOLS_API_CRD_INVENTORY_REFUSED')
+    crds = select_calico_crds(yaml.safe_load_all(manifest.read_text()))
     for tool, name in (('KubeBackupCli', 'kube-backup'), ('CalicoPolicyCli', 'calico')):
         proof = json.loads((ROOT/'dist'/(name+'-build.json')).read_text())
         path = 'tools/k8stools/'+tool+'.py'
@@ -269,11 +312,13 @@ def publish_load():
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('stage',choices=('execution-audit-preflight','remote-bootstrap-live','ovpn-config-live','calico-delete-live','publish-load-live'))
+    parser.add_argument('stage',choices=('execution-audit-preflight','remote-bootstrap-live','ovpn-config-live','calico-delete-live','publish-load-live','netcheck-live'))
     args=parser.parse_args()
     preflight()
     if args.stage=='remote-bootstrap-live':
         remote_bootstrap()
+    elif args.stage=='netcheck-live':
+        netcheck_live()
     elif args.stage=='ovpn-config-live':
         ovpn_config()
     elif args.stage=='calico-delete-live':

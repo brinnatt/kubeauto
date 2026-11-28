@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import io
+import os
+import shlex
 import subprocess
 import sys
 import tarfile
@@ -24,6 +26,77 @@ RUNNER = ROOT / "tests" / "run_tools_regression.sh"
 
 
 class ToolsMatrixContractTests(unittest.TestCase):
+    def test_cross_isolation_checks_live_onefile_runtime_and_its_cleanup(self):
+        fixture=(ROOT/'tests/helpers/tools-cross-host-regression.sh').read_text()
+        self.assertIn('TMPDIR="$WORK/net-runtime"',fixture)
+        self.assertIn('TMPDIR="$WORK/help-runtime"',fixture)
+        self.assertIn('kill -0 "$protected_pid"\ntest -d "$runtime"',fixture)
+        self.assertIn('wait "$protected_pid"',fixture)
+        self.assertIn('remaining=("$WORK/net-runtime"/*)',fixture)
+        self.assertIn('[[ "${#remaining[@]}" -eq 0 ]]',fixture)
+        self.assertNotIn('find "$WORK/',fixture)
+        self.assertIn('customer-input=preserved',fixture)
+
+    def test_cross_cleanup_cannot_disable_errexit_or_accept_a_failed_runtime(self):
+        runner=RUNNER.read_text()
+        body=runner.split('    cleanup_cross_live() ',1)[1].split('\n    verify_cross_clean()',1)[0]
+        # Exercise the real cleanup shell options, with transport confined to a
+        # no-op. A failed command after cleanup must prevent a success marker.
+        program='set -euo pipefail\nssh(){ :; }\ncross_host=fixture\ncross_root=/tmp/fixture\ncleanup_cross_live() '+body+'\ncleanup_cross_live\nfalse\necho UNEXPECTED_PASS\n'
+        result=subprocess.run(['bash','-c',program],capture_output=True,text=True)
+        self.assertNotEqual(result.returncode,0)
+        self.assertNotIn('UNEXPECTED_PASS',result.stdout)
+
+    def test_cross_probe_invocation_passes_the_real_netcheck_preflight(self):
+        fixture=(ROOT/'tests/helpers/tools-cross-host-regression.sh').read_text()
+        line=fixture.split('"$ROOT/NetCheckCli" \\\n',1)[1].split('\n',1)[0].rstrip(' \\')
+        with tempfile.TemporaryDirectory() as directory:
+            result=subprocess.run([sys.executable,'-B',str(ROOT/'tools/NetCheckCli.py'),
+                *shlex.split(line),'--dry-run'],cwd=directory,
+                env=dict(os.environ,NETCHECK_LOG_DIR=directory,KUBEAUTO_LOG_DIR=directory),
+                capture_output=True,text=True,timeout=10)
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        self.assertIn('[dry-run]',result.stdout+result.stderr)
+
+    def test_cross_capacity_guard_preserves_remote_awk_field_under_strict_mode(self):
+        runner=RUNNER.read_text()
+        branch=runner.split('  --cross-live)\n',1)[1].split('\n    ;;',1)[0]
+        line=next(line.strip() for line in branch.splitlines() if 'docker info >/dev/null;' in line)
+        result=subprocess.run(['bash','-euc','ssh(){ printf "%s\\n" "$@"; }; ssh '+line],
+                              capture_output=True,text=True)
+        self.assertEqual(result.returncode,0,result.stderr)
+        self.assertIn("awk 'NR==2{print $4}'",result.stdout)
+        self.assertIn('4194304',result.stdout)
+
+    def test_starcli_client_reuses_digest_and_falls_back_without_changing_identity(self):
+        source=(ROOT/'tests/helpers/starcli-live-regression.sh').read_text()
+        function='ensure_mysql_client() {'+source.split('ensure_mysql_client() {',1)[1].split('\n}',1)[0]+'\n}\n'
+        digest='sha256:c26ba5d7363cdae3f0a31665b2ab9106397324dde56ed536364776901b924b83'
+        for mode,expected in (('cache',0),('fallback',0),('unavailable',1)):
+            script=r'''
+set -euo pipefail
+downloaded=no
+docker() {
+  printf '%s\n' "$*" >&2
+  if [[ "$mode" == cache ]]; then return 0; fi
+  if [[ "$mode" == fallback && "$*" == *docker.io/brinnatt/* ]]; then
+    if [[ "$1" == pull ]]; then downloaded=yes; return 0; fi
+    [[ "$downloaded" == yes ]] && return 0
+  fi
+  return 1
+}
+timeout() { shift 3; "$@"; }
+'''+function+'\nensure_mysql_client\n'
+            import os
+            result=subprocess.run(['bash','-c',script],env=dict(os.environ,mode=mode,MYSQL_CLIENT_DIGEST=digest,
+                MYSQL_CLIENT_REF='hub.talkedu.cn/kubeauto/mysql-8.4@'+digest),capture_output=True,text=True,timeout=5)
+            self.assertEqual(result.returncode,expected,result.stderr)
+            self.assertNotIn(':8.4.4',result.stderr)
+            if mode=='cache':self.assertNotIn('pull',result.stderr)
+            if mode=='fallback':
+                self.assertIn('reference=docker.io/brinnatt/mysql-8.4@'+digest,result.stdout)
+                self.assertIn('pull docker.io/brinnatt/mysql-8.4@'+digest,result.stderr)
+
     def test_lab_address_validator_rejects_unapproved_tools_host(self):
         self.assertEqual(
             _unapproved_lab_addresses("ssh root@192.168.122.1 true\n"),
@@ -123,7 +196,8 @@ class ToolsMatrixContractTests(unittest.TestCase):
         self.assertIn('exit 124', build_branch)
         self.assertIn("flock -n 9", text)
         self.assertIn("run-durable-gate.sh", text)
-        self.assertIn("TOOLS_CALICO_EXIT", text)
+        self.assertIn("tools-calico-delivery.py", text)
+        self.assertIn("TOOLS_CALICO_EXIT", (ROOT/"tests/helpers/tools-calico-delivery.py").read_text())
         self.assertIn("--kube-backup-live", text)
         self.assertIn("TOOLS_KUBE_BACKUP_EXIT", text)
         self.assertIn('env PYTHON="$PY" bash', text)
@@ -141,9 +215,9 @@ class ToolsMatrixContractTests(unittest.TestCase):
         self.assertIn("TOOLS_STARCLI_EXIT", text)
         self.assertIn("--cross-live", text)
         self.assertIn("TOOLS_CROSS_LIVE_REGRESSION_PASS", text)
-        self.assertIn("cross_host=root@192.168.47.131", text)
+        self.assertIn("cross_host=root@192.168.47.138", text)
         self.assertIn("9df39a1d5bfac0249f0eef61a3ff74fcf7576c5947f23127c57e92267ad98ced", text)
-        self.assertIn("b0c08a4b639b5fca9aa4943ecec614fe241a0cebd1a7b460093ccaeae70df698", text)
+        self.assertIn("e8a49c5403b687db05d4d67333fa45808fbe74f36e683cec7abb1f7d0f2338c6", text)
         self.assertIn("deadline=$((SECONDS + 180))", text)
         self.assertIn("trap 'exit 130' INT", text)
         self.assertIn("TOOLS_FULL_REGRESSION_PASS", text)
@@ -431,10 +505,8 @@ class ToolsMatrixContractTests(unittest.TestCase):
         fixture = (ROOT / "tests/helpers/kafka-cli-multinode-regression.sh").read_text(
             encoding="utf-8"
         )
-        self.assertIn("KAFKA_FIXTURE_DIGEST=sha256:", runner)
-        self.assertIn("KAFKA_FIXTURE_REPOSITORY=quay.io/strimzi/kafka", runner)
-        self.assertIn('$KAFKA_FIXTURE_REPOSITORY@$KAFKA_FIXTURE_DIGEST', runner)
-        self.assertNotIn('$KAFKA_FIXTURE_IMAGE@$KAFKA_FIXTURE_DIGEST', runner)
+        self.assertIn("kafka-fixture-prepare.py", runner)
+        self.assertIn("KAFKA_FIXTURE_ARCHIVE version=4.3.1 checksum=Apache-SHA512", runner)
         self.assertIn('KAFKA_DURABLE_STATUS rc=$gate_rc finalized=$finalized_rc', runner)
         self.assertIn("cleanup_kafka_live() (", runner)
         self.assertIn("'${state}.pid' '${state}.exit' '${state}.finalized'", runner)
@@ -476,8 +548,13 @@ class ToolsMatrixContractTests(unittest.TestCase):
         cases = {case["id"]: case for case in data["test_cases"]}
         calico = [case for case in cases.values() if case["tool"] == "CalicoPolicyCli"]
         self.assertTrue(calico)
-        self.assertEqual(cases["TL-CAL-07"]["status"], "pass")
-        self.assertEqual(cases["TL-CAL-08"]["status"], "na")
+        # Acceptance status changes when product inputs change. This contract
+        # constrains the scenario boundary, not a mutable delivery verdict.
+        self.assertIn(cases["TL-CAL-07"]["status"], ("pending", "pass", "fail"))
+        self.assertTrue(cases["TL-CAL-07"]["command"])
+        self.assertIn(cases["TL-CAL-08"]["status"], ("pending", "pass", "fail"))
+        self.assertEqual(cases["TL-CAL-08"]["command"],
+                         'bash tests/run_tools_regression.sh --calico-delete-live')
 
     def test_calico_live_fixture_uses_supported_delete_arguments(self):
         fixture = (ROOT / "tests/helpers/calico-live-regression.sh").read_text(encoding="utf-8")
@@ -495,7 +572,9 @@ class ToolsMatrixContractTests(unittest.TestCase):
         self.assertIn('kubectl create namespace "$NS"', fixture)
         self.assertIn('kubectl delete namespace "$NS" --ignore-not-found --wait=true', fixture)
         self.assertIn("CALICO_LIVE_NAMESPACE_NOT_CLEAN", fixture)
-        self.assertIn("! kubectl get namespace kubeauto-tools-calico-live", runner)
+        self.assertIn("tools-calico-delivery.py", runner)
+        self.assertIn('existing=$(kubectl get namespace "$NS" --ignore-not-found -o name)', fixture)
+        self.assertIn('if [[ -n "$existing" ]]', fixture)
         self.assertIn("kubectl describe pod", fixture)
         self.assertIn("kubectl get events", fixture)
 

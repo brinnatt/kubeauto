@@ -125,7 +125,7 @@ class KafkaCliContractTest(unittest.TestCase):
 
     def test_multinode_runner_exercises_only_authorized_hosts_and_cli_paths(self):
         text = (ROOT / "tests/helpers/kafka-cli-multinode-regression.sh").read_text()
-        for host in ("217", "246", "193", "210", "216"):
+        for host in ("243", "246", "193", "210", "216"):
             self.assertIn(f"192.168.122.{host}", text)
         addresses = set(re.findall(r"192\.168\.122\.\d{1,3}", text))
         forbidden_host = "192.168.122." + "1"
