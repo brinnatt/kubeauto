@@ -13,6 +13,7 @@ StarMigrtCli 将 StarRocks 库表导出为一个 SQL 文件，并将该文件导
 - [五、参数参考](#五参数参考)
 - [六、异常处理](#六异常处理)
 - [七、工作机制与支持范围](#七工作机制与支持范围)
+- [八、大表迁移与窗口规划](#八大表迁移与窗口规划)
 
 ## 一、准备
 
@@ -263,3 +264,26 @@ mysql --host=target-fe.example.internal --port=9030 --user=migration_writer \
 > 源码运行环境为 Python 3.9+，依赖固定为 PyMySQL 1.1.2。独立可执行文件的操作系统、架构与最低 glibc 要求以交付制品说明为准；不将单机实验吞吐外推为生产迁移窗口。可先选代表性表测量导出、传输、导入与自动校验耗时，再规划整体停写窗口。
 >
 > 官方接口依据：[StarRocks 3.5.7 INSERT](https://github.com/StarRocks/starrocks/blob/3.5.7/docs/en/sql-reference/sql-statements/loading_unloading/INSERT.md)、[SHOW CREATE TABLE](https://github.com/StarRocks/starrocks/blob/3.5.7/docs/en/sql-reference/sql-statements/table_bucket_part_index/SHOW_CREATE_TABLE.md)、[动态分区](https://github.com/StarRocks/starrocks/blob/3.5.7/docs/en/table_design/data_distribution/dynamic_partitioning.md)、[官方迁移通路](https://github.com/StarRocks/starrocks/blob/3.5.7/docs/en/administration/data_migration_tool.md)、[PyMySQL 1.1.2](https://github.com/PyMySQL/PyMySQL/tree/v1.1.2)。
+
+## 八、大表迁移与窗口规划
+
+先用具有相同行宽、长文本和 JSON 分布的业务样表，在隔离目标完整执行一次导出、传输和导入。记录 SQL 文件大小、每阶段耗时、客户端内存、目标磁盘和负载，再确定停写窗口。样表需要包含大字段、NULL、特殊字符和分区边界；不能只选少量短记录。
+
+较大表可以先试用每条最多一万行、最多 8 MiB 的批次。下例将 `sales.orders` 导入独立目标库 `sales_trial`：
+
+```bash
+StarMigrtCli dump --host source-fe.example.internal --user migration_reader \
+  --database sales --table orders --target-database sales_trial \
+  --batch-rows 10000 --batch-mib 8 --output orders-trial.sql
+
+StarMigrtCli load --host target-fe.example.internal --user migration_writer \
+  --input orders-trial.sql
+```
+
+> **批次与吞吐**：默认仍为每条最多 500 行、1 MiB，适合保守起步。导出同时遵守两个上限，先达到哪一个就拆批；一万行并不保证装入同一条 INSERT。较大批次可以减少目标事务次数，但会增加单条 SQL 的解析时间、内存和失败处理成本。长文本和 JSON 应优先检查实际字节；单行超限会停止并回收本次临时文件，不会截断字段。不要未经试迁就把批次直接调到最大值。
+>
+> **资源与耗时**：客户端逐表、单连接导出，目标逐条提交；不会自动并行拆表。内存主要由当前批次、单行及 SQL 解析缓冲决定，不应随整表行数累积。导入会先扫描文件核验完整性和语句边界，执行后再读取目标的全部列计算行数及内容摘要；长文本和 JSON 的网络传输、序列化和完整校验都要计入窗口。`.sql.gz` 可以降低文件传输和存储量，但需要额外压缩、解压 CPU。源和目标也需要为全表扫描、写入、副本与 compaction 预留资源，客户端内存低不代表数据库负载低。
+>
+> **窗口判断**：总停写时间至少包含停写排空、导出、传输、导入（包含文件检查和全量内容校验）、业务验收及切换。先用代表性数据量估算，再留出网络、负载波动和失败重做的时间；短样表结果不能证明千万行的生产耗时。是否可上线，以同构环境完整实测满足批准窗口为准，不能仅凭“有一千万行”判断。`--query-timeout` 约束每条语句，不是整次迁移的总时限，增大它也不会提高吞吐。
+>
+> **窗口不足**：SQL 文件方式适合需要可审查、可离线传输的全量迁移。若容量、长字段比例或停写要求使试迁超出窗口，应选择官方 [EXPORT](https://github.com/StarRocks/starrocks/blob/3.5.7/docs/en/unloading/Export.md) 配合 [Stream Load](https://github.com/StarRocks/starrocks/blob/3.5.7/docs/en/loading/StreamLoad.md)，或评估官方 [集群数据迁移工具](https://github.com/StarRocks/starrocks/blob/3.5.7/docs/en/administration/data_migration_tool.md)。这些是独立通路，需要另外核对版本、存储、权限、一致性及恢复条件；StarMigrtCli 不会自动切换到这些方式。不要通过取消校验、忽略错误或在源持续变更时强行导出缩短窗口。

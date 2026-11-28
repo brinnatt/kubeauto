@@ -40,7 +40,7 @@ PROPERTIES (
 
 # This fixture implements only the SQL requests actually used by the product.
 DRIVER = r'''
-import json, os, re, socket
+import hashlib, json, os, re, socket
 from decimal import Decimal
 
 def event(text):
@@ -57,7 +57,7 @@ class Cursor:
     def __exit__(self, *args): self.close()
     def execute(self, sql, args=None):
         self.rows = []
-        if sql.startswith('SET '): return
+        if sql.startswith('SET '): event('SESSION '+sql); return
         if sql == 'SELECT current_version()':
             self.rows = [(self.conn.config.get('version', '3.5.7-test'),)]; return
         if sql == 'SHOW DATABASES':
@@ -101,6 +101,8 @@ class Cursor:
 
 class Connection:
     def __init__(self, **options):
+        safe = {k:v for k,v in options.items() if k != 'password'}
+        safe['password_sha256'] = hashlib.sha256(options['password'].encode()).hexdigest()
         self.config = json.load(open(os.environ['FAKE_CONFIG'], encoding='utf-8'))
         self.closed = False
         self._sock,self.other = socket.socketpair()
@@ -108,6 +110,7 @@ class Connection:
             assert options.get('ssl_verify_cert') and options.get('ssl_verify_identity')
         self.server_capabilities = 0 if self.config.get('no_tls') else 1
         self._request_authentication()
+        event('CONNECT '+json.dumps(safe,sort_keys=True))
     def _request_authentication(self): event('AUTH')
     def cursor(self, cls=None): return Cursor(self, cls is SSCursor)
     @property
@@ -452,6 +455,178 @@ class CLIContracts(unittest.TestCase):
         self.config.write_text(json.dumps(self.data))
         self.cli('dump','--host','source','--user','reader','--database','sales','--check','--ssl-ca',self.root/'ca.pem',rc=1)
         self.assertFalse(self.events.exists())
+
+    def test_connection_defaults_and_explicit_values_reach_driver(self):
+        common = ['dump','--host','source','--user','reader','--database','sales','--check']
+        self.cli(*common)
+        record = json.loads(next(x[8:] for x in self.events.read_text().splitlines() if x.startswith('CONNECT ')))
+        self.assertEqual({k:record[k] for k in ('port','connect_timeout','read_timeout','write_timeout')},
+                         dict(port=9030,connect_timeout=15,read_timeout=3630,write_timeout=30))
+        self.events.unlink()
+        self.cli(*common,'--port','19030','--connect-timeout','2','--query-timeout','7')
+        lines = self.events.read_text().splitlines()
+        record = json.loads(next(x[8:] for x in lines if x.startswith('CONNECT ')))
+        self.assertEqual(record['host'],'source')
+        self.assertEqual(record['user'],'reader')
+        self.assertEqual((record['port'],record['connect_timeout'],record['read_timeout']),(19030,2,37))
+        self.assertIn('SESSION SET query_timeout = 7',lines)
+
+    def test_numeric_limits_and_mutual_exclusion_before_auth(self):
+        common = ['dump','--host','source','--user','reader','--database','sales','--check']
+        limits = {'--port':(1,65535),'--connect-timeout':(1,120),'--query-timeout':(1,86400),
+                  '--batch-rows':(1,1000000),'--batch-mib':(1,256),'--replication-num':(1,32767)}
+        for option,(low,high) in limits.items():
+            for value in (low-1,high+1,'bad'):
+                with self.subTest(option=option,value=value):
+                    self.cli(*common,option,value,rc=2)
+        for extra in (['--schema-only','--data-only'],['--data-only','--replication-num','1'],
+                      ['--databases','sales'],['--all-databases'],['--output','unused.sql']):
+            self.cli(*common,*extra,rc=2)
+        self.assertFalse(self.events.exists())
+        for option,(low,high) in limits.items():
+            for value in (low,high):
+                with self.subTest(option=option,value=value):
+                    self.cli(*common,option,value)
+
+    def test_password_env_file_precedence_and_refusals(self):
+        common = ['dump','--host','source','--user','reader','--database','sales','--check']
+        self.env['CUSTOM_SR_SECRET'] = 'custom-private-value'
+        secret = self.root/'secret'
+        secret.write_text('file-private-value\r\n')
+        secret.chmod(0o600)
+        for extra,value in ((['--password-env','CUSTOM_SR_SECRET'],'custom-private-value'),
+                            (['--password-env','CUSTOM_SR_SECRET','--password-file',secret],'file-private-value')):
+            self.events.unlink(missing_ok=True)
+            result = self.cli(*common,*extra)
+            record = json.loads(next(x[8:] for x in self.events.read_text().splitlines() if x.startswith('CONNECT ')))
+            self.assertEqual(record['password_sha256'],hashlib.sha256(value.encode()).hexdigest())
+            self.assertNotIn(value,result.stdout+result.stderr)
+        self.events.unlink()
+        self.cli(*common,'--password-env','MISSING_SR_TEST_SECRET',rc=1)
+        secret.chmod(0o644)
+        self.cli(*common,'--password-file',secret,rc=1)
+        secret.chmod(0o600)
+        link = self.root/'secret-link'; link.symlink_to(secret)
+        for path in (link,self.root,self.root/'missing'):
+            self.cli(*common,'--password-file',path,rc=1)
+        secret.write_text('x'*65537)
+        self.cli(*common,'--password-file',secret,rc=1)
+        self.assertFalse(self.events.exists())
+        secret.write_text('')
+        self.cli(*common,'--password-file',secret)
+        record = json.loads(next(x[8:] for x in self.events.read_text().splitlines() if x.startswith('CONNECT ')))
+        self.assertEqual(record['password_sha256'],hashlib.sha256(b'').hexdigest())
+
+    def test_scope_patterns_repeated_options_and_mapping_refusals(self):
+        self.data['databases'].update(other=dict(a=table(),b=table()), sys=dict(hidden=table()), ignored=dict(a=table()))
+        self.config.write_text(json.dumps(self.data))
+        common=['dump','--host','source','--user','reader']
+        output=self.root/'scope.sql'
+        self.cli(*common,'--database','sales','--database','other','--table','sales.*','--table','other.*',
+                 '--exclude-table','other.b','--database-map','sales=dst_sales','--database-map','other=dst_other',
+                 '--output',output)
+        with dump.sql_input(output) as data: plan,records=dump.read_dump(data)
+        self.assertEqual([(t['database'],t['name'],t['target_database']) for t in plan['tables']],
+                         [('sales','events','dst_sales'),('other','a','dst_other')])
+        self.cli(*common,'--all-databases','--exclude-database','ignored','--exclude-database','other',
+                 '--exclude-table','none*','--check')
+        for extra in (['--database','missing'],['--database','sys'],['--database','sales','--table','missing*'],
+                      ['--database','sales','--exclude-table','*'],['--database','sales','--target-database','sys'],
+                      ['--databases','sales','other','--target-database','target'],
+                      ['--database','sales','--database-map','missing=dst'],
+                      ['--database','sales','--database-map','bad'],
+                      ['--databases','sales','other','--database-map','sales=same','--database-map','other=same']):
+            with self.subTest(extra=extra):self.cli(*common,*extra,'--check',rc=1)
+
+    def test_batch_rows_bytes_replication_and_oversize_row(self):
+        # Wide Unicode rows prove the byte budget, rather than character counting.
+        self.data['databases']['sales']['events']['rows'] = [[i,'中'*100000] for i in range(7)]
+        self.config.write_text(json.dumps(self.data))
+        output=self.export(self.root/'bytes.sql','--batch-rows','100','--batch-mib','1','--replication-num','2')
+        with dump.sql_input(output) as data:
+            plan,records=dump.read_dump(data); data.seek(0)
+            inserts=[s for s in dump.statements(data) if s.startswith('INSERT ')]
+        self.assertEqual(records[0]['rows'],7)
+        self.assertEqual(len(inserts),3)
+        self.assertTrue(all(len(s.encode())+1<=1024*1024 for s in inserts))
+        self.assertIn('"replication_num" = "2"',plan['tables'][0]['ddl'])
+        output=self.export(self.root/'rows.sql','--batch-rows','2','--batch-mib','8')
+        with dump.sql_input(output) as data:
+            self.assertEqual(sum(s.startswith('INSERT ') for s in dump.statements(data)),4)
+        self.data['databases']['sales']['events']['rows']=[[1,'中'*350000]]
+        self.config.write_text(json.dumps(self.data))
+        failed=self.root/'oversize.sql'
+        result=self.cli('dump','--host','source','--user','reader','--database','sales',
+                        '--batch-mib','1','--output',failed,rc=1)
+        self.assertIn('单行超过 --batch-mib',result.stderr)
+        self.assertFalse(failed.exists()); self.assertFalse(failed.with_suffix('.sql.partial').exists())
+
+    def test_load_timeout_sets_server_and_driver_before_first_write(self):
+        path=self.export()
+        self.data['databases']={};self.config.write_text(json.dumps(self.data));self.events.unlink()
+        self.cli('load','--host','target','--user','writer','--input',path,
+                 '--connect-timeout','3','--query-timeout','9',rc=1)
+        lines=self.events.read_text().splitlines()
+        record=json.loads(next(x[8:] for x in lines if x.startswith('CONNECT ')))
+        self.assertEqual((record['connect_timeout'],record['read_timeout']),(3,39))
+        self.assertLess(lines.index('SESSION SET insert_timeout = 9'),lines.index('WRITE CREATE'))
+
+    def test_interactive_password_is_not_echoed(self):
+        import errno
+        import pty
+        import select
+        pid,master=pty.fork()
+        if pid==0:
+            env=dict(self.env);env.pop('SR_PASSWORD',None)
+            os.execve(sys.executable,[sys.executable,'-B',str(SCRIPT),'dump','--host','source','--user','reader',
+                                     '--database','sales','--check'],env)
+        output=b'';status=None;sent=False
+        try:
+            deadline=time.monotonic()+15
+            while time.monotonic()<deadline:
+                if select.select([master],[],[],.1)[0]:
+                    try:block=os.read(master,65536)
+                    except OSError as error:
+                        if error.errno==errno.EIO:break
+                        raise
+                    if not block:break
+                    output+=block
+                    if '密码'.encode() in output and not sent:
+                        os.write(master,b'interactive-private-value\n');sent=True
+                done,current=os.waitpid(pid,os.WNOHANG)
+                if done:status=current;break
+            if status is None:
+                done,current=os.waitpid(pid,os.WNOHANG)
+                if done:status=current
+            self.assertIsNotNone(status,'interactive CLI did not exit')
+            self.assertEqual(os.waitstatus_to_exitcode(status),0,output.decode(errors='replace'))
+            self.assertTrue(sent)
+            self.assertNotIn(b'interactive-private-value',output)
+            record=json.loads(next(x[8:] for x in self.events.read_text().splitlines() if x.startswith('CONNECT ')))
+            self.assertEqual(record['password_sha256'],hashlib.sha256(b'interactive-private-value').hexdigest())
+        finally:
+            os.close(master)
+            if status is None:
+                with __import__('contextlib').suppress(ProcessLookupError):os.kill(pid,signal.SIGKILL)
+                with __import__('contextlib').suppress(ChildProcessError):os.waitpid(pid,0)
+
+    def test_all_parameters_have_owned_contract_and_matrix_mapping(self):
+        import yaml
+        parser=dump.make_parser()
+        sub=next(a for a in parser._actions if isinstance(a,__import__('argparse')._SubParsersAction))
+        options={s for p in [parser,*sub.choices.values()] for a in p._actions for s in a.option_strings if s.startswith('--')}
+        review=yaml.safe_load((ROOT/'tests/tools-test-matrix.yaml').read_text())['starmigrt_review']
+        rows=review['parameter_coverage']
+        self.assertEqual(options,{r['option'] for r in rows})
+        self.assertEqual(len(rows),len(options))
+        classes=(CLIContracts,LiteralContracts,SQLContracts)
+        for row in rows:
+            with self.subTest(option=row['option']):
+                cls,method=row['contract'].split('.')
+                owner=next(c for c in classes if c.__name__==cls)
+                self.assertTrue(callable(getattr(owner,method)))
+                self.assertTrue(row['case_ids'])
+                self.assertTrue(row['normal'] and row['boundary'])
 
 
 if __name__ == '__main__':

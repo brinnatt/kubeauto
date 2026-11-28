@@ -109,22 +109,77 @@ class GateContracts(unittest.TestCase):
             base = Path(tmp)
             (base/'StarMigrtCli.py').write_text('print("fixture")')
             (base/'tools-onefile.spec').write_text('# isolated spec fixture')
-            scenario = gate.Scenario(type('Worker', (), dict(base=base))())
+            (base/'StarMigrtCli').write_bytes(b'isolated-artifact')
+            frozen=dict(sha256=gate.sha(base/'StarMigrtCli'),product_sha256=gate.sha(base/'StarMigrtCli.py'),spec_sha256=gate.sha(base/'tools-onefile.spec'))
+            scenario = gate.Scenario(type('Worker', (), dict(base=base,plan=dict(frozen=frozen)))())
             scenario.source = 'fixture-only'
             commands = []
             scenario.cli = lambda *args, **kw: commands.append(args)
-            def build(args, **kw):
-                self.assertEqual(kw['env']['TOOLS_SELECTED'], 'StarMigrtCli')
-                dist = kw['cwd']/'dist'
-                dist.mkdir()
-                (dist/'StarMigrtCli').write_bytes(b'isolated-artifact')
             try:
-                with patch.object(gate, 'run', side_effect=build):
+                with patch.object(gate, 'run') as builder:
                     scenario.freeze()
+                    builder.assert_not_called()
                 check = next(c for c in commands if c[0] == 'dump' and '--check' in c)
                 self.assertEqual(check[check.index('--exclude-table')+1], 'skip_*')
+                (base/'StarMigrtCli.py').write_text('changed source')
+                with self.assertRaisesRegex(ValueError,'identity differs'):scenario.freeze()
             finally:
                 scenario.log.close()
+
+    def test_cli_requires_exact_negative_exit_status(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            scenario=gate.Scenario(type('Worker',(),dict(base=Path(tmp)))())
+            try:
+                with patch.object(gate.subprocess,'run',return_value=subprocess.CompletedProcess([],2,'STARMIGRT_ERROR','')):
+                    with self.assertRaisesRegex(ValueError,'rc=2'):
+                        scenario.cli('dump',rc=1,expected='STARMIGRT_ERROR')
+            finally:scenario.log.close()
+
+    def test_build_reuse_does_not_accept_changed_product(self):
+        proof=json.loads((ROOT/'tests/evidence/starmigrt-full.json').read_text())
+        case=dict(id='TL-SD-01',evidence='tests/evidence/starmigrt-full.json')
+        current=dict(proof['inputs']);current['tests/helpers/starmigrt-live.py']='new business assertions'
+        with patch.object(gate,'inputs',return_value=current):gate.evidence(case)
+        current[gate.PRODUCT]='different product'
+        with patch.object(gate,'inputs',return_value=current):
+            with self.assertRaisesRegex(ValueError,'stale'):gate.evidence(case)
+
+    def test_performance_monitor_runs_source_cli_and_checks_result(self):
+        import sys
+        with tempfile.TemporaryDirectory() as tmp:
+            base=Path(tmp);script=base/'fixture.py'
+            script.write_text('import time\ntime.sleep(.3)\nprint("STARMIGRT_DUMP_OK")\n')
+            scenario=type('Scenario',(),dict(base=base,product=[sys.executable,str(script)],env=dict(os.environ)))()
+            result=gate.measured_cli(scenario,'dump','dump',timeout=3)
+            self.assertEqual(result['rc'],0)
+            self.assertGreater(result['peak_rss_bytes'],0)
+            self.assertIn('STARMIGRT_DUMP_OK',(base/'performance-dump.log').read_text())
+            script.write_text('print("STARMIGRT_DUMP_OK")\nraise SystemExit(1)\n')
+            with self.assertRaisesRegex(ValueError,'rc=1'):gate.measured_cli(scenario,'dump','dump',timeout=3)
+
+    def test_performance_fixture_and_handoff_bind_actual_ten_million_rows(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base=Path(tmp);(base/'work').mkdir();calls=[]
+            stats=(10000001,800000000,20000,1200000000,10000)
+            def sql(host,text):
+                calls.append(('sql',host,text));return [stats] if text.startswith('SELECT count') else ()
+            def cli(command,*args,**kw):
+                calls.append(('cli',command,args))
+                if command=='dump':Path(args[args.index('--output')+1]).write_text('fixture SQL')
+            def measured(s,name,command,*args,**kw):
+                calls.append(('measured',command,args))
+                if command=='dump':Path(args[args.index('--output')+1]).write_text('fixture SQL')
+                return dict(seconds=1,peak_rss_bytes=1000000,rc=0)
+            scenario=type('Scenario',(),dict(base=base,source='source',target='target',sql=staticmethod(sql),cli=staticmethod(cli)))()
+            with patch.object(gate,'measured_cli',side_effect=measured):gate.performance(scenario)
+            insert=next(c[2] for c in calls if c[0]=='sql' and c[2].startswith('INSERT INTO sd_performance.large_t'))
+            self.assertIn('generate_series(1,10000001)',insert)
+            self.assertIn('json_object',insert);self.assertIn("repeat('长文本',2048)",insert)
+            operations=[c for c in calls if c[0]=='measured']
+            self.assertEqual([c[1] for c in operations],['dump','load'])
+            self.assertIn('--batch-mib',operations[0][2]);self.assertIn('--input',operations[1][2])
+            self.assertEqual(json.loads((base/'performance.json').read_text())['rows'],10000001)
+            self.assertFalse((base/'work/ten-million.sql').exists())
 
 
     def test_fixture_subnets_do_not_blackhole_management_source(self):

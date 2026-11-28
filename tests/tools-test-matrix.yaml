@@ -278,9 +278,9 @@ test_cases:
 
   # 新迁移工具独立待验收；不继承 StarCli、容器或旧 cross-tool 的 PASS。
   - {id: TL-SD-01, tool: "StarMigrtCli", category: "build", scenario: "独立源码与单工具 onefile 构建", command: "bash tests/run_tools_regression.sh --starmigrt-qualify", expected: "源码、冻结文件执行同一 dump/load；SHA256、依赖与平台可追溯", status: pass, official: "StarRocks 3.5.7 INSERT/SHOW CREATE TABLE；PyMySQL v1.1.2 connections/cursors；starmigrt_review.official", fixture: "私有Docker28.5.2；双allin1 3.5.7固定digest；65536行流式表、多类型/主键/聚合/分区表；TLS协议代理；仅产品dump/load签业务", cleanup: "只回收本轮label容器、网络、daemon、文件和挂载；防火墙前后相同；失败保留本轮诊断", disproof: "bash tests/run_tools_regression.sh --starmigrt-preflight", evidence: tests/evidence/starmigrt-full.json}
-  - {id: TL-SD-02, tool: "StarMigrtCli", category: "cli", scenario: "两步主流程、帮助、显式范围与只读检查", command: "bash tests/run_tools_regression.sh --starmigrt-qualify", expected: "dump/load 帮助匹配；dump --check 不读数据、不创建文件；非法输入非0", status: pass, official: "StarRocks 3.5.7 INSERT/SHOW CREATE TABLE；PyMySQL v1.1.2 connections/cursors；starmigrt_review.official", fixture: "私有Docker28.5.2；双allin1 3.5.7固定digest；65536行流式表、多类型/主键/聚合/分区表；TLS协议代理；仅产品dump/load签业务", cleanup: "只回收本轮label容器、网络、daemon、文件和挂载；防火墙前后相同；失败保留本轮诊断", disproof: "bash tests/run_tools_regression.sh --starmigrt-preflight", evidence: tests/evidence/starmigrt-full.json}
-  - {id: TL-SD-03, tool: "StarMigrtCli", category: "functional", scenario: "单SQL多库选表、映射、结构/数据、gzip和类型往返", command: "bash tests/run_tools_regression.sh --starmigrt-qualify", expected: "STARMIGRT_DUMP_OK；多库及精确类型、表模型、分区、副本可复验", status: pass, official: "StarRocks 3.5.7 INSERT/SHOW CREATE TABLE；PyMySQL v1.1.2 connections/cursors；starmigrt_review.official", fixture: "私有Docker28.5.2；双allin1 3.5.7固定digest；65536行流式表、多类型/主键/聚合/分区表；TLS协议代理；仅产品dump/load签业务", cleanup: "只回收本轮label容器、网络、daemon、文件和挂载；防火墙前后相同；失败保留本轮诊断", disproof: "bash tests/run_tools_regression.sh --starmigrt-preflight", evidence: tests/evidence/starmigrt-full.json}
-  - {id: TL-SD-04, tool: "StarMigrtCli", category: "security", scenario: "凭据、TLS、只读源、输出与目标保护", command: "bash tests/run_tools_regression.sh --starmigrt-qualify", expected: "认证前拒绝TLS降级；凭据和行值不回显；0600且不覆盖；全部目标先预检", status: pass, official: "StarRocks 3.5.7 INSERT/SHOW CREATE TABLE；PyMySQL v1.1.2 connections/cursors；starmigrt_review.official", fixture: "私有Docker28.5.2；双allin1 3.5.7固定digest；65536行流式表、多类型/主键/聚合/分区表；TLS协议代理；仅产品dump/load签业务", cleanup: "只回收本轮label容器、网络、daemon、文件和挂载；防火墙前后相同；失败保留本轮诊断", disproof: "bash tests/run_tools_regression.sh --starmigrt-preflight", evidence: tests/evidence/starmigrt-full.json}
+  - {id: TL-SD-02, tool: "StarMigrtCli", category: "cli", scenario: "两步主流程、帮助、显式范围与只读检查", command: "bash tests/run_tools_regression.sh --starmigrt-qualify", expected: "全部公开参数有正常/边界合同和逐项映射；dump/load帮助匹配；check只读；非法输入非0", status: pass, official: "StarRocks 3.5.7 INSERT/SHOW CREATE TABLE；PyMySQL v1.1.2 connections/cursors；starmigrt_review.official", fixture: "私有Docker28.5.2；双allin1 3.5.7固定digest；65536行流式表、多类型/主键/聚合/分区表；TLS协议代理；仅产品dump/load签业务", cleanup: "只回收本轮label容器、网络、daemon、文件和挂载；防火墙前后相同；失败保留本轮诊断", disproof: "bash tests/run_tools_regression.sh --starmigrt-preflight", evidence: tests/evidence/starmigrt-full.json}
+  - {id: TL-SD-03, tool: "StarMigrtCli", category: "functional", scenario: "单SQL多库选表、映射、结构/数据、gzip和类型往返", command: "bash tests/run_tools_regression.sh --starmigrt-qualify", expected: "STARMIGRT_DUMP_OK；多库/类型/表模型/分区/副本/行字节批次；10000001行长文本JSON真实往返、资源采样和含内容校验的窗口测量", status: pass, official: "StarRocks 3.5.7 INSERT/SHOW CREATE TABLE；PyMySQL v1.1.2 connections/cursors；starmigrt_review.official", fixture: "私有Docker28.5.2；双allin1 3.5.7固定digest；65536行流式表、多类型/主键/聚合/分区表；TLS协议代理；仅产品dump/load签业务", cleanup: "只回收本轮label容器、网络、daemon、文件和挂载；防火墙前后相同；失败保留本轮诊断", disproof: "bash tests/run_tools_regression.sh --starmigrt-preflight", evidence: tests/evidence/starmigrt-full.json}
+  - {id: TL-SD-04, tool: "StarMigrtCli", category: "security", scenario: "凭据、TLS、只读源、输出与目标保护", command: "bash tests/run_tools_regression.sh --starmigrt-qualify", expected: "自定义密码变量/私有文件及优先级/交互不回显；超时生效；认证前拒绝TLS降级；0600不覆盖；全部目标先预检", status: pass, official: "StarRocks 3.5.7 INSERT/SHOW CREATE TABLE；PyMySQL v1.1.2 connections/cursors；starmigrt_review.official", fixture: "私有Docker28.5.2；双allin1 3.5.7固定digest；65536行流式表、多类型/主键/聚合/分区表；TLS协议代理；仅产品dump/load签业务", cleanup: "只回收本轮label容器、网络、daemon、文件和挂载；防火墙前后相同；失败保留本轮诊断", disproof: "bash tests/run_tools_regression.sh --starmigrt-preflight", evidence: tests/evidence/starmigrt-full.json}
   - {id: TL-SD-05, tool: "StarMigrtCli", category: "recovery", scenario: "首错、中断、损坏、空目标与失败后重入", command: "bash tests/run_tools_regression.sh --starmigrt-qualify", expected: "导出原子发布与中断清理；坏文件连接前拒绝；导入首错停且已存在目标不重放", status: pass, official: "StarRocks 3.5.7 INSERT/SHOW CREATE TABLE；PyMySQL v1.1.2 connections/cursors；starmigrt_review.official", fixture: "私有Docker28.5.2；双allin1 3.5.7固定digest；65536行流式表、多类型/主键/聚合/分区表；TLS协议代理；仅产品dump/load签业务", cleanup: "只回收本轮label容器、网络、daemon、文件和挂载；防火墙前后相同；失败保留本轮诊断", disproof: "bash tests/run_tools_regression.sh --starmigrt-preflight", evidence: tests/evidence/starmigrt-full.json}
   - {id: TL-SD-06, tool: "StarMigrtCli", category: "functional", scenario: "自动导入校验和普通MySQL客户端兼容", command: "bash tests/run_tools_regression.sh --starmigrt-qualify", expected: "STARMIGRT_LOAD_OK；自动行数与内容校验；同数异值拒绝；mysql直接消费SQL", status: pass, official: "StarRocks 3.5.7 INSERT/SHOW CREATE TABLE；PyMySQL v1.1.2 connections/cursors；starmigrt_review.official", fixture: "私有Docker28.5.2；双allin1 3.5.7固定digest；65536行流式表、多类型/主键/聚合/分区表；TLS协议代理；仅产品dump/load签业务", cleanup: "只回收本轮label容器、网络、daemon、文件和挂载；防火墙前后相同；失败保留本轮诊断", disproof: "bash tests/run_tools_regression.sh --starmigrt-preflight", evidence: tests/evidence/starmigrt-full.json}
   - {id: TL-SD-07, tool: "StarMigrtCli", category: "delivery", scenario: "最终干净导出导入、冻结制品与限定清理", command: "bash tests/run_tools_regression.sh --starmigrt-full", expected: "当前前置全部PASS；真实全场景；durable双0、零非预期失败与TOOLS_CLEAN_VERIFY_PASS scope=starmigrt", status: pass, official: "StarRocks 3.5.7 INSERT/SHOW CREATE TABLE；PyMySQL v1.1.2 connections/cursors；starmigrt_review.official", fixture: "私有Docker28.5.2；双allin1 3.5.7固定digest；65536行流式表、多类型/主键/聚合/分区表；TLS协议代理；仅产品dump/load签业务", cleanup: "只回收本轮label容器、网络、daemon、文件和挂载；防火墙前后相同；失败保留本轮诊断", disproof: "bash tests/run_tools_regression.sh --starmigrt-preflight", evidence: tests/evidence/starmigrt-full.json}
@@ -607,7 +607,7 @@ starmigrt_review:
   review_status: approved
   authorization: "用户要求重新设计为SQL导出导入、重写README、移除迁移工具旧回归记录并达到GA；2026-11-27"
   scope: "仅迁移工具、README及所属测试和证据；其它产品代码不变"
-  classification: "产品重设计及对应门禁；仅两实例隔离fixture，复用镜像，无镜像构建或发布"
+  classification: "StarMigrtCli SQL 导出导入及对应门禁；仅两实例隔离fixture，复用镜像，无镜像构建或发布"
   local_entry: "bash tests/run_tools_regression.sh --starmigrt-preflight"
   status_entry: "bash tests/run_tools_regression.sh --starmigrt-status"
   official:
@@ -619,8 +619,165 @@ starmigrt_review:
   local_fixture: "tests/unit/test_starmigrt_contract.py 临时驱动模块/数据/子进程；只证明CLI合同，不证明数据库语义或吞吐"
   cleanup: "本地 TemporaryDirectory、子进程、socket、本次导出partial；保留导入已提交数据供核查，不自动删库表"
   smallest_disproof: "python3 -B -m unittest tests.unit.test_starmigrt_contract -v"
-  live_boundary: "root@192.168.122.216；持双控制端共享池租约与节点锁；私有daemon、两个internal网络上的allin1 3.5.7实例；不连接生产，不调用旧工具业务"
+  live_boundary: "root@192.168.122.216；持双控制端共享池租约与节点锁；私有daemon、两个internal网络上的allin1 3.5.7实例；不连接生产，仅运行 StarMigrtCli 业务场景"
   remaining: "TL-SD-01–07 以当前SQL导出导入矩阵验收；仅本工具进入现场和最终回归"
+  parameter_coverage:
+  - option: --help
+    contract: CLIContracts.test_public_help_and_two_step_flow
+    case_ids:
+    - TL-SD-02
+    normal: 主帮助、子命令帮助与版本直接执行
+    boundary: 不连接数据库；帮助列出当前命令与参数
+  - option: --version
+    contract: CLIContracts.test_public_help_and_two_step_flow
+    case_ids:
+    - TL-SD-02
+    normal: 主帮助、子命令帮助与版本直接执行
+    boundary: 不连接数据库；帮助列出当前命令与参数
+  - option: --host
+    contract: CLIContracts.test_connection_defaults_and_explicit_values_reach_driver
+    case_ids:
+    - TL-SD-04
+    normal: 默认和显式值传至连接/会话；load设置insert_timeout
+    boundary: 端口/超时上下界、非数值；受控连接/读取超时且不写目标
+  - option: --port
+    contract: CLIContracts.test_connection_defaults_and_explicit_values_reach_driver
+    case_ids:
+    - TL-SD-04
+    normal: 默认和显式值传至连接/会话；load设置insert_timeout
+    boundary: 端口/超时上下界、非数值；受控连接/读取超时且不写目标
+  - option: --user
+    contract: CLIContracts.test_connection_defaults_and_explicit_values_reach_driver
+    case_ids:
+    - TL-SD-04
+    normal: 默认和显式值传至连接/会话；load设置insert_timeout
+    boundary: 端口/超时上下界、非数值；受控连接/读取超时且不写目标
+  - option: --connect-timeout
+    contract: CLIContracts.test_connection_defaults_and_explicit_values_reach_driver
+    case_ids:
+    - TL-SD-04
+    normal: 默认和显式值传至连接/会话；load设置insert_timeout
+    boundary: 端口/超时上下界、非数值；受控连接/读取超时且不写目标
+  - option: --query-timeout
+    contract: CLIContracts.test_connection_defaults_and_explicit_values_reach_driver
+    case_ids:
+    - TL-SD-04
+    normal: 默认和显式值传至连接/会话；load设置insert_timeout
+    boundary: 端口/超时上下界、非数值；受控连接/读取超时且不写目标
+  - option: --password-env
+    contract: CLIContracts.test_password_env_file_precedence_and_refusals
+    case_ids:
+    - TL-SD-04
+    normal: 默认/自定义变量、文件优先、空密码；交互不回显
+    boundary: 缺失、符号链接、目录、宽权限、过大文件及错误所有者拒绝
+  - option: --password-file
+    contract: CLIContracts.test_password_env_file_precedence_and_refusals
+    case_ids:
+    - TL-SD-04
+    normal: 默认/自定义变量、文件优先、空密码；交互不回显
+    boundary: 缺失、符号链接、目录、宽权限、过大文件及错误所有者拒绝
+  - option: --ssl-ca
+    contract: CLIContracts.test_tls_downgrade_refused_before_authentication
+    case_ids:
+    - TL-SD-04
+    normal: 真实驱动TLS通过CA及主机名验证
+    boundary: 错误CA/主机名/明文降级拒绝
+  - option: --database
+    contract: CLIContracts.test_scope_patterns_repeated_options_and_mapping_refusals
+    case_ids:
+    - TL-SD-03
+    normal: 单库/多库/全部可见业务库、重复/通配选择与排除、库映射
+    boundary: 系统库、缺失对象、筛选为空、冲突/非法映射拒绝
+  - option: --databases
+    contract: CLIContracts.test_scope_patterns_repeated_options_and_mapping_refusals
+    case_ids:
+    - TL-SD-03
+    normal: 单库/多库/全部可见业务库、重复/通配选择与排除、库映射
+    boundary: 系统库、缺失对象、筛选为空、冲突/非法映射拒绝
+  - option: --all-databases
+    contract: CLIContracts.test_scope_patterns_repeated_options_and_mapping_refusals
+    case_ids:
+    - TL-SD-03
+    normal: 单库/多库/全部可见业务库、重复/通配选择与排除、库映射
+    boundary: 系统库、缺失对象、筛选为空、冲突/非法映射拒绝
+  - option: --table
+    contract: CLIContracts.test_scope_patterns_repeated_options_and_mapping_refusals
+    case_ids:
+    - TL-SD-03
+    normal: 单库/多库/全部可见业务库、重复/通配选择与排除、库映射
+    boundary: 系统库、缺失对象、筛选为空、冲突/非法映射拒绝
+  - option: --exclude-table
+    contract: CLIContracts.test_scope_patterns_repeated_options_and_mapping_refusals
+    case_ids:
+    - TL-SD-03
+    normal: 单库/多库/全部可见业务库、重复/通配选择与排除、库映射
+    boundary: 系统库、缺失对象、筛选为空、冲突/非法映射拒绝
+  - option: --exclude-database
+    contract: CLIContracts.test_scope_patterns_repeated_options_and_mapping_refusals
+    case_ids:
+    - TL-SD-03
+    normal: 单库/多库/全部可见业务库、重复/通配选择与排除、库映射
+    boundary: 系统库、缺失对象、筛选为空、冲突/非法映射拒绝
+  - option: --database-map
+    contract: CLIContracts.test_scope_patterns_repeated_options_and_mapping_refusals
+    case_ids:
+    - TL-SD-03
+    normal: 单库/多库/全部可见业务库、重复/通配选择与排除、库映射
+    boundary: 系统库、缺失对象、筛选为空、冲突/非法映射拒绝
+  - option: --target-database
+    contract: CLIContracts.test_schema_data_selection_and_mapping
+    case_ids:
+    - TL-SD-03
+    normal: 单库改名并结构/数据往返
+    boundary: 多库使用或系统库目标拒绝
+  - option: --schema-only
+    contract: CLIContracts.test_schema_data_selection_and_mapping
+    case_ids:
+    - TL-SD-03
+    normal: 只结构后仅数据导入空目标表
+    boundary: 模式互斥；data-only不能改副本；目标缺失/非空/结构不符拒绝
+  - option: --data-only
+    contract: CLIContracts.test_schema_data_selection_and_mapping
+    case_ids:
+    - TL-SD-03
+    normal: 只结构后仅数据导入空目标表
+    boundary: 模式互斥；data-only不能改副本；目标缺失/非空/结构不符拒绝
+  - option: --batch-rows
+    contract: CLIContracts.test_batch_rows_bytes_replication_and_oversize_row
+    case_ids:
+    - TL-SD-03
+    normal: 行数/UTF8字节拆批和目标副本属性；千万行长文本JSON流式处理
+    boundary: 上下界/非数值；单行超字节上限回收partial
+  - option: --batch-mib
+    contract: CLIContracts.test_batch_rows_bytes_replication_and_oversize_row
+    case_ids:
+    - TL-SD-03
+    normal: 行数/UTF8字节拆批和目标副本属性；千万行长文本JSON流式处理
+    boundary: 上下界/非数值；单行超字节上限回收partial
+  - option: --replication-num
+    contract: CLIContracts.test_batch_rows_bytes_replication_and_oversize_row
+    case_ids:
+    - TL-SD-03
+    normal: 行数/UTF8字节拆批和目标副本属性；千万行长文本JSON流式处理
+    boundary: 上下界/非数值；单行超字节上限回收partial
+  - option: --check
+    contract: CLIContracts.test_check_creates_no_file_and_reads_no_data
+    case_ids:
+    - TL-SD-02
+    normal: 元数据预检，不读业务行或建输出
+    boundary: 与output冲突、不支持对象及空选择拒绝
+  - option: --output
+    contract: CLIContracts.test_dump_single_file_plain_and_gzip
+    case_ids:
+    - TL-SD-05
+    normal: 普通SQL/gzip、0600、原子完成
+    boundary: 已有文件/partial/中断/失败不覆盖或发布
+  - option: --input
+    contract: CLIContracts.test_corrupt_input_refused_before_authentication
+    case_ids:
+    - TL-SD-05
+    normal: 普通SQL/gzip导入并自动内容校验
+    boundary: 坏文件、未闭合SQL、符号链接及目标已有对象拒绝
 
 mysql80_physical_requalification:
   authorization: "2026-11-25 用户要求补 MySQL 8.0.33/8.0.46 生产版本物理备份生命周期回归；不连接生产"

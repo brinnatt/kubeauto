@@ -929,10 +929,17 @@ matrix are not tools delivery evidence.
 `--starmigrt-qualify` 先运行本地合同，再持有 130、122.2 共享池锁及 216 节点锁，
 在 `root@192.168.122.216` 的私有 Docker 28.5.2 内建立两个 StarRocks 3.5.7 实例。
 复用双端双架构固定 allin1 digest，不构建或发布镜像。离线 wheel 按官方 PyPI
-SHA256 校验，onefile 只构建 StarMigrtCli。验收包括多库、筛选、映射、原生类型、
+SHA256 校验，复用已核验且源码/spec不变的 StarMigrtCli 冻结制品，不重新打包。
+`starmigrt_review.parameter_coverage` 将全部公开参数逐项绑定到正常、边界与拒绝合同；
+新增参数而未补映射会在本地拒绝。验收包括多库、筛选、映射、原生类型、
 分区、结构/数据、gzip、只读账号、TLS CA/身份/降级、SIGTERM 原子文件清理、
 损坏拒绝、导入首错、同名目标拒绝、自动行数/内容校验，以及普通 mysql 消费 SQL。
-产品证据必须来自 dump/load CLI，fixture SQL 不代替产品入口。
+补充自定义密码变量/私有文件及优先级、两侧TLS、连接/读取时限、UTF-8字节拆批与单行超限拒绝。
+TL-SD-03 同时以 10,000,001 行包含长文本和嵌套 JSON 的真实内表执行源码 dump/load，
+比较相同10万行的默认/较大批次，记录完整SQL大小、耗时、CPU和峰值RSS；load计时包含
+文件审计与全量内容校验。每15秒输出阶段与进度；性能日志和 `performance.json` 绑定当前证据。
+客户端RSS预算512MiB，进程超时5400秒、整轮监督上限7200秒；这些是实验室门禁预算，
+不是生产SLA。产品证据必须来自 dump/load CLI，fixture SQL 不代替产品入口。
 
 `--starmigrt-full` 在任何 SSH 前核验 TL-SD-01–06 当前输入、原始日志、冻结制品和
 退出状态，前置缺失或失效立即拒绝。然后从干净环境执行本工具完整场景。

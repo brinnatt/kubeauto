@@ -85,7 +85,11 @@ def matrix():
 
 def evidence(case):
     proof = json.loads((ROOT / case['evidence']).read_text())
-    if proof['inputs'] != inputs() or proof['rc'] != 0 or case['id'] not in proof['ids']:
+    # Build reuse depends on the unchanged product and spec, not new business
+    # assertions. Other cases bind the complete current test/document inputs.
+    current = inputs()
+    relevant = [PRODUCT, 'tools-onefile.spec'] if case['id'] == 'TL-SD-01' else list(current)
+    if any(proof['inputs'].get(k) != current[k] for k in relevant) or proof['rc'] != 0 or case['id'] not in proof['ids']:
         raise ValueError(case['id'] + ' stale inputs/exit/scope')
     for name, digest in proof['files'].items():
         if sha(ROOT / name) != digest:
@@ -99,6 +103,14 @@ def evidence(case):
     if sha(ROOT / proof['binary']) != result['binary_sha256']:
         raise ValueError('Frozen binary changed')
     return proof
+
+
+def frozen_input():
+    _, cases = matrix()
+    proof = evidence(cases[0])
+    path = ROOT / proof['binary']
+    return path, dict(sha256=sha(path), product_sha256=proof['inputs'][PRODUCT],
+                      spec_sha256=proof['inputs']['tools-onefile.spec'])
 
 
 def status():
@@ -242,12 +254,13 @@ def launch(stage):
     wheels = sorted(WHEELS.glob('*.whl'))
     if {p.name: sha(p) for p in wheels} != WHEEL_PINS:
         raise ValueError('Official pinned offline wheels differ')
+    binary, frozen = frozen_input()
     ident = uuid.uuid4().hex
     remote = '/tmp/ksd-' + ident[:16]
     directory = ROOT / 'logs' / ('starmigrt-' + stage + '-' + ident)
     directory.mkdir(mode=0o700)
     plan = dict(id=ident, base=remote, stage=stage, images={'allin1': image}, runtime=proof,
-                inputs=inputs(), wheels={p.name: sha(p) for p in wheels})
+                inputs=inputs(), wheels={p.name: sha(p) for p in wheels}, frozen=frozen)
     (directory / 'plan.json').write_text(json.dumps(plan, indent=2) + '\n')
     with infra.control_leases():
         run([*SSH, HOST, 'mkdir', '-m', '700', remote])
@@ -255,7 +268,7 @@ def launch(stage):
                    (RUNTIME, 'runtime.tar.gz'), (ROOT / PRODUCT, 'StarMigrtCli.py'),
                    (ROOT / 'tools-onefile.spec', 'tools-onefile.spec'),
                    (ROOT / 'tests/helpers/run-durable-gate.sh', 'durable.sh'),
-                   (directory / 'plan.json', 'plan.json')]
+                   (directory / 'plan.json', 'plan.json'), (binary, 'StarMigrtCli')]
         for p in wheels:
             sources.append((p, p.name))
         for source, name in sources:
@@ -269,8 +282,8 @@ def launch(stage):
                 print('STARMIGRT_SUPERVISOR elapsed=%ds stage=%s\n%s' % (time.monotonic()-started, stage, output), end='', flush=True)
                 if 'STARMIGRT_REMOTE_FINALIZED' in output:
                     break
-                if time.monotonic()-started > 2700:
-                    raise TimeoutError('StarMigrtCli gate exceeds 2700s')
+                if time.monotonic()-started > 7200:
+                    raise TimeoutError('StarMigrtCli gate exceeds 7200s')
                 time.sleep(15)
         except BaseException:
             script = f"import os,signal; from pathlib import Path; b=Path({remote!r}); p=int((b/'worker.pid').read_text()); assert Path('/proc/'+str(p)+'/cwd').resolve()==b; os.kill(p,signal.SIGTERM)"
@@ -281,13 +294,13 @@ def launch(stage):
                 time.sleep(3)
             raise
         finally:
-            for name in ('console.log', 'state.exit', 'state.finalized', 'result.json', 'StarMigrtCli', 'freeze.log', 'failure.json', 'dockerd.log', 'firewall-before.rules', 'firewall-after.rules', 'scenario.log', 'fixture.json', 'network-source.json', 'network-target.json', 'failure-sd-source.log', 'failure-sd-target.log'):
+            for name in ('console.log', 'state.exit', 'state.finalized', 'result.json', 'StarMigrtCli', 'freeze.log', 'failure.json', 'dockerd.log', 'firewall-before.rules', 'firewall-after.rules', 'scenario.log', 'fixture.json', 'network-source.json', 'network-target.json', 'performance.json', 'performance-dump.log', 'performance-load.log', 'failure-sd-source.log', 'failure-sd-target.log'):
                 subprocess.run(['scp', '-q', '-o', 'BatchMode=yes', HOST + ':' + remote + '/' + name, directory / name], stderr=subprocess.DEVNULL)
         for name in ('state.exit', 'state.finalized'):
             if (directory / name).read_text().strip() != '0':
                 raise ValueError('First failure preserved in ' + str(directory / 'console.log'))
         log = (directory / 'console.log').read_text()
-        required = ['STARMIGRT_CASE_PASS ' + i for i in IDS[:-1]] + ['TOOLS_CLEAN_VERIFY_PASS scope=starmigrt', 'STARMIGRT_GATE_PASS stage=' + stage]
+        required = ['STARMIGRT_CASE_PASS ' + i for i in IDS[:-1]] + ['STARMIGRT_PARAMETERS_REAL_PASS', 'STARMIGRT_PERFORMANCE_PASS rows=10000001', 'TOOLS_CLEAN_VERIFY_PASS scope=starmigrt', 'STARMIGRT_GATE_PASS stage=' + stage]
         if not all(m in log for m in required) or re.search(r'Traceback|_FAIL(?:ED)?\b', log):
             raise ValueError('Missing markers or unexpected failure')
         if inputs() != plan['inputs']:
@@ -324,7 +337,7 @@ class Scenario:
         self.metrics = []
         self.log = (self.base / 'scenario.log').open('w')
 
-    def cli(self, command, *args, host=None, expected='STARMIGRT', rc=0, product=None, user='root', password=None):
+    def cli(self, command, *args, host=None, expected='STARMIGRT', rc=0, product=None, user='root', password=None, env_extra=None):
         argv = [*(product or self.product), command, *map(str, args)]
         if host:
             argv += ['--host', host, '--user', user]
@@ -332,20 +345,24 @@ class Scenario:
         env = dict(self.env)
         if password is not None:
             env['SR_PASSWORD'] = password
+        if env_extra:
+            env.update(env_extra)
         if argv[0] == str(self.base / 'StarMigrtCli'):
             env.pop('PYTHONPATH', None)
         result = subprocess.run(argv, env=env, capture_output=True, text=True, timeout=240)
         self.log.write('$ ' + shlex.join(argv) + '\n' + result.stdout + result.stderr)
         self.log.flush()
-        if (result.returncode != 0) != (rc != 0) or expected not in result.stdout + result.stderr:
+        if result.returncode != rc or expected not in result.stdout + result.stderr:
             raise ValueError('CLI result differs: ' + command + ' rc=' + str(result.returncode) + ' (see scenario.log)')
         self.metrics.append(dict(command=command, seconds=round(time.monotonic()-started, 3), rc=result.returncode))
         return result
 
     def sql(self, host, sql):
         import pymysql
-        with pymysql.connect(host=host, port=9030, user='root', password='', charset='utf8mb4', autocommit=True, read_timeout=90) as conn:
+        with pymysql.connect(host=host, port=9030, user='root', password='', charset='utf8mb4', autocommit=True, read_timeout=600) as conn:
             with conn.cursor() as cursor:
+                cursor.execute('SET query_timeout = 600')
+                cursor.execute('SET insert_timeout = 600')
                 cursor.execute(sql)
                 return cursor.fetchall()
 
@@ -416,16 +433,12 @@ class Scenario:
         self.w.docker('exec', '-i', 'sd-target', 'mysql', '--protocol=TCP', '-h', '127.0.0.1', '-P', '9030', '-u', 'root', '--default-character-set=utf8mb4', input=Path(path).read_bytes(), stdout=self.log, stderr=self.log)
 
     def freeze(self):
-        project = self.base / 'freeze'
-        script = project / 'tools/starrocks/starmigration/StarMigrtCli.py'
-        script.parent.mkdir(parents=True)
-        shutil.copyfile(self.base / 'StarMigrtCli.py', script)
-        shutil.copyfile(self.base / 'tools-onefile.spec', project / 'tools-onefile.spec')
-        env = dict(self.env, TOOLS_SELECTED='StarMigrtCli')
-        with (self.base / 'freeze.log').open('w') as log:
-            run([sys.executable, '-m', 'PyInstaller', '--clean', 'tools-onefile.spec'], cwd=project, env=env, stdout=log, stderr=log)
         binary = self.base / 'StarMigrtCli'
-        shutil.copyfile(project / 'dist/StarMigrtCli', binary)
+        expected = self.w.plan['frozen']
+        if (sha(binary) != expected['sha256'] or sha(self.base / 'StarMigrtCli.py') != expected['product_sha256']
+                or sha(self.base / 'tools-onefile.spec') != expected['spec_sha256']):
+            raise ValueError('Frozen reuse source/spec/artifact identity differs')
+        (self.base / 'freeze.log').write_text('FROZEN_REUSE ' + json.dumps(expected, sort_keys=True) + '\n')
         binary.chmod(0o755)
         self.binary = [str(binary)]
         self.cli('--help', expected='StarRocks', product=self.binary)
@@ -478,6 +491,168 @@ class Scenario:
         mismatch.write_bytes(body+b'-- StarMigrtCli complete sha256='+hashlib.sha256(body).hexdigest().encode()+b'\n')
         self.cli('load', '--input', mismatch, host=self.target, expected='内容校验不一致', rc=1)
         print('STARMIGRT_CASE_PASS TL-SD-06 tool_load_content_and_mysql_client', flush=True)
+        parameter_cases(self)
+        performance(self)
+
+
+def parameter_cases(s):
+    """Missing options use the real product CLI; refusals must precede writes."""
+    password = uuid.uuid4().hex
+    s.sql(s.source, "CREATE USER sd_parameter IDENTIFIED BY '" + password + "'")
+    s.sql(s.source, 'GRANT SELECT ON ALL TABLES IN DATABASE sd_b TO USER sd_parameter')
+    common = ['--database', 'sd_b', '--table', 'primary_t', '--check',
+              '--connect-timeout', '2', '--query-timeout', '7']
+    s.cli('dump', *common, '--password-env', 'SD_CUSTOM_PASSWORD', host=s.source, user='sd_parameter',
+          env_extra={'SR_PASSWORD': 'deliberately-wrong', 'SD_CUSTOM_PASSWORD': password}, expected='STARMIGRT_CHECK_OK')
+    secret = s.base/'work/parameter.password'
+    secret.write_text(password+'\r\n'); secret.chmod(0o600)
+    try:
+        s.cli('dump', *common, '--password-env', 'SD_MISSING', '--password-file', secret,
+              host=s.source, user='sd_parameter', password='deliberately-wrong', expected='STARMIGRT_CHECK_OK')
+        secret.chmod(0o644)
+        s.cli('dump', *common, '--password-file', secret, host=s.source, expected='密码文件必须属于', rc=1)
+        secret.chmod(0o600)
+        os.chown(secret,65534,65534)
+        s.cli('dump', *common, '--password-file', secret, host=s.source, expected='密码文件必须属于', rc=1)
+    finally:
+        os.chown(secret,os.getuid(),os.getgid());secret.unlink()
+    s.cli('dump', *common, '--password-env', 'SD_MISSING', host=s.source, expected='非交互运行', rc=1)
+    # A real socket that accepts TCP but sends no handshake proves the driver's
+    # read deadline (query-timeout + 30s), without blackholing a lab address.
+    import threading
+    listener=socket.socket();listener.bind(('127.0.0.1',0));listener.listen();listener.settimeout(1)
+    stop=threading.Event();accepted=[]
+    def silent_peer():
+        while not stop.is_set():
+            try:client,_=listener.accept()
+            except socket.timeout:continue
+            except OSError:break
+            accepted.append(client);stop.wait(40);client.close()
+    thread=threading.Thread(target=silent_peer);thread.start()
+    started=time.monotonic()
+    try:
+        s.cli('dump', *common[:-4], '--query-timeout','1','--connect-timeout','1',
+              '--port',listener.getsockname()[1],host='127.0.0.1',expected='2013',rc=1)
+        elapsed=time.monotonic()-started
+        assert accepted and 29<=elapsed<=40, ('read deadline',elapsed)
+    finally:
+        stop.set();listener.close();thread.join(3)
+        for client in accepted:client.close()
+    # Closed localhost port gives a genuine connect failure, without external IPs.
+    closed=socket.socket();closed.bind(('127.0.0.1',0));port=closed.getsockname()[1];closed.close()
+    s.cli('dump', *common, '--port',port, host='127.0.0.1',expected='2003',rc=1)
+    s.sql(s.source,'CREATE DATABASE sd_parameter')
+    s.sql(s.source,'CREATE TABLE sd_parameter.wide_t (id INT, a VARCHAR(800000), b VARCHAR(800000)) DUPLICATE KEY(id) DISTRIBUTED BY HASH(id) BUCKETS 1 PROPERTIES("replication_num"="1")')
+    s.sql(s.source,"INSERT INTO sd_parameter.wide_t SELECT generate_series,repeat('中',100000),repeat('文',100000) FROM TABLE(generate_series(1,5))")
+    output=s.base/'work/bytes.sql'
+    s.cli('dump','--database','sd_parameter','--table','wide_t','--target-database','bytes_dst',
+          '--batch-rows','100','--batch-mib','1','--replication-num','1','--output',output,
+          host=s.source,expected='STARMIGRT_DUMP_OK')
+    # Each ~600 KiB row must occupy a separate INSERT under the 1 MiB budget.
+    inserts=[line for line in output.open() if line.startswith('INSERT ')]
+    assert len(inserts)==5,len(inserts)
+    s.cli('load','--input',output,'--connect-timeout','2','--query-timeout','30',host=s.target,expected='STARMIGRT_LOAD_OK')
+    assert self_replication(s.sql(s.target,'SHOW CREATE TABLE bytes_dst.wide_t')[0][1])==1
+    s.sql(s.source,"INSERT INTO sd_parameter.wide_t VALUES (6,repeat('中',200000),repeat('文',200000))")
+    failed=s.base/'work/too-wide.sql'
+    s.cli('dump','--database','sd_parameter','--table','wide_t','--batch-mib','1','--output',failed,
+          host=s.source,expected='单行超过 --batch-mib',rc=1)
+    assert not failed.exists() and not failed.with_name(failed.name+'.partial').exists()
+    # The shared connection flags must also work on the write-side entry point.
+    empty=s.base/'work/load.password';empty.write_text('');empty.chmod(0o600)
+    for name,auth,environment in [('env',['--password-env','SD_LOAD_PASSWORD'],{'SR_PASSWORD':'wrong','SD_LOAD_PASSWORD':''}),
+                                  ('file',['--password-file',empty],{'SR_PASSWORD':'wrong'})]:
+        path=s.base/('work/load-'+name+'.sql')
+        s.cli('dump','--database','sd_b','--table','primary_t','--target-database','load_'+name,
+              '--output',path,host=s.source,expected='STARMIGRT_DUMP_OK')
+        s.cli('load','--input',path,*auth,env_extra=environment,host=s.target,expected='STARMIGRT_LOAD_OK')
+    empty.unlink()
+    assert password not in (s.base/'scenario.log').read_text()
+    print('STARMIGRT_PARAMETERS_REAL_PASS credentials file_owner byte_batches replication timeouts',flush=True)
+
+
+def self_replication(ddl):
+    return int(re.search(r'"replication_num"\s*=\s*"(\d+)"',ddl)[1])
+
+
+def measured_cli(s, name, command, *args, timeout=5400):
+    """Run the normal source CLI and sample its own RSS/CPU, never a wrapper."""
+    argv=[*s.product,command,*map(str,args)]
+    path=s.base/('performance-'+name+'.log')
+    started=time.monotonic();peak=0;cpu=0;next_heartbeat=started
+    with path.open('w') as log:
+        proc=subprocess.Popen(argv,env=s.env,stdout=log,stderr=subprocess.STDOUT)
+        try:
+            while proc.poll() is None:
+                try:
+                    status=Path('/proc/%d/status'%proc.pid).read_text()
+                    match=re.search(r'^VmRSS:\s+(\d+) kB',status,re.M)
+                    if match:peak=max(peak,int(match[1])*1024)
+                    values=Path('/proc/%d/stat'%proc.pid).read_text().split(') ',1)[1].split()
+                    cpu=(int(values[11])+int(values[12]))/os.sysconf('SC_CLK_TCK')
+                except (FileNotFoundError,ProcessLookupError):pass
+                now=time.monotonic()
+                if now>=next_heartbeat:
+                    tail=path.read_text()[-1400:]
+                    print('STARMIGRT_PERFORMANCE_HEARTBEAT phase=%s elapsed=%.1fs peak_rss_mib=%.1f\n%s'%
+                          (name,now-started,peak/2**20,tail),flush=True)
+                    next_heartbeat=now+15
+                if now-started>timeout:raise TimeoutError('Performance '+name+' exceeds %ds'%timeout)
+                time.sleep(.2)
+        finally:
+            if proc.poll() is None:
+                proc.terminate()
+                try:proc.wait(timeout=10)
+                except subprocess.TimeoutExpired:proc.kill();proc.wait()
+    output=path.read_text()
+    expected='STARMIGRT_DUMP_OK' if command=='dump' else 'STARMIGRT_LOAD_OK'
+    if proc.returncode!=0 or expected not in output:
+        raise ValueError('Performance '+name+' rc='+str(proc.returncode)+'; see '+path.name)
+    return dict(seconds=round(time.monotonic()-started,3),peak_rss_bytes=peak,cpu_seconds=round(cpu,3),
+                rc=proc.returncode,log=path.name)
+
+
+def performance(s):
+    rows=10000001
+    s.sql(s.source,'CREATE DATABASE sd_performance')
+    s.sql(s.source,'CREATE TABLE sd_performance.large_t (id BIGINT NOT NULL, txt VARCHAR(32768), js JSON) DUPLICATE KEY(id) DISTRIBUTED BY HASH(id) BUCKETS 4 PROPERTIES("replication_num"="1")')
+    # Every row has variable text and nested JSON; every thousandth row also
+    # carries ~28 KiB of long text/JSON. No NULL-only or empty-payload shortcut.
+    expression="SELECT generate_series,concat(if(mod(generate_series,1000)=0,repeat('长文本',2048),repeat('数据abc',8)),cast(generate_series AS VARCHAR)),json_object('id',generate_series,'nested',parse_json('{\"active\":true,\"tags\":[\"一\",\"two\"]}'),'payload',if(mod(generate_series,1000)=0,repeat('json字段',1024),'普通值')) FROM TABLE(generate_series(1,%d))"
+    print('STARMIGRT_PERFORMANCE_FIXTURE creating_rows=%d'%rows,flush=True)
+    s.sql(s.source,'INSERT INTO sd_performance.large_t '+expression%rows)
+    stats=s.sql(s.source,'SELECT count(*),sum(length(txt)),max(length(txt)),sum(length(cast(js AS VARCHAR))),max(length(cast(js AS VARCHAR))) FROM sd_performance.large_t')[0]
+    assert stats[0]==rows and stats[2]>16000 and stats[4]>8000,stats
+    # Compare equal 100k-row payloads before the full-size tuned migration.
+    s.sql(s.source,'CREATE TABLE sd_performance.sample_t LIKE sd_performance.large_t')
+    s.sql(s.source,'INSERT INTO sd_performance.sample_t '+expression%100000)
+    samples={}
+    for name,batch in [('default',[]),('tuned',['--batch-rows','10000','--batch-mib','8'])]:
+        path=s.base/('work/sample-'+name+'.sql')
+        begun=time.monotonic()
+        s.cli('dump','--database','sd_performance','--table','sample_t','--target-database','sample_'+name,
+              '--output',path,*batch,host=s.source,expected='STARMIGRT_DUMP_OK')
+        export=time.monotonic()-begun;begun=time.monotonic()
+        s.cli('load','--input',path,host=s.target,expected='STARMIGRT_LOAD_OK')
+        samples[name]=dict(rows=100000,dump_seconds=round(export,3),load_including_verification_seconds=round(time.monotonic()-begun,3),sql_bytes=path.stat().st_size)
+        path.unlink()
+    path=s.base/'work/ten-million.sql'
+    dumped=measured_cli(s,'dump','dump','--host',s.source,'--user','root','--database','sd_performance','--table','large_t',
+                        '--target-database','large_dst','--output',path,'--batch-rows','10000','--batch-mib','8')
+    loaded=measured_cli(s,'load','load','--host',s.target,'--user','root','--input',path)
+    actual=s.sql(s.target,'SELECT count(*),sum(length(txt)),max(length(txt)),sum(length(cast(js AS VARCHAR))),max(length(cast(js AS VARCHAR))) FROM large_dst.large_t')[0]
+    assert actual==stats,(actual,stats)
+    assert max(dumped['peak_rss_bytes'],loaded['peak_rss_bytes'])<512*2**20,'CLI RSS exceeds 512 MiB budget'
+    report=dict(rows=rows,source_stats=list(stats),target_stats=list(actual),sql_bytes=path.stat().st_size,
+                batch_rows=10000,batch_mib=8,dump=dumped,load_including_file_audit_and_content_verification=loaded,
+                samples=samples,host=dict(cpu=os.cpu_count(),mem_total_kib=int(re.search(r'MemTotal:\s+(\d+)',Path('/proc/meminfo').read_text())[1]),
+                os_release=Path('/etc/os-release').read_text(),kernel=os.uname().release),
+                topology='Two isolated allin1 3.5.7 instances on one x86_64 host; each FE 1GiB/BE 2GiB; container limit 6GiB; four buckets, one replica',
+                transfer_included=False,source_writes_paused=True)
+    (s.base/'performance.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+    path.unlink()
+    print('STARMIGRT_PERFORMANCE_PASS rows=%d dump_seconds=%.3f load_with_verification_seconds=%.3f sql_bytes=%d'%
+          (rows,dumped['seconds'],loaded['seconds'],report['sql_bytes']),flush=True)
 
 
 def security(s):
@@ -508,6 +683,7 @@ def security(s):
     threads = []
     errors = []
     tls_refusals = []
+    upstream_host = [s.source]
     def packet(conn):
         def take(n):
             data = b''
@@ -521,7 +697,7 @@ def security(s):
         return head, take(int.from_bytes(head[:3], 'little'))
     def handle(client):
         try:
-            with client, socket.create_connection((s.source, 9030), timeout=20) as upstream:
+            with client, socket.create_connection((upstream_host[0], 9030), timeout=20) as upstream:
                 head, greeting = packet(upstream)
                 data = bytearray(greeting)
                 offset = data.index(0, 1) + 1 + 4 + 8 + 1
@@ -572,6 +748,12 @@ def security(s):
     thread.start()
     try:
         s.cli('dump', '--check', '--database', 'sd_b', '--table', 'primary_t', '--port', port, '--ssl-ca', cert, host='localhost', user='sd_reader', password=password, expected='STARMIGRT_CHECK_OK', product=s.binary)
+        tls_sql=s.base/'work/tls.sql'
+        s.cli('dump','--database','sd_b','--table','primary_t','--target-database','tls_dst','--output',tls_sql,
+              '--port',port,'--ssl-ca',cert,host='localhost',user='sd_reader',password=password,expected='STARMIGRT_DUMP_OK')
+        upstream_host[0]=s.target
+        s.cli('load','--input',tls_sql,'--port',port,'--ssl-ca',cert,host='localhost',expected='STARMIGRT_LOAD_OK')
+        upstream_host[0]=s.source
         s.cli('dump', '--check', '--database', 'sd_b', '--port', port, '--ssl-ca', cert, host='127.0.0.1', expected='STARMIGRT_ERROR', rc=1)
         other = s.base / 'other.pem'
         run(['openssl', 'req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-keyout', s.base / 'other.key', '-out', other, '-days', '1', '-subj', '/CN=other'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
